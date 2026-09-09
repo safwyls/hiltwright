@@ -72,6 +72,35 @@ export function useBoard() {
     setPortName(null);
   }, []);
 
+  /**
+   * Put the board into its DFU bootloader and let go of the port so dfu-util can have the device.
+   * Tries the firmware's own RebootDFU command first, then the Arduino 1200-baud touch. Either way the port
+   * is closed afterwards; the caller reconnects when the new firmware is up.
+   */
+  const rebootToBootloader = useCallback(async (): Promise<boolean> => {
+    const t = transport.current;
+    if (!t) return false;
+    const port = t.port;
+    try { log('in', 'RebootDFU'); await client.current?.send('RebootDFU', { idleMs: 400 }); } catch { /* the port may vanish mid-reply; that is success */ }
+    client.current?.close();
+    client.current = null;
+    transport.current = null;
+    await t.close();
+    setStatus('idle');
+    setPortName(null);
+    // 1200-baud touch as a fallback for firmware that ignored RebootDFU.
+    await new Promise((r) => setTimeout(r, 800));
+    try {
+      await port.open({ baudRate: 1200 });
+      await port.setSignals({ dataTerminalReady: false });
+      await port.close();
+      console.log('[board] 1200-baud touch sent');
+    } catch (err) {
+      console.log(`[board] 1200-baud touch skipped: ${String(err)}`);
+    }
+    return true;
+  }, [log]);
+
   const send = useCallback(async (command: string, opts?: Parameters<BoardClient['send']>[1]): Promise<Response> => {
     if (!client.current) throw new Error('Not connected');
     log('in', command);
@@ -308,7 +337,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, refreshLibrary, isPresetBlockEnd };
+  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
 }
 
 export type Board = ReturnType<typeof useBoard>;

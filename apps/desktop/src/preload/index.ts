@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { HiltwrightApi } from '../shared/api';
+import type { HiltwrightApi, JobEvent } from '../shared/api';
 
 // Thin, typed bridge. Each method maps to one ipcMain.handle in src/main/ipc.ts.
 const api: HiltwrightApi = {
@@ -25,6 +25,26 @@ const api: HiltwrightApi = {
     listTracks: (root) => ipcRenderer.invoke('sd:listTracks', root),
     pickFont: () => ipcRenderer.invoke('sd:pickFont'),
     copyFont: (src, root, replace) => ipcRenderer.invoke('sd:copyFont', src, root, replace),
+  },
+  toolchain: {
+    status: () => ipcRenderer.invoke('toolchain:status'),
+    install: () => ipcRenderer.invoke('toolchain:install'),
+  },
+  build: {
+    run: (saberId, model, force) => ipcRenderer.invoke('build:run', saberId, model, force),
+    preview: (model) => ipcRenderer.invoke('build:preview', model),
+  },
+  flash: {
+    usb: () => ipcRenderer.invoke('flash:usb'),
+    waitForBootloader: (timeoutMs) => ipcRenderer.invoke('flash:waitForBootloader', timeoutMs),
+    backup: (saberId, label) => ipcRenderer.invoke('flash:backup', saberId, label),
+    write: (dfuPath) => ipcRenderer.invoke('flash:write', dfuPath),
+    waitForRuntime: (timeoutMs) => ipcRenderer.invoke('flash:waitForRuntime', timeoutMs),
+  },
+  onJobEvent: (cb) => {
+    const listener = (_e: Electron.IpcRendererEvent, ev: JobEvent) => cb(ev);
+    ipcRenderer.on('job:event', listener);
+    return () => { ipcRenderer.removeListener('job:event', listener); };
   },
   app: {
     userDataPath: () => ipcRenderer.invoke('app:userDataPath'),

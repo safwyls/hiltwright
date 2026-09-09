@@ -4,8 +4,9 @@ import { useBoard } from './board';
 import { Icon, Mark } from './Icon';
 import { Presets } from './Presets';
 import { Fonts } from './Fonts';
+import { Build } from './Build';
 
-type Page = 'armory' | 'presets' | 'fonts' | 'diag';
+type Page = 'armory' | 'presets' | 'fonts' | 'build' | 'diag';
 
 export function App() {
   const board = useBoard();
@@ -26,7 +27,7 @@ export function App() {
           <a href="#" className={page === 'presets' ? 'on' : ''} aria-current={page === 'presets' ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setPage('presets'); }}><Icon name="presets" /><span>Presets</span><span className="tier">live</span></a>
           <a href="#" className="dis"><Icon name="looks" /><span>Looks</span></a>
           <a href="#" className={page === 'fonts' ? 'on' : ''} aria-current={page === 'fonts' ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setPage('fonts'); }}><Icon name="fonts" /><span>Fonts &amp; SD</span></a>
-          <a href="#" className="dis"><Icon name="build" /><span>Build &amp; Install</span></a>
+          <a href="#" className={page === 'build' ? 'on' : ''} aria-current={page === 'build' ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setPage('build'); }}><Icon name="build" /><span>Build &amp; Install</span><span className="tier">reflash</span></a>
           <a href="#" className={page === 'diag' ? 'on' : ''} aria-current={page === 'diag' ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setPage('diag'); }}><Icon name="diag" /><span>Diagnostics</span></a>
         </nav>
         <div className="col" style={{ marginTop: 'auto', padding: '16px 20px', borderTop: '1px solid var(--line)', gap: 4 }}>
@@ -54,7 +55,7 @@ export function App() {
       </header>
 
       <main className="main">
-        {page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} /> : page === 'presets' ? <Presets board={board} /> : page === 'fonts' ? <Fonts /> : <Diagnostics board={board} />}
+        {page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} /> : page === 'presets' ? <Presets board={board} /> : page === 'fonts' ? <Fonts /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}
       </main>
 
       <footer className="status" aria-label="Board status">

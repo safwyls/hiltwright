@@ -10,7 +10,8 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
-    "dist": "electron-vite build && electron-builder --win --publish never"
+    "dist": "electron-vite build && electron-builder --win --publish never",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hiltwright/core": "*",
@@ -27,7 +28,8 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^4.0.0",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
   },
   "build": {
     "appId": "app.hiltwright.desktop",

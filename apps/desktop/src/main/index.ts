@@ -83,9 +83,16 @@ function createWindow(): void {
         .then((r) => console.log('[main] e2e', r))
         .catch((err) => console.log('[main] e2e failed', String(err)));
     }, 7000);
+    // Dev aid: HILTWRIGHT_BUILD_E2E=1 opens Build & Install and compiles for the connected board (never flashes).
+    if (process.env.HILTWRIGHT_BUILD_E2E) setTimeout(() => {
+      void win.webContents.executeJavaScript('window.hiltwrightGoto && window.hiltwrightGoto("build")', true)
+        .then(() => new Promise((r) => setTimeout(r, 2500)))
+        .then(() => win.webContents.executeJavaScript('window.hiltwrightBuildE2E ? window.hiltwrightBuildE2E() : "no hook"', true))
+        .then((r) => console.log('[main] build e2e:', r), (err) => console.log('[main] build e2e failed:', String(err)));
+    }, 9000);
     // Dev aid: HILTWRIGHT_SHOT=<file.png> captures the window a few seconds after load.
     const shot = process.env.HILTWRIGHT_SHOT;
-    if (shot) setTimeout(() => { void win.webContents.executeJavaScript(`window.hiltwrightGoto && window.hiltwrightGoto(${JSON.stringify(process.env.HILTWRIGHT_PAGE ?? 'armory')})`, true).then(() => new Promise((r) => setTimeout(r, 800))).then(() => win.webContents.capturePage()).then((img) => writeFile(shot, img.toPNG())).then(() => console.log('[main] screenshot', shot)); }, process.env.HILTWRIGHT_E2E ? 30000 : 6000);
+    if (shot) setTimeout(() => { void win.webContents.executeJavaScript(`window.hiltwrightGoto && window.hiltwrightGoto(${JSON.stringify(process.env.HILTWRIGHT_PAGE ?? 'armory')})`, true).then(() => new Promise((r) => setTimeout(r, 800))).then(() => win.webContents.capturePage()).then((img) => writeFile(shot, img.toPNG())).then(() => console.log('[main] screenshot', shot)); }, process.env.HILTWRIGHT_BUILD_E2E ? 75000 : process.env.HILTWRIGHT_E2E ? 30000 : 6000);
   });
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void win.loadFile(join(import.meta.dirname, '../renderer/index.html'));

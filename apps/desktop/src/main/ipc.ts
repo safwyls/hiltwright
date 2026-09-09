@@ -1,11 +1,16 @@
 // IPC surface. Every handler validates its arguments; the renderer is sandboxed and untrusted by design.
 
-import { app, dialog, ipcMain, shell } from 'electron';
-import type { PresetRecord } from '@hiltwright/core';
+import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
+import { join } from 'node:path';
+import { generateConfig, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { Snapshots } from './snapshots';
 import { proffieSerials } from './usb';
 import { checkFontDir, copyFont, listFonts, listTracks, locateCards } from './sd';
+import { installToolchain, toolchainStatus } from './toolchain';
+import { buildFirmware } from './build';
+import { backupFlash, describeBootloader, usbState, waitFor, writeFirmware } from './flash';
+import type { JobEvent } from '../shared/api';
 import type { SaberIdentity } from '../shared/api';
 
 function str(v: unknown, max = 200): string {
@@ -79,6 +84,43 @@ export function registerIpc(): void {
     if (!pickedFonts.has(s)) throw new Error('Pick the font folder first');
     return copyFont(s, root(r), replace === true);
   });
+
+  // ---- Tier 2: toolchain, build, flash ----
+  const toolchainRoot = process.env.HILTWRIGHT_TOOLCHAIN_DIR || join(userData, 'toolchain');
+  const emit = (job: JobEvent['job'], line: string) => {
+    const ev: JobEvent = { job, line, at: Date.now() };
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.send('job:event', ev);
+    console.log(`[${job}] ${line}`);
+  };
+  const model = (v: unknown): SaberConfigModel => {
+    const m = v as SaberConfigModel;
+    if (!m || typeof m !== 'object' || typeof m.name !== 'string' || !Array.isArray(m.blades) || !Array.isArray(m.presets)) throw new Error('Expected a saber model');
+    return m;
+  };
+  ipcMain.handle('toolchain:status', () => toolchainStatus(toolchainRoot));
+  ipcMain.handle('toolchain:install', () => installToolchain(toolchainRoot, (l) => emit('toolchain', l)));
+  ipcMain.handle('build:preview', (_e, m: unknown) => {
+    const mm = model(m);
+    const errors = validateModel(mm);
+    const g = generateConfig(mm);
+    return { text: g.text, hash: g.hash, warnings: g.warnings, errors };
+  });
+  ipcMain.handle('build:run', (_e, saberId: unknown, m: unknown, force: unknown) => buildFirmware({ toolchainRoot, saberId: str(saberId, 40), model: model(m), force: force === true, onLine: (l) => emit('build', l) }));
+  ipcMain.handle('flash:usb', () => usbState());
+  ipcMain.handle('flash:waitForBootloader', async (_e, timeoutMs: unknown) => {
+    const s = await waitFor((u) => u.bootloaderPresent, Math.min(Number(timeoutMs) || 15000, 60000), (l) => emit('flash', l));
+    if (!s) return { ok: false, text: 'The board did not switch to bootloader mode. Hold BOOT, tap RESET, release BOOT, then try again.' };
+    // Give Windows a moment to bind the driver before judging it.
+    const bound = (await waitFor((u) => u.bootloaderPresent && /winusb/i.test(u.bootloaderDriver ?? ''), 5000)) ?? s;
+    return describeBootloader(bound);
+  });
+  ipcMain.handle('flash:backup', (_e, saberId: unknown, label: unknown) => backupFlash(toolchainRoot, join(userData, 'sabers', str(saberId, 40), 'backups'), str(label, 60), (l) => emit('flash', l)));
+  ipcMain.handle('flash:write', (_e, dfuPath: unknown) => {
+    const p = str(dfuPath, 1000);
+    if (!p.startsWith(toolchainRoot)) throw new Error('Only firmware built by Hiltwright can be written');
+    return writeFirmware(toolchainRoot, p, (l) => emit('flash', l));
+  });
+  ipcMain.handle('flash:waitForRuntime', async (_e, timeoutMs: unknown) => !!(await waitFor((u) => u.runtimePresent && !u.bootloaderPresent, Math.min(Number(timeoutMs) || 20000, 60000), (l) => emit('flash', l))));
 
   ipcMain.handle('app:userDataPath', () => userData);
   ipcMain.handle('app:openPath', async (_e, p: unknown) => {
