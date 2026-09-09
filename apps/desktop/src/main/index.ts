@@ -4,6 +4,7 @@
 import { app, BrowserWindow, session } from 'electron';
 import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
+import { registerIpc } from './ipc';
 
 const PROFFIE_VID = 0x1209;
 const PROFFIE_PID = 0x6668;
@@ -91,6 +92,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  registerIpc();
   grantSerial();
   createWindow();
   app.on('activate', () => {

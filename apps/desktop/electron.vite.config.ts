@@ -2,9 +2,10 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  main: { plugins: [externalizeDepsPlugin()] },
+  // @hiltwright/core ships as TypeScript source from the workspace, so it must be bundled everywhere, not externalised.
+  main: { plugins: [externalizeDepsPlugin({ exclude: ['@hiltwright/core'] })] },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ['@hiltwright/core'] })],
     build: { rollupOptions: { output: { format: 'cjs', entryFileNames: 'index.cjs' } } },
   },
   renderer: {

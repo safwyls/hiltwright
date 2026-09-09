@@ -66,6 +66,43 @@ export function App() {
   );
 }
 
+function Library({ board }: { board: ReturnType<typeof useBoard> }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const others = board.library.filter((s) => s.id !== board.saber?.id);
+  return (
+    <section className="panel" aria-label="Your sabers">
+      <div className="ph"><h2>Library · {board.library.length}</h2><span className="hint">remembered on this computer</span></div>
+      <div className="list">
+        {board.saber && (
+          <div className="li" style={{ gap: 14, minHeight: 48 }}>
+            <span style={{ color: 'var(--holo)', display: 'flex', width: 18 }}><Icon name="usb" /></span>
+            {editing
+              ? <form className="row grow" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); void board.renameSaber(draft); setEditing(false); }}>
+                  <span className="input sans grow" style={{ height: 32 }}><input type="text" value={draft} autoFocus onChange={(e) => setDraft(e.target.value)} aria-label="Saber name" /></span>
+                  <button type="submit" className="btn sm pri"><span className="b"><span className="i">Save</span></span></button>
+                  <button type="button" className="btn sm ghost" onClick={() => setEditing(false)}><span className="b"><span className="i">Cancel</span></span></button>
+                </form>
+              : <>
+                  <span className="col grow" style={{ gap: 0 }}><b style={{ fontWeight: 600 }}>{board.saber.name}</b><span className="hint">{board.saber.identity.configName ?? '?'} · {board.saber.identity.pixelBlades.length ? `${board.saber.identity.pixelBlades.join(' + ')} px` : 'blades unknown'} · serial {board.saber.identity.usbSerial ?? 'unknown'} · first seen {new Date(board.saber.firstSeen).toLocaleDateString()}</span></span>
+                  <span className="chip live"><span className="dot" />Connected</span>
+                  <button type="button" className="btn sm ghost" onClick={() => { setDraft(board.saber!.name); setEditing(true); }}><span className="b"><span className="i">Rename</span></span></button>
+                </>}
+          </div>
+        )}
+        {others.map((s) => (
+          <div key={s.id} className="li" style={{ gap: 14, minHeight: 48 }}>
+            <span style={{ color: 'var(--mute)', display: 'flex', width: 18 }}><Icon name="blade" /></span>
+            <span className="col grow" style={{ gap: 0 }}><b style={{ fontWeight: 600 }}>{s.name}</b><span className="hint">{s.identity.configName ?? '?'} · {s.presets.length} presets · last seen {new Date(s.lastSeen).toLocaleString()}</span></span>
+            <span className="chip"><span className="dot" />Not connected</span>
+          </div>
+        ))}
+        {board.library.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>No sabers remembered yet. Plug one in and it will be added.</div>}
+      </div>
+    </section>
+  );
+}
+
 function StatusChip({ status, port }: { status: ReturnType<typeof useBoard>['status']; port: string | null }) {
   switch (status) {
     case 'connected': return <span className="chip live"><span className="dot" />Connected · {port}</span>;
@@ -108,7 +145,7 @@ function Armory({ board, configName, onPresets }: { board: ReturnType<typeof use
         <div className="row" style={{ padding: '16px 18px', gap: 18 }}>
           <span style={{ color: 'var(--holo)', display: 'flex', width: 28, height: 28 }}><Icon name="usb" /></span>
           <div className="col grow" style={{ gap: 2 }}>
-            <h3>{configName ?? 'Unnamed saber'} is connected</h3>
+            <h3>{board.saber?.name ?? configName ?? 'Unnamed saber'} is connected</h3>
             <div className="dim small">
               ProffieOS {v?.version ?? '?'} · {v?.prop ?? 'unknown prop'} · {v?.buttons ?? '?'} buttons · {info.presets.length} presets · current preset {info.currentPreset != null ? info.currentPreset + 1 : '?'} · installed {v?.installed ?? '?'}
             </div>
@@ -120,6 +157,8 @@ function Armory({ board, configName, onPresets }: { board: ReturnType<typeof use
           <div className="note amber" style={{ margin: '0 18px 16px' }}><Icon name="warn" /><span>This firmware does not know {info.rejected.join(', ')}. Hiltwright adapts to what the board supports.</span></div>
         )}
       </section>
+
+      <Library board={board} />
 
       <section className="panel" aria-label="Presets on the saber">
         <div className="ph"><h2>Presets · {info.presets.length}</h2><span className="mono dim" style={{ fontSize: 12 }}>list_presets in {info.timings['list_presets'] ?? '?'} ms</span></div>

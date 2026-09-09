@@ -1,10 +1,9 @@
-export interface HiltwrightApi {
-  appVersion: string;
-  platform: string;
-}
+import type { HiltwrightApi } from '../shared/api';
 
 declare global {
   interface Window {
     hiltwright: HiltwrightApi;
   }
 }
+
+export {};

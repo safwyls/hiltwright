@@ -106,3 +106,31 @@ export function diffPreset(from: PresetRecord, to: PresetRecord): PresetPatch {
 export function isEmptyPatch(p: PresetPatch): boolean {
   return p.font === undefined && p.track === undefined && p.name === undefined && !p.styles;
 }
+
+// ---------- Structural edits: reorder, duplicate, delete ----------
+// These change presets.ini on the board and renumber presets, so each one re-reads the list and the current index.
+
+export interface ListResult { presets: PresetRecord[]; current: number | null }
+
+async function resync(client: BoardClient): Promise<ListResult> {
+  const presets = await listPresets(client);
+  const current = await currentPresetIndex(client);
+  return { presets, current };
+}
+
+/** Move the current preset to position `pos` (0-based). */
+export async function moveCurrentPreset(client: BoardClient, pos: number): Promise<ListResult> {
+  await client.send(presetCommands.move(pos), { idleMs: 900, timeoutMs: 8000 });
+  return resync(client);
+}
+
+/** Copy the current preset to position `pos` (0-based); the copy becomes current. */
+export async function duplicateCurrentPreset(client: BoardClient, pos: number): Promise<ListResult> {
+  await client.send(presetCommands.duplicate(pos), { idleMs: 900, timeoutMs: 8000 });
+  return resync(client);
+}
+
+export async function deleteCurrentPreset(client: BoardClient): Promise<ListResult> {
+  await client.send(presetCommands.delete(), { idleMs: 900, timeoutMs: 8000 });
+  return resync(client);
+}

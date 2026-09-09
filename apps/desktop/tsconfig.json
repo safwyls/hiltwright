@@ -11,5 +11,5 @@
     "noEmit": true,
     "types": ["vite/client", "w3c-web-serial"]
   },
-  "include": ["src/renderer", "src/preload/api.d.ts"]
+  "include": ["src/renderer", "src/preload/api.d.ts", "src/shared"]
 }

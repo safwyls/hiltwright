@@ -1,11 +1,12 @@
-// Board session for the renderer: connect, identify, read presets, edit them with verification, run raw commands.
+// Board session for the renderer: connect, identify, remember the saber, read and edit presets with verification.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  BoardClient, diffPreset, editCurrentPreset, isEmptyPatch, isPresetBlockEnd, listPresets, parseBattery, parseInteger, parseList,
-  parsePresetBlocks, parseVersion, presetCommands, selectPreset, wasRejected,
-  type PresetPatch, type PresetRecord, type Response, type VersionInfo,
+  BoardClient, deleteCurrentPreset, diffPreset, duplicateCurrentPreset, editCurrentPreset, isEmptyPatch, isPresetBlockEnd, listPresets,
+  moveCurrentPreset, parseBattery, parseInteger, parseList, parsePresetBlocks, parseScanId, parseVersion, presetCommands, selectPreset, wasRejected,
+  type ListResult, type PresetPatch, type PresetRecord, type Response, type VersionInfo,
 } from '@hiltwright/core';
+import type { SaberIdentity, SaberRecord, SnapshotMeta } from '../../shared/api';
 import { PROFFIE_FILTER, WebSerialTransport, describePort, grantedProffiePorts } from './serial';
 
 export interface BoardInfo {
@@ -16,24 +17,27 @@ export interface BoardInfo {
   presets: PresetRecord[];
   fonts: string[];
   tracks: string[];
+  pixelBlades: number[];
+  bladeConfig: number | null;
   rejected: string[];
   timings: Record<string, number>;
 }
 
 export interface ConsoleLine { kind: 'in' | 'out' | 'event'; text: string; at: number }
-export interface Snapshot { at: number; label: string; presets: PresetRecord[] }
 export type Status = 'idle' | 'no-port' | 'connecting' | 'reading' | 'connected' | 'error';
 export type SaveState = { kind: 'idle' } | { kind: 'writing'; what: string } | { kind: 'saved'; what: string; ms: number; at: number } | { kind: 'failed'; what: string; error: string };
 
-const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const api = () => window.hiltwright;
 
 export function useBoard() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [portName, setPortName] = useState<string | null>(null);
   const [info, setInfo] = useState<BoardInfo | null>(null);
+  const [saber, setSaber] = useState<SaberRecord | null>(null);
+  const [library, setLibrary] = useState<SaberRecord[]>([]);
   const [lines, setLines] = useState<ConsoleLine[]>([]);
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
   const [save, setSave] = useState<SaveState>({ kind: 'idle' });
   const [busy, setBusyState] = useState(false);
   const busyRef = useRef(false);
@@ -41,10 +45,20 @@ export function useBoard() {
   const client = useRef<BoardClient | null>(null);
   const transport = useRef<WebSerialTransport | null>(null);
   const infoRef = useRef<BoardInfo | null>(null);
+  const saberRef = useRef<SaberRecord | null>(null);
   infoRef.current = info;
+  saberRef.current = saber;
 
   const log = useCallback((kind: ConsoleLine['kind'], text: string) => {
     setLines((ls) => [...ls, { kind, text, at: Date.now() }].slice(-400));
+  }, []);
+
+  const refreshLibrary = useCallback(async () => {
+    try { setLibrary(await api().library.list()); } catch (err) { console.log(`[library] list failed: ${String(err)}`); }
+  }, []);
+
+  const refreshSnapshots = useCallback(async (saberId: string) => {
+    try { setSnapshots(await api().snapshots.list(saberId)); } catch (err) { console.log(`[snapshots] list failed: ${String(err)}`); }
   }, []);
 
   const disconnect = useCallback(async (reason?: string) => {
@@ -66,6 +80,7 @@ export function useBoard() {
     return r;
   }, [log]);
 
+  /** Read everything the board can tell us, then match or create the saber in the library. */
   const identify = useCallback(async () => {
     setStatus('reading');
     const timings: Record<string, number> = {};
@@ -77,13 +92,14 @@ export function useBoard() {
       return r;
     };
     const v = await time('version', { until: (l) => /^installed:/.test(l) });
-    console.log(`[board] version lines ${JSON.stringify(v.lines)} events ${JSON.stringify(v.events)}`);
     const b = await time('battery', { until: (l) => /^Battery voltage:/.test(l) });
     const vol = await time('get_volume', { until: (l) => /^-?\d+$/.test(l.trim()) });
     const cur = await time(presetCommands.getCurrent(), { until: (l) => /^-?\d+$/.test(l.trim()) });
     const lp = await time(presetCommands.list(), { idleMs: 700, timeoutMs: 15000 });
     const fonts = await time('list_fonts', { idleMs: 700, timeoutMs: 15000 });
     const tracks = await time('list_tracks', { idleMs: 700, timeoutMs: 15000 });
+    const scan = await time('scanid', { idleMs: 1200, timeoutMs: 15000 });
+    const scanInfo = parseScanId([...scan.lines, ...scan.events]);
     const next: BoardInfo = {
       version: parseVersion(v.lines),
       battery: parseBattery(b.lines),
@@ -92,14 +108,34 @@ export function useBoard() {
       presets: parsePresetBlocks(lp.lines).presets,
       fonts: parseList(fonts.lines),
       tracks: parseList(tracks.lines),
+      pixelBlades: scanInfo.pixelBlades,
+      bladeConfig: scanInfo.bladeConfig,
       rejected,
       timings,
     };
     setInfo(next);
     setStatus('connected');
-    console.log(`[board] version=${next.version?.version ?? '?'} config=${next.version?.config ?? '?'} prop=${next.version?.prop ?? '?'} buttons=${next.version?.buttons ?? '?'} battery=${next.battery ?? '?'} volume=${next.volume ?? '?'} current=${next.currentPreset ?? '?'} presets=${next.presets.length} fonts=${next.fonts.length} tracks=${next.tracks.length} timings=${JSON.stringify(timings)}`);
+    console.log(`[board] version=${next.version?.version ?? '?'} config=${next.version?.config ?? '?'} prop=${next.version?.prop ?? '?'} buttons=${next.version?.buttons ?? '?'} battery=${next.battery ?? '?'} volume=${next.volume ?? '?'} current=${next.currentPreset ?? '?'} presets=${next.presets.length} fonts=${next.fonts.length} tracks=${next.tracks.length} blades=${JSON.stringify(next.pixelBlades)} timings=${JSON.stringify(timings)}`);
+
+    // Remember the saber.
+    let usbSerial: string | null = null;
+    try { const serials = await api().usb.proffieSerials(); usbSerial = serials.length === 1 ? serials[0] : null; } catch { /* not available on this platform */ }
+    const identity: SaberIdentity = {
+      usbSerial, configName: next.version?.config ?? null, version: next.version?.version ?? null, prop: next.version?.prop ?? null,
+      buttons: next.version?.buttons ?? null, installed: next.version?.installed ?? null, pixelBlades: next.pixelBlades, bladeConfig: next.bladeConfig,
+    };
+    try {
+      const rec = await api().library.upsert({ identity, presets: next.presets, fonts: next.fonts, tracks: next.tracks });
+      setSaber(rec);
+      console.log(`[library] saber ${rec.id} "${rec.name}" serial=${rec.identity.usbSerial ?? 'none'} firstSeen=${rec.firstSeen}`);
+      await api().snapshots.save(rec.id, 'Connected', next.presets);
+      await refreshSnapshots(rec.id);
+      await refreshLibrary();
+    } catch (err) {
+      console.log(`[library] upsert failed: ${String(err)}`);
+    }
     return next;
-  }, [send]);
+  }, [send, refreshLibrary, refreshSnapshots]);
 
   const connectTo = useCallback(async (port: SerialPort) => {
     setError(null);
@@ -124,7 +160,6 @@ export function useBoard() {
     }
   }, [disconnect, identify, log]);
 
-  /** Try already-granted ports first (no prompt); fall back to asking, which needs a user gesture. */
   const connect = useCallback(async (interactive = false) => {
     if (!('serial' in navigator)) { setStatus('error'); setError('Web Serial is not available in this window.'); return; }
     let ports = await grantedProffiePorts();
@@ -140,6 +175,7 @@ export function useBoard() {
   }, [connectTo]);
 
   useEffect(() => {
+    void refreshLibrary();
     (window as unknown as { hiltwrightAutoConnect?: () => Promise<string> }).hiltwrightAutoConnect = async () => {
       if (client.current) return 'already connected';
       await connect(true);
@@ -151,69 +187,101 @@ export function useBoard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------- Presets: select, edit with verification, snapshots ----------
+  // ---------- Presets ----------
+
+  const applyList = useCallback((r: ListResult) => {
+    setInfo((i) => (i ? { ...i, presets: r.presets, currentPreset: r.current } : i));
+  }, []);
 
   const replacePreset = useCallback((index: number, preset: PresetRecord) => {
     setInfo((i) => (i ? { ...i, presets: i.presets.map((p, k) => (k === index ? preset : p)) } : i));
   }, []);
 
-  /** Make a preset current on the saber. The saber switches to it audibly, like pressing the button would. */
-  const choosePreset = useCallback(async (index: number) => {
+  const snapshot = useCallback(async (label: string) => {
+    const i = infoRef.current;
+    const s = saberRef.current;
+    if (!i || !s) return;
+    try { await api().snapshots.save(s.id, label, i.presets); await refreshSnapshots(s.id); } catch (err) { console.log(`[snapshots] save failed: ${String(err)}`); }
+  }, [refreshSnapshots]);
+
+  /** Run a board operation with busy state, snapshot and save-state bookkeeping. */
+  const run = useCallback(async (label: string, op: (c: BoardClient) => Promise<{ ok: boolean; error?: string; ms?: number }>, withSnapshot = true) => {
     if (!client.current || busyRef.current) return;
     setBusy(true);
-    try {
-      log('in', presetCommands.select(index));
-      const r = await selectPreset(client.current, index);
-      log('out', r.preset ? `→ preset ${r.index ?? '?'}: ${r.preset.name}` : '→ no read-back');
-      setInfo((i) => (i ? { ...i, currentPreset: r.index ?? index } : i));
-      if (r.preset && r.index != null) replacePreset(r.index, r.preset);
-      console.log(`[board] selected preset ${r.index} (${r.preset?.name ?? '?'})`);
-    } finally {
-      setBusy(false);
-    }
-  }, [log, replacePreset]);
-
-  /** Apply a patch to the current preset: snapshot first, write, wait for the saber to confirm. */
-  const editPreset = useCallback(async (patch: PresetPatch, label: string) => {
-    const i = infoRef.current;
-    if (!client.current || !i || i.currentPreset == null || isEmptyPatch(patch) || busyRef.current) return;
-    const index = i.currentPreset;
-    setBusy(true);
     setSave({ kind: 'writing', what: label });
-    setSnapshots((s) => [{ at: Date.now(), label: `Before: ${label}`, presets: i.presets }, ...s].slice(0, 20));
-    log('in', `${label} → ${JSON.stringify(patch)}`);
+    const started = Date.now();
     try {
-      const r = await editCurrentPreset(client.current, patch);
-      if (r.preset) replacePreset(index, r.preset);
+      if (withSnapshot) await snapshot(`Before: ${label}`);
+      log('in', label);
+      const r = await op(client.current);
       if (r.ok) {
-        setSave({ kind: 'saved', what: label, ms: r.ms, at: Date.now() });
-        log('out', `✓ ${label} confirmed after ${r.readbacks} read-back${r.readbacks === 1 ? '' : 's'} in ${r.ms} ms`);
-        console.log(`[board] edit ok: ${label} · ${r.readbacks} readbacks · ${r.ms} ms · font=${r.preset?.font} track=${r.preset?.track} name=${JSON.stringify(r.preset?.name)}`);
+        setSave({ kind: 'saved', what: label, ms: r.ms ?? Date.now() - started, at: Date.now() });
+        log('out', `✓ ${label}`);
+        console.log(`[board] ok: ${label} · ${r.ms ?? Date.now() - started} ms`);
       } else {
         setSave({ kind: 'failed', what: label, error: r.error ?? 'unknown' });
         log('out', `✗ ${label}: ${r.error}`);
-        console.log(`[board] edit FAILED: ${label} · ${r.error}`);
+        console.log(`[board] FAILED: ${label} · ${r.error}`);
       }
+    } catch (err) {
+      setSave({ kind: 'failed', what: label, error: String(err) });
+      console.log(`[board] FAILED: ${label} · ${String(err)}`);
     } finally {
       setBusy(false);
     }
-  }, [log, replacePreset]);
+  }, [log, snapshot]);
+
+  const choosePreset = useCallback((index: number) => run(`Select preset ${index + 1}`, async (c) => {
+    const r = await selectPreset(c, index);
+    setInfo((i) => (i ? { ...i, currentPreset: r.index ?? index } : i));
+    if (r.preset && r.index != null) replacePreset(r.index, r.preset);
+    return { ok: r.preset !== null, error: r.preset ? undefined : 'No read-back after selecting.' };
+  }, false), [run, replacePreset]);
+
+  const editPreset = useCallback((patch: PresetPatch, label: string) => {
+    const i = infoRef.current;
+    if (!i || i.currentPreset == null || isEmptyPatch(patch)) return Promise.resolve();
+    const index = i.currentPreset;
+    return run(label, async (c) => {
+      const r = await editCurrentPreset(c, patch);
+      if (r.preset) replacePreset(index, r.preset);
+      return r;
+    });
+  }, [run, replacePreset]);
+
+  const movePreset = useCallback((to: number) => run(`Move to position ${to + 1}`, async (c) => { applyList(await moveCurrentPreset(c, to)); return { ok: true }; }), [run, applyList]);
+  const duplicatePreset = useCallback(() => {
+    const i = infoRef.current;
+    const pos = (i?.currentPreset ?? 0) + 1;
+    return run('Duplicate preset', async (c) => { applyList(await duplicateCurrentPreset(c, pos)); return { ok: true }; });
+  }, [run, applyList]);
+  const deletePreset = useCallback(() => run('Delete preset', async (c) => { applyList(await deleteCurrentPreset(c)); return { ok: true }; }), [run, applyList]);
 
   /** Put the current preset back the way a snapshot had it, with the fewest commands. */
-  const restoreSnapshot = useCallback(async (snap: Snapshot) => {
+  const restoreSnapshot = useCallback(async (meta: SnapshotMeta) => {
     const i = infoRef.current;
-    if (!i || i.currentPreset == null) return;
+    const s = saberRef.current;
+    if (!i || !s || i.currentPreset == null) return;
     const index = i.currentPreset;
+    let saved: PresetRecord[];
+    try { saved = await api().snapshots.read(s.id, meta.file); } catch (err) { setSave({ kind: 'failed', what: 'Restore', error: String(err) }); return; }
     const from = i.presets[index];
-    const to = snap.presets[index];
-    if (!from || !to) return;
+    const to = saved[index];
+    if (!from || !to) { setSave({ kind: 'failed', what: 'Restore', error: 'That snapshot has no preset at this position.' }); return; }
     const patch = diffPreset(from, to);
     if (isEmptyPatch(patch)) { setSave({ kind: 'saved', what: 'Nothing to restore', ms: 0, at: Date.now() }); return; }
-    await editPreset(patch, `Restore ${now()}`);
+    await editPreset(patch, `Restore "${meta.label}"`);
   }, [editPreset]);
 
-  // Dev-only end-to-end check, triggered by main when HILTWRIGHT_E2E is set: edit a preset's font on the real
-  // board, verify, restore. Mirrors the transcript session recorded with PowerShell, now through Electron.
+  const renameSaber = useCallback(async (name: string) => {
+    const s = saberRef.current;
+    if (!s) return;
+    const rec = await api().library.rename(s.id, name);
+    setSaber(rec);
+    await refreshLibrary();
+  }, [refreshLibrary]);
+
+  // Dev-only end-to-end check (HILTWRIGHT_E2E=1): edit a preset's font on the real board, verify, restore.
   useEffect(() => {
     (window as unknown as { hiltwrightE2E?: () => Promise<string> }).hiltwrightE2E = async () => {
       const c = client.current;
@@ -233,11 +301,14 @@ export function useBoard() {
       const all = await listPresets(c);
       steps.push(`list_presets → ${all.length} presets, preset 3 font ${all[2]?.font}`);
       setInfo((cur) => (cur ? { ...cur, presets: all, currentPreset: back.index ?? original } : cur));
+      const lib = await api().library.list();
+      const snaps = saberRef.current ? await api().snapshots.list(saberRef.current.id) : [];
+      steps.push(`library ${lib.length} saber(s), ${snaps.length} snapshot(s) on disk`);
       return steps.join(' | ');
     };
   }, []);
 
-  return { status, error, portName, info, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, restoreSnapshot, isPresetBlockEnd };
+  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, refreshLibrary, isPresetBlockEnd };
 }
 
 export type Board = ReturnType<typeof useBoard>;
