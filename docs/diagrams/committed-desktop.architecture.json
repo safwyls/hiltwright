@@ -1,0 +1,337 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Hiltwright Desktop: Electron Architecture",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "runtime-tier",
+        "label": "Tier 1: runtime editing",
+        "focus": [
+          "renderer",
+          "bridge",
+          "board",
+          "sdcard"
+        ],
+        "note": "Presets, colours and fonts change through presets.ini; no toolchain, no driver."
+      },
+      {
+        "id": "build-tier",
+        "label": "Tier 2: build and flash",
+        "focus": [
+          "main",
+          "toolchain",
+          "build",
+          "flash",
+          "board"
+        ],
+        "note": "Config becomes a .bin locally, then dfu-util writes it at 0x08000000."
+      },
+      {
+        "id": "core-package",
+        "label": "Shared core package",
+        "focus": [
+          "core",
+          "renderer",
+          "main"
+        ],
+        "note": "Pure TypeScript domain logic imported by both processes."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Saber owner",
+      "sublabel": "Windows / macOS / Linux",
+      "pos": [
+        60,
+        230
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "@hiltwright/core",
+      "sublabel": "pure TS domain logic",
+      "pos": [
+        300,
+        100
+      ],
+      "size": [
+        180,
+        64
+      ],
+      "tag": "no Node / DOM"
+    },
+    {
+      "id": "renderer",
+      "type": "frontend",
+      "label": "Renderer: UI",
+      "sublabel": "wizard, looks, fonts, diagnostics",
+      "pos": [
+        300,
+        230
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "bridge",
+      "type": "frontend",
+      "label": "Board bridge",
+      "sublabel": "Electron Web Serial + WebUSB",
+      "pos": [
+        300,
+        360
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "main",
+      "type": "backend",
+      "label": "Electron main",
+      "sublabel": "state, subprocesses, files",
+      "pos": [
+        560,
+        230
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "toolchain",
+      "type": "backend",
+      "label": "Toolchain manager",
+      "sublabel": "arduino-cli, core, GCC 14.2",
+      "pos": [
+        800,
+        100
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "first-run download"
+    },
+    {
+      "id": "build",
+      "type": "backend",
+      "label": "Build engine",
+      "sublabel": "compile, hash cache, errors",
+      "pos": [
+        800,
+        230
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "flash",
+      "type": "backend",
+      "label": "Flash engine",
+      "sublabel": "backup, dfu-util, verify",
+      "pos": [
+        1040,
+        230
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "Win driver helper"
+    },
+    {
+      "id": "board",
+      "type": "external",
+      "label": "Proffieboard",
+      "sublabel": "1209:6668 / 0483:df11",
+      "pos": [
+        1040,
+        360
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "sdcard",
+      "type": "database",
+      "label": "SD card",
+      "sublabel": "fonts, presets.ini",
+      "pos": [
+        1040,
+        490
+      ],
+      "size": [
+        160,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Renderer process (sandboxed, typed IPC only)",
+      "wraps": [
+        "renderer",
+        "bridge"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Main process",
+      "wraps": [
+        "main",
+        "toolchain",
+        "build",
+        "flash"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-renderer",
+      "from": "user",
+      "to": "renderer",
+      "label": "installer, auto-update",
+      "labelDy": 56
+    },
+    {
+      "id": "core-renderer",
+      "from": "core",
+      "to": "renderer",
+      "label": "imports",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "core-main",
+      "from": "core",
+      "to": "main",
+      "label": "imports",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [
+        [
+          640,
+          132
+        ]
+      ]
+    },
+    {
+      "id": "renderer-main",
+      "from": "renderer",
+      "to": "main",
+      "label": "typed IPC",
+      "labelDy": 56
+    },
+    {
+      "id": "renderer-bridge",
+      "from": "renderer",
+      "to": "bridge",
+      "label": "board ops",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "main-build",
+      "from": "main",
+      "to": "build",
+      "label": "compile config.h",
+      "labelDy": -26
+    },
+    {
+      "id": "build-toolchain",
+      "from": "build",
+      "to": "toolchain",
+      "label": "arduino-cli + GCC",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDx": 64
+    },
+    {
+      "id": "build-flash",
+      "from": "build",
+      "to": "flash",
+      "label": "firmware.bin"
+    },
+    {
+      "id": "flash-board",
+      "from": "flash",
+      "to": "board",
+      "label": "DFU 0x08000000",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24,
+      "labelDx": 60
+    },
+    {
+      "id": "bridge-board",
+      "from": "bridge",
+      "to": "board",
+      "label": "serial, 1200-baud touch, WebUSB",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "board-sdcard",
+      "from": "board",
+      "to": "sdcard",
+      "label": "mass storage",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24,
+      "labelDx": 52
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Process split",
+      "items": [
+        "Renderer: UI plus the board bridge on Electron Web Serial / WebUSB, no native modules",
+        "Main: toolchain, build, flash, SD manager, backups, updater as subprocesses and files",
+        "Core: pure TypeScript imported by both, golden-tested"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Sequencing",
+      "items": [
+        "Phase 1 ships Tier 1 runtime editing and SD management with no toolchain",
+        "Phase 2 adds local build, flash meter, flash engine, Windows driver wizard",
+        "Phase 3 adds style library, CFX/Xeno import, update tracking"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Invariants",
+      "items": [
+        "BladeConfig is saber identity, never silently regenerated",
+        "No flash without a full backup and presets.ini snapshot",
+        "Users compile their own firmware; nothing is served from a cloud"
+      ]
+    }
+  ]
+}

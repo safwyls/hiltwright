@@ -1,0 +1,30 @@
+{
+  "name": "@hiltwright/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hiltwright desktop app (Electron). Walking skeleton: connect to a Proffieboard over Web Serial, read version and presets.",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "@hiltwright/core": "*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/w3c-web-serial": "^1.0.8",
+    "@vitejs/plugin-react": "^4.5.0",
+    "electron": "^37.0.0",
+    "electron-vite": "^4.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

@@ -1,0 +1,17 @@
+blade = 0
+WS2811 Blade with 140 leds.
+WS2811 Blade with 2 leds.
+WS2811 Blade with 1 leds.
+Style RAM = 936
+Style RAM = 788
+Style RAM = 788
+Style RAM = 480
+Scanning sound font: Mara Jade Skywalker done
+Scanning sound font: common done
+Activating polyphonic font.
+Activating SmoothSwing V2
+Accent Swings Enabled.
+Polyphonic swings: 19
+Monophonic swings: 0
+Accent Slashes NOT Detected: 
+Battery voltage: 3.50

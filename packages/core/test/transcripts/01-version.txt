@@ -1,0 +1,5 @@
+v7.8
+config/hote2.h
+prop: SaberSF24Buttons
+buttons: 2
+installed: Sep 11 2024 17:34:59

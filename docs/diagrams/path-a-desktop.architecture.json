@@ -1,0 +1,334 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Hiltwright Path A: Desktop App",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "build-path",
+        "label": "Local build",
+        "focus": [
+          "ui",
+          "host",
+          "builder",
+          "toolchain",
+          "releases"
+        ],
+        "note": "Config becomes firmware entirely on the user's machine."
+      },
+      {
+        "id": "install-path",
+        "label": "Direct install",
+        "focus": [
+          "host",
+          "flasher",
+          "driver",
+          "board"
+        ],
+        "note": "1200-baud touch, then dfu-util writes the .bin at 0x08000000."
+      },
+      {
+        "id": "runtime-path",
+        "label": "Runtime editing",
+        "focus": [
+          "host",
+          "board",
+          "sdcard"
+        ],
+        "note": "Presets, fonts and colours change without a compile."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Saber owner",
+      "sublabel": "Windows / macOS / Linux",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "Hiltwright UI",
+      "sublabel": "React + shared TS core",
+      "pos": [
+        250,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "host",
+      "type": "backend",
+      "label": "Tauri host",
+      "sublabel": "Rust: USB, files, sidecars",
+      "pos": [
+        470,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "library",
+      "type": "database",
+      "label": "Local library",
+      "sublabel": "sabers, styles, backups",
+      "pos": [
+        470,
+        470
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "builder",
+      "type": "backend",
+      "label": "Local build engine",
+      "sublabel": "arduino-cli + GCC 14.2",
+      "pos": [
+        690,
+        130
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "toolchain",
+      "type": "database",
+      "label": "Toolchain cache",
+      "sublabel": "~350 MB per OS version",
+      "pos": [
+        910,
+        130
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "releases",
+      "type": "cloud",
+      "label": "GitHub releases",
+      "sublabel": "ProffieOS, core, GCC",
+      "pos": [
+        1130,
+        130
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "flasher",
+      "type": "backend",
+      "label": "DFU flasher",
+      "sublabel": "dfu-util, DfuSe",
+      "pos": [
+        690,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "driver",
+      "type": "security",
+      "label": "Driver installer",
+      "sublabel": "proffie-dfu-setup (Windows)",
+      "pos": [
+        690,
+        470
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "UAC, once"
+    },
+    {
+      "id": "board",
+      "type": "external",
+      "label": "Proffieboard",
+      "sublabel": "1209:6668 / 0483:df11",
+      "pos": [
+        910,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "sdcard",
+      "type": "database",
+      "label": "SD card",
+      "sublabel": "fonts, presets.ini",
+      "pos": [
+        910,
+        470
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "User's computer (offline capable)",
+      "wraps": [
+        "ui",
+        "host",
+        "library",
+        "builder",
+        "toolchain",
+        "flasher",
+        "driver"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-ui",
+      "from": "user",
+      "to": "ui",
+      "label": "signed installer",
+      "labelDy": -26
+    },
+    {
+      "id": "ui-host",
+      "from": "ui",
+      "to": "host",
+      "label": "IPC"
+    },
+    {
+      "id": "host-library",
+      "from": "host",
+      "to": "library",
+      "label": "read / write",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24,
+      "labelDx": -48
+    },
+    {
+      "id": "host-builder",
+      "from": "host",
+      "to": "builder",
+      "label": "compile config.h",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "builder-toolchain",
+      "from": "builder",
+      "to": "toolchain",
+      "label": "pinned tools"
+    },
+    {
+      "id": "toolchain-releases",
+      "from": "toolchain",
+      "to": "releases",
+      "label": "first-run download",
+      "variant": "dashed",
+      "labelDy": -26
+    },
+    {
+      "id": "host-flasher",
+      "from": "host",
+      "to": "flasher",
+      "label": "firmware.bin"
+    },
+    {
+      "id": "flasher-board",
+      "from": "flasher",
+      "to": "board",
+      "label": "DFU 0x08000000",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "host-driver",
+      "from": "host",
+      "to": "driver",
+      "label": "elevate once",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "driver-board",
+      "from": "driver",
+      "to": "board",
+      "label": "WinUSB for bootloader",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "board-sdcard",
+      "from": "board",
+      "to": "sdcard",
+      "label": "mass storage",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24,
+      "labelDx": 52
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Can do",
+      "items": [
+        "All three tiers: runtime edits, firmware builds, SD content",
+        "Fully offline after the first-run toolchain download",
+        "Automates the Windows bootloader driver with one UAC prompt"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Cannot do",
+      "items": [
+        "Run on phones or tablets",
+        "Avoid code signing and notarisation costs",
+        "Share a saber by link"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Costs",
+      "items": [
+        "~350 MB download, ~1 GB on disk",
+        "Three-OS build, update and signing pipeline",
+        "Competes directly with ProffieConfig"
+      ]
+    }
+  ]
+}

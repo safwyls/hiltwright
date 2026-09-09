@@ -1,0 +1,9 @@
+FONT=GeneralPrincess;common
+TRACK=tracks/General.wav
+STYLE1=builtin 2 1
+STYLE2=builtin 2 2
+STYLE3=builtin 2 3
+STYLE4=builtin 2 4
+NAME=Preset: 3
+VARIATION=0
+Unmounting SD Card.

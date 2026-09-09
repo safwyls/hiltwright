@@ -1,0 +1,7 @@
+# Normalise source to LF in the repo; keep recorded board output and binaries byte-exact.
+* text=auto eol=lf
+packages/core/test/transcripts/** -text
+*.png binary
+*.bin binary
+*.dfu binary
+*.wav binary

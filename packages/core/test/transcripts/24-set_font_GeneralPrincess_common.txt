@@ -1,0 +1,4 @@
+Creating file presets.ini iteration = 3
+Audio underflows: 149
+Audio underflows: 1
+Amplifier off.

@@ -1,0 +1,1191 @@
+{
+  "arduinoCli": {
+    "version": "arduino-cli  Version: 1.3.1 Commit: 08ff7e2b Date: 2025-08-28T13:51:38Z",
+    "zipBytes": 17736240
+  },
+  "core": {
+    "installMs": 45984,
+    "coreList": {
+      "platforms": [
+        {
+          "id": "proffieboard:stm32l4",
+          "maintainer": "Fredrik Hubinette",
+          "website": "https://github.com/profezzorn/arduino-proffieboard",
+          "email": "hubbe@hubbe.net",
+          "indexed": true,
+          "releases": {
+            "0.1": {
+              "name": "Proffieboard",
+              "version": "0.1",
+              "types": [
+                "Contributed"
+              ],
+              "boards": [
+                {
+                  "name": "Proffieboard"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            },
+            "0.1.1": {
+              "name": "Proffieboard",
+              "version": "0.1.1",
+              "types": [
+                "Contributed"
+              ],
+              "boards": [
+                {
+                  "name": "Proffieboard"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            },
+            "0.1.2": {
+              "name": "Proffieboard",
+              "version": "0.1.2",
+              "types": [
+                "Contributed"
+              ],
+              "boards": [
+                {
+                  "name": "Proffieboard"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            },
+            "0.1.3": {
+              "name": "Proffieboard",
+              "version": "0.1.3",
+              "types": [
+                "Contributed"
+              ],
+              "boards": [
+                {
+                  "name": "Proffieboard"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            },
+            "0.1.7": {
+              "name": "Proffieboard",
+              "version": "0.1.7",
+              "types": [
+                "Contributed"
+              ],
+              "boards": [
+                {
+                  "name": "Proffieboard"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            },
+            "1.0": {
+              "name": "Proffieboard",
+              "version": "1.0",
+              "types": [
+                "Contributed"
+              ],
+              "boards": [
+                {
+                  "name": "Proffieboard"
+                },
+                {
+                  "name": "Proffieboard V2"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            },
+            "2.2": {
+              "name": "Proffieboard",
+              "version": "2.2",
+              "types": [
+                "Contributed"
+              ],
+              "boards": [
+                {
+                  "name": "Proffieboard"
+                },
+                {
+                  "name": "Proffieboard V2"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            },
+            "3.6": {
+              "name": "Proffieboard",
+              "version": "3.6",
+              "types": [
+                "Contributed"
+              ],
+              "boards": [
+                {
+                  "name": "Proffieboard"
+                },
+                {
+                  "name": "Proffieboard V2"
+                },
+                {
+                  "name": "Proffieboard V3"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            },
+            "4.6": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          },
+          "installed_version": "4.6",
+          "latest_version": "4.6"
+        }
+      ]
+    },
+    "boards": {
+      "boards": [
+        {
+          "name": "Proffieboard",
+          "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        },
+        {
+          "name": "Proffieboard V2",
+          "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        },
+        {
+          "name": "Proffieboard V3",
+          "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        },
+        {
+          "name": "Dragonfly-L476RE",
+          "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        },
+        {
+          "name": "Dragonfly-L496RG",
+          "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        },
+        {
+          "name": "Butterfly-L433CC",
+          "fqbn": "proffieboard:stm32l4:Butterfly-L433CC",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        },
+        {
+          "name": "Ladybug-L432KC",
+          "fqbn": "proffieboard:stm32l4:Ladybug-L432KC",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        },
+        {
+          "name": "NUCLEO-L432KC",
+          "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        },
+        {
+          "name": "NUCLEO-L476RG",
+          "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG",
+          "platform": {
+            "metadata": {
+              "id": "proffieboard:stm32l4",
+              "maintainer": "Fredrik Hubinette",
+              "website": "https://github.com/profezzorn/arduino-proffieboard",
+              "email": "hubbe@hubbe.net",
+              "indexed": true
+            },
+            "release": {
+              "name": "Proffieboard",
+              "version": "4.6",
+              "types": [
+                "Contributed"
+              ],
+              "installed": true,
+              "boards": [
+                {
+                  "name": "Dragonfly-L476RE",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L476RE"
+                },
+                {
+                  "name": "Butterfly-L433CC",
+                  "fqbn": "proffieboard:stm32l4:Butterfly-L433CC"
+                },
+                {
+                  "name": "Ladybug-L432KC",
+                  "fqbn": "proffieboard:stm32l4:Ladybug-L432KC"
+                },
+                {
+                  "name": "NUCLEO-L432KC",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L432KC"
+                },
+                {
+                  "name": "Dragonfly-L496RG",
+                  "fqbn": "proffieboard:stm32l4:Dragonfly-L496RG"
+                },
+                {
+                  "name": "NUCLEO-L476RG",
+                  "fqbn": "proffieboard:stm32l4:NUCLEO-L476RG"
+                },
+                {
+                  "name": "Proffieboard",
+                  "fqbn": "proffieboard:stm32l4:Proffieboard-L433CC"
+                },
+                {
+                  "name": "Proffieboard V2",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC"
+                },
+                {
+                  "name": "Proffieboard V3",
+                  "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE"
+                }
+              ],
+              "help": {
+                "online": "https://github.com/profezzorn/arduino-proffieboard/issues"
+              },
+              "compatible": true
+            }
+          }
+        }
+      ]
+    },
+    "dataDirBytes": 1599008874,
+    "downloadsDirBytes": 356714643
+  },
+  "proffieos": {
+    "tag": "v8.10",
+    "commit": "3c991a7ff224b3e486402efcb9f724b517921488"
+  },
+  "compiles": {
+    "v3-default-cold": {
+      "configFile": "proffieboard_v3_config.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 8354,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\common\\saber_base.h:209:25: error: 'NUM_BLADES' was not declared in this scope; did you mean 'NO_BLADE'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\ProffieOS.ino:77:21: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\functions\\random_blink.h:28:25: error: 'maxLedsPerStrip' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\functions\\random_blink.h:19:43: error: 'bits_' was not declared in this scope; did you mean 'bit'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\functions\\random_blink.h:23:13: error: 'bits_' was not declared in this scope; did you mean 'bit'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\display\\layer_controller.h:96:56: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\functions\\volume_level.h:16:49: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\blades\\ws2811_blade.h:12:22: error: 'maxLedsPerStrip' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\blades\\stm32l4_ws2811.h:40:38: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\blades\\stm32l4_ws2811.h:618:27: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\blades\\stm32l4_ws2811.h:622:18: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cold\\ProffieOS\\blades\\stm32l4_ws2811.h:634:16: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?"
+      ]
+    },
+    "v3-default-warm": {
+      "configFile": "proffieboard_v3_config.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 6603,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\common\\saber_base.h:209:25: error: 'NUM_BLADES' was not declared in this scope; did you mean 'NO_BLADE'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\ProffieOS.ino:77:21: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\functions\\random_blink.h:28:25: error: 'maxLedsPerStrip' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\functions\\random_blink.h:19:43: error: 'bits_' was not declared in this scope; did you mean 'bit'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\functions\\random_blink.h:23:13: error: 'bits_' was not declared in this scope; did you mean 'bit'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\display\\layer_controller.h:96:56: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\functions\\volume_level.h:16:49: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\blades\\ws2811_blade.h:12:22: error: 'maxLedsPerStrip' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\blades\\stm32l4_ws2811.h:40:38: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\blades\\stm32l4_ws2811.h:618:27: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\blades\\stm32l4_ws2811.h:622:18: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-warm\\ProffieOS\\blades\\stm32l4_ws2811.h:634:16: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?"
+      ]
+    },
+    "v2-default": {
+      "configFile": "proffieboard_v2_config.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC:usb=cdc_msc_webusb,dosfs=sdspi,speed=80,opt=os",
+      "ok": false,
+      "ms": 7773,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\common\\saber_base.h:209:25: error: 'NUM_BLADES' was not declared in this scope; did you mean 'NO_BLADE'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\ProffieOS.ino:77:21: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\functions\\random_blink.h:28:25: error: 'maxLedsPerStrip' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\functions\\random_blink.h:19:43: error: 'bits_' was not declared in this scope; did you mean 'bit'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\functions\\random_blink.h:23:13: error: 'bits_' was not declared in this scope; did you mean 'bit'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\display\\layer_controller.h:96:56: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\functions\\volume_level.h:16:49: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\blades\\ws2811_blade.h:12:22: error: 'maxLedsPerStrip' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\blades\\stm32l4_ws2811.h:40:38: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\blades\\stm32l4_ws2811.h:618:27: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\blades\\stm32l4_ws2811.h:622:18: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-default\\ProffieOS\\blades\\stm32l4_ws2811.h:634:16: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?"
+      ]
+    },
+    "v3-os6-example": {
+      "configFile": "OS6_config_example.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 3557,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-os6-example\\ProffieOS\\config\\proffieboard_v2_config.h:89:2: error: #error Please select Proffieboard V2 in Tools->Board",
+        "   89 | #error Please select Proffieboard V2 in Tools->Board"
+      ]
+    },
+    "v2-os6-example": {
+      "configFile": "OS6_config_example.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC:usb=cdc_msc_webusb,dosfs=sdspi,speed=80,opt=os",
+      "ok": true,
+      "ms": 49035,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 226048,
+          "max_size": 262144
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 226072,
+        "ProffieOS.ino.elf": 9533436
+      },
+      "errorExcerpt": null
+    },
+    "v3-default-cdc-only": {
+      "configFile": "proffieboard_v3_config.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 7023,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\common\\saber_base.h:209:25: error: 'NUM_BLADES' was not declared in this scope; did you mean 'NO_BLADE'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\ProffieOS.ino:77:21: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\functions\\random_blink.h:28:25: error: 'maxLedsPerStrip' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\functions\\random_blink.h:19:43: error: 'bits_' was not declared in this scope; did you mean 'bit'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\functions\\random_blink.h:23:13: error: 'bits_' was not declared in this scope; did you mean 'bit'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\display\\layer_controller.h:96:56: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\functions\\volume_level.h:16:49: error: 'VOLUME' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\blades\\ws2811_blade.h:12:22: error: 'maxLedsPerStrip' was not declared in this scope",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\blades\\stm32l4_ws2811.h:40:38: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\blades\\stm32l4_ws2811.h:618:27: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\blades\\stm32l4_ws2811.h:622:18: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v3-default-cdc-only\\ProffieOS\\blades\\stm32l4_ws2811.h:634:16: error: 'color_buffer' was not declared in this scope; did you mean 'color_buffer_ptr'?"
+      ]
+    },
+    "v3-baseline-cold": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 58189,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 227560,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 227584,
+        "ProffieOS.ino.elf": 9534656
+      },
+      "errorExcerpt": null
+    },
+    "v3-baseline-warm": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 63561,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 227560,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 227584,
+        "ProffieOS.ino.elf": 9534656
+      },
+      "errorExcerpt": null
+    },
+    "v3-baseline-cdc-only": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 57623,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 222920,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 222944,
+        "ProffieOS.ino.elf": 9481572
+      },
+      "errorExcerpt": null
+    },
+    "v2-baseline": {
+      "configFile": "saberbench_v2_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC:usb=cdc_msc_webusb,dosfs=sdspi,speed=80,opt=os",
+      "ok": true,
+      "ms": 54306,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 226048,
+          "max_size": 262144
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 226072,
+        "ProffieOS.ino.elf": 9533224
+      },
+      "errorExcerpt": null
+    },
+    "v3-verification-3blade": {
+      "configFile": "proffieboard_v3_verification_config.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 19033,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 197328,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 197352,
+        "ProffieOS.ino.elf": 2805724
+      },
+      "errorExcerpt": null
+    },
+    "err-board-mismatch": {
+      "configFile": "OS6_config_example.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 4584,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-board-mismatch\\ProffieOS\\config\\proffieboard_v2_config.h:89:2: error: #error Please select Proffieboard V2 in Tools->Board",
+        "   89 | #error Please select Proffieboard V2 in Tools->Board"
+      ]
+    },
+    "err-blade-count": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 8312,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:128:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:201:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:268:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:331:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:394:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:401:17: error: cannot convert 'Preset*' to 'BladeBase*' in initialization"
+      ],
+      "compilerErrHead": "In file included from C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\ProffieOS.ino:674:\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:128:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization\n  128 | \"preset 1\" },\n      | ^~~~~~~~~~\n      | |\n      | const char*\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:201:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization\n  201 | \"preset 2\" },\n      | ^~~~~~~~~~\n      | |\n      | const char*\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:268:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization\n  268 | \"preset 3\" },\n      | ^~~~~~~~~~\n      | |\n      | const char*\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:331:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization\n  331 | \"preset 4\" },\n      | ^~~~~~~~~~\n      | |\n      | const char*\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:394:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization\n  394 | \"preset 5\" },\n      | ^~~~~~~~~~\n      | |\n      | const char*\nIn file included from C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\ProffieOS.ino:611:\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:401:17: error: cannot convert 'Preset*' to 'BladeBase*' in initialization\n  401 |   , CONFIGARRAY(presets) },\n      |                 ^~~~~~~\n      |                 |\n      |                 Preset*\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\common\\preset.h:7:24: note: in definition of macro 'CONFIGARRAY'\n    7 | #define CONFIGARRAY(X) X, NELEM(X)\n      |                        ^\n"
+    },
+    "err-style-typo": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 8440,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-style-typo\\ProffieOS\\config\\saberbench_v3_baseline.h:85:10: error: 'Layerz' was not declared in this scope; did you mean 'Layers'?",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-style-typo\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: parse error in template argument list",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-style-typo\\ProffieOS\\config\\saberbench_v3_baseline.h:101:4: error: expected primary-expression before ')' token"
+      ]
+    },
+    "err-missing-comma": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 4569,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected '}' before 'StylePtr'",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected '}' before 'StylePtr'",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected ',' or ';' before 'StylePtr'",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:128:12: error: expected declaration before '}' token",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:128:13: error: expected unqualified-id before ',' token",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:130:1: error: expected unqualified-id before '{' token",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:201:13: error: expected unqualified-id before ',' token",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:203:1: error: expected unqualified-id before '{' token",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:268:13: error: expected unqualified-id before ',' token",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:270:1: error: expected unqualified-id before '{' token",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:331:13: error: expected unqualified-id before ',' token",
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:333:1: error: expected unqualified-id before '{' token"
+      ],
+      "compilerErrHead": "In file included from C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\ProffieOS.ino:674:\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected '}' before 'StylePtr'\n   85 | StylePtr<Layers<\n      | ^~~~~~~~\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:61:1: note: to match this '{'\n   61 | { \"Fallen;common\", \"Fallen/tracks/JFO6.wav\"\n      | ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected '}' before 'StylePtr'\n   85 | StylePtr<Layers<\n      | ^~~~~~~~\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:59:20: note: to match this '{'\n   59 | Preset presets[] = {\n      |                    ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected ',' or ';' before 'StylePtr'\n   85 | StylePtr<Layers<\n      | ^~~~~~~~\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:128:12: error: expected declaration before '}' token\n  128 | \"preset 1\" },\n      |            ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:128:13: error: expected unqualified-id before ',' token\n  128 | \"preset 1\" },\n      |             ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:130:1: error: expected unqualified-id before '{' token\n  130 | { \"Luke;common\", \"Luke/tracks/LukeTheme.wav\",\n      | ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:201:13: error: expected unqualified-id before ',' token\n  201 | \"preset 2\" },\n      |             ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:203:1: error: expected unqualified-id before '{' token\n  203 | { \"Kylo;common\", \"Kylo/tracks/KyloTheme.wav\",\n      | ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:268:13: error: expected unqualified-id before ',' token\n  268 | \"preset 3\" },\n      |             ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:270:1: error: expected unqualified-id before '{' token\n  270 | { \"Maul;common\", \"Maul/tracks/DuelofFates.wav\",\n      | ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:331:13: error: expected unqualified-id before ',' token\n  331 | \"preset 4\" },\n      |             ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:333:1: error: expected unqualified-id before '{' token\n  333 | { \"Dark;common\", \"Dark/tracks/mars.wav\",\n      | ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:394:13: error: expected unqualified-id before ',' token\n  394 | \"preset 5\" },\n      |             ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:396:1: error: expected unqualified-id before '}' token\n  396 | };\n      | ^\nC:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:396:1: error: expected declaration before '}' token\n"
+    },
+    "err-prop-define-conflict": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": false,
+      "ms": 2984,
+      "sizes": null,
+      "artifacts": {},
+      "errorExcerpt": [
+        "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-prop-define-conflict\\ProffieOS\\props\\saber_fett263_buttons.h:842:2: error: #error FETT263_EDIT_SETTINGS_MENU cannot be combined with FETT263_EDIT_MODE_MENU",
+        "  842 | #error FETT263_EDIT_SETTINGS_MENU cannot be combined with FETT263_EDIT_MODE_MENU"
+      ]
+    },
+    "err-wrong-pin-name": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 45963,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 227560,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 227584,
+        "ProffieOS.ino.elf": 9534800
+      },
+      "errorExcerpt": null
+    },
+    "v3-baseline-incremental-nochange": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 40524,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 227560,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 227584,
+        "ProffieOS.ino.elf": 9535808
+      },
+      "errorExcerpt": null,
+      "compilerErrHead": null
+    },
+    "v3-baseline-incremental-edited": {
+      "configFile": "saberbench_v3_baseline.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 39569,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 228088,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 228112,
+        "ProffieOS.ino.elf": 9576844
+      },
+      "errorExcerpt": null,
+      "compilerErrHead": null
+    },
+    "v3-os8-cold": {
+      "configFile": "saberbench_v3_os8.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 28901,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 216304,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 216328,
+        "ProffieOS.ino.elf": 5474172
+      },
+      "errorExcerpt": null,
+      "compilerErrHead": null
+    },
+    "v3-os8-incremental": {
+      "configFile": "saberbench_v3_os8.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os",
+      "ok": true,
+      "ms": 23806,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 216304,
+          "max_size": 507904
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 216328,
+        "ProffieOS.ino.elf": 5474624
+      },
+      "errorExcerpt": null,
+      "compilerErrHead": null
+    },
+    "v2-os8": {
+      "configFile": "saberbench_v3_os8.h",
+      "fqbn": "proffieboard:stm32l4:ProffieboardV2-L433CC:usb=cdc_msc_webusb,dosfs=sdspi,speed=80,opt=os",
+      "ok": true,
+      "ms": 26484,
+      "sizes": [
+        {
+          "name": "text",
+          "size": 214792,
+          "max_size": 262144
+        }
+      ],
+      "artifacts": {
+        "ProffieOS.ino.dfu": 214816,
+        "ProffieOS.ino.elf": 5473248
+      },
+      "errorExcerpt": null,
+      "compilerErrHead": null
+    }
+  }
+}

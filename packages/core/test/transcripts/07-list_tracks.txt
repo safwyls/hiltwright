@@ -1,0 +1,22 @@
+tracks/Ascension.wav
+tracks/CrimsonMenace.wav
+tracks/Darkness.wav
+tracks/Duke.wav
+tracks/Empress.wav
+tracks/FinalSteps.wav
+tracks/General.wav
+tracks/JFO2.wav
+tracks/JFO5.wav
+tracks/LvsV.wav
+tracks/mars.wav
+tracks/mercury.wav
+tracks/MSV.wav
+tracks/Royalty.wav
+tracks/TFA_Battle.wav
+tracks/TFA_Duel.wav
+tracks/TheBoldOne.wav
+tracks/uranus.wav
+tracks/venus.wav
+Mara Jade Skywalker/tracks/The_Force.wav
+Mara Emperors Hand/tracks/The_Force.wav
+Valkyrie/tracks/battle_cry.wav

@@ -1,0 +1,8 @@
+FONT=Mara Jade Skywalker;common
+TRACK=Mara Jade Skywalker/tracks/The_Force.wav
+STYLE1=builtin 0 1
+STYLE2=builtin 0 2
+STYLE3=builtin 0 3
+STYLE4=builtin 0 4
+NAME=Mara Jade Skywalker
+VARIATION=0

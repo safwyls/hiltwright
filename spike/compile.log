@@ -1,0 +1,61 @@
+[spike] === compile ===
+[spike] compile v3-baseline-cold: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> OK in 58.2s [{"name":"text","size":227560,"max_size":507904}] {"ProffieOS.ino.dfu":227584,"ProffieOS.ino.elf":9534656}
+[spike] compile v3-baseline-warm: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> OK in 63.6s [{"name":"text","size":227560,"max_size":507904}] {"ProffieOS.ino.dfu":227584,"ProffieOS.ino.elf":9534656}
+[spike] compile v3-baseline-cdc-only: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> OK in 57.6s [{"name":"text","size":222920,"max_size":507904}] {"ProffieOS.ino.dfu":222944,"ProffieOS.ino.elf":9481572}
+[spike] compile v2-baseline: saberbench_v2_baseline.h @ proffieboard:stm32l4:ProffieboardV2-L433CC:usb=cdc_msc_webusb,dosfs=sdspi,speed=80,opt=os
+[spike]   -> OK in 54.3s [{"name":"text","size":226048,"max_size":262144}] {"ProffieOS.ino.dfu":226072,"ProffieOS.ino.elf":9533224}
+[spike] compile v2-os6-example: OS6_config_example.h @ proffieboard:stm32l4:ProffieboardV2-L433CC:usb=cdc_msc_webusb,dosfs=sdspi,speed=80,opt=os
+[spike]   -> OK in 49.0s [{"name":"text","size":226048,"max_size":262144}] {"ProffieOS.ino.dfu":226072,"ProffieOS.ino.elf":9533436}
+[spike] compile v3-verification-3blade: proffieboard_v3_verification_config.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> OK in 19.0s [{"name":"text","size":197328,"max_size":507904}] {"ProffieOS.ino.dfu":197352,"ProffieOS.ino.elf":2805724}
+[spike] === errors ===
+[spike] compile err-board-mismatch: OS6_config_example.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> FAIL in 4.6s  {}
+[spike]   errors: [
+  'C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-board-mismatch\\ProffieOS\\config\\proffieboard_v2_config.h:89:2: error: #error Please select Proffieboard V2 in Tools->Board',
+  '   89 | #error Please select Proffieboard V2 in Tools->Board'
+]
+[spike] compile err-blade-count: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> FAIL in 9.9s  {}
+[spike]   errors: [
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:128:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:201:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:268:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:331:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:394:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:401:17: error: cannot convert 'Preset*' to 'BladeBase*' in initialization"
+]
+[spike] compile err-style-typo: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> FAIL in 8.4s  {}
+[spike]   errors: [
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-style-typo\\ProffieOS\\config\\saberbench_v3_baseline.h:85:10: error: 'Layerz' was not declared in this scope; did you mean 'Layers'?",
+  'C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-style-typo\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: parse error in template argument list',
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-style-typo\\ProffieOS\\config\\saberbench_v3_baseline.h:101:4: error: expected primary-expression before ')' token"
+]
+[spike] compile err-missing-comma: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> FAIL in 4.8s  {}
+[spike]   errors: [
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected '}' before 'StylePtr'",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected '}' before 'StylePtr'",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected ',' or ';' before 'StylePtr'",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:128:12: error: expected declaration before '}' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:128:13: error: expected unqualified-id before ',' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:130:1: error: expected unqualified-id before '{' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:201:13: error: expected unqualified-id before ',' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:203:1: error: expected unqualified-id before '{' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:268:13: error: expected unqualified-id before ',' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:270:1: error: expected unqualified-id before '{' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:331:13: error: expected unqualified-id before ',' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:333:1: error: expected unqualified-id before '{' token"
+]
+[spike] compile err-prop-define-conflict: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> FAIL in 3.0s  {}
+[spike]   errors: [
+  'C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-prop-define-conflict\\ProffieOS\\props\\saber_fett263_buttons.h:842:2: error: #error FETT263_EDIT_SETTINGS_MENU cannot be combined with FETT263_EDIT_MODE_MENU',
+  '  842 | #error FETT263_EDIT_SETTINGS_MENU cannot be combined with FETT263_EDIT_MODE_MENU'
+]
+[spike] compile err-wrong-pin-name: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> OK in 46.0s [{"name":"text","size":227560,"max_size":507904}] {"ProffieOS.ino.dfu":227584,"ProffieOS.ino.elf":9534800}

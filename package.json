@@ -1,0 +1,17 @@
+{
+  "name": "hiltwright",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ProffieOS for people who never want to see a compiler. Workspace root; see docs/00-plan.md.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "test:core": "npm run test --workspace @hiltwright/core",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "npm run dev --workspace @hiltwright/desktop"
+  }
+}

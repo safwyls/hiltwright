@@ -1,0 +1,15 @@
+Style RAM = 936
+Style RAM = 788
+Style RAM = 788
+Style RAM = 480
+Scanning sound font: Mara Jade Skywalker done
+Scanning sound font: common done
+Activating polyphonic font.
+Activating SmoothSwing V2
+Accent Swings Enabled.
+Polyphonic swings: 19
+Monophonic swings: 0
+Accent Slashes NOT Detected: 
+DISPLAY: Mara Jade Skywalker
+unit = 0 vol = 0.50, Playing Mara Jade Skywalker/font/font2.wav
+channels: 1 rate: 44100 bits: 16

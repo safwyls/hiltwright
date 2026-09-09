@@ -1,0 +1,218 @@
+[
+  {
+    "n": 1,
+    "command": "version",
+    "file": "01-version.txt",
+    "bytes": 86,
+    "firstByteMs": 8,
+    "lines": 6
+  },
+  {
+    "n": 2,
+    "command": "battery",
+    "file": "02-battery.txt",
+    "bytes": 23,
+    "firstByteMs": 32,
+    "lines": 2
+  },
+  {
+    "n": 3,
+    "command": "get_volume",
+    "file": "03-get_volume.txt",
+    "bytes": 6,
+    "firstByteMs": 45,
+    "lines": 2
+  },
+  {
+    "n": 4,
+    "command": "list_presets",
+    "file": "04-list_presets.txt",
+    "bytes": 2036,
+    "firstByteMs": 77,
+    "lines": 105
+  },
+  {
+    "n": 5,
+    "command": "list_named_style",
+    "file": "05-list_named_style.txt",
+    "bytes": 41,
+    "firstByteMs": 604,
+    "lines": 3
+  },
+  {
+    "n": 6,
+    "command": "list_fonts",
+    "file": "06-list_fonts.txt",
+    "bytes": 239,
+    "firstByteMs": 1038,
+    "lines": 20
+  },
+  {
+    "n": 7,
+    "command": "list_tracks",
+    "file": "07-list_tracks.txt",
+    "bytes": 470,
+    "firstByteMs": 107,
+    "lines": 23
+  },
+  {
+    "n": 8,
+    "command": "id",
+    "file": "08-id.txt",
+    "bytes": 32,
+    "firstByteMs": 309,
+    "lines": 3
+  },
+  {
+    "n": 9,
+    "command": "scanid",
+    "file": "09-scanid.txt",
+    "bytes": 417,
+    "firstByteMs": 169,
+    "lines": 18
+  },
+  {
+    "n": 10,
+    "command": "dir",
+    "file": "10-dir.txt",
+    "bytes": 33,
+    "firstByteMs": 356,
+    "lines": 3
+  },
+  {
+    "n": 11,
+    "command": "help",
+    "file": "11-help.txt",
+    "bytes": 13,
+    "firstByteMs": 45,
+    "lines": 2
+  },
+  {
+    "n": 12,
+    "command": "sb1|version",
+    "file": "12-sb1_version.txt",
+    "bytes": 20,
+    "firstByteMs": 45,
+    "lines": 2
+  },
+  {
+    "n": 13,
+    "command": "sb2|list_presets",
+    "file": "13-sb2_list_presets.txt",
+    "bytes": 25,
+    "firstByteMs": 45,
+    "lines": 2
+  },
+  {
+    "n": 14,
+    "command": "sb3|battery",
+    "file": "14-sb3_battery.txt",
+    "bytes": 20,
+    "firstByteMs": 45,
+    "lines": 2
+  },
+  {
+    "n": 15,
+    "command": "whut_is_this",
+    "file": "15-whut_is_this.txt",
+    "bytes": 21,
+    "firstByteMs": 45,
+    "lines": 2
+  },
+  {
+    "n": 16,
+    "command": "get_preset",
+    "file": "16-get_preset.txt",
+    "bytes": 3,
+    "firstByteMs": 46,
+    "lines": 2
+  },
+  {
+    "n": 17,
+    "command": "show_current_preset",
+    "file": "17-show_current_preset.txt",
+    "bytes": 192,
+    "firstByteMs": 47,
+    "lines": 9
+  },
+  {
+    "n": 18,
+    "command": "get_variation",
+    "file": "18-get_variation.txt",
+    "bytes": 22,
+    "firstByteMs": 45,
+    "lines": 2
+  },
+  {
+    "n": 19,
+    "command": "set_preset 2",
+    "file": "19-set_preset_2.txt",
+    "bytes": 409,
+    "firstByteMs": 230,
+    "lines": 16
+  },
+  {
+    "n": 20,
+    "command": "show_current_preset",
+    "file": "20-show_current_preset.txt",
+    "bytes": 156,
+    "firstByteMs": 35,
+    "lines": 9
+  },
+  {
+    "n": 21,
+    "command": "set_font TeensySF;common",
+    "file": "21-set_font_TeensySF_common.txt",
+    "bytes": 0,
+    "firstByteMs": 0,
+    "lines": 1
+  },
+  {
+    "n": 22,
+    "command": "show_current_preset",
+    "file": "22-show_current_preset.txt",
+    "bytes": 40,
+    "firstByteMs": 45,
+    "lines": 2
+  },
+  {
+    "n": 23,
+    "command": "list_presets",
+    "file": "23-list_presets.txt",
+    "bytes": 2223,
+    "firstByteMs": 1430,
+    "lines": 115
+  },
+  {
+    "n": 24,
+    "command": "set_font GeneralPrincess;common",
+    "file": "24-set_font_GeneralPrincess_common.txt",
+    "bytes": 100,
+    "firstByteMs": 294,
+    "lines": 5
+  },
+  {
+    "n": 25,
+    "command": "show_current_preset",
+    "file": "25-show_current_preset.txt",
+    "bytes": 177,
+    "firstByteMs": 355,
+    "lines": 10
+  },
+  {
+    "n": 26,
+    "command": "set_preset 0",
+    "file": "26-set_preset_0.txt",
+    "bytes": 429,
+    "firstByteMs": 199,
+    "lines": 16
+  },
+  {
+    "n": 27,
+    "command": "get_preset",
+    "file": "27-get_preset.txt",
+    "bytes": 3,
+    "firstByteMs": 45,
+    "lines": 2
+  }
+]

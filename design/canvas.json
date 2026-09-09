@@ -1,0 +1,25 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Screens" },
+    { "id": "page-2", "name": "Design system" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Armory", "x": 0, "y": 0, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "Presets.dc.html", "title": "Presets · live editing", "x": 1560, "y": 0, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "Looks.dc.html", "title": "Looks · style library", "x": 3120, "y": 0, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "Build.dc.html", "title": "Build & Install", "x": 0, "y": 1080, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "Fonts.dc.html", "title": "Fonts & SD", "x": 1560, "y": 1080, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "Setup.dc.html", "title": "Hardware setup wizard", "x": 3120, "y": 1080, "w": 1440, "h": 900, "page": "page-1" },
+    { "file": "System.dc.html", "title": "Design system", "x": 0, "y": 0, "w": 1440, "h": 2800, "page": "page-2", "print": "flow" }
+  ],
+  "annotations": [
+    { "id": "note-armory", "x": 0, "y": -150, "w": 420, "text": "Armory · home. Every saber is its own identity (wiring, presets, backups, firmware). Connected saber gets a banner; the on-ramp for CFX / Xenopixel owners sits here, not buried in settings.", "page": "page-1" },
+    { "id": "note-presets", "x": 1560, "y": -150, "w": 420, "text": "Presets · Tier 1. Everything here writes presets.ini over serial with no build. One look row per blade, curated by role: crystals and accents default to 'Follow main blade', motors to 'Spin while ignited'. Linked colours show the link and can be unlinked. Snapshot before every change → Undo always works.", "page": "page-1" },
+    { "id": "note-looks", "x": 3120, "y": -150, "w": 420, "text": "Looks · gallery of compiled styles. 'Compiled in' looks are free to reuse; 'Needs build' looks show their flash cost and the resulting budget before the user commits. Fett263 GPL attribution is kept.", "page": "page-1" },
+    { "id": "note-build", "x": 0, "y": 2010, "w": 420, "text": "Build & Install · Tier 2. Amber = writes firmware. Flash meter first, pre-flight second, then a six-step timeline with honest timing (about 1 min build + 1 min DFU write). Errors are translated to the preset that caused them; compiler output is one click away.", "page": "page-1" },
+    { "id": "note-fonts", "x": 1560, "y": 2010, "w": 420, "text": "Fonts & SD · Tier 3. Validation catches the two classic font failures (mono/poly mix, 48 kHz files) before they reach the saber. Naming converter maps CFX / Xenopixel names to Proffie names on the copy only.", "page": "page-1" },
+    { "id": "note-setup", "x": 3120, "y": 2010, "w": 420, "text": "Hardware wizard · count first, then one card per blade: role (main, crystal, accent, side, motor) + type (pixel, star LED, single LED, motor) + wiring as a choice between 'own data line' and 'continues Blade N's wire' (sub-blade ranges are computed). Cards collapse when complete; the diagram and pin table beside them are the live budget. BladeConfig is identity.", "page": "page-1" },
+    { "id": "note-system", "x": 1560, "y": 0, "w": 420, "text": "Tokens, type, components and the accessibility contract. Contrast ratios are computed against the panel colour #101720. Section 07 lists the six in-universe moves that carry the feel without any franchise assets.", "page": "page-2" }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

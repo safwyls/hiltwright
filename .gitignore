@@ -1,0 +1,14 @@
+spike/.cache/
+node_modules/
+
+# design canvas build output (regenerate with: node design/build.mjs)
+design/*.dc.html
+design/hiltwright-console.html
+
+
+# demo prototype
+demo/node_modules/
+demo/dist/
+
+# desktop app build output
+apps/desktop/out/

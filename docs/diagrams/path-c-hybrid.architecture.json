@@ -1,0 +1,448 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Hiltwright Path C: Shared Core, Two Shells",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "shared",
+        "label": "Shared core",
+        "focus": [
+          "ui",
+          "core",
+          "library"
+        ],
+        "note": "Config model, style AST, presets.ini codec and board protocol are shell-agnostic."
+      },
+      {
+        "id": "web-shell",
+        "label": "Web shell (Phases 1-2)",
+        "focus": [
+          "web",
+          "webtransport",
+          "api",
+          "cache",
+          "workers",
+          "artifacts",
+          "board"
+        ],
+        "note": "Browser transports; every build goes through the shared cloud service."
+      },
+      {
+        "id": "desktop-shell",
+        "label": "Desktop shell (Phase 3)",
+        "focus": [
+          "desktop",
+          "nativetransport",
+          "localbuild",
+          "api",
+          "board"
+        ],
+        "note": "Native transports and a local builder, with the cloud service as fallback."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "Shared UI",
+      "sublabel": "React: wizard, looks, fonts",
+      "pos": [
+        600,
+        110
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Hiltwright Core",
+      "sublabel": "config, styles, board protocol",
+      "pos": [
+        585,
+        250
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "tag": "platform-agnostic"
+    },
+    {
+      "id": "library",
+      "type": "database",
+      "label": "Saber library",
+      "sublabel": "StorageProvider",
+      "pos": [
+        600,
+        390
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "PWA shell",
+      "sublabel": "Chromium desktop, Android",
+      "pos": [
+        330,
+        250
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "webtransport",
+      "type": "backend",
+      "label": "Browser transport",
+      "sublabel": "Web Serial, WebUSB DFU",
+      "pos": [
+        330,
+        390
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "FS Access"
+    },
+    {
+      "id": "desktop",
+      "type": "frontend",
+      "label": "Tauri shell",
+      "sublabel": "Windows, macOS, Linux",
+      "pos": [
+        880,
+        250
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "nativetransport",
+      "type": "backend",
+      "label": "Native transport",
+      "sublabel": "serialport + dfu-util",
+      "pos": [
+        880,
+        390
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "driver install"
+    },
+    {
+      "id": "localbuild",
+      "type": "backend",
+      "label": "Local build engine",
+      "sublabel": "arduino-cli + GCC 14.2",
+      "pos": [
+        1130,
+        250
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "cloud fallback"
+    },
+    {
+      "id": "board",
+      "type": "external",
+      "label": "Proffieboard",
+      "sublabel": "1209:6668 / 0483:df11",
+      "pos": [
+        600,
+        530
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Build API",
+      "sublabel": "HTTPS, auth, rate limit",
+      "pos": [
+        80,
+        110
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "cache",
+      "type": "database",
+      "label": "Build cache",
+      "sublabel": "sha256(config, OS, FQBN)",
+      "pos": [
+        80,
+        250
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "workers",
+      "type": "backend",
+      "label": "Build workers",
+      "sublabel": "queued Docker, arduino-cli",
+      "pos": [
+        80,
+        390
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "artifacts",
+      "type": "database",
+      "label": "Artifact store",
+      "sublabel": ".bin + GPL source bundle",
+      "pos": [
+        80,
+        530
+      ],
+      "size": [
+        160,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Shared packages",
+      "wraps": [
+        "ui",
+        "core",
+        "library"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Web delivery",
+      "wraps": [
+        "web",
+        "webtransport"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Desktop delivery",
+      "wraps": [
+        "desktop",
+        "nativetransport",
+        "localbuild"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Cloud build service (same service as Path B)",
+      "wraps": [
+        "api",
+        "cache",
+        "workers",
+        "artifacts"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "ui-core",
+      "from": "ui",
+      "to": "core",
+      "label": "view model",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "core-library",
+      "from": "core",
+      "to": "library",
+      "label": "persist",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "web-core",
+      "from": "web",
+      "to": "core",
+      "label": "hosts",
+      "variant": "emphasis"
+    },
+    {
+      "id": "desktop-core",
+      "from": "desktop",
+      "to": "core",
+      "label": "hosts",
+      "variant": "emphasis"
+    },
+    {
+      "id": "desktop-localbuild",
+      "from": "desktop",
+      "to": "localbuild",
+      "label": "FirmwareBuilder"
+    },
+    {
+      "id": "web-webtransport",
+      "from": "web",
+      "to": "webtransport",
+      "label": "BoardTransport",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "desktop-nativetransport",
+      "from": "desktop",
+      "to": "nativetransport",
+      "label": "BoardTransport",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "webtransport-board",
+      "from": "webtransport",
+      "to": "board",
+      "label": "serial + DFU",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          410,
+          562
+        ]
+      ]
+    },
+    {
+      "id": "nativetransport-board",
+      "from": "nativetransport",
+      "to": "board",
+      "label": "serial + DFU",
+      "fromSide": "bottom",
+      "toSide": "right",
+      "via": [
+        [
+          960,
+          562
+        ]
+      ]
+    },
+    {
+      "id": "web-api",
+      "from": "web",
+      "to": "api",
+      "label": "FirmwareBuilder",
+      "fromSide": "top",
+      "toSide": "right",
+      "via": [
+        [
+          410,
+          142
+        ]
+      ]
+    },
+    {
+      "id": "localbuild-api",
+      "from": "localbuild",
+      "to": "api",
+      "label": "fallback when no local toolchain",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [
+        [
+          1210,
+          60
+        ],
+        [
+          160,
+          60
+        ]
+      ]
+    },
+    {
+      "id": "api-cache",
+      "from": "api",
+      "to": "cache",
+      "label": "hash lookup",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "cache-workers",
+      "from": "cache",
+      "to": "workers",
+      "label": "compile on miss",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "workers-artifacts",
+      "from": "workers",
+      "to": "artifacts",
+      "label": "publish",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Sequence",
+      "items": [
+        "Phase 0: core library with golden tests",
+        "Phase 1: web runtime tier, no backend, no drivers",
+        "Phase 2: cloud build + browser flash",
+        "Phase 3: desktop shell for installers and offline"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Why",
+      "items": [
+        "Zero-install first release for CFX/Xeno migrants",
+        "Expensive decisions (signing, compile farm) deferred until usage justifies them",
+        "Highest long-term ceiling: union of web and desktop"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Still impossible",
+      "items": [
+        "New style structures without a compile",
+        "Blade layout or prop changes without a reflash",
+        "Skipping the Windows bootloader driver"
+      ]
+    }
+  ]
+}

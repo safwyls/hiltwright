@@ -1,0 +1,27 @@
+[spike] === errors ===
+[spike] compile err-blade-count: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> FAIL in 8.3s  {}
+[spike]   errors: [
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:128:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:201:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:268:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:331:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:394:1: error: cannot convert 'const char*' to 'StyleFactory*' in initialization",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-blade-count\\ProffieOS\\config\\saberbench_v3_baseline.h:401:17: error: cannot convert 'Preset*' to 'BladeBase*' in initialization"
+]
+[spike] compile err-missing-comma: saberbench_v3_baseline.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> FAIL in 4.6s  {}
+[spike]   errors: [
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected '}' before 'StylePtr'",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected '}' before 'StylePtr'",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:85:1: error: expected ',' or ';' before 'StylePtr'",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:128:12: error: expected declaration before '}' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:128:13: error: expected unqualified-id before ',' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:130:1: error: expected unqualified-id before '{' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:201:13: error: expected unqualified-id before ',' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:203:1: error: expected unqualified-id before '{' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:268:13: error: expected unqualified-id before ',' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:270:1: error: expected unqualified-id before '{' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:331:13: error: expected unqualified-id before ',' token",
+  "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\err-missing-comma\\ProffieOS\\config\\saberbench_v3_baseline.h:333:1: error: expected unqualified-id before '{' token"
+]

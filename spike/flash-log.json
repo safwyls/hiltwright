@@ -1,0 +1,280 @@
+[
+  {
+    "t": "2026-09-08T05:15:48.623Z",
+    "phase": "detect",
+    "state": {
+      "runtimePresent": false,
+      "bootloaderPresent": false,
+      "bootloaderDriver": [],
+      "port": null
+    },
+    "usb": []
+  },
+  {
+    "t": "2026-09-08T05:17:11.043Z",
+    "phase": "detect",
+    "state": {
+      "runtimePresent": false,
+      "bootloaderPresent": false,
+      "bootloaderDriver": [],
+      "port": null
+    },
+    "usb": []
+  },
+  {
+    "t": "2026-09-08T05:17:46.314Z",
+    "phase": "probe",
+    "error": "No Proffieboard CDC port found. Is the saber on and connected with a data cable?"
+  },
+  {
+    "t": "2026-09-08T05:20:23.837Z",
+    "phase": "detect",
+    "state": {
+      "runtimePresent": true,
+      "bootloaderPresent": false,
+      "bootloaderDriver": [],
+      "port": "COM7"
+    },
+    "usb": [
+      {
+        "Status": "OK",
+        "Class": "Ports",
+        "Service": "usbser",
+        "FriendlyName": "USB Serial Device (COM7)",
+        "InstanceId": "USB\\VID_1209&PID_6668&MI_00\\7&BFD4591&0&0000",
+        "Problem": 0
+      },
+      {
+        "Status": "OK",
+        "Class": "USB",
+        "Service": "usbccgp",
+        "FriendlyName": "USB Composite Device",
+        "InstanceId": "USB\\VID_1209&PID_6668\\206033865232",
+        "Problem": 0
+      }
+    ]
+  },
+  {
+    "t": "2026-09-08T05:20:46.019Z",
+    "phase": "probe",
+    "port": "COM7",
+    "out": {
+      "version": "v4.7\r\nInstalled: Jul 15 2020 21:04:59\r\nI2C sleeping..",
+      "battery": "Battery voltage: 1.34",
+      "list_presets": "Failed to open: presets.ini\nFailed to open: presets.tmp\nFONT=TeensySF\nTRACK=tracks/venus.wav\nSTYLE1=builtin 0 1\nSTYLE2=builtin 0 2\nNAME=cyan\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=SmthJedi\nTRACK=tracks/mars.wav\nSTYLE1=builtin 1 1\nSTYLE2=builtin 1 2\nNAME=blue\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=SmthGrey\nTRACK=tracks/mercury.wav\nSTYLE1=builtin 2 1\nSTYLE2=builtin 2 2\nNAME=fire\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=SmthFuzz\nTRACK=tracks/uranus.wav\nSTYLE1=builtin 3 1\nSTYLE2=builtin 3 2\nNAME=red\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=RgueCmdr\nTRACK=tracks/venus.wav\nSTYLE1=builtin 4 1\nSTYLE2=builtin 4 2\nNAME=blue fire\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=TthCrstl\nTRACK=tracks/mars.wav\nSTYLE1=builtin 5 1\nSTYLE2=builtin 5 2\nNAME=green\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=TeensySF\nTRACK=tracks/mercury.wav\nSTYLE1=builtin 6 1\nSTYLE2=builtin 6 2\nNAME=white\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=SmthJedi\nTRACK=tracks/uranus.wav\nSTYLE1=builtin 7 1\nSTYLE2=builtin 7 2\nNAME=yellow\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=SmthGrey\nTRACK=tracks/venus.wav\nSTYLE1=builtin 8 1\nSTYLE2=builtin 8 2\nNAME=magenta\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=SmthFuzz\nTRACK=tracks/mars.wav\nSTYLE1=builtin 9 1\nSTYLE2=builtin 9 2\nNAME=gradient\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=RgueCmdr\nTRACK=tracks/mercury.wav\nSTYLE1=builtin 10 1\nSTYLE2=builtin 10 2\nNAME=rainbow\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=TthCrstl\nTRACK=tracks/uranus.wav\nSTYLE1=builtin 11 1\nSTYLE2=builtin 11 2\nNAME=strobe\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=TeensySF\nTRACK=tracks/venus.wav\nSTYLE1=builtin 12 1\nSTYLE2=builtin 12 2\nNAME=POV\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nFONT=SmthJedi\nTRACK=tracks/mars.wav\nSTYLE1=builtin 13 1\nSTYLE2=builtin 13 2\nNAME=Battery\\nLevel\nVARIATION=0\nFailed to open: presets.ini\nFailed to open: presets.tmp\nAmplifier off.\r\nUnmounting SD Card.",
+      "list_named_style": "Whut? :list_named_style",
+      "id": "ID: 452.00"
+    }
+  },
+  {
+    "t": "2026-09-08T05:20:58.526Z",
+    "phase": "detect",
+    "state": {
+      "runtimePresent": true,
+      "bootloaderPresent": false,
+      "bootloaderDriver": [],
+      "port": "COM7"
+    },
+    "usb": [
+      {
+        "Status": "OK",
+        "Class": "Ports",
+        "Service": "usbser",
+        "FriendlyName": "USB Serial Device (COM7)",
+        "InstanceId": "USB\\VID_1209&PID_6668&MI_00\\7&BFD4591&0&0000",
+        "Problem": 0
+      },
+      {
+        "Status": "OK",
+        "Class": "USB",
+        "Service": "usbccgp",
+        "FriendlyName": "USB Composite Device",
+        "InstanceId": "USB\\VID_1209&PID_6668\\206033865232",
+        "Problem": 0
+      }
+    ]
+  },
+  {
+    "t": "2026-09-08T05:21:02.242Z",
+    "phase": "enterBootloader",
+    "method": "1200bps",
+    "ok": true
+  },
+  {
+    "t": "2026-09-08T05:21:03.298Z",
+    "phase": "backup",
+    "ok": false,
+    "out": "dfu-util 0.9\r\n\r\nCopyright 2005-2009 Weston Schmidt, Harald Welte and OpenMoko Inc.\r\nCopyright 2010-2016 Tormod Volden and Stefan Schmidt\r\nThis program is Free Software and has ABSOLUTELY NO WARRANTY\r\nPlease report bugs to http://sourceforge.net/p/dfu-util/tickets/\r\n\r\nCannot open DFU device 0483:df11\r\nNo DFU capable USB device available\r\n"
+  },
+  {
+    "t": "2026-09-08T05:21:03.299Z",
+    "phase": "backup",
+    "error": "backup failed"
+  },
+  {
+    "t": "2026-09-08T05:22:12.512Z",
+    "phase": "detect",
+    "state": {
+      "runtimePresent": false,
+      "bootloaderPresent": true,
+      "bootloaderDriver": [
+        {
+          "status": "Error",
+          "service": null,
+          "problem": 28
+        }
+      ],
+      "port": null
+    },
+    "usb": [
+      {
+        "Status": "Error",
+        "Class": null,
+        "Service": null,
+        "FriendlyName": "STM32  BOOTLOADER",
+        "InstanceId": "USB\\VID_0483&PID_DF11\\206033865232",
+        "Problem": 28
+      }
+    ]
+  },
+  {
+    "t": "2026-09-08T05:29:28.276Z",
+    "phase": "detect",
+    "state": {
+      "runtimePresent": false,
+      "bootloaderPresent": true,
+      "bootloaderDriver": [
+        {
+          "status": "OK",
+          "service": "WinUSB",
+          "problem": 0
+        }
+      ],
+      "port": null
+    },
+    "usb": [
+      {
+        "Status": "OK",
+        "Class": "USBDevice",
+        "Service": "WinUSB",
+        "FriendlyName": "STM32  BOOTLOADER",
+        "InstanceId": "USB\\VID_0483&PID_DF11\\206033865232",
+        "Problem": 0
+      }
+    ]
+  },
+  {
+    "t": "2026-09-08T05:29:29.313Z",
+    "phase": "dfuVisible",
+    "layout": "0128*0002Kg",
+    "flashBytes": 262144
+  },
+  {
+    "t": "2026-09-08T05:29:30.221Z",
+    "phase": "backup",
+    "ok": true,
+    "file": "C:\\Users\\safwyl\\source\\saberbench\\spike\\backups\\proffie-v3-2026-09-08T05-29-29-313Z.bin",
+    "bytes": 262144,
+    "ms": 908
+  },
+  {
+    "t": "2026-09-08T05:34:32.875Z",
+    "phase": "detect",
+    "state": {
+      "runtimePresent": false,
+      "bootloaderPresent": true,
+      "bootloaderDriver": [
+        {
+          "status": "OK",
+          "service": "WinUSB",
+          "problem": 0
+        }
+      ],
+      "port": null
+    },
+    "usb": [
+      {
+        "Status": "OK",
+        "Class": "USBDevice",
+        "Service": "WinUSB",
+        "FriendlyName": "STM32  BOOTLOADER",
+        "InstanceId": "USB\\VID_0483&PID_DF11\\206033865232",
+        "Problem": 0
+      }
+    ]
+  },
+  {
+    "t": "2026-09-08T05:34:34.089Z",
+    "phase": "dfuVisible",
+    "layout": "0128*0002Kg",
+    "flashBytes": 262144
+  },
+  {
+    "t": "2026-09-08T05:34:35.024Z",
+    "phase": "backup",
+    "ok": true,
+    "file": "C:\\Users\\safwyl\\source\\saberbench\\spike\\backups\\proffie-v2-2026-09-08T05-34-34-089Z.bin",
+    "bytes": 262144,
+    "ms": 934
+  },
+  {
+    "t": "2026-09-08T05:34:37.852Z",
+    "phase": "detect",
+    "state": {
+      "runtimePresent": false,
+      "bootloaderPresent": true,
+      "bootloaderDriver": [
+        {
+          "status": "OK",
+          "service": "WinUSB",
+          "problem": 0
+        }
+      ],
+      "port": null
+    },
+    "usb": [
+      {
+        "Status": "OK",
+        "Class": "USBDevice",
+        "Service": "WinUSB",
+        "FriendlyName": "STM32  BOOTLOADER",
+        "InstanceId": "USB\\VID_0483&PID_DF11\\206033865232",
+        "Problem": 0
+      }
+    ]
+  },
+  {
+    "t": "2026-09-08T05:34:39.210Z",
+    "phase": "dfuVisible",
+    "layout": "0128*0002Kg",
+    "flashBytes": 262144
+  },
+  {
+    "t": "2026-09-08T05:35:36.809Z",
+    "phase": "write",
+    "label": "firmware",
+    "file": "C:\\Users\\safwyl\\source\\saberbench\\spike\\.cache\\builds\\v2-os8\\build\\ProffieOS.ino.dfu",
+    "ok": true,
+    "ms": 57599,
+    "out": "]  56%       120832 bytes\rDownload\t[==============           ]  57%       122880 bytes\rDownload\t[==============           ]  59%       126976 bytes\rDownload\t[===============          ]  60%       129024 bytes\rDownload\t[===============          ]  61%       131072 bytes\rDownload\t[===============          ]  62%       135168 bytes\rDownload\t[================         ]  64%       139264 bytes\rDownload\t[================         ]  65%       141312 bytes\rDownload\t[================         ]  67%       145408 bytes\rDownload\t[=================        ]  68%       147456 bytes\rDownload\t[=================        ]  69%       149504 bytes\rDownload\t[=================        ]  71%       153600 bytes\rDownload\t[==================       ]  72%       155648 bytes\rDownload\t[==================       ]  73%       157696 bytes\rDownload\t[==================       ]  75%       161792 bytes\rDownload\t[===================      ]  76%       163840 bytes\rDownload\t[===================      ]  77%       165888 bytes\rDownload\t[===================      ]  78%       167936 bytes\rDownload\t[====================     ]  80%       172032 bytes\rDownload\t[====================     ]  81%       176128 bytes\rDownload\t[====================     ]  83%       180224 bytes\rDownload\t[=====================    ]  84%       182272 bytes\rDownload\t[=====================    ]  85%       184320 bytes\rDownload\t[=====================    ]  87%       188416 bytes\rDownload\t[======================   ]  88%       190464 bytes\rDownload\t[======================   ]  90%       194560 bytes\rDownload\t[=======================  ]  92%       198656 bytes\rDownload\t[=======================  ]  94%       202752 bytes\rDownload\t[======================== ]  96%       206848 bytes\rDownload\t[======================== ]  98%       210944 bytes\rDownload\t[======================== ]  99%       212992 bytes\rDownload\t[=========================] 100%       214800 bytes\r\nDownload done.\r\nFile downloaded successfully\r\nTransitioning to dfuMANIFEST state\r\n"
+  },
+  {
+    "t": "2026-09-08T05:35:42.808Z",
+    "phase": "verify",
+    "ok": true,
+    "port": "COM7",
+    "version": "$Id: ce12a06a1e236b5101ec60c950530a9a4719a74d $\nconfig/saberbench_v3_os8.h\nprop: SaberFett263Buttons\nbuttons: 2\ninstalled: Sep  7 2026 21:48:57\nUnmounting SD Card.\r\nSaving Global State"
+  },
+  {
+    "t": "2026-09-08T05:36:15.261Z",
+    "phase": "probe",
+    "port": "COM7",
+    "out": {
+      "version": "$Id: ce12a06a1e236b5101ec60c950530a9a4719a74d $\nconfig/saberbench_v3_os8.h\nprop: SaberFett263Buttons\nbuttons: 2\ninstalled: Sep  7 2026 21:48:57",
+      "battery": "Battery voltage: 1.63",
+      "list_presets": "FONT=Ahsoka;common\nTRACK=Ahsoka/tracks/AhsokaTheme.wav\nSTYLE1=builtin 0 1\nSTYLE2=builtin 0 2\nNAME=ahsoka\nVARIATION=0\nFONT=Duality;common\nTRACK=Duality/tracks/Duality.wav\nSTYLE1=builtin 1 1\nSTYLE2=builtin 1 2\nNAME=duality\nVARIATION=0\nFONT=Osha;common\nTRACK=Osha/tracks/Osha.wav\nSTYLE1=builtin 2 1\nSTYLE2=builtin 2 2\nNAME=osha\nVARIATION=0\nFONT=Ahsoka;common\nTRACK=Ahsoka/tracks/AhsokaTheme.wav\nSTYLE1=builtin 3 1\nSTYLE2=builtin 3 2\nNAME=ahsoka green\nVARIATION=0\nFONT=Duality;common\nTRACK=Duality/tracks/Duality.wav\nSTYLE1=builtin 4 1\nSTYLE2=builtin 4 2\nNAME=duality magenta\nVARIATION=0\nUnmounting SD Card.\r\nAmplifier off.",
+      "list_named_style": "Whut? :list_named_style",
+      "id": "Whut? :id"
+    }
+  }
+]

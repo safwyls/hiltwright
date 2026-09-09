@@ -1,0 +1,9 @@
+[spike] === compile ===
+[spike] compile v3-os8-cold: saberbench_v3_os8.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> OK in 28.9s [{"name":"text","size":216304,"max_size":507904}] {"ProffieOS.ino.dfu":216328,"ProffieOS.ino.elf":5474172}
+[spike] compile v3-os8-incremental: saberbench_v3_os8.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> OK in 26.5s [{"name":"text","size":216304,"max_size":507904}] {"ProffieOS.ino.dfu":216328,"ProffieOS.ino.elf":5474624}
+[spike] compile v3-os8-incremental: saberbench_v3_os8.h @ proffieboard:stm32l4:ProffieboardV3-L452RE:usb=cdc_msc_webusb,dosfs=sdmmc1,speed=80,opt=os
+[spike]   -> OK in 23.8s [{"name":"text","size":216304,"max_size":507904}] {"ProffieOS.ino.dfu":216328,"ProffieOS.ino.elf":5474624}
+[spike] compile v2-os8: saberbench_v3_os8.h @ proffieboard:stm32l4:ProffieboardV2-L433CC:usb=cdc_msc_webusb,dosfs=sdspi,speed=80,opt=os
+[spike]   -> OK in 26.5s [{"name":"text","size":214792,"max_size":262144}] {"ProffieOS.ino.dfu":214816,"ProffieOS.ino.elf":5473248}

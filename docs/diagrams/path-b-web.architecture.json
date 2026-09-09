@@ -1,0 +1,361 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Hiltwright Path B: Web App with Cloud Build",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "runtime",
+        "label": "Runtime editing (no backend)",
+        "focus": [
+          "user",
+          "pwa",
+          "bridge",
+          "board"
+        ],
+        "note": "Web Serial and WebUSB talk to the running board; presets.ini changes need no server."
+      },
+      {
+        "id": "build",
+        "label": "Cloud build",
+        "focus": [
+          "pwa",
+          "api",
+          "cache",
+          "queue",
+          "worker",
+          "artifacts"
+        ],
+        "note": "Config hash hits the cache or is compiled in a Docker worker."
+      },
+      {
+        "id": "flash",
+        "label": "Browser flash",
+        "focus": [
+          "artifacts",
+          "pwa",
+          "bridge",
+          "driver",
+          "board"
+        ],
+        "note": "WebUSB DFU writes the .bin; Windows needs a manual one-time driver."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Saber owner",
+      "sublabel": "Chrome / Edge, Android Chrome",
+      "pos": [
+        40,
+        250
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "pwa",
+      "type": "frontend",
+      "label": "Hiltwright PWA",
+      "sublabel": "React + shared TS core",
+      "pos": [
+        270,
+        250
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "bridge",
+      "type": "frontend",
+      "label": "Board bridge",
+      "sublabel": "Web Serial, WebUSB DFU",
+      "pos": [
+        270,
+        390
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "board",
+      "type": "external",
+      "label": "Proffieboard",
+      "sublabel": "1209:6668 / 0483:df11",
+      "pos": [
+        40,
+        390
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "driver",
+      "type": "security",
+      "label": "proffie-dfu-setup",
+      "sublabel": "user runs once, Windows",
+      "pos": [
+        40,
+        530
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "manual"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Build API",
+      "sublabel": "HTTPS, auth, rate limit",
+      "pos": [
+        560,
+        250
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "cache",
+      "type": "database",
+      "label": "Build cache",
+      "sublabel": "sha256(config, OS, FQBN)",
+      "pos": [
+        560,
+        110
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "queue",
+      "type": "messagebus",
+      "label": "Build queue",
+      "sublabel": "jobs",
+      "pos": [
+        790,
+        250
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Build worker",
+      "sublabel": "Docker: arduino-cli + GCC",
+      "pos": [
+        1020,
+        250
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "artifacts",
+      "type": "database",
+      "label": "Artifact store",
+      "sublabel": ".bin + GPL source bundle",
+      "pos": [
+        1020,
+        110
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "library",
+      "type": "database",
+      "label": "Saber library",
+      "sublabel": "configs, styles, share links",
+      "pos": [
+        560,
+        390
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "gallery",
+      "type": "cloud",
+      "label": "Style gallery CDN",
+      "sublabel": "GPL styles, previews",
+      "pos": [
+        270,
+        110
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Browser (Chromium only)",
+      "wraps": [
+        "pwa",
+        "bridge"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Hiltwright cloud",
+      "wraps": [
+        "api",
+        "cache",
+        "queue",
+        "worker",
+        "artifacts",
+        "library"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-pwa",
+      "from": "user",
+      "to": "pwa",
+      "label": "URL, no install"
+    },
+    {
+      "id": "pwa-bridge",
+      "from": "pwa",
+      "to": "bridge",
+      "label": "transport",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "bridge-board",
+      "from": "bridge",
+      "to": "board",
+      "label": "serial, 1200-baud touch, DFU",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "driver-board",
+      "from": "driver",
+      "to": "board",
+      "label": "WinUSB for bootloader",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "pwa-api",
+      "from": "pwa",
+      "to": "api",
+      "label": "build request"
+    },
+    {
+      "id": "api-cache",
+      "from": "api",
+      "to": "cache",
+      "label": "hash lookup",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "api-queue",
+      "from": "api",
+      "to": "queue",
+      "label": "enqueue on miss"
+    },
+    {
+      "id": "queue-worker",
+      "from": "queue",
+      "to": "worker"
+    },
+    {
+      "id": "worker-artifacts",
+      "from": "worker",
+      "to": "artifacts",
+      "label": "publish",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "artifacts-cache",
+      "from": "artifacts",
+      "to": "cache",
+      "label": "record hash",
+      "variant": "dashed"
+    },
+    {
+      "id": "api-library",
+      "from": "api",
+      "to": "library",
+      "label": "save / share",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "pwa-gallery",
+      "from": "pwa",
+      "to": "gallery",
+      "label": "browse looks",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDy": -58
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Can do",
+      "items": [
+        "Runtime tier with zero install and zero drivers on Windows 10+",
+        "Cloud build and WebUSB DFU flash on Chromium desktops",
+        "Share a saber or style by link; vendor hand-off"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Cannot do",
+      "items": [
+        "Firefox, Safari or iOS at all",
+        "Compile offline or when the service is down",
+        "Install the Windows bootloader driver for the user"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Costs",
+      "items": [
+        "Compile farm CPU and artifact storage",
+        "GPL source bundle per delivered binary",
+        "Config leaves the user's machine on every build"
+      ]
+    }
+  ]
+}
