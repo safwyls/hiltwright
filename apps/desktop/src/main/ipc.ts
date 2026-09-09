@@ -1,10 +1,11 @@
 // IPC surface. Every handler validates its arguments; the renderer is sandboxed and untrusted by design.
 
-import { app, ipcMain, shell } from 'electron';
+import { app, dialog, ipcMain, shell } from 'electron';
 import type { PresetRecord } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { Snapshots } from './snapshots';
 import { proffieSerials } from './usb';
+import { checkFontDir, copyFont, listFonts, listTracks, locateCards } from './sd';
 import type { SaberIdentity } from '../shared/api';
 
 function str(v: unknown, max = 200): string {
@@ -58,6 +59,26 @@ export function registerIpc(): void {
   ipcMain.handle('snapshots:read', (_e, id: unknown, file: unknown) => snapshots.read(str(id, 40), str(file, 200)));
 
   ipcMain.handle('usb:proffieSerials', () => proffieSerials());
+
+  // SD card via a card reader. Roots must come from locate() so the renderer cannot point us at arbitrary folders.
+  let knownRoots = new Set<string>();
+  const root = (v: unknown) => { const r = str(v, 500); if (!knownRoots.has(r)) throw new Error('Unknown card'); return r; };
+  ipcMain.handle('sd:locate', async () => { const cards = await locateCards(); knownRoots = new Set(cards.map((c) => c.root)); return cards; });
+  ipcMain.handle('sd:listFonts', (_e, r: unknown) => listFonts(root(r)));
+  ipcMain.handle('sd:listTracks', (_e, r: unknown) => listTracks(root(r)));
+  let pickedFonts = new Set<string>();
+  ipcMain.handle('sd:pickFont', async () => {
+    const res = await dialog.showOpenDialog({ title: 'Choose a sound font folder', properties: ['openDirectory'] });
+    if (res.canceled || !res.filePaths[0]) return null;
+    const entry = await checkFontDir(res.filePaths[0]);
+    pickedFonts.add(entry.path);
+    return entry;
+  });
+  ipcMain.handle('sd:copyFont', (_e, src: unknown, r: unknown, replace: unknown) => {
+    const s = str(src, 1000);
+    if (!pickedFonts.has(s)) throw new Error('Pick the font folder first');
+    return copyFont(s, root(r), replace === true);
+  });
 
   ipcMain.handle('app:userDataPath', () => userData);
   ipcMain.handle('app:openPath', async (_e, p: unknown) => {

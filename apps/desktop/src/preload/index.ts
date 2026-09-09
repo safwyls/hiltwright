@@ -19,6 +19,13 @@ const api: HiltwrightApi = {
   usb: {
     proffieSerials: () => ipcRenderer.invoke('usb:proffieSerials'),
   },
+  sd: {
+    locate: () => ipcRenderer.invoke('sd:locate'),
+    listFonts: (root) => ipcRenderer.invoke('sd:listFonts', root),
+    listTracks: (root) => ipcRenderer.invoke('sd:listTracks', root),
+    pickFont: () => ipcRenderer.invoke('sd:pickFont'),
+    copyFont: (src, root, replace) => ipcRenderer.invoke('sd:copyFont', src, root, replace),
+  },
   app: {
     userDataPath: () => ipcRenderer.invoke('app:userDataPath'),
     openPath: (path) => ipcRenderer.invoke('app:openPath', path),

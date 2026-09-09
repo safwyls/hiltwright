@@ -12,3 +12,5 @@ demo/dist/
 
 # desktop app build output
 apps/desktop/out/
+
+apps/desktop/release/

@@ -1,7 +1,7 @@
 // The typed contract between renderer and main, exposed by the preload script as window.hiltwright.
 // Only data crosses this boundary: no handles, no callbacks except the event subscriptions listed here.
 
-import type { PresetRecord } from '@hiltwright/core';
+import type { FontReport, PresetRecord } from '@hiltwright/core';
 
 /** What the app can learn about a board without touching its SD card. */
 export interface SaberIdentity {
@@ -37,6 +37,21 @@ export interface SnapshotMeta {
   presets: number;
 }
 
+export interface CardInfo {
+  root: string;
+  label: string | null;
+  freeBytes: number | null;
+  totalBytes: number | null;
+  proffie: boolean;
+  hasPresetsIni: boolean;
+}
+
+export interface FontEntry {
+  name: string;
+  path: string;
+  report: FontReport;
+}
+
 export interface HiltwrightApi {
   appVersion: string;
   platform: string;
@@ -55,6 +70,15 @@ export interface HiltwrightApi {
   usb: {
     /** Serial numbers of Proffieboards currently attached, when the platform can tell us. */
     proffieSerials(): Promise<string[]>;
+  };
+  sd: {
+    /** Removable volumes, flagged when they look like a ProffieOS card. */
+    locate(): Promise<CardInfo[]>;
+    listFonts(root: string): Promise<FontEntry[]>;
+    listTracks(root: string): Promise<{ name: string; size: number }[]>;
+    /** Ask the user for a font folder on this computer and check it without copying. */
+    pickFont(): Promise<FontEntry | null>;
+    copyFont(src: string, root: string, replace: boolean): Promise<FontEntry>;
   };
   app: {
     userDataPath(): Promise<string>;
