@@ -23,7 +23,7 @@
     "@types/react-dom": "^19.1.0",
     "@types/w3c-web-serial": "^1.0.8",
     "@vitejs/plugin-react": "^4.5.0",
-    "electron": "^37.0.0",
+    "electron": "37.10.3",
     "electron-builder": "^26.15.3",
     "electron-vite": "^4.0.0",
     "typescript": "^5.8.3",
@@ -66,5 +66,6 @@
       ]
     },
     "npmRebuild": false
-  }
+  },
+  "author": "safwyls"
 }
