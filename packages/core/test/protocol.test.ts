@@ -26,6 +26,50 @@ describe('line handling', () => {
   });
 });
 
+describe('recorded OS 8.10 transcripts (Hiltwright build on the same V2.2)', () => {
+  const os8 = (name: string) => lines(`os8/${name}`);
+  it('version is a git keyword followed by an unsolicited battery line', () => {
+    expect(parseVersion(os8('01-version.txt'))).toEqual({ version: 'git-ce12a06', major: null, config: 'config/hiltwright_hote2.h', prop: 'SaberSA22CButtons', buttons: 2, installed: 'Sep  9 2026 15:24:29' });
+  });
+  it('integers survive trailing SD and amplifier events', () => {
+    expect(parseInteger(os8('03-get_volume.txt'))).toBe(1800);
+    expect(parseInteger(os8('04-get_preset.txt'))).toBe(2);
+    expect(parseInteger(os8('05-get_variation.txt'))).toBe(0);
+    expect(parseInteger(os8('26-get_blade_dimming.txt'))).toBe(16384);
+    expect(parseInteger(os8('27-get_on.txt'))).toBe(0);
+  });
+  it('the 13 carried-over presets came back with 3 builtin styles each', () => {
+    const { presets, incomplete } = parsePresetBlocks(os8('06-list_presets.txt'));
+    expect(incomplete).toBe(false);
+    expect(presets).toHaveLength(13);
+    expect(presets[0]).toEqual({ font: 'Mara Jade Skywalker;common', track: 'Mara Jade Skywalker/tracks/The_Force.wav', styles: ['builtin 0 1', 'builtin 0 2', 'builtin 0 3'], name: 'Mara Jade Skywalker', variation: 0 });
+    expect(parsePresetBlocks(os8('07-show_current_preset.txt')).presets[0].name).toBe('Preset: 3');
+  });
+  it('scanid now leads with the Blade ID reading; blades unchanged', () => {
+    expect(parseScanId(os8('12-scanid.txt'))).toEqual({ bladeConfig: 0, pixelBlades: [140, 2, 1] });
+    expect(parseId(os8('12-scanid.txt'))).toBe(916);
+  });
+  it('list_named_styles is the real name: 8 named looks then one builtin per preset and blade', () => {
+    const styles = parseList(os8('19-list_named_styles.txt'));
+    expect(styles.slice(0, 8)).toEqual(['standard', 'advanced', 'fire', 'unstable', 'strobe', 'cycle', 'rainbow', 'charging']);
+    expect(styles.filter((s) => s.startsWith('builtin '))).toHaveLength(13 * 3);
+  });
+  it('OS 8.10 still has no tag framing, help, id, list_named_style (singular) or get_style', () => {
+    for (const f of ['08-list_named_style.txt', '11-id.txt', '14-help.txt', '15-sb1_version.txt', '16-sb2_get_preset.txt', '17-sb3_list_presets.txt', '25-list_current_tracks.txt', '28-variation.txt', '29-get_style_1.txt', '30-get_gesture.txt']) expect(wasRejected(os8(f)), f).toBe(true);
+  });
+  it('dir lists the card with sizes; fonts and tracks drop the unmount notice', () => {
+    expect(parseList(os8('13-dir.txt')).filter((l) => /^presets\.ini /.test(l))).toHaveLength(1);
+    expect(parseList(os8('09-list_fonts.txt'))).toHaveLength(18);
+    expect(parseList(os8('10-list_tracks.txt'))).toHaveLength(22);
+  });
+  it('blade length queries: max is the configured count, current is -1 until set', () => {
+    expect(parseInteger(os8('21-get_max_blade_length_1.txt'))).toBe(140);
+    expect(parseInteger(os8('20-get_blade_length_1.txt'))).toBe(-1);
+    expect(Number(os8('23-get_clash_threshold.txt')[0])).toBe(3.5);
+    expect(transcript('os8/24-get_track.txt')).toBe('');
+  });
+});
+
 describe('recorded OS 7.8 transcripts', () => {
   it('version', () => {
     expect(parseVersion(lines('01-version.txt'))).toEqual({ version: 'v7.8', major: 7, config: 'config/hote2.h', prop: 'SaberSF24Buttons', buttons: 2, installed: 'Sep 11 2024 17:34:59' });

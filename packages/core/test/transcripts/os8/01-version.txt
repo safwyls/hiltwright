@@ -1,0 +1,6 @@
+$Id: ce12a06a1e236b5101ec60c950530a9a4719a74d $
+config/hiltwright_hote2.h
+prop: SaberSA22CButtons
+buttons: 2
+installed: Sep  9 2026 15:24:29
+Battery voltage: 3.50

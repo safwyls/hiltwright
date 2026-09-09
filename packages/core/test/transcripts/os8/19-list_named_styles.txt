@@ -1,0 +1,47 @@
+standard
+advanced
+fire
+unstable
+strobe
+cycle
+rainbow
+charging
+builtin 0 1
+builtin 0 2
+builtin 0 3
+builtin 1 1
+builtin 1 2
+builtin 1 3
+builtin 2 1
+builtin 2 2
+builtin 2 3
+builtin 3 1
+builtin 3 2
+builtin 3 3
+builtin 4 1
+builtin 4 2
+builtin 4 3
+builtin 5 1
+builtin 5 2
+builtin 5 3
+builtin 6 1
+builtin 6 2
+builtin 6 3
+builtin 7 1
+builtin 7 2
+builtin 7 3
+builtin 8 1
+builtin 8 2
+builtin 8 3
+builtin 9 1
+builtin 9 2
+builtin 9 3
+builtin 10 1
+builtin 10 2
+builtin 10 3
+builtin 11 1
+builtin 11 2
+builtin 11 3
+builtin 12 1
+builtin 12 2
+builtin 12 3

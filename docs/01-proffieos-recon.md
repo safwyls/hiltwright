@@ -150,6 +150,8 @@ Named styles: `list_named_style`, `describe_named_style` (prints required argume
 Diagnostics (need `DISABLE_DIAGNOSTIC_COMMANDS` *not* set): `sdtest`, `effects`, `beep`, `monitor <topic>`, `top`, `malloc`, `whatison`.
 OS 8.x: `tag|command` — *"ProffieOS will run the command, and then for every output line, it will print the tag"*, explicitly for *"robust app communication"*. `sd` toggles host SD access when `MOUNT_SD_SETTING` is defined.
 
+> Corrected 2026-09-09 against the v8.10 release source and a recorded transcript (see 09, item 11): the 8.10 release has **no** `tag|command` framing (`sb1|version` answers `Whut?`), the style listing is `list_named_styles` (plural), `describe_named_style` is `DEBUG`-only, and `id` does not exist (`scanid` prints `BLADE ID:`). The framing may exist in later master; nothing in Hiltwright depends on it.
+
 Sources: https://pod.hubbe.net/tools/serial-monitor-commands.html , https://pod.hubbe.net/tools/serial-monitor-additional-commands.html
 
 The Workbench (Fredrik's WebUSB app) already uses this surface to: view/create/duplicate/delete/reorder presets, pick font and track from dropdowns, edit style arguments and variation, upload fonts, set volume, read battery, trigger effects. *"All changes you make are saved immediately."* It cannot add new style code.

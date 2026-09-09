@@ -6,7 +6,7 @@
 //   stream has been idle for `idleMs`. Writes (set_font, set_preset) answer with nothing or with chatter, so they
 //   always complete by idle timeout and must be verified with a read-back.
 // - Unsolicited status lines are delivered to `onEvent` and never counted as response lines.
-// - OS 8 `tag|command` framing is not used yet: the recorded board rejects it, and no OS 8 transcript exists.
+// - No `tag|command` framing: both the 7.8 and the 8.10 transcripts reject it, so responses end by shape or idle.
 
 import { LineBuffer, isNoise } from './lines';
 

@@ -102,7 +102,7 @@ Rules:
 
 - Preset edits are optimistic. The store snapshots `presets.ini` before the first change in a batch, writes through the board bridge, and marks the row "saved" only when the board confirms. A failed write rolls back and explains.
 - `buildStore` is the only writer of firmware. Its state machine is driven by main's events (`build:progress`, `flash:step`) and exposes elapsed time per step so the timeline is honest.
-- The board bridge is a renderer service (`services/board.ts`) wrapping Web Serial with the core's `tag|command` framing. Pages use `useBoard()` and never touch the port.
+- The board bridge is a renderer service (`services/board.ts`) wrapping Web Serial with the core's untagged, idle-terminated client (OS 8.10 has no tag framing; see 09). Pages use `useBoard()` and never touch the port.
 
 ## 6. Preload contract (sketch)
 

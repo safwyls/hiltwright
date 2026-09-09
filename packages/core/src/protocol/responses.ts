@@ -56,7 +56,8 @@ export function parseInteger(lines: string[]): number | null {
 /** `id` prints `ID: 916.00`, the measured Blade ID resistance in ohms. */
 export function parseId(lines: string[]): number | null {
   for (const l of lines) {
-    const m = /^ID:\s*([\d.]+)/.exec(l);
+    // 7.8 `id` prints "ID: 916.00"; 8.10 has no `id` and `scanid` prints "BLADE ID: 916.00".
+    const m = /^(?:BLADE )?ID:\s*([\d.]+)/.exec(l);
     if (m) return Number(m[1]);
   }
   return null;
