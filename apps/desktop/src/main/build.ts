@@ -95,6 +95,9 @@ export async function buildFirmware(opts: { toolchainRoot: string; saberId: stri
   ino = ino.replace(/^\s*#define CONFIG_FILE\b.*$/gm, (m) => `// ${m.trim()}`);
   const line = `#define CONFIG_FILE "config/${opts.model.name}.h"\n`;
   ino = /#ifndef CONFIG_FILE\s*\n/.test(ino) ? ino.replace(/(#ifndef CONFIG_FILE\s*\n)/, `${line}$1`) : line + ino;
+  // The release zip's version string is a git keyword ("$Id: <sha> $"), which is what `version` then prints.
+  // Stamp the tag we downloaded so the board reports something an owner (and parseVersion) can read.
+  ino = ino.replace(/^const char version\[\] = "\$Id:\s*([0-9a-f]{7})[0-9a-f]*\s*\$";/m, (_m, sha: string) => `const char version[] = "${PROFFIEOS_TAG} hiltwright ${sha}";`);
   await writeFile(inoPath, ino, 'utf8');
 
   const buildPath = join(saberDir, 'build');

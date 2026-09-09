@@ -22,6 +22,9 @@ export function parseVersion(lines: string[]): VersionInfo | null {
   const info: VersionInfo = { version: ls[start].trim(), config: null, prop: null, buttons: null, installed: null, major: null };
   const v = /v(\d+)\.(\d+)/.exec(info.version);
   if (v) info.major = Number(v[1]);
+  // OS 8 source ships with a git keyword as its version string ("$Id: <sha> $"); show the short hash instead.
+  const id = /^\$Id:\s*([0-9a-f]{7})[0-9a-f]*\s*\$$/.exec(info.version);
+  if (id) info.version = `git-${id[1]}`;
   for (const l of ls.slice(start + 1)) {
     let m: RegExpExecArray | null;
     if ((m = /^(config\/\S+)$/.exec(l.trim()))) info.config = m[1];

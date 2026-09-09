@@ -48,6 +48,17 @@ export function Build({ board }: { board: Board }) {
   const [step, setStep] = useState<Step>('idle');
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [armed, setArmed] = useState(false);
+  // Poll USB while disconnected so an install can proceed from a board that is already in its bootloader.
+  const [inBootloader, setInBootloader] = useState(false);
+  useEffect(() => {
+    if (status === 'connected') { setInBootloader(false); return; }
+    let live = true;
+    const tick = () => { void api().flash.usb().then((u) => { if (live) setInBootloader(u.bootloaderPresent); }); };
+    tick();
+    const t = setInterval(tick, 2000);
+    return () => { live = false; clearInterval(t); };
+  }, [status]);
+  const canInstall = status === 'connected' || inBootloader;
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => { void api().toolchain.status().then(setTool); }, []);
@@ -98,8 +109,12 @@ export function Build({ board }: { board: Board }) {
     setNote(null); setElapsed(0);
     try {
       setStep('bootloader');
-      const touched = await board.rebootToBootloader();
-      if (!touched) { setStep('failed'); setNote({ tone: 'red', text: 'Could not reboot the saber into bootloader mode.' }); return; }
+      // A board already sitting in its bootloader (after an earlier failed attempt, or a manual BOOT+RESET) needs no reboot.
+      const already = (await api().flash.usb()).bootloaderPresent;
+      if (!already) {
+        const touched = await board.rebootToBootloader();
+        if (!touched) { setStep('failed'); setNote({ tone: 'red', text: 'Could not reboot the saber into bootloader mode. Hold BOOT, tap RESET, release BOOT, then press Install again.' }); return; }
+      }
       const boot = await api().flash.waitForBootloader(20000);
       if (!boot.ok) { setStep('failed'); setNote({ tone: 'red', text: boot.text }); return; }
       setStep('backup');
@@ -227,12 +242,12 @@ export function Build({ board }: { board: Board }) {
             {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span>{note.text}</span></div>}
             <div className="row" style={{ gap: 10 }}>
               {!armed
-                ? <button type="button" className="btn warn" disabled={busy || step !== 'built' || !confirmedWiring || status !== 'connected'} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>
+                ? <button type="button" className="btn warn" disabled={busy || step !== 'built' || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>
                 : <>
                     <button type="button" className="btn danger" disabled={busy} onClick={() => { setArmed(false); void install2(); }}><span className="b"><span className="i"><Icon name="bolt" />Yes, write the firmware</span></span></button>
                     <button type="button" className="btn ghost" onClick={() => setArmed(false)}><span className="b"><span className="i">Cancel</span></span></button>
                   </>}
-              <span className="hint">{step === 'built' && !confirmedWiring ? 'Confirm the wiring above first.' : step === 'built' && status !== 'connected' ? 'Reconnect the saber to install.' : 'Backs up the whole flash before writing. About two minutes.'}</span>
+              <span className="hint">{step === 'built' && !confirmedWiring ? 'Confirm the wiring above first.' : step === 'built' && !canInstall ? 'Reconnect the saber to install.' : inBootloader ? 'The board is in bootloader mode and ready to write.' : 'Backs up the whole flash before writing. About two minutes.'}</span>
             </div>
           </div>
         </section>

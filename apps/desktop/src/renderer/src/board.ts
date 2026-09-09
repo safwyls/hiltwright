@@ -43,6 +43,7 @@ export function useBoard() {
   const busyRef = useRef(false);
   const setBusy = (v: boolean) => { busyRef.current = v; setBusyState(v); };
   const client = useRef<BoardClient | null>(null);
+  const connecting = useRef(false);
   const transport = useRef<WebSerialTransport | null>(null);
   const infoRef = useRef<BoardInfo | null>(null);
   const saberRef = useRef<SaberRecord | null>(null);
@@ -96,7 +97,7 @@ export function useBoard() {
       await port.close();
       console.log('[board] 1200-baud touch sent');
     } catch (err) {
-      console.log(`[board] 1200-baud touch skipped: ${String(err)}`);
+      console.log(`[board] 1200-baud touch not needed, the port is already gone (RebootDFU worked): ${String(err)}`);
     }
     return true;
   }, [log]);
@@ -189,8 +190,7 @@ export function useBoard() {
     }
   }, [disconnect, identify, log]);
 
-  const connect = useCallback(async (interactive = false) => {
-    if (!('serial' in navigator)) { setStatus('error'); setError('Web Serial is not available in this window.'); return; }
+  const connectOnce = useCallback(async (interactive: boolean) => {
     let ports = await grantedProffiePorts();
     console.log(`[board] granted ports: ${ports.length} (all: ${(await navigator.serial.getPorts()).map(describePort).join(', ') || 'none'})`);
     if (!ports.length) {
@@ -202,6 +202,14 @@ export function useBoard() {
     if (!ports.length) { setStatus('no-port'); console.log('[board] no Proffieboard port granted'); return; }
     await connectTo(ports[0]);
   }, [connectTo]);
+
+  const connect = useCallback(async (interactive = false) => {
+    if (!('serial' in navigator)) { setStatus('error'); setError('Web Serial is not available in this window.'); return; }
+    // After a reflash both the install flow and the Web Serial 'connect' event try to open the port; one is enough.
+    if (transport.current || connecting.current) { console.log('[board] connect skipped: already connecting'); return; }
+    connecting.current = true;
+    try { await connectOnce(interactive); } finally { connecting.current = false; }
+  }, [connectOnce]);
 
   useEffect(() => {
     void refreshLibrary();

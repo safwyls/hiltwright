@@ -34,6 +34,11 @@ describe('recorded OS 7.8 transcripts', () => {
     expect(parseVersion(['Battery voltage: 3.51', ...lines('01-version.txt')])?.version).toBe('v7.8');
     expect(parseVersion(['Battery voltage: 3.51', ...lines('01-version.txt')])?.config).toBe('config/hote2.h');
     expect(parseVersion(['Whut? :version'])).toBeNull();
+    // OS 8.10 built from the release zip answers with the git keyword instead of a number.
+    const os8 = parseVersion(['$Id: ce12a06a1e236b5101ec60c950530a9a4719a74d $', 'config/hiltwright_hote2.h', 'prop: SaberSA22CButtons', 'buttons: 2', 'installed: Sep  9 2026 15:20:11']);
+    expect(os8).toEqual({ version: 'git-ce12a06', major: null, config: 'config/hiltwright_hote2.h', prop: 'SaberSA22CButtons', buttons: 2, installed: 'Sep  9 2026 15:20:11' });
+    // A Hiltwright build stamps a readable version into the sketch.
+    expect(parseVersion(['v8.10 hiltwright ce12a06', 'config/x.h'])).toMatchObject({ version: 'v8.10 hiltwright ce12a06', major: 8 });
   });
   it('battery and volume', () => {
     expect(parseBattery(lines('02-battery.txt'))).toBe(3.5);

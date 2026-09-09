@@ -1,7 +1,7 @@
 // IPC surface. Every handler validates its arguments; the renderer is sandboxed and untrusted by design.
 
 import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { generateConfig, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { Snapshots } from './snapshots';
@@ -117,7 +117,9 @@ export function registerIpc(): void {
   ipcMain.handle('flash:backup', (_e, saberId: unknown, label: unknown) => backupFlash(toolchainRoot, join(userData, 'sabers', str(saberId, 40), 'backups'), str(label, 60), (l) => emit('flash', l)));
   ipcMain.handle('flash:write', (_e, dfuPath: unknown) => {
     const p = str(dfuPath, 1000);
-    if (!p.startsWith(toolchainRoot)) throw new Error('Only firmware built by Hiltwright can be written');
+    // Paths arrive with whatever slashes the builder used; compare them resolved and case-folded (Windows).
+    const norm = (x: string) => resolve(x).replace(/[\\/]+/g, '/').toLowerCase();
+    if (!norm(p).startsWith(norm(toolchainRoot) + '/')) throw new Error('Only firmware built by Hiltwright can be written');
     return writeFirmware(toolchainRoot, p, (l) => emit('flash', l));
   });
   ipcMain.handle('flash:waitForRuntime', async (_e, timeoutMs: unknown) => !!(await waitFor((u) => u.runtimePresent && !u.bootloaderPresent, Math.min(Number(timeoutMs) || 20000, 60000), (l) => emit('flash', l))));
