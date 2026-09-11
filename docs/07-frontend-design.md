@@ -173,7 +173,7 @@ Motors in this hobby almost always spin a crystal-chamber component; haptic use 
 
 **Presets.** Three columns: list, editor, live preview. Every control writes `presets.ini`. The look picker offers only compiled-in looks ("builtin P B") and links to Looks for anything else. Colour rows expose the argument number so what the user sees maps to what the saber stores. Effect test buttons and volume drive the board directly. Mirror-on-saber toggle turns live preview into `set_style`/argument writes as you drag.
 
-**Looks.** Gallery of compiled and library looks with per-look flash cost and "Compiled in / Needs build" state. The detail drawer projects the new flash percentage before "Add to saber" and explains what the build will do. "Paste style code" keeps the Fett263 copyright header, as the library's GPL terms require.
+**Looks.** Gallery of compiled and library looks with per-look flash cost and "Compiled in / Needs build" state. *(Built 2026-09-10 without the per-look flash cost: a look must live in a preset slot to be compiled, so "Add to saber" picks the preset and blade; the flash meter on Build & Install shows the total.)* The detail drawer projects the new flash percentage before "Add to saber" and explains what the build will do. "Paste style code" keeps the Fett263 copyright header, as the library's GPL terms require.
 
 **Build & Install.** Order of information: flash budget, pre-flight, then the timeline. The primary button is disabled while a job runs; Cancel is always available before the write step. History shows the previous attempt with the translated error and a "Open preset" fix action. The BOOT + RESET recovery note appears whenever the bootloader fails to enumerate, with the last backup named.
 

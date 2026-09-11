@@ -1,7 +1,7 @@
 // The typed contract between renderer and main, exposed by the preload script as window.hiltwright.
 // Only data crosses this boundary: no handles, no callbacks except the event subscriptions listed here.
 
-import type { FontReport, PresetRecord, SaberConfigModel } from '@hiltwright/core';
+import type { FirmwareManifest, FontReport, LookDef, PresetRecord, SaberConfigModel } from '@hiltwright/core';
 
 /** What the app can learn about a board without touching its SD card. */
 export interface SaberIdentity {
@@ -28,7 +28,13 @@ export interface SaberRecord {
   presets: PresetRecord[];
   fonts: string[];
   tracks: string[];
+  /** The wiring, prop and looks the owner last built (or is preparing to build) for this saber. */
+  model?: SaberConfigModel;
+  /** What the last successful install compiled in. Absent on vendor firmware. */
+  firmware?: FirmwareManifest;
 }
+
+export interface SaberPatch { model?: SaberConfigModel | null; firmware?: FirmwareManifest | null }
 
 export interface SnapshotMeta {
   file: string;
@@ -77,6 +83,9 @@ export interface BuildResult {
   problems: string[];
   output: string;
   warnings: string[];
+  /** Which look went into which slot, for the saber record once installed. */
+  manifest: Omit<FirmwareManifest, 'os' | 'at'> | null;
+  os: string;
 }
 
 export interface UsbState {
@@ -100,6 +109,14 @@ export interface HiltwrightApi {
     upsert(input: { identity: SaberIdentity; presets: PresetRecord[]; fonts: string[]; tracks: string[]; name?: string }): Promise<SaberRecord>;
     rename(id: string, name: string): Promise<SaberRecord>;
     remove(id: string): Promise<void>;
+    /** Store the build model and/or firmware manifest for a saber. `null` clears a field. */
+    update(id: string, patch: SaberPatch): Promise<SaberRecord>;
+  };
+  /** Pasted looks, shared across sabers, in userData/looks.json. */
+  looks: {
+    list(): Promise<LookDef[]>;
+    add(look: LookDef): Promise<LookDef[]>;
+    remove(id: string): Promise<LookDef[]>;
   };
   snapshots: {
     list(saberId: string): Promise<SnapshotMeta[]>;

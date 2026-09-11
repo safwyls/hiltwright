@@ -23,7 +23,8 @@ export function parseVersion(lines: string[]): VersionInfo | null {
   const v = /v(\d+)\.(\d+)/.exec(info.version);
   if (v) info.major = Number(v[1]);
   // OS 8 source ships with a git keyword as its version string ("$Id: <sha> $"); show the short hash instead.
-  const id = /^\$Id:\s*([0-9a-f]{7})[0-9a-f]*\s*\$$/.exec(info.version);
+  // A status line printed without its newline ("I2C sleep") can be glued in front of it; take the keyword wherever it sits.
+  const id = /\$Id:\s*([0-9a-f]{7})[0-9a-f]*\s*\$$/.exec(info.version);
   if (id) info.version = `git-${id[1]}`;
   for (const l of ls.slice(start + 1)) {
     let m: RegExpExecArray | null;

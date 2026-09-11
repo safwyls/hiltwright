@@ -2,7 +2,8 @@
 // current preset and only shown as saved once the saber reads it back. Snapshots live on disk per saber.
 
 import { useEffect, useState } from 'react';
-import { formatBuiltin, parseBuiltin, type PresetRecord } from '@hiltwright/core';
+import type { PresetRecord } from '@hiltwright/core';
+import { LookRows } from './LookRows';
 import type { Board } from './board';
 import { Icon } from './Icon';
 
@@ -20,7 +21,7 @@ function when(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-export function Presets({ board }: { board: Board }) {
+export function Presets({ board, onLooks }: { board: Board; onLooks: () => void }) {
   const { info, status, save, busy, snapshots, saber } = board;
   const connected = status === 'connected' && !!info;
   const current = info && info.currentPreset != null ? info.presets[info.currentPreset] : null;
@@ -42,21 +43,6 @@ export function Presets({ board }: { board: Board }) {
   const trackChoices = [...new Set(['', ...info.tracks, ...(current ? [current.track] : [])])];
   const cf = current ? splitFont(current.font) : { folder: '', common: true };
 
-  /** Looks available for blade slot `blade` (1-based): the style compiled into that slot of every preset. */
-  const lookChoices = (blade: number, currentStyle: string) => {
-    const seen = new Set<string>();
-    const out: { value: string; label: string }[] = [];
-    info.presets.forEach((p, pi) => {
-      const b = parseBuiltin(p.styles[blade - 1] ?? '');
-      if (!b) return;
-      const key = `${b.preset} ${b.blade}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      out.push({ value: formatBuiltin({ preset: b.preset, blade: b.blade, args: null }), label: `Look ${b.preset + 1}.${b.blade} · from "${info.presets[b.preset]?.name.replace('\n', ' ') ?? `preset ${pi + 1}`}"` });
-    });
-    if (!out.some((o) => o.value === currentStyle) && currentStyle) out.push({ value: currentStyle, label: currentStyle });
-    return out;
-  };
 
   return (
     <>
@@ -120,29 +106,7 @@ export function Presets({ board }: { board: Board }) {
                 </label>
               </form>
 
-              <div className="col" style={{ gap: 6 }}>
-                <div className="row between"><h2 style={{ fontSize: 10.5, color: 'var(--dim)' }}>Look per blade</h2><span className="hint">Any look compiled into this firmware, per blade slot.</span></div>
-                {current.styles.map((s, k) => {
-                  const b = parseBuiltin(s);
-                  const value = b ? formatBuiltin({ ...b, args: null }) : s;
-                  const choices = lookChoices(k + 1, value);
-                  return (
-                    <div key={k} className="row" style={{ gap: 12, minHeight: 40 }}>
-                      <span className="mono mute" style={{ fontSize: 11, width: 12 }}>{k + 1}</span>
-                      <span style={{ width: 90, flex: 'none' }} className="small">Blade {k + 1}</span>
-                      <span className="input sans grow" style={{ height: 34 }}>
-                        <span className="ellip">{choices.find((c) => c.value === value)?.label ?? s}</span>
-                        {b?.args && <span className="mono mute" style={{ fontSize: 11 }}>args {b.args}</span>}
-                        <span className="caret"><Icon name="down" /></span>
-                        <select value={value} disabled={busy} aria-label={`Look for blade ${k + 1}`} onChange={(e) => void board.editPreset({ styles: { [k + 1]: b?.args ? `${e.target.value} ${b.args}` : e.target.value } }, `Blade ${k + 1} look`)}>
-                          {choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                        </select>
-                      </span>
-                    </div>
-                  );
-                })}
-                <span className="hint">Colour arguments stay as they are when you switch looks. Editing them needs the style's argument map, which comes with the style library.</span>
-              </div>
+              <LookRows board={board} current={current} onLooks={onLooks} />
 
               <div className="row" style={{ gap: 16 }}>
                 <span className="label">Variation</span><span className="mono small">{current.variation}</span>

@@ -78,7 +78,7 @@ export async function buildFirmware(opts: { toolchainRoot: string; saberId: stri
   const configPath = join(saberDir, `${opts.model.name}.h`);
   await mkdir(saberDir, { recursive: true });
   await writeFile(configPath, gen.text, 'utf8');
-  const base = { configPath, configHash: gen.hash, flashBytes, warnings: gen.warnings };
+  const base = { configPath, configHash: gen.hash, flashBytes, warnings: gen.warnings, manifest: gen.manifest, os: PROFFIEOS_TAG };
   if (errors.length) return { ...base, ok: false, cached: false, ms: Date.now() - t0, dfuPath: null, textBytes: null, flashPct: null, problems: errors, output: '' };
 
   const cachedDfu = join(cacheDir, 'ProffieOS.ino.dfu');

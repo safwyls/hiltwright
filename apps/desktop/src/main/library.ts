@@ -4,7 +4,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { PresetRecord } from '@hiltwright/core';
-import type { SaberIdentity, SaberRecord } from '../shared/api';
+import type { SaberIdentity, SaberPatch, SaberRecord } from '../shared/api';
 
 interface LibraryFile { version: 1; sabers: SaberRecord[] }
 
@@ -74,6 +74,16 @@ export class Library {
     const rec = lib.sabers.find((s) => s.id === id);
     if (!rec) throw new Error(`Unknown saber ${id}`);
     rec.name = name.trim() || rec.name;
+    await this.persist();
+    return rec;
+  }
+
+  async update(id: string, patch: SaberPatch): Promise<SaberRecord> {
+    const lib = await this.load();
+    const rec = lib.sabers.find((s) => s.id === id);
+    if (!rec) throw new Error(`Unknown saber ${id}`);
+    if (patch.model !== undefined) { if (patch.model) rec.model = patch.model; else delete rec.model; }
+    if (patch.firmware !== undefined) { if (patch.firmware) rec.firmware = patch.firmware; else delete rec.firmware; }
     await this.persist();
     return rec;
   }

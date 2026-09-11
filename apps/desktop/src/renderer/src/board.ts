@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  BoardClient, deleteCurrentPreset, diffPreset, duplicateCurrentPreset, editCurrentPreset, isEmptyPatch, isPresetBlockEnd, listPresets,
+  BoardClient, deleteCurrentPreset, diffPreset, duplicateCurrentPreset, editCurrentPreset, formatBuiltin, isEmptyPatch, isPresetBlockEnd, listPresets, parseBuiltin,
   moveCurrentPreset, parseBattery, parseInteger, parseList, parsePresetBlocks, parseScanId, parseVersion, presetCommands, selectPreset, wasRejected,
   type ListResult, type PresetPatch, type PresetRecord, type Response, type VersionInfo,
 } from '@hiltwright/core';
-import type { SaberIdentity, SaberRecord, SnapshotMeta } from '../../shared/api';
+import type { SaberIdentity, SaberPatch, SaberRecord, SnapshotMeta } from '../../shared/api';
 import { PROFFIE_FILTER, WebSerialTransport, describePort, grantedProffiePorts } from './serial';
 
 export interface BoardInfo {
@@ -310,6 +310,15 @@ export function useBoard() {
     await editPreset(patch, `Restore "${meta.label}"`);
   }, [editPreset]);
 
+  /** Store the build model and/or firmware manifest on the current saber's record. */
+  const updateSaber = useCallback(async (patch: SaberPatch) => {
+    const s = saberRef.current;
+    if (!s) return;
+    const rec = await api().library.update(s.id, patch);
+    setSaber(rec);
+    await refreshLibrary();
+  }, [refreshLibrary]);
+
   const renameSaber = useCallback(async (name: string) => {
     const s = saberRef.current;
     if (!s) return;
@@ -333,6 +342,16 @@ export function useBoard() {
       steps.push(`set_font TeensySF;common → ok=${e1.ok} readbacks=${e1.readbacks} ms=${e1.ms} font=${e1.preset?.font}`);
       const e2 = await editCurrentPreset(c, { font: before });
       steps.push(`restore ${before} → ok=${e2.ok} readbacks=${e2.readbacks} ms=${e2.ms} font=${e2.preset?.font}`);
+      // Live colour argument on blade 1: base colour red, then back to the compiled default.
+      const style0 = sel.preset?.styles[0] ?? '';
+      const b0 = parseBuiltin(style0);
+      if (b0) {
+        const red = formatBuiltin({ preset: b0.preset, blade: b0.blade, args: '65535,0,0' });
+        const e3 = await editCurrentPreset(c, { styles: { 1: red } });
+        steps.push(`set_style1 "${red}" → ok=${e3.ok} readback style1=${e3.preset?.styles[0]}`);
+        const e4 = await editCurrentPreset(c, { styles: { 1: style0 } });
+        steps.push(`restore style1 "${style0}" → ok=${e4.ok} readback style1=${e4.preset?.styles[0]}`);
+      } else steps.push(`blade 1 style "${style0}" is not a builtin slot; colour test skipped`);
       const back = await selectPreset(c, original);
       steps.push(`select ${original} → index ${back.index}`);
       const all = await listPresets(c);
@@ -345,7 +364,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
+  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, updateSaber, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
 }
 
 export type Board = ReturnType<typeof useBoard>;

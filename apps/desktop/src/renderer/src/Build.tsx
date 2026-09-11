@@ -3,13 +3,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type BladeRole, type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
+import { DATA_PINS, POWER_PINS, draftModel, guessBlades, queuedLookIds } from './saberModel';
 import type { BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
 import type { Board } from './board';
 import { Icon } from './Icon';
 
 const api = () => window.hiltwright;
-const DATA_PINS = ['bladePin', 'blade2Pin', 'blade3Pin', 'blade4Pin'];
-const POWER_PINS = ['bladePowerPin1', 'bladePowerPin2', 'bladePowerPin3', 'bladePowerPin4', 'bladePowerPin5', 'bladePowerPin6'];
 const ROLES: { value: BladeRole; label: string }[] = [
   { value: 'main', label: 'Main blade' }, { value: 'crystal', label: 'Crystal chamber' }, { value: 'accent', label: 'Accent' }, { value: 'side', label: 'Side blade' }, { value: 'motor', label: 'Motor' },
 ];
@@ -18,16 +17,6 @@ const PROPS: { value: Prop; label: string }[] = [
 ];
 
 type Step = 'idle' | 'building' | 'built' | 'backup' | 'bootloader' | 'writing' | 'verifying' | 'done' | 'failed';
-
-/** First guess at wiring from what the board reported. Every pin here is a guess the owner must confirm. */
-function guessBlades(pixelBlades: number[]): ModelBlade[] {
-  return pixelBlades.map((px, i) => ({
-    id: `b${i + 1}`,
-    role: i === 0 ? 'main' : px <= 8 ? (i === 1 ? 'crystal' : 'accent') : 'side',
-    type: 'pixel', pixels: px, order: 'GRB', extra: [], leds: [], parallel: 1,
-    wiring: { kind: 'own', dataPin: DATA_PINS[Math.min(i, 3)], powerPins: i === 0 ? ['bladePowerPin2', 'bladePowerPin3'] : [POWER_PINS[Math.min(3 + i, 5)]] },
-  }));
-}
 
 export function Build({ board }: { board: Board }) {
   const { status } = board;
@@ -40,7 +29,7 @@ export function Build({ board }: { board: Board }) {
   const [installing, setInstalling] = useState(false);
   const [blades, setBlades] = useState<ModelBlade[]>([]);
   const [prop, setProp] = useState<Prop>('fett263');
-  const [confirmedWiring, setConfirmedWiring] = useState(false);
+  const [confirmedWiring, setConfirmedWiring] = useState(!!saber?.model);
   const [preview, setPreview] = useState<{ text: string; hash: string; warnings: string[]; errors: string[] } | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [log, setLog] = useState<JobEvent[]>([]);
@@ -64,24 +53,14 @@ export function Build({ board }: { board: Board }) {
   useEffect(() => { void api().toolchain.status().then(setTool); }, []);
   useEffect(() => api().onJobEvent((e) => setLog((l) => [...l, e].slice(-300))), []);
   useEffect(() => {
-    if (info && !blades.length) setBlades(guessBlades(info.pixelBlades.length ? info.pixelBlades : [132]));
-  }, [info, blades.length]);
+    if (info && !blades.length) { setBlades(saber?.model?.blades ?? guessBlades(info.pixelBlades.length ? info.pixelBlades : [132])); if (saber?.model) { setProp(saber.model.prop); setConfirmedWiring(true); } }
+  }, [info, saber, blades.length]);
   useEffect(() => {
     if (step === 'building' || step === 'writing' || step === 'backup') { const t = setInterval(() => setElapsed((e) => e + 1), 1000); return () => clearInterval(t); }
   }, [step]);
 
-  const model = useMemo<SaberConfigModel | null>(() => {
-    if (!info || !saber || !blades.length) return null;
-    return {
-      name: `hiltwright_${saber.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`,
-      board: /v3/i.test(saber.identity.version ?? '') ? 'V3' : 'V2',
-      buttons: (info.version?.buttons === 1 || info.version?.buttons === 3 ? info.version.buttons : 2) as 1 | 2 | 3,
-      prop,
-      blades,
-      presets: info.presets.map((p) => ({ font: p.font, track: p.track, name: p.name })),
-      generator: `hiltwright ${window.hiltwright.appVersion}`,
-    };
-  }, [info, saber, blades, prop]);
+  const model = useMemo<SaberConfigModel | null>(() => (info && saber && blades.length ? draftModel(info, saber, { blades, prop }) : null), [info, saber, blades, prop]);
+  const queuedLooks = queuedLookIds(model ?? undefined, saber?.firmware);
 
   useEffect(() => { if (model) void api().build.preview(model).then(setPreview); }, [model]);
 
@@ -130,11 +109,12 @@ export function Build({ board }: { board: Board }) {
       await board.connect(false);
       setStep('done');
       setNote({ tone: 'green', text: `Installed. Backup of the previous firmware: ${bak.file}` });
+      if (model && result.manifest) await board.updateSaber({ model, firmware: { ...result.manifest, os: result.os, at: new Date().toISOString() } });
     } catch (err) {
       setStep('failed');
       setNote({ tone: 'red', text: String(err) });
     }
-  }, [result, saber, board]);
+  }, [result, saber, board, model]);
 
   // Dev aid: main calls this to run a compile-only pass against the connected board.
   useEffect(() => {
@@ -188,7 +168,7 @@ export function Build({ board }: { board: Board }) {
             ))}
             <div className="row wrap" style={{ gap: 14 }}>
               <label className="field" style={{ width: 300 }}><span className="label">Button behaviour</span><span className="input sans"><span className="ellip">{PROPS.find((p) => p.value === prop)?.label}</span><span className="caret"><Icon name="down" /></span><select value={prop} disabled={busy} aria-label="Button behaviour" onChange={(e) => setProp(e.target.value as Prop)}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></span></label>
-              <span className="hint">Board: Proffieboard {model?.board} · {model?.buttons} buttons · {info.presets.length} presets carried over</span>
+              <span className="hint">Board: Proffieboard {model?.board} · {model?.buttons} buttons · {info.presets.length} presets carried over{queuedLooks.length ? ` · ${queuedLooks.length} look${queuedLooks.length === 1 ? '' : 's'} to compile` : ''}</span>
             </div>
             <label className="row" style={{ gap: 10, fontSize: 13, color: 'var(--dim)' }}>
               <button type="button" className={`tog ${confirmedWiring ? 'on' : ''}`} role="switch" aria-checked={confirmedWiring} disabled={busy} onClick={() => setConfirmedWiring(!confirmedWiring)}><i /></button>

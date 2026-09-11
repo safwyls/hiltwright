@@ -10,6 +10,12 @@ const api: HiltwrightApi = {
     upsert: (input) => ipcRenderer.invoke('library:upsert', input),
     rename: (id, name) => ipcRenderer.invoke('library:rename', id, name),
     remove: (id) => ipcRenderer.invoke('library:remove', id),
+    update: (id, patch) => ipcRenderer.invoke('library:update', id, patch),
+  },
+  looks: {
+    list: () => ipcRenderer.invoke('looks:list'),
+    add: (look) => ipcRenderer.invoke('looks:add', look),
+    remove: (id) => ipcRenderer.invoke('looks:remove', id),
   },
   snapshots: {
     list: (saberId) => ipcRenderer.invoke('snapshots:list', saberId),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SaberConfigModel } from '@hiltwright/core';
+import { analyzeStyleCode, type LookDef, type SaberConfigModel } from '@hiltwright/core';
 import { buildFirmware, translateErrors } from '../src/main/build';
 import { toolchainStatus } from '../src/main/toolchain';
 
@@ -14,9 +14,24 @@ const hote2: SaberConfigModel = {
   ],
   presets: [
     { font: 'Mara Jade Skywalker;common', track: 'Mara Jade Skywalker/tracks/The_Force.wav', name: 'Mara Jade Skywalker' },
-    { font: 'Valkyrie;common', track: 'Valkyrie/tracks/battle_cry.wav', name: 'Valkyrie' },
+    { font: 'Valkyrie;common', track: 'Valkyrie/tracks/battle_cry.wav', name: 'Valkyrie', looks: ['ember', null, null] },
   ],
+  looks: [ember()],
 };
+
+/** A pasted library-style look, to prove inline emission into a preset slot compiles. */
+function ember(): LookDef {
+  const code = `// Fett263 Style Library
+// Copyright 2020-2024 Fernando da Rosa
+// Base Style: Fire Blade
+StylePtr<Layers<
+  StyleFire<RgbArg<BASE_COLOR_ARG, Rgb<255,0,0>>,RgbArg<ALT_COLOR_ARG, Rgb<255,255,0>>,0,6,FireConfig<10,1000,2>,FireConfig<2,1000,5>,FireConfig<0,0,10>,FireConfig<0,0,10>>,
+  TransitionEffectL<TrConcat<TrInstant,AlphaL<White,Bump<Int<16384>,Int<16000>>>,TrFade<300>>,EFFECT_CLASH>,
+  LockupTrL<AudioFlicker<RgbArg<LOCKUP_COLOR_ARG, Rgb<255,255,255>>,RgbArg<BASE_COLOR_ARG, Rgb<255,0,0>>>,TrInstant,TrFade<200>,SaberBase::LOCKUP_NORMAL>,
+  InOutTrL<TrWipeX<IgnitionTime<300>>,TrWipeInX<RetractionTime<0>>>>>()`;
+  const a = analyzeStyleCode(code);
+  return { id: 'ember', name: 'Ember', source: 'pasted', by: 'Fett263', code: a.expression, header: a.header, roles: ['main'], args: a.args, preview: a.preview, defaults: a.defaults, description: 'fire' };
+}
 
 describe('translateErrors', () => {
   it('turns compiler output into owner language', () => {
@@ -38,6 +53,7 @@ describe.skipIf(!root)('buildFirmware with a real toolchain', () => {
     const r = await buildFirmware({ toolchainRoot: root!, saberId: 'test-hote2', model: hote2, onLine: (l) => lines.push(l), force: true });
     if (!r.ok) console.log(r.problems, r.output.slice(0, 4000));
     expect(r.ok).toBe(true);
+    expect(r.manifest?.presets[1].looks).toEqual(['ember', 'hw_accent', 'hw_accent']);
     expect(r.dfuPath).toMatch(/\.dfu$/);
     expect(r.textBytes).toBeGreaterThan(150000);
     expect(r.flashPct).toBeLessThan(100);

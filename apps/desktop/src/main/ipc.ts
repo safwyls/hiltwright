@@ -4,6 +4,8 @@ import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
 import { join, resolve } from 'node:path';
 import { generateConfig, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
+import { LooksStore, looksPath } from './looksStore';
+import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
 import { proffieSerials } from './usb';
 import { checkFontDir, copyFont, listFonts, listTracks, locateCards } from './sd';
@@ -11,6 +13,7 @@ import { installToolchain, toolchainStatus } from './toolchain';
 import { buildFirmware } from './build';
 import { backupFlash, describeBootloader, usbState, waitFor, writeFirmware } from './flash';
 import type { JobEvent } from '../shared/api';
+import type { FirmwareManifest } from '@hiltwright/core';
 import type { SaberIdentity } from '../shared/api';
 
 function str(v: unknown, max = 200): string {
@@ -58,6 +61,41 @@ export function registerIpc(): void {
   });
   ipcMain.handle('library:rename', (_e, id: unknown, name: unknown) => library.rename(str(id, 40), str(name, 80)));
   ipcMain.handle('library:remove', (_e, id: unknown) => library.remove(str(id, 40)));
+  const hexMap = (v: unknown): Record<number, string> => {
+    const out: Record<number, string> = {};
+    if (v && typeof v === 'object') for (const [k, x] of Object.entries(v as Record<string, unknown>)) if (/^\d+$/.test(k) && /^#[0-9a-fA-F]{6}$/.test(String(x))) out[Number(k)] = String(x);
+    return out;
+  };
+  ipcMain.handle('library:update', (_e, id: unknown, patch: unknown) => {
+    const p = (patch ?? {}) as Record<string, unknown>;
+    const out: { model?: SaberConfigModel | null; firmware?: FirmwareManifest | null } = {};
+    if ('model' in p) out.model = p.model === null ? null : model(p.model);
+    if ('firmware' in p) {
+      if (p.firmware === null) out.firmware = null;
+      else {
+        const f = p.firmware as FirmwareManifest;
+        if (!f || typeof f !== 'object' || typeof f.hash !== 'string' || !Array.isArray(f.looks) || !Array.isArray(f.presets)) throw new Error('Expected a firmware manifest');
+        out.firmware = { hash: str(f.hash, 40), os: str(f.os ?? '', 40), at: str(f.at ?? new Date().toISOString(), 40), looks: f.looks.map((l) => ({ id: str(l.id, 80), name: str(l.name, 120), args: Array.isArray(l.args) ? l.args.map(Number).filter(Number.isFinite) : [], ...(l.defaults ? { defaults: hexMap(l.defaults) } : {}) })), presets: f.presets.map((x) => ({ name: str(x.name, 200), looks: Array.isArray(x.looks) ? x.looks.map((s) => str(s, 80)) : [] })) };
+      }
+    }
+    return library.update(str(id, 40), out);
+  });
+
+  const looksStore = new LooksStore(looksPath(userData));
+  const look = (v: unknown): LookDef => {
+    const l = v as LookDef;
+    if (!l || typeof l !== 'object' || !/^[A-Za-z_][A-Za-z0-9_]{0,60}$/.test(String(l.id)) || typeof l.code !== 'string') throw new Error('Expected a look');
+    return {
+      id: l.id, name: str(l.name, 120), source: 'pasted', by: str(l.by ?? '', 120), code: str(l.code, 200000), header: l.header == null ? null : str(l.header, 20000),
+      roles: Array.isArray(l.roles) ? l.roles.filter((r): r is LookDef['roles'][number] => ['main', 'crystal', 'accent', 'side', 'motor'].includes(String(r))) : ['main'],
+      args: Array.isArray(l.args) ? l.args.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n < 100) : [],
+      preview: /^#[0-9a-fA-F]{6}$/.test(String(l.preview)) ? l.preview : '#ffffff', description: str(l.description ?? '', 2000),
+      ...(l.defaults ? { defaults: hexMap(l.defaults) } : {}),
+    };
+  };
+  ipcMain.handle('looks:list', () => looksStore.list());
+  ipcMain.handle('looks:add', (_e, l: unknown) => looksStore.add(look(l)));
+  ipcMain.handle('looks:remove', (_e, id: unknown) => looksStore.remove(str(id, 80)));
 
   ipcMain.handle('snapshots:list', (_e, id: unknown) => snapshots.list(str(id, 40)));
   ipcMain.handle('snapshots:save', (_e, id: unknown, label: unknown, list: unknown) => snapshots.save(str(id, 40), str(label, 120), presets(list)));

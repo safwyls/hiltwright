@@ -6,6 +6,7 @@ import type { BladeSpec, PresetSource } from '../model';
 import { emitBladeExpr, emitPresetArray } from './emit';
 import { bladesToExprs, sharedPowerPins } from './blades';
 import { quote } from './cpp';
+import { STARTER_LOOKS, starterLookFor, type FirmwareManifest, type LookDef } from '../looks';
 
 export type Prop = 'fett263' | 'sa22c' | 'bc' | 'default';
 export type BoardModel = 'V2' | 'V3';
@@ -22,8 +23,13 @@ export interface SaberConfigModel {
   buttons: 1 | 2 | 3;
   prop: Prop;
   blades: ModelBlade[];
-  /** Presets to carry over. Styles inside are ignored; starter looks are assigned by blade role. */
-  presets: { font: string; track: string; name: string }[];
+  /**
+   * Presets to carry over. `looks` names the look compiled into each blade slot (index 0 = blade 1); a missing or
+   * null entry gets the starter look for that blade's role.
+   */
+  presets: { font: string; track: string; name: string; looks?: (string | null)[] }[];
+  /** Looks beyond the starters that presets may reference (pasted library styles). */
+  looks?: LookDef[];
   /** Extra `#define` lines the caller wants, verbatim without the `#define`. */
   extraDefines?: string[];
   /** Hiltwright version, written into the header. */
@@ -56,10 +62,16 @@ using HwMotor = Layers<
   InOutTrL<TrInstant, TrInstant>>;
 `;
 
-function styleFor(role: BladeRole): string {
-  if (role === 'motor') return 'StylePtr<HwMotor>()';
-  if (role === 'main' || role === 'side') return 'StylePtr<HwBlade>()';
-  return 'StylePtr<HwAccent>()';
+/** Every look the model can reference, starters first. */
+export function modelLooks(m: SaberConfigModel): LookDef[] {
+  return [...STARTER_LOOKS, ...(m.looks ?? []).filter((l) => !STARTER_LOOKS.some((s) => s.id === l.id))];
+}
+
+/** The look compiled into preset `pi`, blade `bi` (0-based): the chosen one, else the starter for the role. */
+export function lookForSlot(m: SaberConfigModel, pi: number, bi: number): LookDef {
+  const id = m.presets[pi]?.looks?.[bi];
+  const chosen = id ? modelLooks(m).find((l) => l.id === id) : null;
+  return chosen ?? starterLookFor(m.blades[bi]?.role ?? 'main');
 }
 
 /** Small stable hash for identity headers. Not cryptographic. */
@@ -90,10 +102,18 @@ export function validateModel(m: SaberConfigModel): string[] {
     if (b.wiring.kind === 'power' && !b.wiring.pins.length) errors.push(`${b.id}: needs a power pin.`);
   }
   for (const [pin, n] of dataPins) if (n > 1) errors.push(`${pin} is used by ${n} separate strips. Chain them or use different data pins.`);
+  const known = new Set(modelLooks(m).map((l) => l.id));
+  m.presets.forEach((p, pi) => (p.looks ?? []).forEach((id, bi) => { if (id && !known.has(id)) errors.push(`Preset ${pi + 1}, blade ${bi + 1}: unknown look "${id}".`); }));
+  for (const l of m.looks ?? []) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(l.id)) errors.push(`Look id "${l.id}" must be letters, digits and underscores.`);
+    if (!l.code.trim()) errors.push(`Look "${l.name}" has no style code.`);
+  }
   return errors;
 }
 
-export function generateConfig(m: SaberConfigModel): { text: string; hash: string; sharedPower: string[]; warnings: string[] } {
+export interface GeneratedConfig { text: string; hash: string; sharedPower: string[]; warnings: string[]; manifest: Omit<FirmwareManifest, 'os' | 'at'> }
+
+export function generateConfig(m: SaberConfigModel): GeneratedConfig {
   const warnings: string[] = [];
   const shared = sharedPowerPins(m.blades);
   const maxLeds = Math.max(144, ...m.blades.filter((b) => b.type === 'pixel').map((b) => b.pixels));
@@ -115,10 +135,18 @@ export function generateConfig(m: SaberConfigModel): { text: string; hash: strin
   if (shared.length) defines.push('SHARED_POWER_PINS');
   if (m.extraDefines) defines.push(...m.extraDefines);
 
-  const presets = m.presets.map((p): PresetSource => ({
+  const slotLooks = m.presets.map((_p, pi) => m.blades.map((_b, bi) => lookForSlot(m, pi, bi)));
+  const presets = m.presets.map((p, pi): PresetSource => ({
     font: p.font, track: p.track, name: p.name,
-    styles: m.blades.map((b) => ({ kind: 'raw', code: styleFor(b.role) })),
+    styles: slotLooks[pi].map((l) => ({ kind: 'raw', code: l.source === 'starter' ? l.code : `/* ${l.name} */ ${l.code}` })),
   }));
+  const usedLooks = modelLooks(m).filter((l) => slotLooks.some((row) => row.some((x) => x.id === l.id)));
+  const pastedHeaders = usedLooks.filter((l) => l.source !== 'starter' && l.header).map((l) => `// Look "${l.name}" (${l.by}):\n${l.header}`);
+  const manifest: GeneratedConfig['manifest'] = {
+    hash: '',
+    looks: usedLooks.map((l) => ({ id: l.id, name: l.name, args: l.args, ...(l.defaults ? { defaults: l.defaults } : {}) })),
+    presets: slotLooks.map((row, pi) => ({ name: m.presets[pi].name, looks: row.map((l) => l.id) })),
+  };
 
   const bladeRows = bladesToExprs(m.blades).map(emitBladeExpr);
   const summary = {
@@ -126,6 +154,7 @@ export function generateConfig(m: SaberConfigModel): { text: string; hash: strin
     name: m.name, board: m.board, buttons: m.buttons, prop: m.prop,
     blades: m.blades.map((b) => ({ role: b.role, type: b.type, pixels: b.pixels, wiring: b.wiring })),
     presets: m.presets.length,
+    looks: manifest.looks.map((l) => l.id),
   };
   const body = [
     '#ifdef CONFIG_TOP',
@@ -140,6 +169,7 @@ export function generateConfig(m: SaberConfigModel): { text: string; hash: strin
     '',
     '#ifdef CONFIG_STYLES',
     STARTER_STYLES.trimEnd(),
+    ...(pastedHeaders.length ? ['', '// Library looks compiled into this saber. Their headers stay with them.', ...pastedHeaders] : []),
     '#endif',
     '',
     '#ifdef CONFIG_PRESETS',
@@ -166,7 +196,8 @@ export function generateConfig(m: SaberConfigModel): { text: string; hash: strin
     '',
   ].join('\n');
   if (shared.length) warnings.push(`Power ${shared.length > 1 ? 'pins' : 'pin'} ${shared.join(', ')} shared between blades: SHARED_POWER_PINS added.`);
-  return { text: header + body, hash, sharedPower: shared, warnings };
+  manifest.hash = hash;
+  return { text: header + body, hash, sharedPower: shared, warnings, manifest };
 }
 
 /** Recover the summary a generated config carries in its header. */
