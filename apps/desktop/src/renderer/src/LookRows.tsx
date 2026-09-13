@@ -2,13 +2,34 @@
 // Names and argument maps come from the firmware manifest Hiltwright stored when it installed; on vendor
 // firmware only the compiled slots are known, so looks are offered by slot and colours stay read-only.
 
+import { useEffect, useRef, useState } from 'react';
 import { argInfo, colorWordToHex, formatBuiltin, formatStyleArgs, hexToColorWord, lookAtSlot, lookSlots, parseBuiltin, parseStyleArgs, type PresetRecord } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
 
+/** Colour pickers fire on every drag step; the saber rewrites a 256 KB file per write, so only the settled value goes out. */
+const SETTLE_MS = 450;
+
 export function LookRows({ board, current, onLooks }: { board: Board; current: PresetRecord; onLooks: () => void }) {
   const { info, busy, saber } = board;
   const manifest = saber?.firmware ?? null;
+  // Pending picker values per "blade:arg", shown at once and written when the picker settles and the board is free.
+  const [pending, setPending] = useState<Record<string, string>>({});
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  useEffect(() => () => { for (const t of Object.values(timers.current)) clearTimeout(t); }, []);
+  const schedule = (key: string, hex: string, commit: (hex: string) => void) => {
+    setPending((p) => ({ ...p, [key]: hex }));
+    clearTimeout(timers.current[key]);
+    const fire = () => {
+      if (busyRef.current) { timers.current[key] = setTimeout(fire, 200); return; }
+      delete timers.current[key];
+      setPending((p) => { const { [key]: _drop, ...rest } = p; return rest; });
+      commit(hex);
+    };
+    timers.current[key] = setTimeout(fire, SETTLE_MS);
+  };
   if (!info) return null;
 
   /** Choices for blade slot `blade` (1-based). With a manifest: one per look; otherwise one per compiled slot. */
@@ -73,13 +94,14 @@ export function LookRows({ board, current, onLooks }: { board: Board; current: P
                   const word = args.get(n);
                   if (a.kind === 'color') {
                     const set = word ? colorWordToHex(word) : null;
-                    const shown = set ?? look.defaults?.[n] ?? '#808080';
+                    const key = `${k}:${n}`;
+                    const shown = pending[key] ?? set ?? look.defaults?.[n] ?? '#808080';
                     return (
                       <span key={n} className="row" style={{ gap: 4 }}>
-                        <label className={`swatch ${set ? '' : 'linked'}`} style={{ width: 'auto', height: 32, paddingRight: 12 }} title={set ? `${a.name} · argument ${n}` : `${a.name} · compiled default · argument ${n}`}>
+                        <label className={`swatch ${set || pending[key] ? '' : 'linked'}`} style={{ width: 'auto', height: 32, paddingRight: 12 }} title={set ? `${a.name} · argument ${n}` : `${a.name} · compiled default · argument ${n}`}>
                           <span className="sq" style={{ width: 16, height: 16, background: shown, boxShadow: `0 0 8px ${shown}` }} />
-                          <span className="small" style={{ whiteSpace: 'nowrap' }}>{a.name}{set ? '' : <span className="mute"> · default</span>}</span>
-                          <input type="color" value={shown} disabled={busy} aria-label={`${a.name} for blade ${k + 1}`} onChange={(e) => { const m = new Map(args); m.set(n, hexToColorWord(e.target.value)); write(m, `${a.name} → ${e.target.value}`); }} />
+                          <span className="small" style={{ whiteSpace: 'nowrap' }}>{a.name}{pending[key] ? <span className="mute"> · …</span> : set ? '' : <span className="mute"> · default</span>}</span>
+                          <input type="color" value={shown} aria-label={`${a.name} for blade ${k + 1}`} onChange={(e) => schedule(key, e.target.value, (hex) => { const m = new Map(args); m.set(n, hexToColorWord(hex)); write(m, `${a.name} → ${hex}`); })} />
                         </label>
                         {set && <button type="button" className="chip" disabled={busy} aria-label={`Reset ${a.name} to the compiled default`} title="Back to the compiled default" onClick={() => { const m = new Map(args); m.delete(n); write(m, `${a.name} → default`); }}><Icon name="undo" /></button>}
                       </span>

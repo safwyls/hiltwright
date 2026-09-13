@@ -72,8 +72,17 @@ function matches(p: PresetRecord, patch: PresetPatch): boolean {
   return true;
 }
 
+export interface EditOptions {
+  /**
+   * `set_styleN` only stores the string and saves the file; the running style keeps its old arguments until the
+   * preset is loaded again. Pass the current preset's index to re-select it after a verified style write so the
+   * change is visible on the blade at once (about a second; the board re-scans the font).
+   */
+  applyIndex?: number;
+}
+
 /** Apply a patch to the board's *current* preset. Silence is not success: the result is what the read-back says. */
-export async function editCurrentPreset(client: BoardClient, patch: PresetPatch, now: () => number = () => Date.now()): Promise<EditResult> {
+export async function editCurrentPreset(client: BoardClient, patch: PresetPatch, now: () => number = () => Date.now(), opts: EditOptions = {}): Promise<EditResult> {
   const started = now();
   const cmds: string[] = [];
   if (patch.font !== undefined) cmds.push(presetCommands.setFont(patch.font));
@@ -87,7 +96,10 @@ export async function editCurrentPreset(client: BoardClient, patch: PresetPatch,
   for (let i = 0; i < 3; i++) {
     const r = await readCurrentPreset(client, 1);
     readbacks += r.readbacks;
-    if (r.preset && matches(r.preset, patch)) return { ok: true, preset: r.preset, readbacks, ms: now() - started };
+    if (r.preset && matches(r.preset, patch)) {
+      if (patch.styles && opts.applyIndex != null) await client.send(presetCommands.select(opts.applyIndex), { idleMs: 1200, timeoutMs: 12000 });
+      return { ok: true, preset: r.preset, readbacks, ms: now() - started };
+    }
     if (r.preset && i === 2) return { ok: false, preset: r.preset, readbacks, ms: now() - started, error: 'The saber reports different values than were written.' };
   }
   return { ok: false, preset: null, readbacks, ms: now() - started, error: 'The saber did not confirm the change.' };

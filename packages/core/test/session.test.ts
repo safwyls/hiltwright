@@ -27,11 +27,12 @@ class FakeBoard implements Transport {
   private cb: ((chunk: string) => void) | null = null;
   sent: string[] = [];
   font = 'GeneralPrincess;common';
+  style1 = 'builtin 2 1';
   saveDelay = 1200;
   private pendingSave: number | null = null;
   constructor(private timers: FakeTimers) {}
   private emit(text: string, delay = 10) { this.timers.after(delay, () => this.cb?.(text)); }
-  private block() { return `FONT=${this.font}\nTRACK=tracks/General.wav\nSTYLE1=builtin 2 1\nSTYLE2=builtin 2 2\nSTYLE3=builtin 2 3\nSTYLE4=builtin 2 4\nNAME=Preset: 3\nVARIATION=0\n`; }
+  private block() { return `FONT=${this.font}\nTRACK=tracks/General.wav\nSTYLE1=${this.style1}\nSTYLE2=builtin 2 2\nSTYLE3=builtin 2 3\nSTYLE4=builtin 2 4\nNAME=Preset: 3\nVARIATION=0\n`; }
   write(text: string) {
     const cmd = text.trim();
     this.sent.push(cmd);
@@ -39,6 +40,12 @@ class FakeBoard implements Transport {
       this.font = cmd.slice(9);
       this.pendingSave = this.timers.now + this.saveDelay; // nothing is printed now
       this.emit('Creating file presets.tmp iteration = 2\r\n', this.saveDelay);
+      return;
+    }
+    if (cmd.startsWith('set_style1 ')) {
+      this.style1 = cmd.slice(11);
+      this.pendingSave = this.timers.now + this.saveDelay;
+      this.emit('Creating file presets.tmp iteration = 3\r\n', this.saveDelay);
       return;
     }
     if (cmd === 'show_current_preset') {
@@ -85,6 +92,21 @@ describe('editCurrentPreset', () => {
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/did not confirm/);
     expect(r.readbacks).toBe(3);
+  });
+
+  it('a verified style write is re-applied by re-selecting the preset when asked', async () => {
+    const { timers, board, client } = setup();
+    const p = editCurrentPreset(client, { styles: { 1: 'builtin 2 1 65535,0,0' } }, () => timers.now, { applyIndex: 2 });
+    await timers.run(20000);
+    const r = await p;
+    expect(r.ok).toBe(true);
+    expect(r.preset?.styles[0]).toBe('builtin 2 1 65535,0,0');
+    expect(board.sent).toEqual(['set_style1 builtin 2 1 65535,0,0', 'show_current_preset', 'set_preset 2']);
+    // A font-only patch is never re-selected, even with applyIndex.
+    const q = editCurrentPreset(client, { font: 'TeensySF;common' }, () => timers.now, { applyIndex: 2 });
+    await timers.run(40000);
+    await q;
+    expect(board.sent.slice(3)).toEqual(['set_font TeensySF;common', 'show_current_preset']);
   });
 
   it('a patch with nothing in it sends nothing', async () => {

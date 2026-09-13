@@ -280,7 +280,9 @@ export function useBoard() {
     if (!i || i.currentPreset == null || isEmptyPatch(patch)) return Promise.resolve();
     const index = i.currentPreset;
     return run(label, async (c) => {
-      const r = await editCurrentPreset(c, patch);
+      // Style writes are re-applied by re-selecting the preset, otherwise the blade keeps the old colours until
+      // the next preset change.
+      const r = await editCurrentPreset(c, patch, undefined, patch.styles ? { applyIndex: index } : {});
       if (r.preset) replacePreset(index, r.preset);
       return r;
     });
@@ -347,9 +349,9 @@ export function useBoard() {
       const b0 = parseBuiltin(style0);
       if (b0) {
         const red = formatBuiltin({ preset: b0.preset, blade: b0.blade, args: '65535,0,0' });
-        const e3 = await editCurrentPreset(c, { styles: { 1: red } });
-        steps.push(`set_style1 "${red}" → ok=${e3.ok} readback style1=${e3.preset?.styles[0]}`);
-        const e4 = await editCurrentPreset(c, { styles: { 1: style0 } });
+        const e3 = await editCurrentPreset(c, { styles: { 1: red } }, undefined, { applyIndex: 2 });
+        steps.push(`set_style1 "${red}" → ok=${e3.ok} readback style1=${e3.preset?.styles[0]} (re-applied with set_preset 2)`);
+        const e4 = await editCurrentPreset(c, { styles: { 1: style0 } }, undefined, { applyIndex: 2 });
         steps.push(`restore style1 "${style0}" → ok=${e4.ok} readback style1=${e4.preset?.styles[0]}`);
       } else steps.push(`blade 1 style "${style0}" is not a builtin slot; colour test skipped`);
       const back = await selectPreset(c, original);
