@@ -2,16 +2,14 @@
 // Wiring form (the one thing old firmware cannot tell us) → generated config → build → backup → bootloader → write → verify.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { type BladeRole, type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
-import { DATA_PINS, POWER_PINS, draftModel, guessBlades, queuedLookIds } from './saberModel';
+import { type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
+import { draftModel, guessBlades, queuedLookIds } from './saberModel';
+import { HardwareEditor } from './Hardware';
 import type { BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
 import type { Board } from './board';
 import { Icon } from './Icon';
 
 const api = () => window.hiltwright;
-const ROLES: { value: BladeRole; label: string }[] = [
-  { value: 'main', label: 'Main blade' }, { value: 'crystal', label: 'Crystal chamber' }, { value: 'accent', label: 'Accent' }, { value: 'side', label: 'Side blade' }, { value: 'motor', label: 'Motor' },
-];
 const PROPS: { value: Prop; label: string }[] = [
   { value: 'fett263', label: 'Fett263 · edit mode, gestures' }, { value: 'sa22c', label: 'SA22C' }, { value: 'bc', label: 'BC' }, { value: 'default', label: 'ProffieOS default' },
 ];
@@ -66,8 +64,6 @@ export function Build({ board }: { board: Board }) {
 
   useEffect(() => { if (model) void api().build.preview(model).then(setPreview); }, [model]);
 
-  const update = (i: number, patch: Partial<ModelBlade>) => { setBlades((b) => b.map((x, k) => (k === i ? { ...x, ...patch } : x))); setConfirmedWiring(false); setResult(null); setStep('idle'); };
-  const setWiring = (i: number, w: ModelBlade['wiring']) => update(i, { wiring: w });
 
   const [installError, setInstallError] = useState<string | null>(null);
   const [installStarted, setInstallStarted] = useState<number | null>(null);
@@ -216,25 +212,12 @@ export function Build({ board }: { board: Board }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 420px', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
         <section className="panel amber" aria-label="Wiring">
           <div className="ph"><h2>1 · Wiring</h2>{confirmedWiring ? <span className="chip ok"><Icon name="check" />Confirmed</span> : <span className="chip warn"><Icon name="warn" />Guessed from the board</span>}</div>
           <div className="pb col" style={{ gap: 12 }}>
             <div className="note amber"><Icon name="warn" /><span>The saber reported {info.pixelBlades.length} pixel blade{info.pixelBlades.length === 1 ? '' : 's'} ({info.pixelBlades.join(', ')} px) but old firmware cannot say which pins they use. Check every pin against your installer's diagram. Wrong power pins can damage hardware.</span></div>
-            {blades.map((b, i) => (
-              <div key={b.id} className="row wrap" style={{ gap: 10, padding: '10px 12px', border: '1px solid var(--line)', background: '#0b1016' }}>
-                <span className="mono mute" style={{ fontSize: 11, width: 14 }}>{i + 1}</span>
-                <span className="input sans" style={{ width: 170, height: 34 }}><span className="ellip">{ROLES.find((r) => r.value === b.role)?.label}</span><span className="caret"><Icon name="down" /></span>
-                  <select value={b.role} disabled={busy} aria-label={`Blade ${i + 1} role`} onChange={(e) => update(i, { role: e.target.value as BladeRole })}>{ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select></span>
-                <span className="mono small" style={{ width: 60 }}>{b.pixels} px</span>
-                <span className="input" style={{ width: 130, height: 34 }}><span className="ellip">{b.wiring.kind === 'own' ? b.wiring.dataPin : 'chained'}</span><span className="caret"><Icon name="down" /></span>
-                  <select value={b.wiring.kind === 'own' ? b.wiring.dataPin : ''} disabled={busy} aria-label={`Blade ${i + 1} data pin`} onChange={(e) => setWiring(i, { kind: 'own', dataPin: e.target.value, powerPins: b.wiring.kind === 'own' ? b.wiring.powerPins : ['bladePowerPin4'] })}>{DATA_PINS.map((p) => <option key={p} value={p}>{p}</option>)}</select></span>
-                <span className="row wrap" style={{ gap: 4 }}>{POWER_PINS.map((p, k) => {
-                  const on = b.wiring.kind === 'own' && b.wiring.powerPins.includes(p);
-                  return <button key={p} type="button" className={`chip ${on ? 'sel' : ''}`} disabled={busy} aria-pressed={on} onClick={() => { if (b.wiring.kind !== 'own') return; const cur = b.wiring.powerPins; const next = on ? cur.filter((x) => x !== p) : [...cur, p].sort(); if (next.length) setWiring(i, { ...b.wiring, powerPins: next }); }}>LED {k + 1}</button>;
-                })}</span>
-              </div>
-            ))}
+            <HardwareEditor blades={blades} board={model?.board ?? 'V2'} detected={info.pixelBlades} locked={busy} onChange={(b) => { setBlades(b); setConfirmedWiring(false); setResult(null); setStep('idle'); }} />
             <div className="row wrap" style={{ gap: 14 }}>
               <label className="field" style={{ width: 300 }}><span className="label">Button behaviour</span><span className="input sans"><span className="ellip">{PROPS.find((p) => p.value === prop)?.label}</span><span className="caret"><Icon name="down" /></span><select value={prop} disabled={busy} aria-label="Button behaviour" onChange={(e) => setProp(e.target.value as Prop)}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></span></label>
               <span className="hint">Board: Proffieboard {model?.board} · {model?.buttons} buttons · {info.presets.length} presets carried over{queuedLooks.length ? ` · ${queuedLooks.length} look${queuedLooks.length === 1 ? '' : 's'} to compile` : ''}</span>
@@ -248,7 +231,6 @@ export function Build({ board }: { board: Board }) {
           </div>
         </section>
 
-        {setupPanel}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 420px', gap: 20, flex: 1, minHeight: 0 }}>
@@ -305,6 +287,8 @@ export function Build({ board }: { board: Board }) {
           </div>
         </section>
 
+        <div className="col" style={{ gap: 20, minHeight: 0, overflow: "auto" }}>
+          {setupPanel}
         <section className="panel" aria-label="What happens">
           <div className="ph"><h2>What happens</h2></div>
           <div className="list">
@@ -318,6 +302,7 @@ export function Build({ board }: { board: Board }) {
           </div>
           <div className="pb"><div className="note amber"><Icon name="warn" /><span>If the saber ever fails to show up after a reboot: hold BOOT, tap RESET, release BOOT, then press Install again. The backup can always be restored.</span></div></div>
         </section>
+        </div>
       </div>
     </>
   );

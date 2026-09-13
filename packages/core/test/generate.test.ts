@@ -70,3 +70,32 @@ describe('generateConfig', () => {
     expect(validateModel({ ...hote2, blades: [hote2.blades[0], { ...hote2.blades[1], wiring: { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin4'] } }] })[0]).toMatch(/bladePin is used by 2/);
   });
 });
+
+describe('generateConfig with every blade kind', () => {
+  it('emits a chained sub-blade, a single LED, a star LED and a motor, and parses back', () => {
+    const m: SaberConfigModel = {
+      name: 'hw_kinds', board: 'V3', buttons: 2, prop: 'sa22c',
+      blades: [
+        { id: 'b1', role: 'main', type: 'pixel', pixels: 132, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2', 'bladePowerPin3'] } },
+        { id: 'b2', role: 'crystal', type: 'pixel', pixels: 4, order: '', extra: [], leds: [], parallel: 1, wiring: { kind: 'chain', after: 'b1', reverse: true } },
+        { id: 'b3', role: 'accent', type: 'simple', pixels: 1, order: '', extra: [], leds: ['CreeXPE2WhiteTemplate<550>', 'NoLED', 'NoLED', 'NoLED'], parallel: 1, wiring: { kind: 'power', pins: ['blade5Pin'] } },
+        { id: 'b4', role: 'side', type: 'simple', pixels: 3, order: '', extra: [], leds: ['CreeXPE2RedTemplate<1000>', 'CreeXPE2GreenTemplate<0>', 'CreeXPE2BlueTemplate<240>', 'NoLED'], parallel: 1, wiring: { kind: 'power', pins: ['bladePowerPin4', 'bladePowerPin5', 'bladePowerPin6'] } },
+        { id: 'b5', role: 'motor', type: 'simple', pixels: 1, order: '', extra: [], leds: ['CreeXPE2WhiteTemplate<550>', 'NoLED', 'NoLED', 'NoLED'], parallel: 1, wiring: { kind: 'power', pins: ['bladePowerPin1'] } },
+      ],
+      presets: [{ font: 'A', track: '', name: 'One' }],
+    };
+    expect(validateModel(m)).toEqual([]);
+    const g = generateConfig(m);
+    expect(g.text).toContain('SubBlade(0, 131, WS281XBladePtr<136, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3> >())');
+    expect(g.text).toContain('SubBladeReverse(132, 135, NULL)');
+    expect(g.text).toContain('SimpleBladePtr<CreeXPE2WhiteTemplate<550>, NoLED, NoLED, NoLED, blade5Pin, -1, -1, -1>()');
+    expect(g.text).toContain('SimpleBladePtr<CreeXPE2RedTemplate<1000>, CreeXPE2GreenTemplate<0>, CreeXPE2BlueTemplate<240>, NoLED, bladePowerPin4, bladePowerPin5, bladePowerPin6, -1>()');
+    expect(g.text).toContain('StylePtr<HwMotor>()');
+    expect(g.manifest.presets[0].looks).toEqual(['hw_blade', 'hw_accent', 'hw_accent', 'hw_blade', 'hw_motor']);
+    const doc = parseConfig(g.text);
+    const blades = rowToBlades(bladeTables(doc)[0].rows[0]);
+    expect(blades.map((b) => b.type)).toEqual(['pixel', 'pixel', 'simple', 'simple', 'simple']);
+    expect(blades[1].wiring).toEqual({ kind: 'chain', after: 'b1', reverse: true });
+    expect(getDefine(doc, 'NUM_BLADES')).toBe('5');
+  });
+});
