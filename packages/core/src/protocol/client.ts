@@ -78,6 +78,7 @@ export class BoardClient {
   private current: Pending | null = null;
   private seq = 0;
   private tagged = false;
+  private closed = false;
   private readonly idleMs: number;
   private readonly timeoutMs: number;
   private readonly taggedTimeoutMs: number;
@@ -103,8 +104,19 @@ export class BoardClient {
     this.unsubscribe = transport.onData((chunk) => this.receive(chunk));
   }
 
+  /** Stop listening and end any command in flight (its kicks included) as timed out. */
   close(): void {
     this.unsubscribe();
+    this.closed = true;
+    this.current?.resolve(false);
+  }
+
+  /** Write to the transport; a failure (port gone) ends the current command instead of surfacing as an unhandled rejection. */
+  private out(text: string): void {
+    if (this.closed) return;
+    Promise.resolve()
+      .then(() => this.transport.write(text))
+      .catch((err) => { this.onEvent(`(write failed: ${String(err)})`); this.current?.resolve(false); });
   }
 
   /** Whether commands are being tagged (OS 8 framing). */
@@ -203,7 +215,7 @@ export class BoardClient {
         idleHandle = this.setTimer(() => finish(false), opts.idleMs);
       };
       const tag = useTags ? `h${++this.seq}` : explicit;
-      this.current = { command, tag, sentinel: useTags ? `${tag}x` : null, lines: [], events: [], sawTag: false, opts, resolve: () => finish(false), touch };
+      this.current = { command, tag, sentinel: useTags ? `${tag}x` : null, lines: [], events: [], sawTag: false, opts, resolve: (done) => finish(!done), touch };
       timeoutHandle = this.setTimer(() => finish(true), opts.timeoutMs);
       touch();
       // Kicks: while a tagged command has produced nothing (explicit tag) or no sentinel yet (auto tag), send a
@@ -215,14 +227,15 @@ export class BoardClient {
           const need = useTags || !this.current?.sawTag;
           if (need && sent < this.maxKicks) {
             sent++;
-            void this.transport.write(`k${++this.kicks}| hw_end\n`);
+            this.out(`k${++this.kicks}| hw_end\n`);
             this.onEvent(`(kick ${sent} for ${tag})`);
           }
           if (need) kickHandle = this.setTimer(kick, this.kickMs);
         };
         kickHandle = this.setTimer(kick, this.kickMs);
       }
-      void this.transport.write(useTags ? `${tag}| ${command}\n${tag}x| hw_end\n` : `${command}\n`);
+      if (this.closed) { finish(true); return; }
+      this.out(useTags ? `${tag}| ${command}\n${tag}x| hw_end\n` : `${command}\n`);
     });
     const next = this.queue.then(run, run);
     this.queue = next.then(() => undefined, () => undefined);

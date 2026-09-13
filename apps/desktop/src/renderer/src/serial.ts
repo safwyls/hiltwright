@@ -66,7 +66,7 @@ export class WebSerialTransport implements Transport {
   }
 
   async write(text: string): Promise<void> {
-    if (!this.writer) throw new Error('Port not open');
+    if (!this.writer || this.closed) throw new Error('Port closed');
     await this.writer.write(this.encoder.encode(text));
   }
 
@@ -79,6 +79,7 @@ export class WebSerialTransport implements Transport {
     this.closed = true;
     try { await this.reader?.cancel(); } catch { /* already closed */ }
     try { this.writer?.releaseLock(); } catch { /* already released */ }
+    this.writer = null;
     try { await this.port.close(); } catch { /* already closed */ }
   }
 }
