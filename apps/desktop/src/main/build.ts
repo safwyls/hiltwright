@@ -4,7 +4,7 @@
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { generateConfig, validateModel, type SaberConfigModel } from '@hiltwright/core';
+import { generateConfig, validateModel, type GeneratedConfig, type SaberConfigModel } from '@hiltwright/core';
 import { PROFFIEOS_TAG, cliEnv, run, toolchainPaths, type Progress, type ToolchainPaths } from './toolchain';
 
 export const FQBN: Record<'V2' | 'V3', string> = {
@@ -28,6 +28,10 @@ export interface BuildResult {
   /** Raw compiler output, for "Show output". */
   output: string;
   warnings: string[];
+  /** Which look went into which preset slot; stored on the saber once installed. */
+  manifest: GeneratedConfig['manifest'] | null;
+  /** ProffieOS tag the build used. */
+  os: string;
 }
 
 /** Turn compiler output into something a saber owner can act on. */

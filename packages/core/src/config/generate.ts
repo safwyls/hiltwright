@@ -127,7 +127,8 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     'ENABLE_WS2811',
     'ENABLE_SD',
     'SAVE_STATE',
-    'MOUNT_SD_SETTING',
+    // Not MOUNT_SD_SETTING: with it the Fett263 prop switches to its v2 sound library and demands a version 2
+    // voice pack on the SD, which most cards do not have. Hiltwright reaches the card through a reader anyway.
     'COLOR_CHANGE_DIRECT',
     'ENABLE_ALL_EDIT_OPTIONS',
   ];
@@ -196,6 +197,7 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     '',
   ].join('\n');
   if (shared.length) warnings.push(`Power ${shared.length > 1 ? 'pins' : 'pin'} ${shared.join(', ')} shared between blades: SHARED_POWER_PINS added.`);
+  if (m.prop === 'fett263') warnings.push('Fett263 button controls need the Fett263 Voice Pack in the common folder on the SD card, or the saber will announce "voice pack not found" on every preset change.');
   manifest.hash = hash;
   return { text: header + body, hash, sharedPower: shared, warnings, manifest };
 }

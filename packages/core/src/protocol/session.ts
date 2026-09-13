@@ -24,7 +24,9 @@ export interface EditResult {
   error?: string;
 }
 
-const READBACK_TIMEOUT = 6000;
+// A preset change on a Fett263 build can spend seconds scanning the new font and speaking an error before it
+// answers anything else; the read-back waits that out rather than declaring the write lost.
+const READBACK_TIMEOUT = 10000;
 
 /** Last complete preset block in a response. A delayed earlier block may precede it. */
 function lastBlock(r: Response): PresetRecord | null {
@@ -43,7 +45,7 @@ export async function currentPresetIndex(client: BoardClient): Promise<number | 
 }
 
 /** show_current_preset, tolerating the SD-write delay. Retries once when nothing complete came back. */
-export async function readCurrentPreset(client: BoardClient, attempts = 2): Promise<{ preset: PresetRecord | null; readbacks: number }> {
+export async function readCurrentPreset(client: BoardClient, attempts = 3): Promise<{ preset: PresetRecord | null; readbacks: number }> {
   let readbacks = 0;
   for (let i = 0; i < attempts; i++) {
     readbacks++;
@@ -56,7 +58,7 @@ export async function readCurrentPreset(client: BoardClient, attempts = 2): Prom
 
 /** Make preset `index` current on the board and return what the board says it is. */
 export async function selectPreset(client: BoardClient, index: number): Promise<{ preset: PresetRecord | null; index: number | null }> {
-  await client.send(presetCommands.select(index), { idleMs: 900, timeoutMs: 8000 });
+  await client.send(presetCommands.select(index), { idleMs: 1200, timeoutMs: 12000 });
   const cur = await currentPresetIndex(client);
   const { preset } = await readCurrentPreset(client);
   return { preset, index: cur };

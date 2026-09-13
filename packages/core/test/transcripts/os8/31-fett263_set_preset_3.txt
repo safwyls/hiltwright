@@ -1,0 +1,21 @@
+Saving Current Preset preset = 3 savedir = 
+Style RAM = 160
+Style RAM = 64
+Style RAM = 64
+Scanning sound font: FinalSteps
+ done
+Scanning sound font: common
+ done
+Activating polyphonic font.
+Activating SmoothSwing V2
+Accent Swings Enabled.
+Polyphonic swings: 16
+Monophonic swings: 0
+Accent Slashes NOT Detected: 
+Voice pack version 1 found.
+Playing e_vp_ver.wav,  (not found)
+** ERROR - Error in voice pack version.
+** See https://pod.hubbe.net/troubleshooting/what-is-it-saying.html#error-in-voice-pack-version
+Current Preset: Preset: 4
+unit = 0 vol = 0.50, Playing FinalSteps/font/font.wav
+channels: 1 rate: 44100 bits: 16

@@ -62,6 +62,15 @@ describe('recorded OS 8.10 transcripts (Hiltwright build on the same V2.2)', () 
     expect(parseList(os8('09-list_fonts.txt'))).toHaveLength(18);
     expect(parseList(os8('10-list_tracks.txt'))).toHaveLength(22);
   });
+  it('a Fett263 preset change is all chatter, then the read-back is a clean block', () => {
+    const chatter = os8('31-fett263_set_preset_3.txt');
+    expect(chatter.length).toBeGreaterThan(15);
+    expect(chatter.filter((l) => !isNoise(l))).toEqual([]);
+    expect(parseInteger(['Saving Current Preset preset = 3 savedir = ', '** ERROR - Error in voice pack version.', '3'])).toBe(3);
+    const { presets } = parsePresetBlocks(os8('32-fett263_show_current_preset.txt'));
+    expect(presets).toHaveLength(1);
+    expect(presets[0].name).toBe('Preset: 4');
+  });
   it('blade length queries: max is the configured count, current is -1 until set', () => {
     expect(parseInteger(os8('21-get_max_blade_length_1.txt'))).toBe(140);
     expect(parseInteger(os8('20-get_blade_length_1.txt'))).toBe(-1);

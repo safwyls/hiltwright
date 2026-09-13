@@ -37,7 +37,9 @@ export function splitLines(text: string): string[] {
 /** Lines the board prints on its own: font scanning, audio, SD activity, display updates. Not part of any response. */
 const NOISE: RegExp[] = [
   /^Style RAM = \d+$/,
-  /^Scanning sound font: .* done$/,
+  // "Scanning sound font: X" and " done" usually share a line, but the CR/LF between them can split them.
+  /^Scanning sound font: /,
+  /^ ?done$/,
   /^Activating (polyphonic|monophonic) font\.$/,
   /^Activating SmoothSwing V\d$/,
   /^Accent Swings (Enabled|Disabled)\.$/,
@@ -52,6 +54,13 @@ const NOISE: RegExp[] = [
   /^Creating file presets\.(ini|tmp) iteration = \d+$/,
   /^EVENT: /,
   /^Ignition\.$|^Retraction\.$/,
+  // Preset changes on OS 8 / Fett263 builds.
+  /^Saving Current Preset preset = \d+ savedir = /,
+  /^Current Preset: /,
+  /^Voice pack version \d+ found\.$/,
+  /^Playing .*\((not found)\)$/,
+  /^\*\* (ERROR|See) /,
+  /^I2C sleep$/,
 ];
 
 export function isNoise(line: string): boolean {
