@@ -290,6 +290,25 @@ export function useBoard() {
     return { ok: r.preset !== null, error: r.preset ? undefined : 'No read-back after selecting.' };
   }, false), [run, replacePreset]);
 
+  // A style write made while the blade was on is applied (preset re-selected) once the blade is off, so the owner
+  // never has to switch presets to see a colour. Polled every 3 s while something is pending.
+  const [pendingApply, setPendingApply] = useState<number | null>(null);
+  useEffect(() => {
+    if (pendingApply == null || status !== 'connected') return;
+    const t = setInterval(() => {
+      const c = client.current;
+      if (!c || busyRef.current) return;
+      void c.send('get_on', { idleMs: 400, timeoutMs: 6000 }).then((r) => {
+        if (!r.lines.some((l) => l.trim() === '0')) return;
+        const index = pendingApply;
+        setPendingApply(null);
+        void run('Apply colours', async (cl) => { const s = await selectPreset(cl, index); return { ok: s.preset !== null, error: s.preset ? undefined : 'No read-back after re-selecting.' }; }, false);
+      });
+    }, 3000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingApply, status]);
+
   const editPreset = useCallback((patch: PresetPatch, label: string) => {
     const i = infoRef.current;
     if (!i || i.currentPreset == null || isEmptyPatch(patch)) return Promise.resolve();
@@ -299,7 +318,8 @@ export function useBoard() {
       // the next preset change.
       const r = await editCurrentPreset(c, patch, undefined, patch.styles ? { applyIndex: index } : {});
       if (r.preset) replacePreset(index, r.preset);
-      return { ...r, note: r.applied === false ? 'retract the blade to see it' : undefined };
+      if (r.applied === false) setPendingApply(index);
+      return { ...r, note: r.applied === false ? 'applies when you retract the blade' : undefined };
     });
   }, [run, replacePreset]);
 
