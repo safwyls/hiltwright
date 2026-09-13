@@ -21,8 +21,8 @@ const hote2: SaberConfigModel = {
 
 /** A pasted library-style look, to prove inline emission into a preset slot compiles. */
 function ember(): LookDef {
-  const code = `// Fett263 Style Library
-// Copyright 2020-2024 Fernando da Rosa
+  const code = `// Hiltwright test look (header laid out like a library block)
+// Copyright 2026 Hiltwright contributors
 // Base Style: Fire Blade
 StylePtr<Layers<
   StyleFire<RgbArg<BASE_COLOR_ARG, Rgb<255,0,0>>,RgbArg<ALT_COLOR_ARG, Rgb<255,255,0>>,0,6,FireConfig<10,1000,2>,FireConfig<2,1000,5>,FireConfig<0,0,10>,FireConfig<0,0,10>>,
@@ -30,7 +30,7 @@ StylePtr<Layers<
   LockupTrL<AudioFlicker<RgbArg<LOCKUP_COLOR_ARG, Rgb<255,255,255>>,RgbArg<BASE_COLOR_ARG, Rgb<255,0,0>>>,TrInstant,TrFade<200>,SaberBase::LOCKUP_NORMAL>,
   InOutTrL<TrWipeX<IgnitionTime<300>>,TrWipeInX<RetractionTime<0>>>>>()`;
   const a = analyzeStyleCode(code);
-  return { id: 'ember', name: 'Ember', source: 'pasted', by: 'Fett263', code: a.expression, header: a.header, roles: ['main'], args: a.args, preview: a.preview, defaults: a.defaults, description: 'fire' };
+  return { id: 'ember', name: 'Ember', source: 'pasted', by: 'Hiltwright', code: a.expression, header: a.header, roles: ['main'], args: a.args, preview: a.preview, defaults: a.defaults, description: 'fire' };
 }
 
 describe('translateErrors', () => {

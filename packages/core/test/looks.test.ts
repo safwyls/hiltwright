@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { STARTER_LOOKS, analyzeStyleCode, colorWordToHex, formatStyleArgs, generateConfig, hexToColorWord, lookAtSlot, lookSlots, parseStyleArgs, validateModel, type LookDef, type SaberConfigModel } from '../src';
 
-const FETT263 = `// Fett263 Style Library
-// Copyright 2020-2024 Fernando da Rosa
+const FETT263 = `// Hiltwright test look (header laid out like a library block)
+// Copyright 2026 Hiltwright contributors
 // Licensed under GPLv3
 //
 // Base Style: Fire Blade
@@ -16,7 +16,7 @@ describe('analyzeStyleCode', () => {
   it('keeps the library header apart from the expression and finds the runtime arguments', () => {
     const a = analyzeStyleCode(FETT263 + ',\n');
     expect(a.ok).toBe(true);
-    expect(a.header).toContain('Copyright 2020-2024 Fernando da Rosa');
+    expect(a.header).toContain('Copyright 2026 Hiltwright contributors');
     expect(a.expression.startsWith('StylePtr<Layers<')).toBe(true);
     expect(a.expression.endsWith('>>()')).toBe(true);
     expect(a.args).toEqual([1, 2, 5, 11, 26]);
@@ -57,7 +57,7 @@ describe('style argument words', () => {
 });
 
 describe('generateConfig with chosen looks', () => {
-  const ember: LookDef = { ...analyzeStyleCode(FETT263), id: 'ember', name: 'Ember', source: 'pasted', by: 'Fett263', code: analyzeStyleCode(FETT263).expression, roles: ['main'], description: '' };
+  const ember: LookDef = { ...analyzeStyleCode(FETT263), id: 'ember', name: 'Ember', source: 'pasted', by: 'Hiltwright', code: analyzeStyleCode(FETT263).expression, roles: ['main'], description: '' };
   const model: SaberConfigModel = {
     name: 'hw_test', board: 'V2', buttons: 2, prop: 'fett263',
     blades: [
@@ -73,8 +73,8 @@ describe('generateConfig with chosen looks', () => {
   it('compiles the chosen look into its slot and keeps the library header once', () => {
     expect(validateModel(model)).toEqual([]);
     const g = generateConfig(model);
-    expect(g.text).toContain('Copyright 2020-2024 Fernando da Rosa');
-    expect(g.text.split('Fernando da Rosa').length).toBe(2);
+    expect(g.text).toContain('Copyright 2026 Hiltwright contributors');
+    expect(g.text.split('Hiltwright contributors').length).toBe(2);
     expect(g.text).toContain('/* Ember */ StylePtr<Layers<');
     expect(g.manifest.looks.map((l) => l.id)).toEqual(['hw_blade', 'hw_accent', 'ember']);
     expect(g.manifest.presets).toEqual([{ name: 'Starter', looks: ['hw_blade', 'hw_accent'] }, { name: 'Fire', looks: ['ember', 'hw_accent'] }]);
