@@ -5,6 +5,7 @@
 import type { BoardClient, Response } from './client';
 import { isPresetBlockEnd, parsePresetBlocks, presetCommands, type PresetRecord } from './presets';
 import { parseInteger } from './responses';
+import { isNoise } from './lines';
 
 export interface PresetPatch {
   font?: string;
@@ -102,7 +103,10 @@ export async function editCurrentPreset(client: BoardClient, patch: PresetPatch,
     }
     if (r.preset && i === 2) return { ok: false, preset: r.preset, readbacks, ms: now() - started, error: 'The saber reports different values than were written.' };
   }
-  return { ok: false, preset: null, readbacks, ms: now() - started, error: 'The saber did not confirm the change.' };
+  // Nothing came back three times. Tell a dead link apart from a refused write: a live board answers get_preset at once.
+  const alive = await client.send(presetCommands.getCurrent(), { idleMs: 400, timeoutMs: 4000 });
+  const dead = alive.lines.filter((l) => !isNoise(l)).length === 0;
+  return { ok: false, preset: null, readbacks, ms: now() - started, error: dead ? 'The saber stopped answering. Unplug and replug it, then press Connect.' : 'The saber did not confirm the change.' };
 }
 
 /** Fields of `to` that differ from `from`, as a patch. Used to restore a snapshot with the fewest commands. */

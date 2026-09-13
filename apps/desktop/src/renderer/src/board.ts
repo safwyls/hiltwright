@@ -242,8 +242,17 @@ export function useBoard() {
   }, [refreshSnapshots]);
 
   /** Run a board operation with busy state, snapshot and save-state bookkeeping. */
-  const run = useCallback(async (label: string, op: (c: BoardClient) => Promise<{ ok: boolean; error?: string; ms?: number }>, withSnapshot = true) => {
-    if (!client.current || busyRef.current) return;
+  // Writes are serialised, never dropped: a click that lands while the board is busy waits its turn.
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const run = useCallback((label: string, op: (c: BoardClient) => Promise<{ ok: boolean; error?: string; ms?: number }>, withSnapshot = true): Promise<void> => {
+    const next = queue.current.then(() => runNow(label, op, withSnapshot));
+    queue.current = next.catch(() => undefined);
+    return next;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const runNow = async (label: string, op: (c: BoardClient) => Promise<{ ok: boolean; error?: string; ms?: number }>, withSnapshot: boolean) => {
+    if (!client.current) return;
     setBusy(true);
     setSave({ kind: 'writing', what: label });
     const started = Date.now();
@@ -266,7 +275,7 @@ export function useBoard() {
     } finally {
       setBusy(false);
     }
-  }, [log, snapshot]);
+  };
 
   const choosePreset = useCallback((index: number) => run(`Select preset ${index + 1}`, async (c) => {
     const r = await selectPreset(c, index);
@@ -331,11 +340,31 @@ export function useBoard() {
 
   // Dev-only end-to-end check (HILTWRIGHT_E2E=1): edit a preset's font on the real board, verify, restore.
   useEffect(() => {
-    (window as unknown as { hiltwrightE2E?: () => Promise<string> }).hiltwrightE2E = async () => {
+    (window as unknown as { hiltwrightE2E?: (mode?: string) => Promise<string> }).hiltwrightE2E = async (mode?: string) => {
       const c = client.current;
       const i = infoRef.current;
       if (!c || !i) return 'not connected';
       const steps: string[] = [];
+      if (mode === 'stress' || mode === 'stress-on') {
+        // Twelve colour writes in a row on the Ember preset, each re-applied, logging what the board says when one fails.
+        // "stress-on" does it with the blade ignited, which is how an owner actually tries colours.
+        const sel0 = await selectPreset(c, 2);
+        const style0 = sel0.preset?.styles[0] ?? 'builtin 2 1';
+        const b0 = parseBuiltin(style0)!;
+        if (mode === 'stress-on') { await c.send('on', { idleMs: 1500, timeoutMs: 8000 }); steps.push('blade on'); }
+        for (let n = 0; n < 12; n++) {
+          const hue = (n * 30) % 360;
+          const rgb = [Math.round(65535 * (0.5 + 0.5 * Math.cos((hue * Math.PI) / 180))), Math.round(65535 * (0.5 + 0.5 * Math.cos(((hue - 120) * Math.PI) / 180))), Math.round(65535 * (0.5 + 0.5 * Math.cos(((hue - 240) * Math.PI) / 180)))].join(',');
+          const style = formatBuiltin({ preset: b0.preset, blade: b0.blade, args: rgb });
+          const t0 = Date.now();
+          const e = await editCurrentPreset(c, { styles: { 1: style } }, undefined, { applyIndex: 2 });
+          steps.push(`#${n + 1} ${rgb} → ${e.ok ? 'ok' : 'FAIL'} readbacks=${e.readbacks} ms=${Date.now() - t0}${e.ok ? '' : ` err=${e.error} got=${e.preset?.styles[0] ?? 'null'}`}`);
+          console.log(`[stress] ${steps[steps.length - 1]}`);
+        }
+        await editCurrentPreset(c, { styles: { 1: style0 } }, undefined, { applyIndex: 2 });
+        if (mode === 'stress-on') await c.send('off', { idleMs: 1500, timeoutMs: 8000 });
+        return steps.join(' | ');
+      }
       const original = i.currentPreset ?? 0;
       const sel = await selectPreset(c, 2);
       steps.push(`select 2 → index ${sel.index}, font ${sel.preset?.font}`);

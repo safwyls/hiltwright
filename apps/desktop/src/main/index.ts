@@ -79,7 +79,7 @@ function createWindow(): void {
     }, 400);
     // Dev aid: HILTWRIGHT_E2E=1 runs the renderer's end-to-end preset edit against the connected board.
     if (process.env.HILTWRIGHT_E2E) setTimeout(() => {
-      void win.webContents.executeJavaScript('window.hiltwrightE2E ? window.hiltwrightE2E() : "no hook"', true)
+      void win.webContents.executeJavaScript(`window.hiltwrightE2E ? window.hiltwrightE2E(${JSON.stringify(process.env.HILTWRIGHT_E2E)}) : "no hook"`, true)
         .then((r) => console.log('[main] e2e', r))
         .catch((err) => console.log('[main] e2e failed', String(err)));
     }, 7000);
