@@ -261,5 +261,23 @@
     "firstByteMs": 43,
     "lines": 8,
     "note": "Fett263 prop build"
+  },
+  {
+    "n": 33,
+    "command": "a5| show_current_preset",
+    "file": "33-tagged_show_current_preset.txt",
+    "note": "OS 8.10 tag| command framing: every line prefixed n,len,tag|"
+  },
+  {
+    "n": 34,
+    "command": "a3| show_current_preset",
+    "file": "34-late_tagged_version_after_untagged_block.txt",
+    "note": "board lagging under load: an untagged block (answer to an earlier plain command) then the late tagged answer to a1| version"
+  },
+  {
+    "n": 35,
+    "command": "a7| whut_is_this",
+    "file": "35-tagged_unknown_command.txt",
+    "note": "an unknown command inside a tag is rejected as Whut? :<tag>|"
   }
 ]

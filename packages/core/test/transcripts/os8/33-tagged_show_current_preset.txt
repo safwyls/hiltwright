@@ -1,0 +1,7 @@
+1,27,a3|FONT=GeneralPrincess;common
+2,24,a3|TRACK=tracks/General.wav
+3,35,a3|STYLE1=builtin 2 1 4390,61145,32768
+4,18,a3|STYLE2=builtin 2 2
+5,18,a3|STYLE3=builtin 2 3
+6,14,a3|NAME=Preset: 3
+7,11,a3|VARIATION=0

@@ -23,6 +23,8 @@ export interface EditResult {
   readbacks: number;
   ms: number;
   error?: string;
+  /** For style writes with applyIndex: true when the preset was re-selected, false when skipped because the blade was on. */
+  applied?: boolean;
 }
 
 // A preset change on a Fett263 build can spend seconds scanning the new font and speaking an error before it
@@ -98,8 +100,16 @@ export async function editCurrentPreset(client: BoardClient, patch: PresetPatch,
     const r = await readCurrentPreset(client, 1);
     readbacks += r.readbacks;
     if (r.preset && matches(r.preset, patch)) {
-      if (patch.styles && opts.applyIndex != null) await client.send(presetCommands.select(opts.applyIndex), { idleMs: 1200, timeoutMs: 12000 });
-      return { ok: true, preset: r.preset, readbacks, ms: now() - started };
+      let applied: boolean | undefined;
+      if (patch.styles && opts.applyIndex != null) {
+        // Re-selecting the preset while the blade is on is what overloads a V2 running a heavy style; with the
+        // blade off it is cheap. get_on answers 1/0 on OS 8; older firmware rejects it and we assume off.
+        const on = await client.send('get_on', { idleMs: 400, timeoutMs: 6000 });
+        const lit = on.lines.some((l) => l.trim() === '1');
+        if (lit) applied = false;
+        else { await client.send(presetCommands.select(opts.applyIndex), { idleMs: 1200, timeoutMs: 12000 }); applied = true; }
+      }
+      return { ok: true, preset: r.preset, readbacks, ms: now() - started, applied };
     }
     if (r.preset && i === 2) return { ok: false, preset: r.preset, readbacks, ms: now() - started, error: 'The saber reports different values than were written.' };
   }

@@ -28,6 +28,7 @@ class FakeBoard implements Transport {
   sent: string[] = [];
   font = 'GeneralPrincess;common';
   style1 = 'builtin 2 1';
+  on = false;
   saveDelay = 1200;
   private pendingSave: number | null = null;
   constructor(private timers: FakeTimers) {}
@@ -55,6 +56,7 @@ class FakeBoard implements Transport {
       return;
     }
     if (cmd === 'get_preset') { this.emit('2\r\n'); return; }
+    if (cmd === 'get_on') { this.emit(this.on ? '1\r\n' : '0\r\n'); return; }
     if (cmd.startsWith('set_preset ')) { this.emit(transcript('19-set_preset_2.txt'), 30); return; }
     if (cmd === 'list_presets') { this.emit(transcript('04-list_presets.txt'), 20); return; }
     this.emit(`Whut? :${cmd}\r\n`);
@@ -101,12 +103,24 @@ describe('editCurrentPreset', () => {
     const r = await p;
     expect(r.ok).toBe(true);
     expect(r.preset?.styles[0]).toBe('builtin 2 1 65535,0,0');
-    expect(board.sent).toEqual(['set_style1 builtin 2 1 65535,0,0', 'show_current_preset', 'set_preset 2']);
+    expect(r.applied).toBe(true);
+    expect(board.sent).toEqual(['set_style1 builtin 2 1 65535,0,0', 'show_current_preset', 'get_on', 'set_preset 2']);
     // A font-only patch is never re-selected, even with applyIndex.
     const q = editCurrentPreset(client, { font: 'TeensySF;common' }, () => timers.now, { applyIndex: 2 });
     await timers.run(40000);
     await q;
-    expect(board.sent.slice(3)).toEqual(['set_font TeensySF;common', 'show_current_preset']);
+    expect(board.sent.slice(4)).toEqual(['set_font TeensySF;common', 'show_current_preset']);
+  });
+
+  it('with the blade on, a style write is saved but not re-applied', async () => {
+    const { timers, board, client } = setup();
+    board.on = true;
+    const p = editCurrentPreset(client, { styles: { 1: 'builtin 2 1 0,65535,0' } }, () => timers.now, { applyIndex: 2 });
+    await timers.run(20000);
+    const r = await p;
+    expect(r.ok).toBe(true);
+    expect(r.applied).toBe(false);
+    expect(board.sent).toEqual(['set_style1 builtin 2 1 0,65535,0', 'show_current_preset', 'get_on']);
   });
 
   it('a patch with nothing in it sends nothing', async () => {

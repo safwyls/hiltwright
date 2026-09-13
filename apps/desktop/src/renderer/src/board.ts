@@ -121,6 +121,12 @@ export function useBoard() {
       if (wasRejected(r.lines)) rejected.push(cmd);
       return r;
     };
+    // OS 8 boards frame answers per command (`tag| command`); once detected every later command uses it.
+    const t0 = Date.now();
+    const tagged = await client.current!.detectTagging();
+    timings.tagging = Date.now() - t0;
+    log('event', tagged ? 'Tagged responses: yes (OS 8 framing)' : 'Tagged responses: no (untagged, idle-terminated)');
+    console.log(`[board] tagged=${tagged} probe=${timings.tagging} ms`);
     const v = await time('version', { until: (l) => /^installed:/.test(l) });
     const b = await time('battery', { until: (l) => /^Battery voltage:/.test(l) });
     const vol = await time('get_volume', { until: (l) => /^-?\d+$/.test(l.trim()) });
@@ -244,14 +250,14 @@ export function useBoard() {
   /** Run a board operation with busy state, snapshot and save-state bookkeeping. */
   // Writes are serialised, never dropped: a click that lands while the board is busy waits its turn.
   const queue = useRef<Promise<void>>(Promise.resolve());
-  const run = useCallback((label: string, op: (c: BoardClient) => Promise<{ ok: boolean; error?: string; ms?: number }>, withSnapshot = true): Promise<void> => {
+  const run = useCallback((label: string, op: (c: BoardClient) => Promise<{ ok: boolean; error?: string; ms?: number; note?: string }>, withSnapshot = true): Promise<void> => {
     const next = queue.current.then(() => runNow(label, op, withSnapshot));
     queue.current = next.catch(() => undefined);
     return next;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const runNow = async (label: string, op: (c: BoardClient) => Promise<{ ok: boolean; error?: string; ms?: number }>, withSnapshot: boolean) => {
+  const runNow = async (label: string, op: (c: BoardClient) => Promise<{ ok: boolean; error?: string; ms?: number; note?: string }>, withSnapshot: boolean) => {
     if (!client.current) return;
     setBusy(true);
     setSave({ kind: 'writing', what: label });
@@ -261,7 +267,7 @@ export function useBoard() {
       log('in', label);
       const r = await op(client.current);
       if (r.ok) {
-        setSave({ kind: 'saved', what: label, ms: r.ms ?? Date.now() - started, at: Date.now() });
+        setSave({ kind: 'saved', what: r.note ? `${label} · ${r.note}` : label, ms: r.ms ?? Date.now() - started, at: Date.now() });
         log('out', `✓ ${label}`);
         console.log(`[board] ok: ${label} · ${r.ms ?? Date.now() - started} ms`);
       } else {
@@ -293,7 +299,7 @@ export function useBoard() {
       // the next preset change.
       const r = await editCurrentPreset(c, patch, undefined, patch.styles ? { applyIndex: index } : {});
       if (r.preset) replacePreset(index, r.preset);
-      return r;
+      return { ...r, note: r.applied === false ? 'retract the blade to see it' : undefined };
     });
   }, [run, replacePreset]);
 
@@ -341,10 +347,14 @@ export function useBoard() {
   // Dev-only end-to-end check (HILTWRIGHT_E2E=1): edit a preset's font on the real board, verify, restore.
   useEffect(() => {
     (window as unknown as { hiltwrightE2E?: (mode?: string) => Promise<string> }).hiltwrightE2E = async (mode?: string) => {
+      // A board running behind can take half a minute to identify; wait for it.
+      for (let n = 0; n < 180 && !(client.current && infoRef.current); n++) await new Promise((r) => setTimeout(r, 500));
       const c = client.current;
       const i = infoRef.current;
       if (!c || !i) return 'not connected';
       const steps: string[] = [];
+      const stressCount = /^stress(?:-on)?-(\d+)$/.exec(mode ?? '')?.[1];
+      if (stressCount) mode = mode!.startsWith('stress-on') ? 'stress-on' : 'stress';
       if (mode === 'stress' || mode === 'stress-on') {
         // Twelve colour writes in a row on the Ember preset, each re-applied, logging what the board says when one fails.
         // "stress-on" does it with the blade ignited, which is how an owner actually tries colours.
@@ -352,7 +362,7 @@ export function useBoard() {
         const style0 = sel0.preset?.styles[0] ?? 'builtin 2 1';
         const b0 = parseBuiltin(style0)!;
         if (mode === 'stress-on') { await c.send('on', { idleMs: 1500, timeoutMs: 8000 }); steps.push('blade on'); }
-        for (let n = 0; n < 12; n++) {
+        for (let n = 0; n < (stressCount ? Number(stressCount) : 12); n++) {
           const hue = (n * 30) % 360;
           const rgb = [Math.round(65535 * (0.5 + 0.5 * Math.cos((hue * Math.PI) / 180))), Math.round(65535 * (0.5 + 0.5 * Math.cos(((hue - 120) * Math.PI) / 180))), Math.round(65535 * (0.5 + 0.5 * Math.cos(((hue - 240) * Math.PI) / 180)))].join(',');
           const style = formatBuiltin({ preset: b0.preset, blade: b0.blade, args: rgb });

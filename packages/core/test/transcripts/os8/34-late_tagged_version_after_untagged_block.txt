@@ -1,0 +1,12 @@
+FONT=GeneralPrincess;common
+TRACK=tracks/General.wav
+STYLE1=builtin 2 1 4390,61145,32768
+STYLE2=builtin 2 2
+STYLE3=builtin 2 3
+NAME=Preset: 3
+VARIATION=0
+1,24,a1|v8.10 hiltwright ce12a06
+2,25,a1|config/hiltwright_hote2.h
+3,25,a1|prop: SaberFett263Buttons
+4,10,a1|buttons: 2
+5,31,a1|installed: Sep 13 2026 10:25:36
