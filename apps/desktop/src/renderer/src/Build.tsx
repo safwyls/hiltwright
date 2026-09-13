@@ -16,7 +16,9 @@ const PROPS: { value: Prop; label: string }[] = [
   { value: 'fett263', label: 'Fett263 · edit mode, gestures' }, { value: 'sa22c', label: 'SA22C' }, { value: 'bc', label: 'BC' }, { value: 'default', label: 'ProffieOS default' },
 ];
 
-type Step = 'idle' | 'building' | 'built' | 'backup' | 'bootloader' | 'writing' | 'verifying' | 'done' | 'failed';
+type Step = 'idle' | 'building' | 'built' | 'backup' | 'bootloader' | 'driver' | 'writing' | 'verifying' | 'done' | 'failed';
+const DRIVER_HELP = 'https://pod.hubbe.net/proffieboard-setup.html';
+const fmtGB = (b: number) => `${(b / 1073741824).toFixed(1)} GB`;
 
 export function Build({ board }: { board: Board }) {
   const { status } = board;
@@ -67,9 +69,11 @@ export function Build({ board }: { board: Board }) {
   const update = (i: number, patch: Partial<ModelBlade>) => { setBlades((b) => b.map((x, k) => (k === i ? { ...x, ...patch } : x))); setConfirmedWiring(false); setResult(null); setStep('idle'); };
   const setWiring = (i: number, w: ModelBlade['wiring']) => update(i, { wiring: w });
 
+  const [installError, setInstallError] = useState<string | null>(null);
+  const [installStarted, setInstallStarted] = useState<number | null>(null);
   const install = async () => {
-    setInstalling(true);
-    try { setTool(await api().toolchain.install()); } finally { setInstalling(false); }
+    setInstalling(true); setInstallError(null); setInstallStarted(Date.now());
+    try { setTool(await api().toolchain.install()); } catch (err) { setInstallError(String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')); } finally { setInstalling(false); }
   };
 
   const build = useCallback(async (force = false) => {
@@ -82,20 +86,10 @@ export function Build({ board }: { board: Board }) {
     console.log(`[build] ok=${r.ok} cached=${r.cached} ms=${r.ms} text=${r.textBytes} pct=${r.flashPct} problems=${JSON.stringify(r.problems)}`);
   }, [model, saber]);
 
-  /** The install sequence. The renderer does the 1200-baud touch because it owns the serial port. */
-  const install2 = useCallback(async () => {
+  /** From a board sitting in its bootloader with a usable driver: backup, write, wait, reconnect, record. */
+  const writeFromBootloader = useCallback(async () => {
     if (!result?.ok || !result.dfuPath || !saber) return;
-    setNote(null); setElapsed(0);
     try {
-      setStep('bootloader');
-      // A board already sitting in its bootloader (after an earlier failed attempt, or a manual BOOT+RESET) needs no reboot.
-      const already = (await api().flash.usb()).bootloaderPresent;
-      if (!already) {
-        const touched = await board.rebootToBootloader();
-        if (!touched) { setStep('failed'); setNote({ tone: 'red', text: 'Could not reboot the saber into bootloader mode. Hold BOOT, tap RESET, release BOOT, then press Install again.' }); return; }
-      }
-      const boot = await api().flash.waitForBootloader(20000);
-      if (!boot.ok) { setStep('failed'); setNote({ tone: 'red', text: boot.text }); return; }
       setStep('backup');
       const bak = await api().flash.backup(saber.id, 'before-install');
       if (!bak.ok) { setStep('failed'); setNote({ tone: 'red', text: `Backup failed, so nothing was written. ${bak.detail}` }); return; }
@@ -116,6 +110,42 @@ export function Build({ board }: { board: Board }) {
     }
   }, [result, saber, board, model]);
 
+  /** The install sequence. The renderer does the reboot because it owns the serial port. */
+  const install2 = useCallback(async () => {
+    if (!result?.ok || !result.dfuPath || !saber) return;
+    setNote(null); setElapsed(0);
+    try {
+      setStep('bootloader');
+      // A board already sitting in its bootloader (after an earlier failed attempt, or a manual BOOT+RESET) needs no reboot.
+      const already = (await api().flash.usb()).bootloaderPresent;
+      if (!already) {
+        const touched = await board.rebootToBootloader();
+        if (!touched) { setStep('failed'); setNote({ tone: 'red', text: 'Could not reboot the saber into bootloader mode. Hold BOOT, tap RESET, release BOOT, then press Install again.' }); return; }
+      }
+      const boot = await api().flash.waitForBootloader(20000);
+      if (!boot.ok) {
+        const usb = await api().flash.usb();
+        // The board is there but Windows has no WinUSB driver for it: a one-time step, then the install resumes.
+        if (usb.bootloaderPresent) { setStep('driver'); setNote(null); return; }
+        setStep('failed'); setNote({ tone: 'red', text: boot.text }); return;
+      }
+      await writeFromBootloader();
+    } catch (err) {
+      setStep('failed');
+      setNote({ tone: 'red', text: String(err) });
+    }
+  }, [result, saber, board, writeFromBootloader]);
+
+  /** After the owner installed the driver: check the bootloader again and carry on. */
+  const [driverCheck, setDriverCheck] = useState<string | null>(null);
+  const checkDriver = useCallback(async () => {
+    setDriverCheck('Checking…');
+    const boot = await api().flash.waitForBootloader(5000);
+    if (boot.ok) { setDriverCheck(null); await writeFromBootloader(); return; }
+    const usb = await api().flash.usb();
+    setDriverCheck(usb.bootloaderPresent ? `Still no driver (Windows reports ${usb.bootloaderDriver ?? 'none'}). Run the installer with the board plugged in, then check again.` : 'The board is no longer in bootloader mode. Hold BOOT, tap RESET, release BOOT, then check again.');
+  }, [writeFromBootloader]);
+
   // Dev aid: main calls this to run a compile-only pass against the connected board.
   useEffect(() => {
     (window as unknown as { hiltwrightBuildE2E?: () => Promise<string> }).hiltwrightBuildE2E = async () => {
@@ -128,10 +158,49 @@ export function Build({ board }: { board: Board }) {
 
   const pct = result?.flashPct ?? null;
   const busy = step === 'building' || step === 'backup' || step === 'bootloader' || step === 'writing' || step === 'verifying';
-  const stepLabel: Record<Step, string> = { idle: 'Ready', building: 'Building firmware…', built: 'Firmware built', backup: 'Backing up the saber…', bootloader: 'Rebooting into bootloader…', writing: 'Writing firmware…', verifying: 'Waiting for the saber to come back…', done: 'Installed', failed: 'Stopped' };
+  const stepLabel: Record<Step, string> = { idle: 'Ready', building: 'Building firmware…', built: 'Firmware built', backup: 'Backing up the saber…', bootloader: 'Rebooting into bootloader…', driver: 'Windows needs a driver for the bootloader', writing: 'Writing firmware…', verifying: 'Waiting for the saber to come back…', done: 'Installed', failed: 'Stopped' };
+
+  const setupPanel = (
+    <section className={`panel ${tool && !tool.ready ? 'amber' : ''}`} aria-label="Toolchain">
+      <div className="ph"><h2>{tool?.ready ? 'Toolchain' : 'One-time setup'}</h2>{tool?.ready ? <span className="chip ok"><Icon name="check" />Ready</span> : installing ? <span className="chip warn"><span className="dot" />Installing · {installStarted ? Math.round((Date.now() - installStarted) / 1000) : 0}s</span> : <span className="chip warn"><Icon name="warn" />Not installed</span>}</div>
+      <div className="pb col" style={{ gap: 10 }}>
+        {tool && !tool.ready && !installing && (
+          <>
+            <p className="dim" style={{ fontSize: 13, margin: 0 }}>Building firmware needs the ProffieOS sources, the Arduino command line and the ARM compiler. Hiltwright downloads them once from the ProffieOS and Arduino projects and keeps them in its own folder. Nothing else on this computer is touched.</p>
+            <div className="list" style={{ border: '1px solid var(--line)' }}>
+              {[['Download', 'about 360 MB'], ['On disk', 'about 1.7 GB'], ['Free space here', tool.freeBytes != null ? fmtGB(tool.freeBytes) : 'unknown'], ['Folder', tool.root]].map(([k, v]) => (
+                <div key={k} className="li" style={{ minHeight: 34 }}><span className="grow small dim">{k}</span><span className="mono small ellip" style={{ maxWidth: 260 }}>{v}</span></div>
+              ))}
+            </div>
+            {tool.freeBytes != null && tool.freeBytes < 2.5 * 1073741824 && <div className="note red"><Icon name="x" /><span>Not enough free space. Free up at least 2.5 GB, then try again.</span></div>}
+            {tool.pathTooLong && <div className="note red"><Icon name="x" /><span>This folder path is too long for the compiler on Windows. Set HILTWRIGHT_TOOLCHAIN_DIR to a short path, or unset it to use the default.</span></div>}
+            {installError && <div className="note red"><Icon name="x" /><span>{installError}</span></div>}
+            <button type="button" className="btn pri" disabled={installing || tool.pathTooLong || (tool.freeBytes != null && tool.freeBytes < 2.5 * 1073741824)} onClick={() => void install()}><span className="b"><span className="i"><Icon name="import" />{installError ? 'Try again' : 'Download and install'}</span></span></button>
+          </>
+        )}
+        {(installing || tool?.ready) && tool && (
+          <div className="list" style={{ border: '1px solid var(--line)' }}>
+            {[['arduino-cli', tool.cli ? tool.cliVersion ?? 'present' : 'missing'], ['Proffieboard core + GCC', tool.core && tool.gcc ? 'installed' : 'missing'], ['dfu-util', tool.dfuUtil ? 'present' : 'missing'], ['ProffieOS', tool.proffieOS ? tool.proffieOSVersion ?? 'present' : 'missing']].map(([k, v]) => (
+              <div key={k} className="li" style={{ minHeight: 34 }}><span className="grow small dim">{k}</span><span className="mono small">{v}</span></div>
+            ))}
+          </div>
+        )}
+        {installing && <div className="console" style={{ maxHeight: 160, minHeight: 60 }}>{log.filter((e) => e.job === 'toolchain').slice(-12).map((e, i) => <div key={i}>{e.line}</div>)}</div>}
+        {tool?.ready && <span className="hint mono" style={{ fontSize: 11 }}>{tool.root}</span>}
+      </div>
+    </section>
+  );
 
   if (!info || !saber) {
-    return (<><div className="page-head"><div><div className="eyebrow">Build &amp; install</div><h1>Adopt this saber</h1></div></div><section className="panel"><div className="pb dim">Connect a saber first. Adoption reads its presets and blade layout from the board, then builds Hiltwright firmware for it.</div></section></>);
+    return (
+      <>
+        <div className="page-head"><div><div className="eyebrow">Build &amp; install</div><h1>Adopt this saber</h1></div></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 420px', gap: 20 }}>
+          <section className="panel"><div className="pb dim">Connect a saber first. Adoption reads its presets and blade layout from the board, then builds Hiltwright firmware for it.</div></section>
+          {setupPanel}
+        </div>
+      </>
+    );
   }
 
   return (
@@ -179,20 +248,7 @@ export function Build({ board }: { board: Board }) {
           </div>
         </section>
 
-        <section className="panel" aria-label="Toolchain">
-          <div className="ph"><h2>Toolchain</h2>{tool?.ready ? <span className="chip ok"><Icon name="check" />Ready</span> : <span className="chip warn"><Icon name="warn" />Not installed</span>}</div>
-          <div className="pb col" style={{ gap: 10 }}>
-            {tool && (
-              <div className="list" style={{ border: '1px solid var(--line)' }}>
-                {[['arduino-cli', tool.cli ? tool.cliVersion ?? 'present' : 'missing'], ['Proffieboard core + GCC', tool.core && tool.gcc ? 'installed' : 'missing'], ['dfu-util', tool.dfuUtil ? 'present' : 'missing'], ['ProffieOS', tool.proffieOS ? tool.proffieOSVersion ?? 'present' : 'missing']].map(([k, v]) => (
-                  <div key={k} className="li" style={{ minHeight: 34 }}><span className="grow small dim">{k}</span><span className="mono small">{v}</span></div>
-                ))}
-              </div>
-            )}
-            {!tool?.ready && <button type="button" className="btn pri" disabled={installing} onClick={() => void install()}><span className="b"><span className="i"><Icon name="import" />{installing ? 'Installing…' : 'Install toolchain (360 MB)'}</span></span></button>}
-            <span className="hint mono" style={{ fontSize: 11 }}>{tool?.root}</span>
-          </div>
-        </section>
+        {setupPanel}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 420px', gap: 20, flex: 1, minHeight: 0 }}>
@@ -219,6 +275,23 @@ export function Build({ board }: { board: Board }) {
             <div className="console" style={{ maxHeight: 220, minHeight: 90 }}>
               {log.length === 0 ? <span className="mute">Build and install output appears here.</span> : log.map((e, i) => <div key={i}><span className="mute">{new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {e.job}</span>  {e.line}</div>)}
             </div>
+            {step === 'driver' && (
+              <div className="col" style={{ gap: 10, padding: 14, border: '1px solid var(--amber)', background: 'rgba(255,181,71,.06)' }}>
+                <b style={{ fontWeight: 600 }}>One-time Windows step: the bootloader driver</b>
+                <p className="dim" style={{ margin: 0, fontSize: 13 }}>The saber is in bootloader mode, but Windows has no driver for it yet, so nothing can be written. This happens once per computer. Nothing has been changed on the saber; the backup has not been taken yet.</p>
+                <ol className="dim" style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.6 }}>
+                  <li>Open the ProffieOS setup page and download <span className="mono">proffie-dfu-setup.exe</span> from the Windows section.</li>
+                  <li>Leave the saber plugged in as it is now and run the installer. Windows asks for administrator approval; the installer binds the WinUSB driver to the bootloader.</li>
+                  <li>Come back here and press Check again. The install carries on from the backup.</li>
+                </ol>
+                <div className="row wrap" style={{ gap: 8 }}>
+                  <button type="button" className="btn" onClick={() => void api().app.openHelp(DRIVER_HELP)}><span className="b"><span className="i"><Icon name="link" />Open the setup page</span></span></button>
+                  <button type="button" className="btn pri" disabled={driverCheck === 'Checking…'} onClick={() => void checkDriver()}><span className="b"><span className="i"><Icon name="usb" />Check again</span></span></button>
+                  <button type="button" className="btn ghost" onClick={() => { setStep('built'); setDriverCheck(null); }}><span className="b"><span className="i">Cancel</span></span></button>
+                </div>
+                {driverCheck && <span className="hint">{driverCheck}</span>}
+              </div>
+            )}
             {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span>{note.text}</span></div>}
             <div className="row" style={{ gap: 10 }}>
               {!armed

@@ -77,6 +77,8 @@ Source: https://pod.hubbe.net/howto/how-to-back-up-a-proffieboard.html
 
 Sources: https://pod.hubbe.net/proffieboard-setup.html , https://pod.hubbe.net/tools/zadig.html , https://pod.hubbe.net/troubleshooting/webusb.html
 
+> Verified 2026-09-13 with a first-run install from an empty folder: arduino-cli 1.3.1 zip, `core install proffieboard:stm32l4` (GCC 308 MiB), ProffieOS v8.10 zip; about 2.0 GB on disk. **Windows path length bites:** with the toolchain root 139 characters deep, GCC's `cc1plus.exe` sat at 259 characters and `arm-none-eabi-g++` failed with `cannot execute 'cc1plus': CreateProcess: No such file or directory`. Hiltwright keeps the toolchain under `%LOCALAPPDATA%\Hiltwright	oolchain` and refuses roots longer than 120 characters.
+
 **Hard truth for every path:** on Windows, the one-time bootloader driver install is a step no browser can perform, and a desktop app can only automate it by shipping/launching an elevated installer. Every runtime-only feature (presets, fonts, colours via serial/WebUSB) is driver-free on Windows 10+. This split is the strongest argument for a tiered product.
 
 ## 4. USB interfaces the board can expose

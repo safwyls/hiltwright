@@ -124,7 +124,9 @@ export function registerIpc(): void {
   });
 
   // ---- Tier 2: toolchain, build, flash ----
-  const toolchainRoot = process.env.HILTWRIGHT_TOOLCHAIN_DIR || join(userData, 'toolchain');
+  // The toolchain wants a short path on Windows: GCC's internal tools sit 120 characters below the root and
+  // CreateProcess fails past 260. LOCALAPPDATA is short and local (not roamed); elsewhere userData is fine.
+  const toolchainRoot = process.env.HILTWRIGHT_TOOLCHAIN_DIR || (process.platform === 'win32' && process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'Hiltwright', 'toolchain') : join(userData, 'toolchain'));
   const emit = (job: JobEvent['job'], line: string) => {
     const ev: JobEvent = { job, line, at: Date.now() };
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send('job:event', ev);
@@ -163,6 +165,11 @@ export function registerIpc(): void {
   ipcMain.handle('flash:waitForRuntime', async (_e, timeoutMs: unknown) => !!(await waitFor((u) => u.runtimePresent && !u.bootloaderPresent, Math.min(Number(timeoutMs) || 20000, 60000), (l) => emit('flash', l))));
 
   ipcMain.handle('app:userDataPath', () => userData);
+  ipcMain.handle('app:openHelp', async (_e, url: unknown) => {
+    const u = new URL(str(url, 500));
+    if (u.protocol !== 'https:' || !['pod.hubbe.net', 'fredrik.hubbe.net'].includes(u.hostname)) throw new Error('Only ProffieOS help pages can be opened');
+    await shell.openExternal(u.toString());
+  });
   ipcMain.handle('app:openPath', async (_e, p: unknown) => {
     const target = str(p, 1000);
     if (!target.startsWith(userData)) throw new Error('Only app data paths can be opened');

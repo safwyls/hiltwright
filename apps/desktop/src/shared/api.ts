@@ -68,6 +68,10 @@ export interface ToolchainStatus {
   proffieOS: boolean;
   proffieOSVersion: string | null;
   ready: boolean;
+  /** Free space on the volume that would hold the toolchain, when known. */
+  freeBytes: number | null;
+  /** Windows: the folder is too deep for the compiler's 260-character path limit. */
+  pathTooLong: boolean;
 }
 
 export interface BuildResult {
@@ -160,5 +164,7 @@ export interface HiltwrightApi {
   app: {
     userDataPath(): Promise<string>;
     openPath(path: string): Promise<void>;
+    /** Open a known help page in the system browser. Only pod.hubbe.net and fredrik.hubbe.net are allowed. */
+    openHelp(url: string): Promise<void>;
   };
 }

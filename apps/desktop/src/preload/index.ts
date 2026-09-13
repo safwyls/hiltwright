@@ -54,6 +54,7 @@ const api: HiltwrightApi = {
   },
   app: {
     userDataPath: () => ipcRenderer.invoke('app:userDataPath'),
+    openHelp: (url) => ipcRenderer.invoke('app:openHelp', url),
     openPath: (path) => ipcRenderer.invoke('app:openPath', path),
   },
 };

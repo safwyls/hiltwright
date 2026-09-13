@@ -4,10 +4,10 @@
 
 import { execFile, spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
-import { access, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { access, mkdir, readdir, rename, rm, stat, statfs } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 
 export const PROFFIE_INDEX = 'https://profezzorn.github.io/arduino-proffieboard/package_proffieboard_index.json';
 export const PROFFIEOS_TAG = 'v8.10';
@@ -33,7 +33,19 @@ export interface ToolchainStatus {
   proffieOS: boolean;
   proffieOSVersion: string | null;
   ready: boolean;
+  /** Free space on the volume holding the root, when known. */
+  freeBytes: number | null;
+  /** Windows: the root is so deep that GCC's own tools would exceed the 260-character path limit. */
+  pathTooLong: boolean;
 }
+
+/** GCC's deepest internal tool sits about 130 characters below the toolchain root. */
+export const MAX_ROOT_LENGTH = 120;
+
+/** Downloads and on-disk footprint of a full install, for the consent screen and the space check. */
+export const INSTALL_DOWNLOAD_BYTES = 360 * 1024 * 1024;
+export const INSTALL_DISK_BYTES = 1.7 * 1024 * 1024 * 1024;
+export const INSTALL_DISK_MARGIN = 2.5 * 1024 * 1024 * 1024;
 
 export type Progress = (line: string) => void;
 
@@ -112,7 +124,9 @@ export async function toolchainStatus(root: string): Promise<ToolchainStatus> {
   if (proffieOS) {
     try { proffieOSVersion = (await stat(join(p.osDir, 'ProffieOS.ino'))).isFile() ? PROFFIEOS_TAG : null; } catch { /* ignore */ }
   }
-  return { root, cli, cliVersion, core, gcc, dfuUtil, proffieOS, proffieOSVersion, ready: cli && core && gcc && !!dfuUtil && proffieOS };
+  let freeBytes: number | null = null;
+  try { const probe = (await exists(root)) ? root : join(root, '..'); const f = await statfs(probe); freeBytes = Number(f.bavail) * Number(f.bsize); } catch { /* unknown */ }
+  return { root, cli, cliVersion, core, gcc, dfuUtil, proffieOS, proffieOSVersion, ready: cli && core && gcc && !!dfuUtil && proffieOS, freeBytes, pathTooLong: isWin && root.length > MAX_ROOT_LENGTH };
 }
 
 async function download(url: string, dest: string, onLine: Progress): Promise<void> {
@@ -121,7 +135,18 @@ async function download(url: string, dest: string, onLine: Progress): Promise<vo
   if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status} ${url}`);
   await mkdir(join(dest, '..'), { recursive: true });
   const tmp = `${dest}.part`;
-  await pipeline(Readable.fromWeb(res.body as never), createWriteStream(tmp));
+  // Report progress every 5% when the size is known, so a long download is visibly alive.
+  const total = Number(res.headers.get('content-length') ?? 0);
+  let got = 0;
+  let nextPct = 5;
+  const counter = new Transform({
+    transform(chunk: Buffer, _enc, cb) {
+      got += chunk.length;
+      if (total && (got / total) * 100 >= nextPct) { onLine(`  ${nextPct}% of ${(total / 1048576).toFixed(0)} MB`); nextPct += 5; }
+      cb(null, chunk);
+    },
+  });
+  await pipeline(Readable.fromWeb(res.body as never), counter, createWriteStream(tmp));
   await rename(tmp, dest);
   onLine(`saved ${dest} (${(await stat(dest)).size} bytes)`);
 }
@@ -141,6 +166,10 @@ export async function installToolchain(root: string, onLine: Progress): Promise<
   const p = toolchainPaths(root);
   await mkdir(root, { recursive: true });
   let status = await toolchainStatus(root);
+  if (status.pathTooLong) throw new Error(`The toolchain folder path is too long for the compiler on Windows (${root.length} characters, at most ${MAX_ROOT_LENGTH}): ${root}`);
+  if (!status.ready && status.freeBytes != null && status.freeBytes < INSTALL_DISK_MARGIN) {
+    throw new Error(`Not enough free space: ${(status.freeBytes / 1073741824).toFixed(1)} GB free, the toolchain needs about ${(INSTALL_DISK_BYTES / 1073741824).toFixed(1)} GB plus room to build.`);
+  }
 
   if (!status.cli) {
     const asset = isWin ? `arduino-cli_${CLI_VERSION}_Windows_64bit.zip`
