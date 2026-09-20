@@ -3,7 +3,7 @@
 // Electron-free so it can be exercised from tests.
 
 import { execFile, spawn } from 'node:child_process';
-import { createWriteStream } from 'node:fs';
+import { accessSync, constants, createWriteStream, mkdirSync } from 'node:fs';
 import { access, mkdir, readdir, rename, rm, stat, statfs } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -39,8 +39,29 @@ export interface ToolchainStatus {
   pathTooLong: boolean;
 }
 
-/** GCC's deepest internal tool sits about 130 characters below the toolchain root. */
-export const MAX_ROOT_LENGTH = 120;
+/**
+ * GCC opens its own headers through an un-normalised path (bin/../lib/gcc/arm-none-eabi/14.2.1/../../../../
+ * arm-none-eabi/include/c++/...), which puts `bits/error_constants.h` 213 characters below the toolchain root.
+ * Windows stops at 259, so the root gets 46 at the very most; 40 leaves a margin for other multilib variants.
+ */
+export const MAX_ROOT_LENGTH = 40;
+
+/**
+ * Where the toolchain lives by default. On Windows that is %ProgramData%\Hiltwright (25 characters): per-user
+ * folders are too deep once the user name is added. Falls back to the first candidate that is short and writable.
+ */
+export function defaultToolchainRoot(userData: string): string {
+  if (!isWin) return join(userData, 'toolchain');
+  const candidates = [
+    process.env.ProgramData ? join(process.env.ProgramData, 'Hiltwright') : null,
+    process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'Hiltwright', 'tc') : null,
+    process.env.SystemDrive ? `${process.env.SystemDrive}\\Hiltwright` : null,
+  ].filter((c): c is string => !!c && c.length <= MAX_ROOT_LENGTH);
+  for (const c of candidates) {
+    try { mkdirSync(c, { recursive: true }); accessSync(c, constants.W_OK); return c; } catch { /* try the next one */ }
+  }
+  return candidates[0] ?? join(userData, 'toolchain');
+}
 
 /** Downloads and on-disk footprint of a full install, for the consent screen and the space check. */
 export const INSTALL_DOWNLOAD_BYTES = 360 * 1024 * 1024;

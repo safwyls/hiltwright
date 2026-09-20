@@ -39,6 +39,8 @@ describe('translateErrors', () => {
     expect(translateErrors('#error Please select Proffieboard V2 in Tools->Board', [])[0]).toMatch(/Proffieboard V2/);
     expect(translateErrors("error: cannot convert 'const char*' to 'StyleFactory*'", [])[0]).toMatch(/fewer looks/);
     expect(translateErrors("config.h:12:3: error: 'Layerz' was not declared in this scope", [])[0]).toMatch(/did not understand/);
+    expect(translateErrors('C:/Users/x/AppData/Local/Hiltwright/toolchain/arduino-data/packages/proffieboard/tools/arm-none-eabi-gcc/14-2-rel1-xpack/arm-none-eabi/include/c++/14.2.1/system_error:41:10: fatal error: bits/error_constants.h: No such file or directory', [])[0]).toMatch(/its own files/);
+    expect(translateErrors("arm-none-eabi-g++: fatal error: cannot execute 'cc1plus': CreateProcess: No such file or directory", [])[0]).toMatch(/its own files/);
   });
 });
 

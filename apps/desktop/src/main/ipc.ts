@@ -9,7 +9,7 @@ import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
 import { proffieSerials } from './usb';
 import { checkFontDir, copyFont, listFonts, listTracks, locateCards } from './sd';
-import { installToolchain, toolchainStatus } from './toolchain';
+import { defaultToolchainRoot, installToolchain, toolchainStatus } from './toolchain';
 import { buildFirmware } from './build';
 import { backupFlash, describeBootloader, usbState, waitFor, writeFirmware } from './flash';
 import type { JobEvent } from '../shared/api';
@@ -124,9 +124,9 @@ export function registerIpc(): void {
   });
 
   // ---- Tier 2: toolchain, build, flash ----
-  // The toolchain wants a short path on Windows: GCC's internal tools sit 120 characters below the root and
-  // CreateProcess fails past 260. LOCALAPPDATA is short and local (not roamed); elsewhere userData is fine.
-  const toolchainRoot = process.env.HILTWRIGHT_TOOLCHAIN_DIR || (process.platform === 'win32' && process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'Hiltwright', 'toolchain') : join(userData, 'toolchain'));
+  // The toolchain wants a short path on Windows: GCC opens its headers 213 characters below the root and
+  // CreateProcess fails past 260. See defaultToolchainRoot.
+  const toolchainRoot = process.env.HILTWRIGHT_TOOLCHAIN_DIR || defaultToolchainRoot(userData);
   const emit = (job: JobEvent['job'], line: string) => {
     const ev: JobEvent = { job, line, at: Date.now() };
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send('job:event', ev);

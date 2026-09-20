@@ -98,7 +98,8 @@ export class Library {
 /** "hote2" from config/hote2.h; falls back to the prop or a generic name. */
 export function defaultName(identity: SaberIdentity): string {
   const cfg = identity.configName?.replace(/^config\//, '').replace(/\.h$/, '');
-  if (cfg && !/^(default|proffieboard)/i.test(cfg)) return cfg;
+  // A saber already on Hiltwright firmware reports config/hiltwright_<name>.h; the name is the part after the prefix.
+  if (cfg && !/^(default|proffieboard)/i.test(cfg)) return cfg.replace(/^hiltwright_/, '') || cfg;
   return identity.prop ? `${identity.prop} saber` : 'Proffie saber';
 }
 

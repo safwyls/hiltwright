@@ -43,6 +43,10 @@ export function translateErrors(stderr: string, presetNames: string[]): string[]
   if (conflict) out.push(`Two button options conflict: ${conflict[1]} and ${conflict[2]}.`);
   if (/cannot convert 'const char\*' to 'StyleFactory\*'/i.test(stderr)) out.push('A preset has fewer looks than the saber has blades. Every preset needs one look per blade.');
   if (/cannot convert 'Preset\*' to 'BladeBase\*'/i.test(stderr) && !out.length) out.push('The blade table and the presets do not line up. Check the blade count.');
+  // The compiler failing to open one of its own files is an install problem, not a config problem.
+  if (/(arm-none-eabi-gcc|arduino-data)[^\n]*fatal error: [^\n:]+: No such file or directory/i.test(stderr) || /cannot execute '[^']+'/i.test(stderr)) {
+    out.push('The compiler could not open one of its own files. On Windows this means the toolchain folder path is too long, or the download was incomplete. Reinstall the toolchain from Build & Install.');
+  }
   const parse = /(?:parse error|error: .*(?:was not declared|expected))[^\n]*/i.exec(stderr);
   if (!out.length && parse) out.push(`The compiler did not understand part of the config: ${parse[0].trim().slice(0, 160)}`);
   if (!out.length) {

@@ -19,7 +19,7 @@ export function guessBlades(pixelBlades: number[]): ModelBlade[] {
 }
 
 export function configNameFor(saber: SaberRecord): string {
-  return `hiltwright_${saber.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`;
+  return `hiltwright_${saber.name.toLowerCase().replace(/^hiltwright[_ ]+/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`;
 }
 
 /**
