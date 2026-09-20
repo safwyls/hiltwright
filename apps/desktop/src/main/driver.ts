@@ -12,8 +12,8 @@ import { describeBootloader, usbState, waitFor } from './flash';
 export const DRIVER_URL = 'https://fredrik.hubbe.net/lightsaber/proffie-dfu-setup.exe';
 /** Published size of the installer (unchanged since February 2023). A different size means a different file. */
 export const DRIVER_BYTES = 3034643;
-/** SHA-256 of the installer. When null the hash is only logged; pin it once confirmed. */
-export const DRIVER_SHA256: string | null = null;
+/** SHA-256 of the installer, as downloaded on a clean PC on 2026-09-20. A different hash is refused, never run. */
+export const DRIVER_SHA256: string | null = '4773c8693cf62777cd8da4c95441690e7ae7c4171e8c1d533b1f6225f3bdc29e';
 
 export interface DriverResult { ok: boolean; text: string }
 
