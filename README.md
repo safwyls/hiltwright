@@ -7,7 +7,7 @@ A desktop app that gives lightsaber owners coming from Crystal Focus X, Xenopixe
 | Path | What |
 |---|---|
 | `packages/core` | `@hiltwright/core`: pure TypeScript domain logic (config.h and presets.ini codecs, blade model, board protocol client). `npm run test:core` |
-| `apps/desktop` | `@hiltwright/desktop`: the Electron app. Walking skeleton today: connects to a Proffieboard over Web Serial, reads version, battery and presets, raw console. `npm run dev` |
+| `apps/desktop` | `@hiltwright/desktop`: the Electron app. Connects to a Proffieboard over Web Serial; live presets, looks and colours; fonts and SD; builds and installs firmware with its own toolchain. `npm run dev` |
 | `demo/` | Interactive React prototype of the renderer with dummy data. `npm run dev` inside `demo/` |
 | `design/` | Design canvas sources (`node design/build.mjs` regenerates the artboards) |
 | `docs/` | Recon, plan, spike results, frontend design |
@@ -17,4 +17,6 @@ A desktop app that gives lightsaber owners coming from Crystal Focus X, Xenopixe
 npm install
 npm test
 npm run typecheck
+npm run dev     # run the desktop app from source
+npm run dist    # build the Windows installer into apps/desktop/release
 ```
