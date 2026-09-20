@@ -132,6 +132,16 @@ export function Build({ board }: { board: Board }) {
     }
   }, [result, saber, board, writeFromBootloader]);
 
+  /** One click: main downloads, verifies and launches the official installer elevated, then the install resumes. */
+  const [driverBusy, setDriverBusy] = useState(false);
+  const installDriver = async () => {
+    setDriverBusy(true); setDriverCheck('Downloading the driver installer, then asking Windows for approval…');
+    try {
+      const r = await api().flash.installDriver();
+      if (r.ok) { setDriverCheck(null); await writeFromBootloader(); } else setDriverCheck(r.text);
+    } catch (err) { setDriverCheck(String(err)); } finally { setDriverBusy(false); }
+  };
+
   /** After the owner installed the driver: check the bootloader again and carry on. */
   const [driverCheck, setDriverCheck] = useState<string | null>(null);
   const checkDriver = useCallback(async () => {
@@ -261,16 +271,13 @@ export function Build({ board }: { board: Board }) {
               <div className="col" style={{ gap: 10, padding: 14, border: '1px solid var(--amber)', background: 'rgba(255,181,71,.06)' }}>
                 <b style={{ fontWeight: 600 }}>One-time Windows step: the bootloader driver</b>
                 <p className="dim" style={{ margin: 0, fontSize: 13 }}>The saber is in bootloader mode, but Windows has no driver for it yet, so nothing can be written. This happens once per computer. Nothing has been changed on the saber; the backup has not been taken yet.</p>
-                <ol className="dim" style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.6 }}>
-                  <li>Open the ProffieOS setup page and download <span className="mono">proffie-dfu-setup.exe</span> from the Windows section.</li>
-                  <li>Leave the saber plugged in as it is now and run the installer. Windows asks for administrator approval; the installer binds the WinUSB driver to the bootloader.</li>
-                  <li>Come back here and press Check again. The install carries on from the backup.</li>
-                </ol>
+                <p className="dim" style={{ margin: 0, fontSize: 13 }}>Hiltwright can do it for you: it downloads the driver installer published by the ProffieOS author (3 MB, from fredrik.hubbe.net), checks the file, and starts it. Windows will ask for administrator approval, because installing a driver needs it. Leave the saber plugged in. The install carries on by itself afterwards.</p>
                 <div className="row wrap" style={{ gap: 8 }}>
-                  <button type="button" className="btn" onClick={() => void api().app.openHelp(DRIVER_HELP)}><span className="b"><span className="i"><Icon name="link" />Open the setup page</span></span></button>
-                  <button type="button" className="btn pri" disabled={driverCheck === 'Checking…'} onClick={() => void checkDriver()}><span className="b"><span className="i"><Icon name="usb" />Check again</span></span></button>
-                  <button type="button" className="btn ghost" onClick={() => { setStep('built'); setDriverCheck(null); }}><span className="b"><span className="i">Cancel</span></span></button>
+                  <button type="button" className="btn pri" disabled={driverBusy} onClick={() => void installDriver()}><span className="b"><span className="i"><Icon name="shield" />{driverBusy ? 'Installing the driver…' : 'Install the driver'}</span></span></button>
+                  <button type="button" className="btn" disabled={driverBusy} onClick={() => void checkDriver()}><span className="b"><span className="i"><Icon name="usb" />Check again</span></span></button>
+                  <button type="button" className="btn ghost" disabled={driverBusy} onClick={() => { setStep('built'); setDriverCheck(null); }}><span className="b"><span className="i">Cancel</span></span></button>
                 </div>
+                <span className="hint">Prefer to do it by hand? <button type="button" className="holo" onClick={() => void api().app.openHelp(DRIVER_HELP)}>Open the ProffieOS setup page</button>, run <span className="mono">proffie-dfu-setup.exe</span> from its Windows section, then press Check again.</span>
                 {driverCheck && <span className="hint">{driverCheck}</span>}
               </div>
             )}

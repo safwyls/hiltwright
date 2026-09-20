@@ -157,6 +157,8 @@ export interface HiltwrightApi {
     waitForBootloader(timeoutMs: number): Promise<{ ok: boolean; text: string }>;
     backup(saberId: string, label: string): Promise<FlashStepResult>;
     write(dfuPath: string): Promise<FlashStepResult>;
+    /** Windows: download the official bootloader driver installer, run it elevated, wait for WinUSB to bind. */
+    installDriver(): Promise<{ ok: boolean; text: string }>;
     /** Wait for the running firmware's serial device to be back. */
     waitForRuntime(timeoutMs: number): Promise<boolean>;
   };

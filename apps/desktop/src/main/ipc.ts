@@ -11,6 +11,7 @@ import { proffieSerials } from './usb';
 import { checkFontDir, copyFont, listFonts, listTracks, locateCards } from './sd';
 import { defaultToolchainRoot, installToolchain, toolchainStatus } from './toolchain';
 import { buildFirmware } from './build';
+import { installBootloaderDriver } from './driver';
 import { backupFlash, describeBootloader, usbState, waitFor, writeFirmware } from './flash';
 import type { JobEvent } from '../shared/api';
 import type { FirmwareManifest } from '@hiltwright/core';
@@ -162,6 +163,8 @@ export function registerIpc(): void {
     if (!norm(p).startsWith(norm(toolchainRoot) + '/')) throw new Error('Only firmware built by Hiltwright can be written');
     return writeFirmware(toolchainRoot, p, (l) => emit('flash', l));
   });
+  // The installer is kept in the owner's own data folder, not the shared toolchain folder: it runs elevated.
+  ipcMain.handle('flash:installDriver', () => installBootloaderDriver(join(userData, 'drivers'), (l) => emit('flash', l)));
   ipcMain.handle('flash:waitForRuntime', async (_e, timeoutMs: unknown) => !!(await waitFor((u) => u.runtimePresent && !u.bootloaderPresent, Math.min(Number(timeoutMs) || 20000, 60000), (l) => emit('flash', l))));
 
   ipcMain.handle('app:userDataPath', () => userData);

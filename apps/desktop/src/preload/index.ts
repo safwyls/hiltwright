@@ -45,6 +45,7 @@ const api: HiltwrightApi = {
     waitForBootloader: (timeoutMs) => ipcRenderer.invoke('flash:waitForBootloader', timeoutMs),
     backup: (saberId, label) => ipcRenderer.invoke('flash:backup', saberId, label),
     write: (dfuPath) => ipcRenderer.invoke('flash:write', dfuPath),
+    installDriver: () => ipcRenderer.invoke('flash:installDriver'),
     waitForRuntime: (timeoutMs) => ipcRenderer.invoke('flash:waitForRuntime', timeoutMs),
   },
   onJobEvent: (cb) => {

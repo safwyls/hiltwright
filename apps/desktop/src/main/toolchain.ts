@@ -150,7 +150,7 @@ export async function toolchainStatus(root: string): Promise<ToolchainStatus> {
   return { root, cli, cliVersion, core, gcc, dfuUtil, proffieOS, proffieOSVersion, ready: cli && core && gcc && !!dfuUtil && proffieOS, freeBytes, pathTooLong: isWin && root.length > MAX_ROOT_LENGTH };
 }
 
-async function download(url: string, dest: string, onLine: Progress): Promise<void> {
+export async function download(url: string, dest: string, onLine: Progress): Promise<void> {
   onLine(`downloading ${url}`);
   const res = await fetch(url);
   if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status} ${url}`);
