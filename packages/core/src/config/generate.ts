@@ -127,8 +127,9 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     'ENABLE_WS2811',
     'ENABLE_SD',
     'SAVE_STATE',
-    // Not MOUNT_SD_SETTING: with it the Fett263 prop switches to its v2 sound library and demands a version 2
-    // voice pack on the SD, which most cards do not have. Hiltwright reaches the card through a reader anyway.
+    // MOUNT_SD_SETTING is not listed, but ENABLE_ALL_EDIT_OPTIONS (below) defines it inside ProffieOS.ino, and the
+    // Fett263 edit menu refuses to compile without ENABLE_ALL_EDIT_OPTIONS. So a Fett263 build always uses the v2
+    // sound library and needs the version 2 voice pack on the card; see the warning generateConfig returns.
     'COLOR_CHANGE_DIRECT',
     'ENABLE_ALL_EDIT_OPTIONS',
   ];
@@ -197,7 +198,7 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     '',
   ].join('\n');
   if (shared.length) warnings.push(`Power ${shared.length > 1 ? 'pins' : 'pin'} ${shared.join(', ')} shared between blades: SHARED_POWER_PINS added.`);
-  if (m.prop === 'fett263') warnings.push('Fett263 button controls need the Fett263 Voice Pack in the common folder on the SD card, or the saber will announce "voice pack not found" on every preset change.');
+  if (m.prop === 'fett263') warnings.push('Fett263 button controls with the edit menu need the Fett263 Voice Pack version 2 in the common folder on the SD card (voicepack.ini plus its menu sounds). Without it the saber announces a voice pack error on every preset change.');
   manifest.hash = hash;
   return { text: header + body, hash, sharedPower: shared, warnings, manifest };
 }

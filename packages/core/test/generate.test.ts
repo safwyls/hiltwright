@@ -25,7 +25,7 @@ describe('generateConfig', () => {
     expect(getDefine(doc, 'NUM_BUTTONS')).toBe('2');
     expect(hasDefine(doc, 'SHARED_POWER_PINS')).toBe(true);
     expect(hasDefine(doc, 'SAVE_STATE')).toBe(true);
-    // Deliberately absent: it flips the Fett263 prop to a sound library that needs a version 2 voice pack.
+    // Not listed by us, but ENABLE_ALL_EDIT_OPTIONS turns it on inside ProffieOS.ino (so Fett263 needs voice pack v2).
     expect(hasDefine(doc, 'MOUNT_SD_SETTING')).toBe(false);
     expect(hasDefine(doc, 'DISABLE_DIAGNOSTIC_COMMANDS')).toBe(false);
     expect(hasDefine(doc, 'FETT263_EDIT_MODE_MENU')).toBe(true);

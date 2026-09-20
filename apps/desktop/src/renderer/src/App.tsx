@@ -6,6 +6,8 @@ import { Presets } from './Presets';
 import { Fonts } from './Fonts';
 import { Build } from './Build';
 import { Looks } from './Looks';
+import { ErrorBoundary } from './ErrorBoundary';
+import { SaberControls } from './Controls';
 
 type Page = 'armory' | 'presets' | 'looks' | 'fonts' | 'build' | 'diag';
 
@@ -32,9 +34,9 @@ export function App() {
           <a href="#" className={page === 'diag' ? 'on' : ''} aria-current={page === 'diag' ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setPage('diag'); }}><Icon name="diag" /><span>Diagnostics</span></a>
         </nav>
         <div className="col" style={{ marginTop: 'auto', padding: '16px 20px', borderTop: '1px solid var(--line)', gap: 4 }}>
-          <div className="eyebrow" style={{ opacity: 0.6 }}>Walking skeleton</div>
+          <div className="eyebrow" style={{ opacity: 0.6 }}>Alpha</div>
           <div className="mono mute" style={{ fontSize: 11.5 }}>Hiltwright {window.hiltwright?.appVersion ?? '?'} · {window.hiltwright?.platform ?? '?'}</div>
-          <div className="hint" style={{ fontSize: 11 }}>Real board over Web Serial. Preset edits are live. No toolchain yet.</div>
+          <div className="hint" style={{ fontSize: 11 }}>Preset and colour edits are live. Build &amp; Install writes firmware, always after a backup.</div>
         </div>
       </aside>
 
@@ -56,7 +58,7 @@ export function App() {
       </header>
 
       <main className="main">
-        {page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} /> : page === 'fonts' ? <Fonts /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}
+        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} /> : page === 'fonts' ? <Fonts /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}</ErrorBoundary>
       </main>
 
       <footer className="status" aria-label="Board status">
@@ -193,8 +195,10 @@ function Diagnostics({ board }: { board: ReturnType<typeof useBoard> }) {
   const connected = board.status === 'connected';
   return (
     <>
-      <div className="page-head"><div><div className="eyebrow">Diagnostics</div><h1>Serial console</h1></div></div>
-      <section className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      <div className="page-head"><div><div className="eyebrow">Diagnostics</div><h1>Settings and console</h1></div></div>
+      <div style={{ display: 'grid', gridTemplateColumns: '380px minmax(0,1fr)', gap: 20, flex: 1, minHeight: 0 }}>
+      <SaberControls board={board} />
+      <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div className="ph"><h2>Console</h2><div className="row wrap" style={{ gap: 6 }}>{quick.map((q) => <button key={q} type="button" className="chip" disabled={!connected} onClick={() => void board.send(q, q === 'show_current_preset' ? { until: board.isPresetBlockEnd } : { idleMs: 700 })}>{q}</button>)}</div></div>
         <div className="console grow" style={{ border: 0, minHeight: 0 }}>
           {board.lines.length === 0 && <span className="mute">Connect a saber, then type a command. Events the board prints on its own show in amber.</span>}
@@ -206,6 +210,7 @@ function Diagnostics({ board }: { board: ReturnType<typeof useBoard> }) {
           <button type="submit" className="btn sm pri" disabled={!connected}><span className="b"><span className="i">Send</span></span></button>
         </form>
       </section>
+      </div>
     </>
   );
 }
