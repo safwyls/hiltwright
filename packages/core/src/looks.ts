@@ -6,6 +6,7 @@
 // uses because it either wrote the look (starters) or analysed the pasted code, and records that per build.
 
 import type { BladeRole } from './config/generate';
+import { LIBRARY_LOOKS, LOOK_FX } from './lookLibrary';
 
 export type ArgKind = 'color' | 'option' | 'time' | 'size';
 export interface StyleArgInfo { n: number; name: string; kind: ArgKind }
@@ -63,25 +64,48 @@ export interface LookDef {
   description: string;
   /** Compiled default per colour argument, as hex, where the code makes it plain. */
   defaults?: Record<number, string>;
+  /** Second preview colour for looks that blend two. */
+  preview2?: string;
+  /** Hiltwright looks: the C++ alias the slot expression refers to, emitted only when the look is used. */
+  define?: string;
+  /** The alias builds on the shared HwFx wrapper. */
+  usesFx?: boolean;
+  /** Measured flash cost in KB on a V2, when known. */
+  kb?: number;
 }
 
-export const STARTER_LOOKS: readonly LookDef[] = [
-  {
-    id: 'hw_blade', name: 'Hiltwright Blade', source: 'starter', by: 'Hiltwright', code: 'StylePtr<HwBlade>()', header: null,
-    roles: ['main', 'side'], args: [1, 9, 10, 11], preview: '#2255ff', defaults: { 1: '#0000ff', 9: '#ffffff', 10: '#ffffff', 11: '#ffffff' },
-    description: 'A steady blade with blast, clash and lockup flashes. Every colour is yours to change live.',
-  },
-  {
-    id: 'hw_accent', name: 'Hiltwright Accent', source: 'starter', by: 'Hiltwright', code: 'StylePtr<HwAccent>()', header: null,
-    roles: ['crystal', 'accent'], args: [1], preview: '#2255ff', defaults: { 1: '#0000ff' },
-    description: 'Follows the base colour and fades in and out with the blade. For crystals and accent LEDs.',
-  },
-  {
-    id: 'hw_motor', name: 'Motor on while ignited', source: 'starter', by: 'Hiltwright', code: 'StylePtr<HwMotor>()', header: null,
-    roles: ['motor'], args: [], preview: '#ffffff',
-    description: 'Runs the motor at full power while the blade is on. No colours.',
-  },
-];
+/** Runtime arguments and compiled default colours found in a piece of style C++. */
+export function scanStyleArgs(text: string): { args: number[]; defaults: Record<number, string> } {
+  const args = new Set<number>();
+  const re = /\b(?:RgbArg|IntArg|Int32Arg|PercentArg|TimeArg|ColorArg|OptionArg|StyleOption)\s*<\s*([A-Z0-9_]+|\d+)\s*,/g;
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    const n = /^\d+$/.test(m[1]) ? Number(m[1]) : ARG_NAMES[m[1]];
+    if (n) args.add(n);
+  }
+  // Edit-mode aliases that hide the argument inside a helper.
+  if (/\bIgnitionTime\b/.test(text)) args.add(5);
+  if (/\bRetractionTime\b/.test(text)) args.add(26);
+  const defaults: Record<number, string> = {};
+  const dre = /\bRgbArg\s*<\s*([A-Z0-9_]+|\d+)\s*,\s*(?:Rgb\s*<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>|([A-Za-z]\w*))\s*>/g;
+  for (let m = dre.exec(text); m; m = dre.exec(text)) {
+    const n = /^\d+$/.test(m[1]) ? Number(m[1]) : ARG_NAMES[m[1]];
+    if (!n || defaults[n]) continue;
+    if (m[2] !== undefined) defaults[n] = rgb8ToHex(Number(m[2]), Number(m[3]), Number(m[4]));
+    else if (m[5] && NAMED_COLORS[m[5]]) defaults[n] = NAMED_COLORS[m[5]];
+  }
+  return { args: [...args].sort((a, b) => a - b), defaults };
+}
+
+/** Hiltwright's own looks as LookDefs. The first look listed for a role is that role's default. */
+export const STARTER_LOOKS: readonly LookDef[] = LIBRARY_LOOKS.map((l): LookDef => {
+  // The base's own colours win over the shared effects' defaults, so scan the look before the wrapper.
+  const scanned = scanStyleArgs(l.define + (l.usesFx ? '\n' + LOOK_FX : ''));
+  return {
+    id: l.id, name: l.name, source: 'starter', by: 'Hiltwright', code: `StylePtr<${l.alias}>()`, header: null, roles: l.roles,
+    args: scanned.args, preview: l.preview, ...(l.preview2 ? { preview2: l.preview2 } : {}), description: l.description, defaults: scanned.defaults,
+    define: l.define, usesFx: l.usesFx, ...(l.kb != null ? { kb: l.kb } : {}),
+  };
+});
 
 export function starterLookFor(role: BladeRole): LookDef {
   return STARTER_LOOKS.find((l) => l.roles.includes(role)) ?? STARTER_LOOKS[0];
@@ -135,25 +159,7 @@ export function analyzeStyleCode(input: string): StyleAnalysis {
   if (depth !== 0) problems.push(`Unbalanced angle brackets (${depth > 0 ? 'missing >' : 'extra >'}).`);
   if (/^\s*(#include|#define|#ifdef|using\s)/m.test(text)) problems.push('Only the style expression belongs here, not preprocessor lines or type aliases.');
 
-  const args = new Set<number>();
-  const re = /\b(?:RgbArg|IntArg|Int32Arg|PercentArg|TimeArg|ColorArg|OptionArg|StyleOption)\s*<\s*([A-Z0-9_]+|\d+)\s*,/g;
-  for (let m = re.exec(text); m; m = re.exec(text)) {
-    const n = /^\d+$/.test(m[1]) ? Number(m[1]) : ARG_NAMES[m[1]];
-    if (n) args.add(n);
-  }
-  // Fett263 aliases that hide the argument inside a helper.
-  if (/\bIgnitionTime\b/.test(text)) args.add(5);
-  if (/\bRetractionTime\b/.test(text)) args.add(26);
-
-  // Defaults per colour argument: RgbArg<N, Rgb<r,g,b>> or RgbArg<N, NamedColour>.
-  const defaults: Record<number, string> = {};
-  const dre = /\bRgbArg\s*<\s*([A-Z0-9_]+|\d+)\s*,\s*(?:Rgb\s*<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>|([A-Za-z]\w*))\s*>/g;
-  for (let m = dre.exec(text); m; m = dre.exec(text)) {
-    const n = /^\d+$/.test(m[1]) ? Number(m[1]) : ARG_NAMES[m[1]];
-    if (!n || defaults[n]) continue;
-    if (m[2] !== undefined) defaults[n] = rgb8ToHex(Number(m[2]), Number(m[3]), Number(m[4]));
-    else if (m[5] && NAMED_COLORS[m[5]]) defaults[n] = NAMED_COLORS[m[5]];
-  }
+  const { args: argList, defaults } = scanStyleArgs(text);
   let preview = '#ffffff';
   const base = /RgbArg\s*<\s*(?:BASE_COLOR_ARG|1)\s*,\s*([A-Za-z0-9_]+)(?:\s*<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>)?/.exec(text) ?? /\bRgb\s*<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>/.exec(text);
   if (base) {
@@ -161,7 +167,7 @@ export function analyzeStyleCode(input: string): StyleAnalysis {
     else if (base.length === 5 && NAMED_COLORS[base[1]]) preview = NAMED_COLORS[base[1]];
     else if (base.length === 4) preview = rgb8ToHex(Number(base[1]), Number(base[2]), Number(base[3]));
   }
-  return { ok: problems.length === 0, problems, expression: text, header: headerLines.length ? headerLines.join('\n') : null, args: [...args].sort((a, b) => a - b), preview: defaults[1] ?? preview, defaults };
+  return { ok: problems.length === 0, problems, expression: text, header: headerLines.length ? headerLines.join('\n') : null, args: argList, preview: defaults[1] ?? preview, defaults };
 }
 
 function rgb8ToHex(r: number, g: number, b: number): string {

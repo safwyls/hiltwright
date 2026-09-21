@@ -2,6 +2,7 @@ export * from './model';
 export * from './config';
 export * from './protocol';
 export * from './looks';
+export * from './lookLibrary';
 export * from './voicepack';
 export * from './xenopixel';
 export { parsePresetsIni, emitPresetsIni, type PresetsIni } from './presetsIni';

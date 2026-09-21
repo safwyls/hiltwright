@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseId, voicePackFromSerial, voicePackVerdict, type BladeVariant, type ModelBlade, type Prop, type SaberConfigModel, type VoicePackStatus } from '@hiltwright/core';
-import { draftModel, guessBlades, queuedLookIds } from './saberModel';
+import { draftModel, guessBlades, infoFromRecord, queuedLookIds } from './saberModel';
 import { HardwareEditor } from './Hardware';
 import type { BackupInfo, BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
 import type { Board } from './board';
@@ -29,11 +29,7 @@ export function Build({ board }: { board: Board }) {
   const offline = !!remembered;
   const saber = snap?.saber ?? (remembered ? board.library.find((s) => s.id === remembered.id) ?? remembered : null);
   // Memoised: a fresh object every render would re-run every effect that depends on it.
-  const offlineInfo = useMemo<NonNullable<Board['info']> | null>(() => (remembered ? {
-    version: { version: remembered.identity.version ?? '', config: remembered.identity.configName, prop: remembered.identity.prop, buttons: remembered.identity.buttons, installed: remembered.identity.installed, major: null },
-    battery: null, volume: null, currentPreset: null, presets: remembered.presets, fonts: remembered.fonts, tracks: remembered.tracks,
-    pixelBlades: remembered.identity.pixelBlades, bladeConfig: remembered.identity.bladeConfig, rejected: [], timings: {},
-  } : null), [remembered]);
+  const offlineInfo = useMemo<NonNullable<Board['info']> | null>(() => (remembered ? infoFromRecord(remembered) : null), [remembered]);
   const info = snap?.info ?? offlineInfo;
   const [tool, setTool] = useState<ToolchainStatus | null>(null);
   const [installing, setInstalling] = useState(false);

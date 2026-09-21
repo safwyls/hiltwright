@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STARTER_LOOKS, analyzeStyleCode, colorWordToHex, formatStyleArgs, generateConfig, hexToColorWord, lookAtSlot, lookSlots, parseStyleArgs, validateModel, type LookDef, type SaberConfigModel } from '../src';
+import { LIBRARY_LOOKS, LOOK_FX, STARTER_LOOKS, analyzeStyleCode, scanStyleArgs, colorWordToHex, formatStyleArgs, generateConfig, hexToColorWord, lookAtSlot, lookSlots, parseStyleArgs, validateModel, type LookDef, type SaberConfigModel } from '../src';
 
 const FETT263 = `// Hiltwright test look (header laid out like a library block)
 // Copyright 2026 Hiltwright contributors
@@ -83,7 +83,7 @@ describe('generateConfig with chosen looks', () => {
     expect(lookSlots(full, 'hw_accent')).toEqual([{ preset: 0, blade: 2 }, { preset: 1, blade: 2 }]);
     expect(lookAtSlot(full, 1, 1)?.args).toEqual([1, 2, 5, 11, 26]);
     expect(lookAtSlot(full, 1, 1)?.defaults).toEqual({ 1: '#ff0000', 2: '#ffff00', 11: '#ffffff' });
-    expect(lookAtSlot(full, 0, 1)?.defaults).toEqual({ 1: '#0000ff', 9: '#ffffff', 10: '#ffffff', 11: '#ffffff' });
+    expect(lookAtSlot(full, 0, 1)?.defaults).toMatchObject({ 1: '#0000ff', 9: '#ffffff', 10: '#ffffff', 11: '#ffffff', 13: '#ffb43c' });
     expect(lookAtSlot(full, 5, 1)).toBeNull();
   });
   it('flags unknown look ids', () => {
@@ -91,5 +91,54 @@ describe('generateConfig with chosen looks', () => {
   });
   it('starters cover every role', () => {
     for (const role of ['main', 'side', 'crystal', 'accent', 'motor'] as const) expect(STARTER_LOOKS.some((l) => l.roles.includes(role))).toBe(true);
+  });
+});
+
+describe('the Hiltwright look library', () => {
+  it('every look has a unique id and alias, a description, and C++ that defines exactly its alias', () => {
+    expect(new Set(LIBRARY_LOOKS.map((l) => l.id)).size).toBe(LIBRARY_LOOKS.length);
+    expect(new Set(LIBRARY_LOOKS.map((l) => l.alias)).size).toBe(LIBRARY_LOOKS.length);
+    for (const l of LIBRARY_LOOKS) {
+      expect(l.define.startsWith(`using ${l.alias} = `), l.id).toBe(true);
+      expect(l.define.trim().endsWith(';'), l.id).toBe(true);
+      expect((l.define.match(/</g) ?? []).length, `${l.id} brackets`).toBe((l.define.match(/>/g) ?? []).length);
+      expect(l.usesFx, l.id).toBe(/\bHwFx</.test(l.define));
+      expect(l.description.length, l.id).toBeGreaterThan(30);
+    }
+    expect((LOOK_FX.match(/</g) ?? []).length).toBe((LOOK_FX.match(/>/g) ?? []).length);
+  });
+
+  it('arguments and default colours are read from the C++, so they cannot drift', () => {
+    const byId = Object.fromEntries(STARTER_LOOKS.map((l) => [l.id, l]));
+    // A blade look: its own colours, the shared effect colours, and both timings.
+    expect(byId.hw_pulse.args).toEqual([1, 2, 5, 9, 10, 11, 13, 15, 16, 26]);
+    expect(byId.hw_pulse.defaults).toMatchObject({ 1: '#0000ff', 2: '#00ffff', 9: '#ffffff' });
+    expect(byId.hw_unstable.defaults?.[1]).toBe('#ff0000');
+    expect(byId.hw_swing.args).toContain(18);
+    expect(byId.hw_rainbow.args).not.toContain(1);
+    // Accent looks do not drag the blade effects in.
+    expect(byId.hw_accent.args).toEqual([1, 5, 26]);
+    expect(byId.hw_crystal.args).toEqual([1, 5, 10, 26, 31]);
+    expect(byId.hw_battery.args).toEqual([]);
+    expect(byId.hw_motor.args).toEqual([]);
+    expect(scanStyleArgs('RgbArg<7, Red>, IntArg<IGNITION_DELAY_ARG, 0>')).toEqual({ args: [6, 7], defaults: { 7: '#ff0000' } });
+  });
+
+  it('a build only carries the looks it uses, and the shared wrapper only when a blade look needs it', () => {
+    const blade = { id: 'b1', role: 'main' as const, type: 'pixel' as const, pixels: 132, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own' as const, dataPin: 'bladePin', powerPins: ['bladePowerPin2'] } };
+    const g = generateConfig({ name: 'lib', board: 'V2', buttons: 2, prop: 'sa22c', blades: [blade], presets: [{ font: 'A', track: '', name: 'One', looks: ['hw_fire'] }, { font: 'B', track: '', name: 'Two' }] });
+    expect(g.text).toContain('using HwFire = ');
+    expect(g.text).toContain('using HwBlade = ');
+    expect(g.text).toContain('template<class BASE> using HwFx');
+    expect(g.text).not.toContain('using HwRainbow');
+    expect(g.text).toContain('StylePtr<HwFire>()');
+    const accentOnly = generateConfig({ name: 'lib2', board: 'V2', buttons: 2, prop: 'sa22c', blades: [{ ...blade, role: 'main' }], presets: [{ font: 'A', track: '', name: 'One', looks: ['hw_spark'] }] });
+    expect(accentOnly.text).not.toContain('HwFx');
+  });
+
+  it('each blade role has a default look, and it is the first one listed for that role', () => {
+    expect(STARTER_LOOKS.find((l) => l.roles.includes('main'))?.id).toBe('hw_blade');
+    expect(STARTER_LOOKS.find((l) => l.roles.includes('crystal'))?.id).toBe('hw_accent');
+    expect(STARTER_LOOKS.find((l) => l.roles.includes('motor'))?.id).toBe('hw_motor');
   });
 });

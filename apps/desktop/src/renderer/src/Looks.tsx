@@ -7,15 +7,19 @@ import { STARTER_LOOKS, analyzeStyleCode, argInfo, lookSlots, type BladeRole, ty
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { BladeBar, Hilt, type Fx } from './Saber';
-import { draftModel, queuedLookIds, withLookInSlot } from './saberModel';
+import { draftModel, infoFromRecord, queuedLookIds, withLookInSlot } from './saberModel';
 
 const api = () => window.hiltwright;
 const ROLE_LABEL: Record<BladeRole, string> = { main: 'main blade', side: 'side blade', crystal: 'crystal', accent: 'accent', motor: 'motor' };
 type LookState = 'compiled' | 'queued' | 'new';
 
 export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: () => void; onBuild: () => void }) {
-  const { info, saber, status } = board;
-  const connected = status === 'connected' && !!info && !!saber;
+  const { status } = board;
+  // Looks can be chosen for a remembered saber with nothing plugged in; only the install needs the board.
+  const live = status === 'connected' && !!board.info && !!board.saber;
+  const saber = live ? board.saber : board.library[0] ?? null;
+  const info = useMemo(() => (live ? board.info : saber ? infoFromRecord(saber) : null), [live, board.info, saber]);
+  const connected = !!info && !!saber;
   const [pasted, setPasted] = useState<LookDef[]>([]);
   const [selectedId, setSelectedId] = useState<string>(STARTER_LOOKS[0].id);
   const [q, setQ] = useState('');
@@ -69,7 +73,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
   const addToSaber = async () => {
     if (!model || !saber || !fittingBlade) return;
     const next = withLookInSlot(model, sel, targetPreset, fittingBlade.n);
-    await board.updateSaber({ model: next });
+    await board.updateSaber({ model: next }, saber.id);
     setNote(`"${sel.name}" will be compiled into preset ${targetPreset + 1} (${info?.presets[targetPreset]?.name.replace('\n', ' ') ?? ''}), blade ${fittingBlade.n}. Build & Install puts it on the saber.`);
   };
 
@@ -117,10 +121,11 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
                 <button key={l.id} type="button" className={`lookcard ${l.id === sel.id ? 'on' : ''}`} aria-pressed={l.id === sel.id} onClick={() => setSelectedId(l.id)}>
                   <div className="col" style={{ padding: '18px 16px 12px', width: '100%', gap: 6 }}>
                     <BladeBar color={l.preview} thin={!l.roles.includes('main') && !l.roles.includes('side')} />
+                    {l.preview2 ? <BladeBar color={l.preview2} thin style={{ maxWidth: '55%' }} /> : <div style={{ height: 6 }} />}
                   </div>
                   <div className="col" style={{ padding: '4px 16px 14px', gap: 6, width: '100%' }}>
                     <div className="row between"><b style={{ fontWeight: 600, fontSize: 14 }}>{l.name}</b>{st === 'compiled' ? <span className="chip ok"><Icon name="check" />Compiled in</span> : st === 'queued' ? <span className="chip warn"><Icon name="clock" />Queued</span> : <span className="chip warn">Needs build</span>}</div>
-                    <div className="row" style={{ gap: 10, fontSize: 12, color: 'var(--mute)' }}><span>{l.by}</span><span>·</span><span>{l.roles.map((r) => ROLE_LABEL[r]).join(', ')}</span><span>·</span><span className="mono">{l.args.length} arg{l.args.length === 1 ? '' : 's'}</span></div>
+                    <div className="row" style={{ gap: 10, fontSize: 12, color: 'var(--mute)' }}><span>{l.by}</span><span>·</span><span>{l.roles.map((r) => ROLE_LABEL[r]).join(', ')}</span><span>·</span><span className="mono">{l.args.length} live setting{l.args.length === 1 ? '' : 's'}</span>{l.kb != null && <><span>·</span><span className="mono">{l.kb.toFixed(1)} KB</span></>}</div>
                   </div>
                 </button>
               );
@@ -138,6 +143,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
           <div className="pb col" style={{ gap: 16, overflow: 'auto' }}>
             <div className="col" style={{ gap: 8, padding: '10px 0 4px' }}>
               <div className="row" style={{ gap: 0 }}><Hilt /><BladeBar color={sel.preview} fx={fx} /></div>
+              {sel.preview2 && <div className="row" style={{ gap: 0 }}><span style={{ width: 64, flex: 'none' }} /><BladeBar color={sel.preview2} fx={fx} thin /></div>}
             </div>
             <div className="row" style={{ gap: 8 }}>
               <button type="button" className="btn sm" onClick={() => setFx(fx === 'off' ? 'on' : 'off')}><span className="b"><span className="i">{fx === 'off' ? 'Ignite' : 'Retract'}</span></span></button>
@@ -145,6 +151,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
               <button type="button" className="btn sm" onClick={() => fx !== 'off' && pulse('blast', 300)}><span className="b"><span className="i">Blast</span></span></button>
             </div>
             <p className="dim" style={{ fontSize: 13 }}>{sel.description}</p>
+            {sel.kb != null && <span className="hint">Costs about {sel.kb.toFixed(1)} KB of firmware space the first time it is used on a saber. Reusing it in more presets is free.</span>}
             <div className="col" style={{ gap: 0 }}>
               <h2 style={{ fontSize: 10.5, color: 'var(--dim)', paddingBottom: 8 }}>{sel.args.length ? 'Colours and options you can change live' : 'No live arguments'}</h2>
               {sel.args.map((n) => {
@@ -163,7 +170,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
             {note && <div className="note green"><Icon name="check" /><span>{note}</span></div>}
           </div>
           <div className="col" style={{ marginTop: 'auto', padding: 18, borderTop: '1px solid var(--line)', gap: 10 }}>
-            {!connected && <span className="hint">Connect a saber to add looks to it.</span>}
+            {!connected && <span className="hint">Connect a saber once and Hiltwright remembers it; after that looks can be added with it unplugged.</span>}
             {connected && selState === 'compiled' && <button type="button" className="btn pri" onClick={onPresets}><span className="b"><span className="i"><Icon name="presets" />Use it in a preset</span></span></button>}
             {connected && selState === 'queued' && <button type="button" className="btn warn" onClick={onBuild}><span className="b"><span className="i"><Icon name="bolt" />Build &amp; install queued looks</span></span></button>}
             {connected && selState !== 'compiled' && model && (

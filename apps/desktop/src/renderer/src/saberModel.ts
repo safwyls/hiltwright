@@ -18,6 +18,15 @@ export function guessBlades(pixelBlades: number[]): ModelBlade[] {
   }));
 }
 
+/** What is known about a saber from its library record alone, shaped like a live board reading. */
+export function infoFromRecord(rec: SaberRecord): BoardInfo {
+  return {
+    version: { version: rec.identity.version ?? '', config: rec.identity.configName, prop: rec.identity.prop, buttons: rec.identity.buttons, installed: rec.identity.installed, major: null },
+    battery: null, volume: null, currentPreset: null, presets: rec.presets, fonts: rec.fonts, tracks: rec.tracks,
+    pixelBlades: rec.identity.pixelBlades, bladeConfig: rec.identity.bladeConfig, rejected: [], timings: {},
+  };
+}
+
 export function configNameFor(saber: SaberRecord): string {
   return `hiltwright_${saber.name.toLowerCase().replace(/^hiltwright[_ ]+/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`;
 }

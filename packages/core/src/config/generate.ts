@@ -7,6 +7,7 @@ import { emitBladeExpr, emitPresetArray } from './emit';
 import { bladesToExprs, sharedPowerPins, stripLength } from './blades';
 import { quote } from './cpp';
 import { STARTER_LOOKS, starterLookFor, type FirmwareManifest, type LookDef } from '../looks';
+import { LIBRARY_LOOKS, LOOK_FX } from '../lookLibrary';
 
 export type Prop = 'fett263' | 'sa22c' | 'bc' | 'default';
 export type BoardModel = 'V2' | 'V3';
@@ -55,23 +56,8 @@ const PROP_INCLUDE: Record<Prop, string> = {
   default: '../props/saber.h',
 };
 
-/** Starter looks. Colours are RgbArg slots so they can be changed live through presets.ini. */
-export const STARTER_STYLES = `// Hiltwright starter looks. Every colour is a runtime argument (edit it from the app, no rebuild).
-using HwBlade = Layers<
-  RgbArg<BASE_COLOR_ARG, Rgb<0, 0, 255>>,
-  BlastL<RgbArg<BLAST_COLOR_ARG, Rgb<255, 255, 255>>>,
-  SimpleClashL<RgbArg<CLASH_COLOR_ARG, Rgb<255, 255, 255>>>,
-  LockupTrL<AudioFlicker<RgbArg<LOCKUP_COLOR_ARG, Rgb<255, 255, 255>>, RgbArg<BASE_COLOR_ARG, Rgb<0, 0, 255>>>, TrInstant, TrFade<200>, SaberBase::LOCKUP_NORMAL>,
-  InOutTrL<TrWipe<300>, TrWipeIn<500>>>;
-// Accents and crystals follow the base colour and fade with the blade.
-using HwAccent = Layers<
-  RgbArg<BASE_COLOR_ARG, Rgb<0, 0, 255>>,
-  InOutTrL<TrFade<300>, TrFade<500>>>;
-// A motor on a power pin: full on while ignited.
-using HwMotor = Layers<
-  White,
-  InOutTrL<TrInstant, TrInstant>>;
-`;
+/** Every Hiltwright look's C++, for reference and tests. A build only gets the ones it uses. */
+export const STARTER_STYLES = [LOOK_FX, ...LIBRARY_LOOKS.map((l) => l.define)].join('\n');
 
 /** Every look the model can reference, starters first. */
 export function modelLooks(m: SaberConfigModel): LookDef[] {
@@ -216,7 +202,9 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     '#endif',
     '',
     '#ifdef CONFIG_STYLES',
-    STARTER_STYLES.trimEnd(),
+    '// Hiltwright looks used by this saber. Every colour is a runtime argument (edit it from the app, no rebuild).',
+    ...(usedLooks.some((l) => l.usesFx) ? [LOOK_FX] : []),
+    ...usedLooks.filter((l) => l.define).map((l) => l.define as string),
     ...(pastedHeaders.length ? ['', '// Library looks compiled into this saber. Their headers stay with them.', ...pastedHeaders] : []),
     '#endif',
     '',
