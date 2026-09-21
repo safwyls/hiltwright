@@ -64,6 +64,9 @@ export class DemoScene {
   private orbit = { yaw: 0, pitch: 0.12 };
   /** Where the camera looks, moved by panning. */
   private readonly focus = new THREE.Vector3(0, 1.45, 0);
+  /** How far the camera stands from what it looks at; it eases toward the distance asked for. */
+  private distance = 3.6;
+  private distanceTarget = 3.6;
   onMotion: ((m: Motion) => void) | null = null;
   private lastReport = 0;
 
@@ -200,10 +203,13 @@ export class DemoScene {
   trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (this.sim.isOn) this.sim.trigger(type, pos); }
   setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) this.sim.setLockup(type); }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
-  resetPose(): void { this.wield.handTarget = [...HOME]; this.twistTarget = 0; this.orbit = { yaw: 0, pitch: 0.12 }; this.focus.set(0, 1.45, 0); }
+  resetPose(): void { this.wield.handTarget = [...HOME]; this.twistTarget = 0; this.orbit = { yaw: 0, pitch: 0.12 }; this.focus.set(0, 1.45, 0); this.distanceTarget = 3.6; }
+  /** Step closer (negative) or further away (positive). Each notch changes the distance by a fixed proportion, so it feels even near and far. */
+  zoomBy(notches: number): void { this.distanceTarget = Math.max(1.1, Math.min(9, this.distanceTarget * Math.pow(1.12, notches))); }
+
   /** Slide the view sideways and up or down, by a drag of that many pixels: the room moves with the cursor. */
   panBy(dx: number, dy: number): void {
-    const perPixel = (2 * 3.6 * Math.tan((this.camera.fov * Math.PI) / 360)) / Math.max(1, this.host.clientHeight);
+    const perPixel = (2 * this.distance * Math.tan((this.camera.fov * Math.PI) / 360)) / Math.max(1, this.host.clientHeight);
     const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
     const up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1);
     this.focus.addScaledVector(right, -dx * perPixel).addScaledVector(up, dy * perPixel);
@@ -277,7 +283,8 @@ export class DemoScene {
 
     this.paintBlade(this.sim.frame(now));
 
-    const cy = Math.cos(this.orbit.pitch); const dist = 3.6;
+    this.distance += (this.distanceTarget - this.distance) * Math.min(1, dt * 12);
+    const cy = Math.cos(this.orbit.pitch); const dist = this.distance;
     this.camera.position.set(this.focus.x + Math.sin(this.orbit.yaw) * cy * dist, this.focus.y + Math.sin(this.orbit.pitch) * dist, this.focus.z + Math.cos(this.orbit.yaw) * cy * dist);
     this.camera.lookAt(this.focus);
     this.renderGlow();

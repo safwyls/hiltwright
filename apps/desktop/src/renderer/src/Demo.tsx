@@ -55,7 +55,9 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
         grab = null; room.release();
       } else if (e.button === 1) pan = null; else orbit = null;
     };
-    const wheel = (e: WheelEvent) => { e.preventDefault(); room.addTwist(e.deltaY * 0.12); };
+    // Plain scroll twists the hilt, which is what the hand would do; Ctrl+scroll (and a trackpad pinch, which
+    // Chromium reports the same way) zooms.
+    const wheel = (e: WheelEvent) => { e.preventDefault(); if (e.ctrlKey) room.zoomBy(Math.max(-3, Math.min(3, e.deltaY / 100))); else room.addTwist(e.deltaY * 0.12); };
     const dbl = () => room.setOn(!room.isOn);
     const menu = (e: Event) => e.preventDefault();
     // Chromium starts its own autoscroll on a middle press unless told not to.
@@ -63,6 +65,8 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
     const key = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey || /^(INPUT|SELECT|TEXTAREA)$/.test((e.target as HTMLElement)?.tagName ?? '')) return;
       const k = e.key.toLowerCase();
+      if (k === '+' || k === '=') { room.zoomBy(-1); return; }
+      if (k === '-' || k === '_') { room.zoomBy(1); return; }
       if (k === ' ') { e.preventDefault(); room.setOn(!room.isOn); setHold(null); } else if (k === 'c') room.trigger('clash'); else if (k === 'b') room.trigger('blast'); else if (k === 's') room.trigger('stab'); else if (k === 'r') room.resetPose();
       else { const h = HOLDS.find((x) => x.key === k); if (h && !e.repeat) setHold(holdRef.current === h.type ? null : h.type); }
     };
@@ -131,7 +135,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
       </div>
 
       <div style={{ position: 'absolute', left: 20, bottom: 18, display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 14px', fontSize: 12, color: 'var(--dim)', pointerEvents: 'none' }}>
-        {[['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down'], ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['R', 'reset the pose and the view']].map(([k, v]) => (
+        {[['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down'], ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll or + −', 'zoom'], ['R', 'reset the pose and the view']].map(([k, v]) => (
           <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11.5 }}>{k}</span><span>{v}</span></div>
         ))}
       </div>
