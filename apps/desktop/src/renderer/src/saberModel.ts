@@ -40,6 +40,7 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
   const saved = saber.model;
   const blades = overrides.blades ?? saved?.blades ?? guessBlades(info.pixelBlades.length ? info.pixelBlades : [132]);
   const byName = new Map((saved?.presets ?? []).map((p) => [p.name, p.looks ?? []]));
+  const argsByName = new Map((saved?.presets ?? []).map((p) => [p.name, p.lookArgs ?? []]));
   return {
     name: saved?.name ?? configNameFor(saber),
     board: saved?.board ?? (/v3/i.test(saber.identity.version ?? '') ? 'V3' : 'V2'),
@@ -48,7 +49,8 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
     blades,
     presets: info.presets.map((p, i) => {
       const looks = byName.get(p.name) ?? saved?.presets[i]?.looks ?? [];
-      return { font: p.font, track: p.track, name: p.name, ...(looks.some(Boolean) ? { looks: blades.map((_b, k) => looks[k] ?? null) } : {}) };
+      const lookArgs = argsByName.get(p.name) ?? saved?.presets[i]?.lookArgs ?? [];
+      return { font: p.font, track: p.track, name: p.name, ...(looks.some(Boolean) ? { looks: blades.map((_b, k) => looks[k] ?? null) } : {}), ...(lookArgs.some(Boolean) ? { lookArgs: blades.map((_b, k) => lookArgs[k] ?? null) } : {}) };
     }),
     looks: saved?.looks ?? [],
     ...((overrides.variants ?? saved?.bladeId?.variants ?? []).length ? { bladeId: { variants: overrides.variants ?? saved!.bladeId!.variants } } : {}),
@@ -56,26 +58,4 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
   };
 }
 
-/** A copy of the model with `look` compiled into preset `preset` (0-based), blade `blade` (1-based). */
-export function withLookInSlot(model: SaberConfigModel, look: LookDef, preset: number, blade: number): SaberConfigModel {
-  const looks = look.source === 'starter' || (model.looks ?? []).some((l) => l.id === look.id) ? model.looks ?? [] : [...(model.looks ?? []), look];
-  return {
-    ...model,
-    looks,
-    presets: model.presets.map((p, i) => {
-      if (i !== preset) return p;
-      const row = model.blades.map((_b, k) => p.looks?.[k] ?? null);
-      row[blade - 1] = look.id;
-      return { ...p, looks: row };
-    }),
-  };
-}
-
-/** Look ids the model will compile that the installed firmware does not have yet. */
-export function queuedLookIds(model: SaberConfigModel | undefined, firmware: SaberRecord['firmware']): string[] {
-  if (!model) return [];
-  const wanted = new Set<string>();
-  for (const p of model.presets) for (const id of p.looks ?? []) if (id) wanted.add(id);
-  const have = new Set((firmware?.looks ?? []).map((l) => l.id));
-  return [...wanted].filter((id) => !have.has(id));
-}
+export { queuedLookIds, withLookInSlot } from './slotModel';

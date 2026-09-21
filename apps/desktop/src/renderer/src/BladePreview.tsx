@@ -134,7 +134,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
               </div>
             </div>
           )}
-          <span className="hint">Simulated from the same maths the saber runs, LED by LED. {dot ? '' : 'Click the blade to land a blast there. Clashes and lockups land where the tilt puts them, as on the saber. '}Sound is a stand-in, so hum-driven flicker is typical rather than exact.</span>
+          <span className="hint" title="The preview runs the same per-LED maths as the saber. Sound is a stand-in, so hum-driven flicker is typical rather than exact.">{dot ? 'Simulated LED by LED.' : 'Simulated LED by LED. Click the blade to land a blast; clashes and lockups land where the tilt puts them.'}</span>
         </div>
       )}
     </div>

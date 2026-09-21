@@ -9,6 +9,7 @@ import { Looks } from './Looks';
 import { ErrorBoundary } from './ErrorBoundary';
 import { SaberControls } from './Controls';
 import { infoFromRecord, queuedLookIds } from './saberModel';
+import { usePendingLookColours } from './pendingColours';
 
 type Page = 'armory' | 'presets' | 'looks' | 'fonts' | 'build' | 'diag';
 const PAGES: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
@@ -18,6 +19,7 @@ const PAGES: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name']
 
 export function App() {
   const real = useBoard();
+  usePendingLookColours(real);
   // Dev aid: hiltwrightGoto('fake:presets') shows the connected pages from the remembered saber, with no board, for
   // layout screenshots. Nothing is sent anywhere; never available in a packaged app.
   const [fake, setFake] = useState(false);

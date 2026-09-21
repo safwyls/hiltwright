@@ -3,7 +3,7 @@
 // "queued" when it is in the build model but not yet installed, and "new" otherwise.
 
 import { useEffect, useMemo, useState } from 'react';
-import { STARTER_LOOKS, analyzeStyleCode, argInfo, hexToColorWord, lookSlots, type BladeRole, type LookDef } from '@hiltwright/core';
+import { STARTER_LOOKS, analyzeStyleCode, argInfo, formatBuiltin, formatStyleArgs, hexToColorWord, lookSlots, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { BladePreview } from './BladePreview';
@@ -35,7 +35,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
   const [lookBy, setLookBy] = useState('Fett263');
   const [targetPreset, setTargetPreset] = useState<number>(0);
   const [targetBlade, setTargetBlade] = useState<number>(1);
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNote] = useState<{ tone: 'green' | 'red'; text: string } | null>(null);
   // Colours and timings tried on the preview only. Nothing here reaches the saber: saved colours belong to a preset.
   const [tried, setTried] = useState<Record<number, string>>({});
   useEffect(() => { setTried({}); }, [selectedId]);
@@ -83,11 +83,31 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
     if (selectedId === id) setSelectedId(STARTER_LOOKS[0].id);
   };
 
+  const presetName = (i: number) => info?.presets[i]?.name.replace(/\s*\n\s*/g, ' ') ?? `preset ${i + 1}`;
+  const colourCount = Object.keys(tried).length;
+  const withColours = colourCount ? ` with the ${colourCount === 1 ? 'setting' : `${colourCount} settings`} you chose` : '';
+
+  /** A look not on the saber yet: queue it for the next build, and keep the chosen colours for after the install. */
   const addToSaber = async () => {
     if (!model || !saber || !fittingBlade) return;
-    const next = withLookInSlot(model, sel, targetPreset, fittingBlade.n);
+    const next = withLookInSlot(model, sel, targetPreset, fittingBlade.n, formatStyleArgs(triedArgs) || null);
     await board.updateSaber({ model: next }, saber.id);
-    setNote(`"${sel.name}" will be compiled into preset ${targetPreset + 1} (${info?.presets[targetPreset]?.name.replace('\n', ' ') ?? ''}), blade ${fittingBlade.n}. Build & Install puts it on the saber.`);
+    setNote({ tone: 'green', text: `"${sel.name}" goes into ${presetName(targetPreset)}, blade ${fittingBlade.n}${withColours}, with the next Build & Install.${colourCount ? ' The colours are written to the saber right after the install.' : ''}` });
+  };
+
+  /** A look already on the saber: point the preset's blade at it now, with the chosen colours. */
+  const [applying, setApplying] = useState(false);
+  const useInPreset = async () => {
+    if (!saber?.firmware || !fittingBlade) return;
+    const slots = lookSlots(saber.firmware, sel.id);
+    const slot = slots.find((sl) => sl.blade === fittingBlade.n) ?? slots[0];
+    if (!slot) return;
+    setApplying(true); setNote(null);
+    try {
+      const style = formatBuiltin({ preset: slot.preset, blade: slot.blade, args: formatStyleArgs(triedArgs) || null });
+      const ok = await board.setPresetStyles(targetPreset, { [fittingBlade.n]: style }, `${sel.name} → ${presetName(targetPreset)}`);
+      setNote(ok ? { tone: 'green', text: `${presetName(targetPreset)} now uses "${sel.name}" on blade ${fittingBlade.n}${withColours}. The saber confirmed it.` } : { tone: 'red', text: 'The saber did not confirm the change. Nothing was left half done; try again, or check the connection on the Armory page.' });
+    } finally { setApplying(false); }
   };
 
   const triedArgs = useMemo(() => new Map(Object.entries(tried).map(([n, v]) => [Number(n), /^#/.test(v) ? hexToColorWord(v) : v])), [tried]);
@@ -149,33 +169,6 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
           <div className="pb col scroll" style={{ gap: 14, overflowX: 'hidden' }}>
             <BladePreview key={sel.id} lookId={sel.id} args={triedArgs} fallbackColor={tried[1] ?? sel.preview} dot={isDot(sel)} hilt={!isDot(sel)} controls />
 
-            <div className="col" style={{ gap: 8, padding: 12, border: '1px solid var(--line2)', background: '#0d131a' }}>
-              {!connected && <span className="hint">Connect a saber once and Hiltwright remembers it. After that, looks can be added with it unplugged.</span>}
-              {connected && selState === 'compiled' && (
-                <>
-                  <span className="small dim">Already on {saber!.name}{saber?.firmware ? `, in ${lookSlots(saber.firmware, sel.id).map((sl) => `preset ${sl.preset + 1} blade ${sl.blade}`).slice(0, 3).join(', ')}` : ''}. Any preset can use it, and its colours change live.</span>
-                  <button type="button" className="btn pri full" onClick={onPresets}><span className="b"><span className="i"><Icon name="presets" />Use it in a preset</span></span></button>
-                </>
-              )}
-              {connected && selState !== 'compiled' && model && (
-                <>
-                  <div className="row" style={{ gap: 8, alignItems: 'end' }}>
-                    <label className="field grow"><span className="label">Preset</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{info!.presets[targetPreset]?.name.replace('\n', ' ')}</span><span className="caret"><Icon name="down" /></span>
-                      <select value={targetPreset} aria-label="Preset to compile the look into" onChange={(e) => setTargetPreset(Number(e.target.value))}>{info!.presets.map((p, i) => <option key={i} value={i}>{i + 1}. {p.name.replace('\n', ' ')}</option>)}</select></span></label>
-                    <label className="field" style={{ width: 140 }}><span className="label">Blade</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{fittingBlade ? `${fittingBlade.n}. ${ROLE_LABEL[fittingBlade.role]}` : 'none'}</span><span className="caret"><Icon name="down" /></span>
-                      <select value={fittingBlade?.n ?? 1} aria-label="Blade slot" onChange={(e) => setTargetBlade(Number(e.target.value))}>{bladesForLook.map((b) => <option key={b.n} value={b.n}>{b.n}. {ROLE_LABEL[b.role]}{b.fits ? '' : ' (unusual)'}</option>)}</select></span></label>
-                  </div>
-                  <button type="button" className="btn pri full" disabled={!fittingBlade} onClick={() => void addToSaber()}><span className="b"><span className="i"><Icon name="plus" />{selState === 'queued' ? 'Also use it here' : `Add to ${saber!.name}`}</span></span></button>
-                  {selState === 'queued'
-                    ? <button type="button" className="btn warn full" onClick={onBuild}><span className="b"><span className="i"><Icon name="bolt" />Build &amp; install queued looks</span></span></button>
-                    : <span className="hint">New looks reach the saber with the next Build &amp; Install{sel.kb != null ? `, and cost about ${sel.kb.toFixed(1)} KB of firmware space once` : ''}.</span>}
-                </>
-              )}
-              {note && <div className="note green"><Icon name="check" /><span>{note}</span></div>}
-            </div>
-
-            <p className="dim" style={{ fontSize: 13 }}>{sel.description}</p>
-
             {sel.args.length > 0 && (
               <div className="col" style={{ gap: 8 }}>
                 <div className="row between"><span className="small" style={{ fontWeight: 600 }}>Try its colours</span>{Object.keys(tried).length > 0 && <button type="button" className="holo small" onClick={() => setTried({})}>Back to defaults</button>}</div>
@@ -200,13 +193,41 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
                     );
                   })}
                 </div>
-                <span className="hint">This only changes the preview. Colours are saved per preset: on the <button type="button" className="holo" onClick={onPresets}>Presets page</button>, pick a preset and use the swatches under each blade. They write to the saber as you pick, with no rebuild{selState === 'compiled' ? '' : ', once this look has been installed'}.</span>
+                <span className="hint">These go with the look when you put it on a preset below. Fine-tune later on the <button type="button" className="holo" onClick={onPresets}>Presets page</button>.</span>
               </div>
             )}
+            <p className="dim" style={{ fontSize: 13 }}>{sel.description}</p>
+
             {sel.args.length === 0 && <span className="hint">Nothing in this look can be changed live.</span>}
             {sel.source === 'pasted' && sel.header && <pre className="console" style={{ maxHeight: 110, margin: 0, fontSize: 11, flex: 'none' }}>{sel.header}</pre>}
             {sel.source === 'pasted' && <button type="button" className="btn sm ghost" onClick={() => void removePasted(sel.id)}><span className="b"><span className="i"><Icon name="trash" />Remove from library</span></span></button>}
           </div>
+          <div className="col" style={{ gap: 8, padding: '12px 18px 14px', borderTop: '1px solid var(--line)', background: '#0d131a', flex: 'none' }}>
+              {!connected && <span className="hint">Connect a saber once and Hiltwright remembers it. After that, looks can be added with it unplugged.</span>}
+              {connected && model && (
+                <div className="row" style={{ gap: 8, alignItems: 'end' }}>
+                  <label className="field grow"><span className="label">Preset</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{presetName(targetPreset)}</span><span className="caret"><Icon name="down" /></span>
+                    <select value={targetPreset} aria-label="Preset to put the look in" onChange={(e) => setTargetPreset(Number(e.target.value))}>{info!.presets.map((_p, i) => <option key={i} value={i}>{i + 1}. {presetName(i)}</option>)}</select></span></label>
+                  <label className="field" style={{ width: 140 }}><span className="label">Blade</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{fittingBlade ? `${fittingBlade.n}. ${ROLE_LABEL[fittingBlade.role]}` : 'none'}</span><span className="caret"><Icon name="down" /></span>
+                    <select value={fittingBlade?.n ?? 1} aria-label="Blade slot" onChange={(e) => setTargetBlade(Number(e.target.value))}>{bladesForLook.map((b) => <option key={b.n} value={b.n}>{b.n}. {ROLE_LABEL[b.role]}{b.fits ? '' : ' (unusual)'}</option>)}</select></span></label>
+                </div>
+              )}
+              {connected && model && selState === 'compiled' && (
+                <>
+                  <button type="button" className="btn pri full" disabled={!live || !fittingBlade || applying || board.busy} onClick={() => void useInPreset()}><span className="b"><span className="i"><Icon name="presets" />{applying ? 'Writing to the saber…' : `Use it in ${presetName(targetPreset)}`}</span></span></button>
+                  <span className="hint">{live ? `This look is already on ${saber!.name}, so it is written to the preset now${colourCount ? ', in the colours you chose above' : ''}. No rebuild.` : `This look is already on ${saber!.name}. Plug the saber in to put it on a preset.`} <button type="button" className="holo" onClick={onPresets}>Open Presets</button></span>
+                </>
+              )}
+              {connected && model && selState !== 'compiled' && (
+                <>
+                  <button type="button" className="btn pri full" disabled={!fittingBlade} onClick={() => void addToSaber()}><span className="b"><span className="i"><Icon name="plus" />{selState === 'queued' ? `Also use it in ${presetName(targetPreset)}` : `Add to ${presetName(targetPreset)}`}</span></span></button>
+                  {selState === 'queued'
+                    ? <button type="button" className="btn warn full" onClick={onBuild}><span className="b"><span className="i"><Icon name="bolt" />Build &amp; install queued looks</span></span></button>
+                    : <span className="hint">New looks reach the saber with the next Build &amp; Install{sel.kb != null ? `, and cost about ${sel.kb.toFixed(1)} KB of firmware space once` : ''}.{colourCount ? ' The colours you tried go with it.' : ''}</span>}
+                </>
+              )}
+              {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : 'x'} /><span>{note.text}</span></div>}
+            </div>
         </section>
       </div>
     </>

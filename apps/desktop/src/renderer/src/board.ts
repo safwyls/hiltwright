@@ -289,6 +289,7 @@ export function useBoard() {
 
   const choosePreset = useCallback((index: number) => run(`Select preset ${index + 1}`, async (c) => {
     const r = await selectPreset(c, index);
+    if (infoRef.current) infoRef.current = { ...infoRef.current, currentPreset: r.index ?? index };
     setInfo((i) => (i ? { ...i, currentPreset: r.index ?? index } : i));
     if (r.preset && r.index != null) replacePreset(r.index, r.preset);
     return { ok: r.preset !== null, error: r.preset ? undefined : 'No read-back after selecting.' };
@@ -352,6 +353,24 @@ export function useBoard() {
   }, [editPreset]);
 
   /** The current preset as of this instant (state in closures can be a render behind after a queued write). */
+  /** Write blade styles to preset `index`, selecting it first when it is not the current one. Resolves to whether the saber confirmed. */
+  const setPresetStyles = useCallback((index: number, styles: Record<number, string>, label: string): Promise<boolean> => {
+    let confirmed = false;
+    return run(label, async (c) => {
+      if (infoRef.current?.currentPreset !== index) {
+        const s = await selectPreset(c, index);
+        if (!s.preset) return { ok: false, error: 'The saber did not switch to that preset.' };
+        if (infoRef.current) infoRef.current = { ...infoRef.current, currentPreset: s.index ?? index };
+        setInfo((i) => (i ? { ...i, currentPreset: s.index ?? index } : i));
+      }
+      const r = await editCurrentPreset(c, { styles }, undefined, { applyIndex: index });
+      if (r.preset) replacePreset(index, r.preset);
+      if (r.applied === false) setPendingApply(index);
+      confirmed = r.ok;
+      return { ...r, note: r.applied === false ? 'applies when you retract the blade' : undefined };
+    }).then(() => confirmed);
+  }, [run, replacePreset]);
+
   const currentPresetNow = useCallback((): PresetRecord | null => {
     const i = infoRef.current;
     return i && i.currentPreset != null ? i.presets[i.currentPreset] ?? null : null;
@@ -435,7 +454,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, updateSaber, currentPresetNow, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
+  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, updateSaber, currentPresetNow, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
 }
 
 export type Board = ReturnType<typeof useBoard>;

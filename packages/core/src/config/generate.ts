@@ -37,7 +37,12 @@ export interface SaberConfigModel {
    * Presets to carry over. `looks` names the look compiled into each blade slot (index 0 = blade 1); a missing or
    * null entry gets the starter look for that blade's role.
    */
-  presets: { font: string; track: string; name: string; looks?: (string | null)[] }[];
+  /**
+   * `looks`: the look compiled into each blade slot of this preset. `lookArgs`: style arguments (colours, timings)
+   * chosen with a look before it was installed, per blade; the app writes them to the saber after the install and
+   * then drops them. The generator ignores them: arguments live in the saber's presets, not in firmware.
+   */
+  presets: { font: string; track: string; name: string; looks?: (string | null)[]; lookArgs?: (string | null)[] }[];
   /** Looks beyond the starters that presets may reference (pasted library styles). */
   looks?: LookDef[];
   /** Swappable main blades told apart by their ID resistor. Absent or empty: one blade, no Blade ID. */
