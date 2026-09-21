@@ -2,11 +2,16 @@
 // Names and argument maps come from the firmware manifest Hiltwright stored when it installed; on vendor
 // firmware only the compiled slots are known, so looks are offered by slot and colours stay read-only.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { argInfo, colorWordToHex, formatBuiltin, formatStyleArgs, hexToColorWord, lookAtSlot, lookSlots, parseBuiltin, parseStyleArgs, type PresetRecord } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { BladePreview, canSimulate } from './BladePreview';
+import { ROLE_META } from './hardwareModel';
+
+/** Arguments grouped the way an owner thinks about them, not in argument-number order. */
+const BLADE_ARGS = [1, 2, 33, 34, 18, 20, 22, 31];
+const EFFECT_ARGS = [9, 10, 11, 13, 15, 16];
 
 /** Colour pickers fire on every drag step; the saber rewrites a 256 KB file per write, so only the settled value goes out. */
 const SETTLE_MS = 450;
@@ -68,67 +73,106 @@ export function LookRows({ board, current, onLooks }: { board: Board; current: P
     return out;
   };
 
-  return (
-    <div className="col" style={{ gap: 6 }}>
-      <div className="row between"><h2 style={{ fontSize: 10.5, color: 'var(--dim)' }}>Look per blade</h2><span className="hint">{manifest ? 'Click a swatch to change a colour. It is written to the saber as you pick.' : 'Colours can be changed here once Hiltwright firmware is installed (Build & Install).'}</span></div>
-      {current.styles.map((s, k) => {
-        const b = parseBuiltin(s);
-        const value = b ? formatBuiltin({ ...b, args: null }) : s;
-        const opts = choices(k + 1, value);
-        const look = b && manifest ? lookAtSlot(manifest, b.preset, b.blade) : null;
-        const args = parseStyleArgs(b?.args);
-        const write = (map: Map<number, string>, label: string) => {
-          if (!b) return;
-          const a = formatStyleArgs(map);
-          void board.editPreset({ styles: { [k + 1]: formatBuiltin({ preset: b.preset, blade: b.blade, args: a || null }) } }, label);
-        };
-        return (
-          <div key={k} className="col" style={{ gap: 6, padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
-            <div className="row" style={{ gap: 12, minHeight: 40 }}>
-              <span className="mono mute" style={{ fontSize: 11, width: 12 }}>{k + 1}</span>
-              <span style={{ width: 90, flex: 'none' }} className="small">Blade {k + 1}</span>
-              <span className="input sans grow" style={{ height: 34 }}>
-                <span className="ellip">{opts.find((c) => c.value === value)?.label ?? s}</span>
-                {b?.args && !look && <span className="mono mute" style={{ fontSize: 11 }}>args {b.args}</span>}
-                <span className="caret"><Icon name="down" /></span>
-                <select value={value} disabled={busy} aria-label={`Look for blade ${k + 1}`} onChange={(e) => void board.editPreset({ styles: { [k + 1]: b?.args ? `${e.target.value} ${b.args}` : e.target.value } }, `Blade ${k + 1} look`)}>
-                  {opts.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </span>
-            </div>
-            {look && canSimulate(look.id) && <div style={{ paddingLeft: 24 }}><BladePreview lookId={look.id} args={previewArgs(k, args)} leds={pixels(k)} dot={pixels(k) <= 4} size="sm" controls={pixels(k) > 4 ? 'compact' : undefined} /></div>}
-            {look && look.args.length > 0 && (
-              <div className="row wrap" style={{ gap: 8, paddingLeft: 24 }}>
-                {look.args.map((n) => {
-                  const a = argInfo(n);
-                  const word = args.get(n);
-                  if (a.kind === 'color') {
-                    const set = word ? colorWordToHex(word) : null;
-                    const key = `${k}:${n}`;
-                    const shown = pending[key] ?? set ?? look.defaults?.[n] ?? '#808080';
-                    return (
-                      <span key={n} className="row" style={{ gap: 4 }}>
-                        <label className={`swatch ${set || pending[key] ? '' : 'linked'}`} style={{ width: 'auto', height: 32, paddingRight: 12 }} title={set ? `${a.name} · argument ${n}` : `${a.name} · compiled default · argument ${n}`}>
-                          <span className="sq" style={{ width: 16, height: 16, background: shown, boxShadow: `0 0 8px ${shown}` }} />
-                          <span className="small" style={{ whiteSpace: 'nowrap' }}>{a.name}{pending[key] ? <span className="mute"> · …</span> : set ? '' : <span className="mute"> · default</span>}</span>
-                          <input type="color" value={shown} aria-label={`${a.name} for blade ${k + 1}`} onChange={(e) => schedule(key, e.target.value, (hex) => { const m = new Map(args); m.set(n, hexToColorWord(hex)); write(m, `${a.name} → ${hex}`); })} />
-                        </label>
-                        {set && <button type="button" className="chip" disabled={busy} aria-label={`Reset ${a.name} to the compiled default`} title="Back to the compiled default" onClick={() => { const m = new Map(args); m.delete(n); write(m, `${a.name} → default`); }}><Icon name="undo" /></button>}
-                      </span>
-                    );
-                  }
-                  return (
-                    <label key={n} className="row" style={{ gap: 6, fontSize: 12 }} title={`${a.name} · argument ${n}`}>
-                      <span className="small dim">{a.name}</span>
-                      <span className="input" style={{ width: 84, height: 28 }}><input type="number" defaultValue={word ?? ''} placeholder="default" disabled={busy} aria-label={`${a.name} for blade ${k + 1}`} onBlur={(e) => { const m = new Map(args); if (e.target.value === '') m.delete(n); else m.set(n, String(Math.max(0, Math.round(Number(e.target.value))))); if ((m.get(n) ?? '') !== (word ?? '')) write(m, `${a.name} → ${e.target.value || 'default'}`); }} /></span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
+  const cards = current.styles.map((s, k) => {
+    const b = parseBuiltin(s);
+    const value = b ? formatBuiltin({ ...b, args: null }) : s;
+    const opts = choices(k + 1, value);
+    const look = b && manifest ? lookAtSlot(manifest, b.preset, b.blade) : null;
+    const args = parseStyleArgs(b?.args);
+    const small = pixels(k) <= 4;
+    const role = saber?.model?.blades[k]?.role;
+    const title = role ? ROLE_META[role].label : `Blade ${k + 1}`;
+    const write = (map: Map<number, string>, label: string) => {
+      if (!b) return;
+      const a = formatStyleArgs(map);
+      void board.editPreset({ styles: { [k + 1]: formatBuiltin({ preset: b.preset, blade: b.blade, args: a || null }) } }, label);
+    };
+
+    const picker = (
+      <span className="input sans" style={{ height: 32, width: small ? undefined : 260, flex: small ? '1 1 auto' : 'none' }}>
+        <span className="ellip">{opts.find((c) => c.value === value)?.label ?? s}</span>
+        {b?.args && !look && <span className="mono mute" style={{ fontSize: 11 }}>args {b.args}</span>}
+        <span className="caret"><Icon name="down" /></span>
+        <select value={value} disabled={busy} aria-label={`Look for ${title}, blade ${k + 1}`} onChange={(e) => void board.editPreset({ styles: { [k + 1]: b?.args ? `${e.target.value} ${b.args}` : e.target.value } }, `Blade ${k + 1} look`)}>
+          {opts.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+      </span>
+    );
+
+    const swatch = (n: number) => {
+      const a = argInfo(n);
+      const word = args.get(n);
+      const set = word ? colorWordToHex(word) : null;
+      const key = `${k}:${n}`;
+      const shown = pending[key] ?? set ?? look?.defaults?.[n] ?? '#808080';
+      const short = a.name.replace(/ colour$/i, '');
+      return (
+        <span key={n} className="row" style={{ gap: 2 }}>
+          <label className={`swatch ${set || pending[key] ? '' : 'linked'}`} style={{ width: 'auto', height: 30, padding: '0 10px 0 8px', gap: 8 }} title={`${a.name}${set ? '' : ', the look\u2019s own default'}. Click to change.`}>
+            <span className="sq" style={{ width: 14, height: 14, background: shown, boxShadow: `0 0 8px ${shown}` }} />
+            <span className="small nowrap">{short}{pending[key] ? <span className="mute"> …</span> : null}</span>
+            <input type="color" value={shown} aria-label={`${a.name} for ${title}`} onChange={(e) => schedule(key, e.target.value, (hex) => { const m = new Map(args); m.set(n, hexToColorWord(hex)); write(m, `${a.name} → ${hex}`); })} />
+          </label>
+          {set && <button type="button" className="chip" style={{ height: 30, padding: '0 6px' }} disabled={busy} aria-label={`Reset ${a.name} to the look's default`} title="Back to the look's default" onClick={() => { const m = new Map(args); m.delete(n); write(m, `${a.name} → default`); }}><Icon name="undo" /></button>}
+        </span>
+      );
+    };
+    const number = (n: number) => {
+      const a = argInfo(n);
+      const word = args.get(n);
+      const isTime = /time/i.test(a.name);
+      return (
+        <label key={`${n}:${word ?? ''}`} className="row" style={{ gap: 8 }} title={`${a.name}. Leave empty for the look's default.`}>
+          <span className="small dim nowrap">{a.name.replace(/ time$/i, '')}</span>
+          <span className="input" style={{ width: 104, height: 30 }}><input type="number" min={0} step={isTime ? 50 : 1} defaultValue={word ?? ''} placeholder="default" disabled={busy} aria-label={`${a.name} for ${title}`} onBlur={(e) => { const m = new Map(args); if (e.target.value === '') m.delete(n); else m.set(n, String(Math.max(0, Math.round(Number(e.target.value))))); if ((m.get(n) ?? '') !== (word ?? '')) write(m, `${a.name} → ${e.target.value || 'default'}`); }} /></span>
+          {isTime && <span className="hint">ms</span>}
+        </label>
+      );
+    };
+
+    const all = look?.args ?? [];
+    const colours = all.filter((n) => argInfo(n).kind === 'color');
+    const effectArgs = colours.filter((n) => EFFECT_ARGS.includes(n));
+    const bladeArgs = [...BLADE_ARGS.filter((n) => colours.includes(n)), ...colours.filter((n) => !BLADE_ARGS.includes(n) && !EFFECT_ARGS.includes(n))];
+    const numbers = all.filter((n) => argInfo(n).kind !== 'color');
+    const group = (label: string, items: JSX.Element[]) => items.length > 0 && (
+      <>
+        <span className="small dim" style={{ paddingTop: 6 }}>{label}</span>
+        <div className="row wrap" style={{ gap: 6 }}>{items}</div>
+      </>
+    );
+    const settings = look && all.length > 0 && (
+      <div style={{ display: 'grid', gridTemplateColumns: small ? '1fr' : '64px minmax(0,1fr)', gap: small ? 6 : '8px 12px', alignItems: 'start' }}>
+        {small
+          ? <div className="row wrap" style={{ gap: 6 }}>{[...bladeArgs, ...effectArgs].map(swatch)}{numbers.map(number)}</div>
+          : <>{group('Blade', bladeArgs.map(swatch))}{group('Effects', effectArgs.map(swatch))}{group('Timing', numbers.map(number))}</>}
+      </div>
+    );
+    const sim = look && canSimulate(look.id);
+
+    return {
+      small,
+      el: (
+        <div key={k} className="bcard col" style={{ gap: 10, padding: 12 }}>
+          <div className="row" style={{ gap: 10 }}>
+            <span className="nbox">{k + 1}</span>
+            <span className="col grow" style={{ gap: 0 }}><b className="ellip" style={{ fontWeight: 600, fontSize: 13.5 }}>{title}</b><span className="hint">{pixels(k)} {pixels(k) === 1 ? 'LED' : 'LEDs'}</span></span>
+            {!small && picker}
           </div>
-        );
-      })}
+          {small
+            ? <div className="row" style={{ gap: 10 }}>{sim && <div style={{ width: 64, flex: 'none' }}><BladePreview lookId={look.id} args={previewArgs(k, args)} leds={pixels(k)} dot size="sm" /></div>}{picker}</div>
+            : sim && <BladePreview lookId={look.id} args={previewArgs(k, args)} leds={pixels(k)} hilt size="sm" controls="compact" />}
+          {settings}
+        </div>
+      ),
+    };
+  });
+
+  return (
+    <div className="col" style={{ gap: 10 }}>
+      <div className="row between"><span className="small" style={{ fontWeight: 600 }}>Blades</span><span className="hint">{manifest ? 'Click a colour to change it. It is written to the saber as you pick.' : 'Colours can be changed here once Hiltwright firmware is installed (Build & Install).'}</span></div>
+      {cards.filter((c) => !c.small).map((c) => c.el)}
+      {cards.some((c) => c.small) && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>{cards.filter((c) => c.small).map((c) => c.el)}</div>}
       {!manifest && <span className="hint">Colour editing needs to know which arguments a look uses. Install Hiltwright firmware with a look from <button type="button" className="holo" onClick={onLooks}>Looks</button> and every colour becomes a swatch here.</span>}
     </div>
   );
