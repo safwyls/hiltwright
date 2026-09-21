@@ -4,7 +4,7 @@
 
 import type { BladeSpec, PresetSource } from '../model';
 import { emitBladeExpr, emitPresetArray } from './emit';
-import { bladesToExprs, sharedPowerPins } from './blades';
+import { bladesToExprs, sharedPowerPins, stripLength } from './blades';
 import { quote } from './cpp';
 import { STARTER_LOOKS, starterLookFor, type FirmwareManifest, type LookDef } from '../looks';
 
@@ -15,6 +15,15 @@ export type BladeRole = 'main' | 'crystal' | 'accent' | 'side' | 'motor';
 export interface ModelBlade extends BladeSpec {
   role: BladeRole;
 }
+
+/**
+ * One blade the owner plugs into the main emitter. `ohms` is what the saber measured for it (never typed by hand);
+ * null means not measured yet, and such a variant is left out of the build. `noBlade` is the empty emitter.
+ */
+export interface BladeVariant { id: string; name: string; pixels: number; ohms: number | null; noBlade?: boolean }
+
+/** Two ID readings closer than this (relative) cannot be told apart reliably. */
+export const BLADE_ID_MIN_SEPARATION = 0.15;
 
 export interface SaberConfigModel {
   /** Config file stem, e.g. `hiltwright_hote2`. Letters, digits and underscores. */
@@ -30,6 +39,8 @@ export interface SaberConfigModel {
   presets: { font: string; track: string; name: string; looks?: (string | null)[] }[];
   /** Looks beyond the starters that presets may reference (pasted library styles). */
   looks?: LookDef[];
+  /** Swappable main blades told apart by their ID resistor. Absent or empty: one blade, no Blade ID. */
+  bladeId?: { variants: BladeVariant[] };
   /** Extra `#define` lines the caller wants, verbatim without the `#define`. */
   extraDefines?: string[];
   /** Hiltwright version, written into the header. */
@@ -108,7 +119,32 @@ export function validateModel(m: SaberConfigModel): string[] {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(l.id)) errors.push(`Look id "${l.id}" must be letters, digits and underscores.`);
     if (!l.code.trim()) errors.push(`Look "${l.name}" has no style code.`);
   }
+  const variants = m.bladeId?.variants ?? [];
+  if (variants.length) {
+    const main = m.blades.find((b) => b.role === 'main');
+    if (!main || main.type !== 'pixel') errors.push('Blade swapping needs a pixel strip as the main blade.');
+    for (const v of variants) {
+      if (!v.name.trim()) errors.push('Every swappable blade needs a name.');
+      if (!v.noBlade && v.pixels < 1) errors.push(`${v.name || 'A blade'}: pixel count must be at least 1.`);
+    }
+    const measured = variants.filter((v) => !v.noBlade && v.ohms != null).sort((a, b) => a.ohms! - b.ohms!);
+    for (let i = 1; i < measured.length; i++) {
+      const lo = measured[i - 1]; const hi = measured[i];
+      if ((hi.ohms! - lo.ohms!) / Math.max(hi.ohms!, 1) < BLADE_ID_MIN_SEPARATION) errors.push(`"${lo.name}" and "${hi.name}" measure too close together (${Math.round(lo.ohms!)} and ${Math.round(hi.ohms!)}) for the saber to tell them apart. One of them needs a different ID resistor.`);
+    }
+  }
   return errors;
+}
+
+/** The BladeConfig rows a model produces: one per measured variant, or a single row with ID 0. */
+export function bladeRowsFor(m: SaberConfigModel): { id: string; name: string; blades: ModelBlade[] }[] {
+  const usable = (m.bladeId?.variants ?? []).filter((v) => v.noBlade || v.ohms != null);
+  if (!usable.length) return [{ id: '0', name: 'blade', blades: m.blades }];
+  return usable.map((v) => ({
+    id: v.noBlade ? 'NO_BLADE' : String(Math.round(v.ohms!)),
+    name: v.name,
+    blades: m.blades.map((b) => (b.role === 'main' && b.type === 'pixel' && !v.noBlade ? { ...b, pixels: v.pixels } : b)),
+  }));
 }
 
 export interface GeneratedConfig { text: string; hash: string; sharedPower: string[]; warnings: string[]; manifest: Omit<FirmwareManifest, 'os' | 'at'> }
@@ -116,7 +152,9 @@ export interface GeneratedConfig { text: string; hash: string; sharedPower: stri
 export function generateConfig(m: SaberConfigModel): GeneratedConfig {
   const warnings: string[] = [];
   const shared = sharedPowerPins(m.blades);
-  const maxLeds = Math.max(144, ...m.blades.filter((b) => b.type === 'pixel').map((b) => b.pixels));
+  const rows = bladeRowsFor(m);
+  const swapping = (m.bladeId?.variants.length ?? 0) > 0;
+  const maxLeds = Math.max(144, ...rows.flatMap((r) => r.blades.filter((b) => b.type === 'pixel').map((b) => (b.wiring.kind === 'own' ? stripLength(r.blades, b.id) : b.pixels))));
   const defines: string[] = [
     `NUM_BLADES ${m.blades.length}`,
     `NUM_BUTTONS ${m.buttons}`,
@@ -134,7 +172,14 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     'ENABLE_ALL_EDIT_OPTIONS',
   ];
   if (m.prop === 'fett263') defines.push('FETT263_EDIT_MODE_MENU', 'FETT263_SAY_BATTERY_PERCENT', 'FETT263_SAY_COLOR_LIST', 'FETT263_SAY_COLOR_LIST_CC');
-  if (shared.length) defines.push('SHARED_POWER_PINS');
+  if (swapping) {
+    // Blade ID on a pixel blade only reads right with the blade powered, and rescanning makes a swap take effect
+    // without a restart. These go in as soon as swapping is on, so readings taken before the rows exist still match.
+    const main = m.blades.find((b) => b.role === 'main');
+    if (main?.wiring.kind === 'own' && main.wiring.powerPins.length) defines.push(`ENABLE_POWER_FOR_ID PowerPINS<${main.wiring.powerPins.join(', ')}>`);
+    defines.push('BLADE_ID_SCAN_MILLIS 1000', 'BLADE_ID_TIMES 15', 'BLADE_ID_STOP_SCAN_WHILE_IGNITED');
+  }
+  if (shared.length || swapping) defines.push('SHARED_POWER_PINS');
   if (m.extraDefines) defines.push(...m.extraDefines);
 
   const slotLooks = m.presets.map((_p, pi) => m.blades.map((_b, bi) => lookForSlot(m, pi, bi)));
@@ -146,11 +191,12 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
   const pastedHeaders = usedLooks.filter((l) => l.source !== 'starter' && l.header).map((l) => `// Look "${l.name}" (${l.by}):\n${l.header}`);
   const manifest: GeneratedConfig['manifest'] = {
     hash: '',
+    bladeId: swapping,
     looks: usedLooks.map((l) => ({ id: l.id, name: l.name, args: l.args, ...(l.defaults ? { defaults: l.defaults } : {}) })),
     presets: slotLooks.map((row, pi) => ({ name: m.presets[pi].name, looks: row.map((l) => l.id) })),
   };
 
-  const bladeRows = bladesToExprs(m.blades).map(emitBladeExpr);
+  const rowText = rows.map((r) => `  { ${r.id}, ${bladesToExprs(r.blades).map(emitBladeExpr).join(',\n    ')},\n    CONFIGARRAY(presets) },${swapping ? ` // ${r.name.replace(/[\r\n]+/g, ' ')}` : ''}`);
   const summary = {
     generator: m.generator ?? 'hiltwright',
     name: m.name, board: m.board, buttons: m.buttons, prop: m.prop,
@@ -178,7 +224,7 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     emitPresetArray({ name: 'presets', presets }).trimEnd(),
     '',
     'BladeConfig blades[] = {',
-    `  { 0, ${bladeRows.join(',\n    ')},\n    CONFIGARRAY(presets) },`,
+    ...rowText,
     '};',
     '#endif',
     '',

@@ -2,7 +2,7 @@
 // Produces core ModelBlades directly, so what the owner confirms is exactly what generateConfig compiles.
 
 import { useState, type CSSProperties } from 'react';
-import { chainRanges, sharedPowerPins, type BladeRole, type BoardModel, type ModelBlade } from '@hiltwright/core';
+import { chainRanges, sharedPowerPins, type BladeRole, type BladeVariant, type BoardModel, type ModelBlade } from '@hiltwright/core';
 import { Icon } from './Icon';
 import { BladeBar, Crystal, Hilt } from './Saber';
 
@@ -123,8 +123,18 @@ export function bladeSummary(blades: ModelBlade[], b: ModelBlade, board: BoardMo
   return `${KIND_LABEL[kind]} · ${pins}`;
 }
 
-export function HardwareEditor({ blades, board, detected, locked, onChange }: { blades: ModelBlade[]; board: BoardModel; detected: number[]; locked: boolean; onChange: (b: ModelBlade[]) => void }) {
+export interface SwapProps {
+  variants: BladeVariant[];
+  onVariants: (v: BladeVariant[]) => void;
+  /** Ask the saber for its Blade ID reading now. Null when it cannot be read. */
+  measure: () => Promise<number | null>;
+  /** Why measuring is not possible right now, or null when it is. */
+  measureBlocked: string | null;
+}
+
+export function HardwareEditor({ blades, board, detected, locked, onChange, swap }: { blades: ModelBlade[]; board: BoardModel; detected: number[]; locked: boolean; onChange: (b: ModelBlade[]) => void; swap?: SwapProps }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [measuring, setMeasuring] = useState<string | null>(null);
   const pins = pinTable(blades, board);
   const ranges = chainRanges(blades);
   const crystal = blades.find((b) => b.role === 'crystal');
@@ -251,6 +261,45 @@ export function HardwareEditor({ blades, board, detected, locked, onChange }: { 
                     </div>
                   )}
                 </div>
+
+                {b.role === 'main' && kind === 'pixel' && swap && (() => {
+                  const vs = swap.variants;
+                  const on = vs.length > 0;
+                  const setV = (id: string, patch: Partial<BladeVariant>) => swap.onVariants(vs.map((v) => (v.id === id ? { ...v, ...patch } : v)));
+                  const nextId = () => `v${Date.now().toString(36)}`;
+                  return (
+                    <div className="col" style={{ gap: 10, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+                      <div className="row between">
+                        <label className="row" style={{ gap: 10, fontSize: 13 }}>
+                          <button type="button" className={`tog ${on ? 'on' : ''}`} role="switch" aria-checked={on} disabled={locked} onClick={() => swap.onVariants(on ? [] : [{ id: nextId(), name: 'My blade', pixels: b.pixels, ohms: null }])}><i /></button>
+                          Do you swap blades on this saber?
+                        </label>
+                        {on && <div className="row" style={{ gap: 6 }}>
+                          <button type="button" className="chip" disabled={locked || vs.length >= 6} onClick={() => swap.onVariants([...vs, { id: nextId(), name: `Blade ${vs.filter((v) => !v.noBlade).length + 1}`, pixels: b.pixels, ohms: null }])}><Icon name="plus" />Add a blade</button>
+                          {!vs.some((v) => v.noBlade) && <button type="button" className="chip" disabled={locked} onClick={() => swap.onVariants([...vs, { id: nextId(), name: 'No blade', pixels: 0, ohms: null, noBlade: true }])}><Icon name="plus" />Empty emitter</button>}
+                        </div>}
+                      </div>
+                      {on && (
+                        <div className="col" style={{ gap: 6 }}>
+                          {vs.map((v) => (
+                            <div key={v.id} className="row" style={{ gap: 10, padding: '8px 10px', border: '1px solid var(--line)', background: '#0b1016' }}>
+                              <span className="input sans" style={{ width: 170, height: 32 }}><input type="text" value={v.name} disabled={locked} aria-label="Blade name" onChange={(e) => setV(v.id, { name: e.target.value })} /></span>
+                              {v.noBlade
+                                ? <span className="mono grow small dim">nothing plugged in · no measurement needed</span>
+                                : <>
+                                    <span className="input" style={{ width: 96, height: 32 }}><input type="number" min={1} max={400} value={v.pixels} disabled={locked} aria-label={`Pixels in ${v.name}`} onChange={(e) => setV(v.id, { pixels: Math.max(0, Math.round(Number(e.target.value) || 0)) })} /><span className="mute small">px</span></span>
+                                    <span className="mono grow small" style={{ color: v.ohms == null ? 'var(--amber)' : 'var(--dim)' }}>{v.ohms == null ? 'ID not measured yet' : `ID ${v.ohms >= 1000 ? `${(v.ohms / 1000).toFixed(1)} kΩ` : `${Math.round(v.ohms)} Ω`}`}</span>
+                                    <button type="button" className="btn sm" disabled={locked || !!swap.measureBlocked || measuring !== null} title={swap.measureBlocked ?? 'Plug this blade in first'} onClick={() => { setMeasuring(v.id); void swap.measure().then((ohms) => { if (ohms != null) setV(v.id, { ohms }); }).finally(() => setMeasuring(null)); }}><span className="b"><span className="i">{measuring === v.id ? 'Reading…' : v.ohms == null ? 'Measure' : 'Measure again'}</span></span></button>
+                                  </>}
+                              <button type="button" className="chip" aria-label={`Remove ${v.name}`} disabled={locked} onClick={() => swap.onVariants(vs.filter((x) => x.id !== v.id))}><Icon name="x" /></button>
+                            </div>
+                          ))}
+                          <span className="hint">{swap.measureBlocked ?? "Plug in each blade in turn and press Measure. Hiltwright reads the blade's ID resistor from the saber, so you never type a value. Then build and install once more so the saber knows every blade. Presets are shared between blades."}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );

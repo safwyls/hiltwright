@@ -3,4 +3,5 @@ export { parseConfig, parseBladeExpr, splitSegments, getDefine, hasDefine, board
 export { emitConfig, emitBladeExpr, emitPresetArray, emitBladeTable, emitStyleRef } from './emit';
 export { rowToBlades, rowToConfiguration, configurationToRow, bladesToExprs, chainRanges, stripLength, sharedPowerPins } from './blades';
 export { mask, splitArgs, splitTopLevel, parseString, quote } from './cpp';
+export { bladeRowsFor, BLADE_ID_MIN_SEPARATION, type BladeVariant } from './generate';
 export { generateConfig, validateModel, readGeneratedHeader, contentHash, modelLooks, lookForSlot, STARTER_STYLES, type GeneratedConfig, type SaberConfigModel, type ModelBlade, type Prop, type BoardModel, type BladeRole } from './generate';

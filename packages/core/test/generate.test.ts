@@ -99,3 +99,43 @@ describe('generateConfig with every blade kind', () => {
     expect(getDefine(doc, 'NUM_BLADES')).toBe('5');
   });
 });
+
+describe('Blade ID variants', () => {
+  const base: SaberConfigModel = { ...hote2, prop: 'sa22c' };
+  it('without variants there is one row with ID 0 and no Blade ID defines', () => {
+    const g = generateConfig(base);
+    expect(g.text).toContain('  { 0, WS281XBladePtr<140,');
+    expect(g.text).not.toContain('BLADE_ID_SCAN_MILLIS');
+    expect(g.manifest.bladeId).toBe(false);
+  });
+  it('swapping on but nothing measured yet: still one row, but the scanning defines are already in', () => {
+    const g = generateConfig({ ...base, bladeId: { variants: [{ id: 'v1', name: 'Duel blade', pixels: 140, ohms: null }] } });
+    expect(g.text).toContain('  { 0, WS281XBladePtr<140,');
+    expect(g.text).toContain('#define ENABLE_POWER_FOR_ID PowerPINS<bladePowerPin2, bladePowerPin3>');
+    expect(g.text).toContain('#define BLADE_ID_SCAN_MILLIS 1000');
+    expect(g.text).toContain('#define SHARED_POWER_PINS');
+    expect(g.manifest.bladeId).toBe(true);
+  });
+  it('one row per measured blade, with its own pixel count, plus the empty emitter', () => {
+    const m: SaberConfigModel = { ...base, bladeId: { variants: [
+      { id: 'v1', name: 'Duel blade', pixels: 140, ohms: 916.4 },
+      { id: 'v2', name: 'Short blade', pixels: 96, ohms: 22000 },
+      { id: 'v3', name: 'Not measured', pixels: 120, ohms: null },
+      { id: 'v0', name: 'No blade', pixels: 0, ohms: null, noBlade: true },
+    ] } };
+    expect(validateModel(m)).toEqual([]);
+    const g = generateConfig(m);
+    expect(g.text).toContain('  { 916, WS281XBladePtr<140,');
+    expect(g.text).toContain('  { 22000, WS281XBladePtr<96,');
+    expect(g.text).toContain('  { NO_BLADE, WS281XBladePtr<140,');
+    expect(g.text).not.toContain('WS281XBladePtr<120,');
+    expect(g.text).toContain('// Short blade');
+    const doc = parseConfig(g.text);
+    expect(bladeTables(doc)[0].rows.map((r) => r.id)).toEqual(['916', '22000', 'NO_BLADE']);
+    expect(rowToBlades(bladeTables(doc)[0].rows[1]).map((b) => b.pixels)).toEqual([96, 2, 1]);
+  });
+  it('refuses blades whose readings are too close to tell apart', () => {
+    const m: SaberConfigModel = { ...base, bladeId: { variants: [{ id: 'a', name: 'A', pixels: 140, ohms: 10000 }, { id: 'b', name: 'B', pixels: 96, ohms: 10800 }] } };
+    expect(validateModel(m)[0]).toMatch(/too close together/);
+  });
+});

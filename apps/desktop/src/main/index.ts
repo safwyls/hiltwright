@@ -90,6 +90,18 @@ function createWindow(): void {
         .then(() => win.webContents.executeJavaScript('window.hiltwrightBuildE2E ? window.hiltwrightBuildE2E() : "no hook"', true))
         .then((r) => console.log('[main] build e2e:', r), (err) => console.log('[main] build e2e failed:', String(err)));
     }, 9000);
+    // Dev aid: HILTWRIGHT_DUMP=<file.txt> writes the page's visible text (works with the display asleep, when
+    // capturePage returns nothing). HILTWRIGHT_DUMP_JS runs first, to click something open.
+    const dump = process.env.HILTWRIGHT_DUMP;
+    if (dump) setTimeout(() => {
+      void win.webContents.executeJavaScript(`window.hiltwrightGoto && window.hiltwrightGoto(${JSON.stringify(process.env.HILTWRIGHT_PAGE ?? 'armory')})`, true)
+        .then(() => new Promise((r) => setTimeout(r, 1500)))
+        .then(() => (process.env.HILTWRIGHT_DUMP_JS ? win.webContents.executeJavaScript(process.env.HILTWRIGHT_DUMP_JS, true) : null))
+        .then(() => new Promise((r) => setTimeout(r, 1200)))
+        .then(() => win.webContents.executeJavaScript('document.body.innerText', true))
+        .then((text) => writeFile(dump, String(text)))
+        .then(() => console.log('[main] dumped', dump), (err) => console.log('[main] dump failed', String(err)));
+    }, 6000);
     // Dev aid: HILTWRIGHT_SHOT=<file.png> captures the window a few seconds after load.
     const shot = process.env.HILTWRIGHT_SHOT;
     if (shot) setTimeout(() => { void win.webContents.executeJavaScript(`window.hiltwrightGoto && window.hiltwrightGoto(${JSON.stringify(process.env.HILTWRIGHT_PAGE ?? 'armory')})`, true).then(() => new Promise((r) => setTimeout(r, 800))).then(() => win.webContents.capturePage()).then((img) => writeFile(shot, img.toPNG())).then(() => console.log('[main] screenshot', shot)); }, process.env.HILTWRIGHT_BUILD_E2E ? 75000 : process.env.HILTWRIGHT_E2E ? 30000 : 6000);

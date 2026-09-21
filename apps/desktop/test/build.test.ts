@@ -66,6 +66,21 @@ describe.skipIf(!root)('buildFirmware with a real toolchain', () => {
   });
 });
 
+describe.skipIf(!root)('Blade ID build', () => {
+  it('compiles a config with swappable blades: scanning defines and one row per measured blade', async () => {
+    const m: SaberConfigModel = { ...hote2, name: 'hiltwright_hote2_id', prop: 'sa22c', looks: [], presets: hote2.presets.map((p) => ({ font: p.font, track: p.track, name: p.name })), bladeId: { variants: [
+      { id: 'v1', name: 'Duel blade', pixels: 140, ohms: 916 },
+      { id: 'v2', name: 'Short blade', pixels: 96, ohms: 22000 },
+      { id: 'v0', name: 'No blade', pixels: 0, ohms: null, noBlade: true },
+    ] } };
+    const r = await buildFirmware({ toolchainRoot: root!, saberId: 'test-hote2-id', model: m, force: true });
+    if (!r.ok) console.log(r.problems, r.output.slice(0, 3000));
+    expect(r.ok).toBe(true);
+    expect(r.manifest?.bladeId).toBe(true);
+    console.log(`blade id build ${r.ms} ms, ${r.flashPct}% of flash`);
+  });
+});
+
 describe('usbState', () => {
   it('reports the running firmware when a Proffieboard is plugged in (skips otherwise)', async () => {
     const { usbState } = await import('../src/main/flash');

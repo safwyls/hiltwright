@@ -76,7 +76,7 @@ export function registerIpc(): void {
       else {
         const f = p.firmware as FirmwareManifest;
         if (!f || typeof f !== 'object' || typeof f.hash !== 'string' || !Array.isArray(f.looks) || !Array.isArray(f.presets)) throw new Error('Expected a firmware manifest');
-        out.firmware = { hash: str(f.hash, 40), os: str(f.os ?? '', 40), at: str(f.at ?? new Date().toISOString(), 40), looks: f.looks.map((l) => ({ id: str(l.id, 80), name: str(l.name, 120), args: Array.isArray(l.args) ? l.args.map(Number).filter(Number.isFinite) : [], ...(l.defaults ? { defaults: hexMap(l.defaults) } : {}) })), presets: f.presets.map((x) => ({ name: str(x.name, 200), looks: Array.isArray(x.looks) ? x.looks.map((s) => str(s, 80)) : [] })) };
+        out.firmware = { hash: str(f.hash, 40), bladeId: f.bladeId === true, os: str(f.os ?? '', 40), at: str(f.at ?? new Date().toISOString(), 40), looks: f.looks.map((l) => ({ id: str(l.id, 80), name: str(l.name, 120), args: Array.isArray(l.args) ? l.args.map(Number).filter(Number.isFinite) : [], ...(l.defaults ? { defaults: hexMap(l.defaults) } : {}) })), presets: f.presets.map((x) => ({ name: str(x.name, 200), looks: Array.isArray(x.looks) ? x.looks.map((s) => str(s, 80)) : [] })) };
       }
     }
     return library.update(str(id, 40), out);

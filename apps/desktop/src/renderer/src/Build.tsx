@@ -2,7 +2,7 @@
 // Wiring form (the one thing old firmware cannot tell us) → generated config → build → backup → bootloader → write → verify.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { voicePackFromSerial, voicePackVerdict, type ModelBlade, type Prop, type SaberConfigModel, type VoicePackStatus } from '@hiltwright/core';
+import { parseId, voicePackFromSerial, voicePackVerdict, type BladeVariant, type ModelBlade, type Prop, type SaberConfigModel, type VoicePackStatus } from '@hiltwright/core';
 import { draftModel, guessBlades, queuedLookIds } from './saberModel';
 import { HardwareEditor } from './Hardware';
 import type { BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
@@ -23,13 +23,24 @@ export function Build({ board }: { board: Board }) {
   // Frozen at connect time: the install deliberately drops the port, and the page must keep working through that.
   const [snap, setSnap] = useState<{ info: NonNullable<Board['info']>; saber: NonNullable<Board['saber']> } | null>(null);
   useEffect(() => { if (board.status === 'connected' && board.info && board.saber) setSnap({ info: board.info, saber: board.saber }); }, [board.status, board.info, board.saber]);
-  const info = snap?.info ?? null;
-  const saber = snap?.saber ?? null;
+  // With nothing plugged in, the most recently seen saber can still be prepared: wiring, looks and a build need no
+  // board. Installing does.
+  const remembered = !snap ? board.library[0] ?? null : null;
+  const offline = !!remembered;
+  const saber = snap?.saber ?? (remembered ? board.library.find((s) => s.id === remembered.id) ?? remembered : null);
+  // Memoised: a fresh object every render would re-run every effect that depends on it.
+  const offlineInfo = useMemo<NonNullable<Board['info']> | null>(() => (remembered ? {
+    version: { version: remembered.identity.version ?? '', config: remembered.identity.configName, prop: remembered.identity.prop, buttons: remembered.identity.buttons, installed: remembered.identity.installed, major: null },
+    battery: null, volume: null, currentPreset: null, presets: remembered.presets, fonts: remembered.fonts, tracks: remembered.tracks,
+    pixelBlades: remembered.identity.pixelBlades, bladeConfig: remembered.identity.bladeConfig, rejected: [], timings: {},
+  } : null), [remembered]);
+  const info = snap?.info ?? offlineInfo;
   const [tool, setTool] = useState<ToolchainStatus | null>(null);
   const [installing, setInstalling] = useState(false);
   const [blades, setBlades] = useState<ModelBlade[]>([]);
   const [prop, setProp] = useState<Prop>('fett263');
-  const [confirmedWiring, setConfirmedWiring] = useState(!!saber?.model);
+  const [variants, setVariants] = useState<BladeVariant[]>([]);
+  const [confirmedWiring, setConfirmedWiring] = useState(!!saber?.model && !!saber?.firmware);
   const [preview, setPreview] = useState<{ text: string; hash: string; warnings: string[]; errors: string[] } | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [log, setLog] = useState<JobEvent[]>([]);
@@ -69,16 +80,25 @@ export function Build({ board }: { board: Board }) {
   useEffect(() => { void api().toolchain.status().then(setTool); }, []);
   useEffect(() => api().onJobEvent((e) => setLog((l) => [...l, e].slice(-300))), []);
   useEffect(() => {
-    if (info && !blades.length) { setBlades(saber?.model?.blades ?? guessBlades(info.pixelBlades.length ? info.pixelBlades : [132])); if (saber?.model) { setProp(saber.model.prop); setConfirmedWiring(true); } }
+    if (info && !blades.length) { setBlades(saber?.model?.blades ?? guessBlades(info.pixelBlades.length ? info.pixelBlades : [132])); if (saber?.model) { setProp(saber.model.prop); setVariants(saber.model.bladeId?.variants ?? []); /* a saved model only counts as confirmed wiring once it has actually been installed */ setConfirmedWiring(!!saber.firmware); } }
   }, [info, saber, blades.length]);
   useEffect(() => {
     if (step === 'building' || step === 'writing' || step === 'backup') { const t = setInterval(() => setElapsed((e) => e + 1), 1000); return () => clearInterval(t); }
   }, [step]);
 
-  const model = useMemo<SaberConfigModel | null>(() => (info && saber && blades.length ? draftModel(info, saber, { blades, prop }) : null), [info, saber, blades, prop]);
+  const model = useMemo<SaberConfigModel | null>(() => (info && saber && blades.length ? draftModel(info, saber, { blades, prop, variants }) : null), [info, saber, blades, prop, variants]);
   const queuedLooks = queuedLookIds(model ?? undefined, saber?.firmware);
 
   useEffect(() => { if (model) void api().build.preview(model).then(setPreview); }, [model]);
+
+  // Blade measurements are work the owner did with hardware in hand: keep them as soon as they exist, not only after
+  // a build. Compared by value, so storing them does not loop back through the saber record.
+  useEffect(() => {
+    if (!model || !saber || !blades.length) return;
+    const saved = JSON.stringify(saber.model?.bladeId?.variants ?? []);
+    if (JSON.stringify(variants) !== saved && (variants.length || saber.model)) void board.updateSaber({ model }, saber.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variants]);
 
 
   const [installError, setInstallError] = useState<string | null>(null);
@@ -230,10 +250,11 @@ export function Build({ board }: { board: Board }) {
       <div className="page-head">
         <div>
           <div className="eyebrow">Build &amp; install</div>
-          <h1>Adopt {saber.name} onto Hiltwright firmware</h1>
+          <h1>{saber.firmware ? `Rebuild ${saber.name}` : `Adopt ${saber.name} onto Hiltwright firmware`}</h1>
           <p className="lead" style={{ marginTop: 8 }}>Keeps every preset's font, track and name. Blade looks become Hiltwright starter looks with colours you can change live. The saber is backed up first and the backup can always be put back.</p>
         </div>
         <div className="row">
+          {offline && status !== 'connected' && <span className="chip"><Icon name="usb" />Not plugged in · preparing from memory</span>}
           <span className={`chip ${step === 'done' ? 'ok' : step === 'failed' ? 'err' : busy ? 'warn' : ''}`}><span className="dot" />{stepLabel[step]}{busy ? ` · ${elapsed}s` : ''}</span>
         </div>
       </div>
@@ -243,7 +264,15 @@ export function Build({ board }: { board: Board }) {
           <div className="ph"><h2>1 · Wiring</h2>{confirmedWiring ? <span className="chip ok"><Icon name="check" />Confirmed</span> : <span className="chip warn"><Icon name="warn" />Guessed from the board</span>}</div>
           <div className="pb col" style={{ gap: 12 }}>
             <div className="note amber"><Icon name="warn" /><span>The saber reported {info.pixelBlades.length} pixel blade{info.pixelBlades.length === 1 ? '' : 's'} ({info.pixelBlades.join(', ')} px) but old firmware cannot say which pins they use. Check every pin against your installer's diagram. Wrong power pins can damage hardware.</span></div>
-            <HardwareEditor blades={blades} board={model?.board ?? 'V2'} detected={info.pixelBlades} locked={busy} onChange={(b) => { setBlades(b); setConfirmedWiring(false); setResult(null); setStep('idle'); }} />
+            <HardwareEditor blades={blades} board={model?.board ?? 'V2'} detected={info.pixelBlades} locked={busy} onChange={(b) => { setBlades(b); setConfirmedWiring(false); setResult(null); setStep('idle'); }}
+              swap={{
+                variants,
+                onVariants: (v) => { setVariants(v); setResult(null); setStep('idle'); },
+                // Readings only count when they come from firmware built with Blade ID scanning on: that firmware powers
+                // the blade while it measures, and a reading taken any other way will not match later.
+                measureBlocked: board.status !== 'connected' ? 'Connect the saber to measure a blade.' : !saber.firmware?.bladeId ? 'Turn this on, then build and install once. After that the saber can measure each blade, and a second install teaches it all of them.' : null,
+                measure: async () => { const r = await board.send('scanid', { idleMs: 1500 }); return parseId([...r.lines, ...r.events]); },
+              }} />
             <div className="row wrap" style={{ gap: 14 }}>
               <label className="field" style={{ width: 300 }}><span className="label">Button behaviour</span><span className="input sans"><span className="ellip">{PROPS.find((p) => p.value === prop)?.label}</span><span className="caret"><Icon name="down" /></span><select value={prop} disabled={busy} aria-label="Button behaviour" onChange={(e) => setProp(e.target.value as Prop)}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></span></label>
               <span className="hint">Board: Proffieboard {model?.board} · {model?.buttons} buttons · {info.presets.length} presets carried over{queuedLooks.length ? ` · ${queuedLooks.length} look${queuedLooks.length === 1 ? '' : 's'} to compile` : ''}</span>

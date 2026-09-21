@@ -1,7 +1,7 @@
 // The build model for a saber: wiring, prop, and which look goes in each preset slot. Drafted from what the
 // board reports, refined by the owner on Build & Install, and stored on the saber record.
 
-import type { LookDef, ModelBlade, Prop, SaberConfigModel } from '@hiltwright/core';
+import type { BladeVariant, LookDef, ModelBlade, Prop, SaberConfigModel } from '@hiltwright/core';
 import type { SaberRecord } from '../../shared/api';
 import type { BoardInfo } from './board';
 
@@ -27,7 +27,7 @@ export function configNameFor(saber: SaberRecord): string {
  * currently has. Slot looks are carried over by preset name, so reordering or renaming on the saber does not lose
  * a chosen look.
  */
-export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { blades?: ModelBlade[]; prop?: Prop } = {}): SaberConfigModel {
+export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { blades?: ModelBlade[]; prop?: Prop; variants?: BladeVariant[] } = {}): SaberConfigModel {
   const saved = saber.model;
   const blades = overrides.blades ?? saved?.blades ?? guessBlades(info.pixelBlades.length ? info.pixelBlades : [132]);
   const byName = new Map((saved?.presets ?? []).map((p) => [p.name, p.looks ?? []]));
@@ -42,6 +42,7 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
       return { font: p.font, track: p.track, name: p.name, ...(looks.some(Boolean) ? { looks: blades.map((_b, k) => looks[k] ?? null) } : {}) };
     }),
     looks: saved?.looks ?? [],
+    ...((overrides.variants ?? saved?.bladeId?.variants ?? []).length ? { bladeId: { variants: overrides.variants ?? saved!.bladeId!.variants } } : {}),
     generator: `hiltwright ${window.hiltwright.appVersion}`,
   };
 }

@@ -209,6 +209,8 @@ export interface FirmwareManifest {
   os: string;
   at: string;
   looks: { id: string; name: string; args: number[]; defaults?: Record<number, string> }[];
+  /** Built with Blade ID scanning on, so `scanid` readings from this firmware are the ones the rows must use. */
+  bladeId?: boolean;
   /** Per preset, the look id compiled into each blade slot (index 0 = blade 1). */
   presets: { name: string; looks: string[] }[];
 }

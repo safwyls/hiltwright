@@ -348,11 +348,11 @@ export function useBoard() {
   }, [editPreset]);
 
   /** Store the build model and/or firmware manifest on the current saber's record. */
-  const updateSaber = useCallback(async (patch: SaberPatch) => {
-    const s = saberRef.current;
-    if (!s) return;
-    const rec = await api().library.update(s.id, patch);
-    setSaber(rec);
+  const updateSaber = useCallback(async (patch: SaberPatch, id?: string) => {
+    const target = id ?? saberRef.current?.id;
+    if (!target) return;
+    const rec = await api().library.update(target, patch);
+    if (saberRef.current?.id === target) setSaber(rec);
     await refreshLibrary();
   }, [refreshLibrary]);
 
