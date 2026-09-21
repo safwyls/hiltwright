@@ -4,6 +4,10 @@
 // previews (packages/core/src/sim.ts), so what is seen here is what the firmware would compute. The saber's motion
 // is fed back into the simulator the way the saber's own sensors would report it: tilt from where the blade points
 // (gravity), swing speed from how fast it turns (gyro), twist from the roll of the hilt.
+//
+// The mouse holds the hilt, not the tip. The hand goes where it is dragged; the blade is a rod with some mass, so it
+// trails a quick move, whips through and settles, and where the hand is relative to the body decides where the
+// blade comes to rest: up when the hand is high, out and down when it is low.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -12,11 +16,15 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { BladeSim, type EffectType, type LockupType } from '@hiltwright/core';
+import { Wield } from './wield';
 
 const BLADE_LENGTH = 0.92; // metres: a 36 inch blade
 const BLADE_RADIUS = 0.0127; // a one inch tube
 const HILT_LENGTH = 0.27;
-const PIVOT = new THREE.Vector3(0, 1.05, 0); // the hand
+const HOME: [number, number, number] = [0.12, 1.35, 0]; // where the hand starts
+const REACH = { x: 0.8, low: 0.7, high: 1.8 }; // how far the hand can go
+/** See wield.ts. The chest sits behind the hand so the blade leans toward the viewer a little; under-damped so a swing follows through. */
+const WIELD = { length: BLADE_LENGTH, chest: [0, 1.05, -0.2] as [number, number, number], stiffness: 70, damping: 9.5, handSpeed: 22 };
 const UP = new THREE.Vector3(0, 1, 0);
 /** How far past white the blade is drawn. The excess is what the bloom pass turns into glow; too much and every colour reads as white. */
 const BOOST = 1.2;
@@ -45,9 +53,11 @@ export class DemoScene {
   private lastFrame = 0;
   private disposed = false;
 
-  /** Where the blade is heading, and where it is: the blade follows its target with a little weight. */
-  private readonly target = new THREE.Vector3(0.25, 0.9, 0.35).normalize();
-  private readonly dir = this.target.clone();
+  /** The hand follows the cursor and the blade follows the hand: see wield.ts. */
+  private readonly wield = new Wield(HOME, WIELD);
+  private readonly hand = new THREE.Vector3(...HOME);
+  private readonly dir = new THREE.Vector3(...this.wield.dir);
+  private grabOffset: THREE.Vector3 | null = null;
   private swing = 0;
   private twistTarget = 0;
   private twist = 0;
@@ -84,7 +94,7 @@ export class DemoScene {
     this.glowing.add(tube); this.glowing.add(tip);
     this.roll.add(tube, tip, this.buildHilt());
     this.saber.add(this.roll);
-    this.saber.position.copy(PIVOT);
+    this.saber.position.copy(this.hand);
     this.scene.add(this.saber);
 
     // The blade lights the room: three lamps along it, coloured by that stretch of LEDs.
@@ -188,31 +198,41 @@ export class DemoScene {
   trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (this.sim.isOn) this.sim.trigger(type, pos); }
   setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) this.sim.setLockup(type); }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
-  resetPose(): void { this.target.set(0.25, 0.9, 0.35).normalize(); this.twistTarget = 0; this.orbit = { yaw: 0, pitch: 0.12 }; }
+  resetPose(): void { this.wield.handTarget = [...HOME]; this.twistTarget = 0; this.orbit = { yaw: 0, pitch: 0.12 }; }
   orbitBy(dx: number, dy: number): void { this.orbit.yaw -= dx * 0.005; this.orbit.pitch = Math.max(-0.05, Math.min(0.9, this.orbit.pitch + dy * 0.004)); }
 
-  /**
-   * Point the blade at the cursor. The tip rides a sphere around the hand: inside the sphere's outline the blade
-   * leans toward the viewer, at and beyond the outline it lies across the view.
-   */
-  aim(clientX: number, clientY: number): void {
+  /** The point under the cursor on the plane the hand moves in: upright, facing the viewer, through the room's middle. */
+  private onHandPlane(clientX: number, clientY: number): THREE.Vector3 | null {
     const r = this.renderer.domElement.getBoundingClientRect();
     const ndc = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
-    const ray = this.raycaster.ray;
-    const reach = HILT_LENGTH / 2 + BLADE_LENGTH;
-    const hit = ray.intersectSphere(new THREE.Sphere(PIVOT, reach), new THREE.Vector3());
-    const point = hit ?? ray.closestPointToPoint(PIVOT, new THREE.Vector3());
-    const d = point.sub(PIVOT);
-    if (d.lengthSq() > 1e-6) this.target.copy(d.normalize());
+    const toViewer = new THREE.Vector3(this.camera.position.x, 0, this.camera.position.z).normalize();
+    return this.raycaster.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(toViewer, new THREE.Vector3(0, 1, 0)), new THREE.Vector3());
   }
+
+  /** Take hold of the hilt. The hand does not jump to the cursor: it keeps its place and moves as the cursor moves. */
+  grab(clientX: number, clientY: number): void {
+    const at = this.onHandPlane(clientX, clientY);
+    this.grabOffset = at ? new THREE.Vector3(...this.wield.handTarget).sub(at) : null;
+  }
+  /** Move the hand with the cursor while the hilt is held. */
+  moveHand(clientX: number, clientY: number): void {
+    const at = this.onHandPlane(clientX, clientY);
+    if (!at || !this.grabOffset) return;
+    const to = at.add(this.grabOffset);
+    const side = Math.hypot(to.x, to.z);
+    if (side > REACH.x) { to.x *= REACH.x / side; to.z *= REACH.x / side; }
+    to.y = Math.max(REACH.low, Math.min(REACH.high, to.y));
+    this.wield.handTarget = [to.x, to.y, to.z];
+  }
+  release(): void { this.grabOffset = null; }
 
   /** Where along the blade the cursor is (0 hilt, 1 tip), or null when it is not over the blade. */
   bladeAt(clientX: number, clientY: number): number | null {
     const r = this.renderer.domElement.getBoundingClientRect();
     const toScreen = (v: THREE.Vector3) => { const p = v.clone().project(this.camera); return new THREE.Vector2(((p.x + 1) / 2) * r.width, ((1 - p.y) / 2) * r.height); };
-    const a = toScreen(PIVOT.clone().addScaledVector(this.dir, HILT_LENGTH / 2));
-    const b = toScreen(PIVOT.clone().addScaledVector(this.dir, HILT_LENGTH / 2 + BLADE_LENGTH));
+    const a = toScreen(this.hand.clone().addScaledVector(this.dir, HILT_LENGTH / 2));
+    const b = toScreen(this.hand.clone().addScaledVector(this.dir, HILT_LENGTH / 2 + BLADE_LENGTH));
     const p = new THREE.Vector2(clientX - r.left, clientY - r.top);
     const ab = b.clone().sub(a);
     const t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / Math.max(1, ab.lengthSq())));
@@ -227,27 +247,28 @@ export class DemoScene {
     const dt = Math.min(0.05, this.lastFrame ? (now - this.lastFrame) / 1000 : 0.016);
     this.lastFrame = now;
 
-    // The blade follows its target with some weight; swing speed is how fast it really turned.
-    const before = this.dir.clone();
-    const k = 1 - Math.exp(-dt * 14);
-    this.dir.lerp(this.target, k).normalize();
-    const turned = (before.angleTo(this.dir) * 180) / Math.PI;
-    const speed = dt > 0 ? turned / dt : 0;
+    // The hand goes to where it is dragged and the blade follows it with its own weight (wield.ts). Swing speed is
+    // how fast the blade really turned, which is what the saber's gyro would report.
+    this.wield.step(dt);
+    this.hand.set(...this.wield.hand);
+    this.dir.set(...this.wield.dir);
+    this.saber.position.copy(this.hand);
+    const speed = this.wield.turnRate;
+    const tilt = this.wield.tilt;
     this.swing += (speed - this.swing) * Math.min(1, dt * 12);
     this.twist += (this.twistTarget - this.twist) * Math.min(1, dt * 10);
 
     this.saber.quaternion.setFromUnitVectors(UP, this.dir);
     this.roll.rotation.y = (this.twist * Math.PI) / 180;
-    const tilt = (Math.asin(Math.max(-1, Math.min(1, this.dir.y))) * 180) / Math.PI;
     this.sim.setSwing(Math.min(900, this.swing));
     this.sim.setAngle(tilt);
     this.sim.setTwist(this.twist);
 
     this.paintBlade(this.sim.frame(now));
 
-    const cy = Math.cos(this.orbit.pitch); const dist = 2.25;
-    this.camera.position.set(Math.sin(this.orbit.yaw) * cy * dist, 1.25 + Math.sin(this.orbit.pitch) * dist, Math.cos(this.orbit.yaw) * cy * dist);
-    this.camera.lookAt(0, 1.3, 0);
+    const cy = Math.cos(this.orbit.pitch); const dist = 3.6;
+    this.camera.position.set(Math.sin(this.orbit.yaw) * cy * dist, 1.45 + Math.sin(this.orbit.pitch) * dist, Math.cos(this.orbit.yaw) * cy * dist);
+    this.camera.lookAt(0, 1.45, 0);
     this.renderGlow();
     this.composer.render();
 

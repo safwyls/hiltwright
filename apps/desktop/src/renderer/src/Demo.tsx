@@ -37,10 +37,10 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
     let orbit: { x: number; y: number } | null = null;
     const down = (e: PointerEvent) => {
       el.setPointerCapture(e.pointerId);
-      if (e.button === 0) { grab = { x: e.clientX, y: e.clientY, at: performance.now() }; room.aim(e.clientX, e.clientY); } else { orbit = { x: e.clientX, y: e.clientY }; }
+      if (e.button === 0) { grab = { x: e.clientX, y: e.clientY, at: performance.now() }; room.grab(e.clientX, e.clientY); } else { orbit = { x: e.clientX, y: e.clientY }; }
     };
     const move = (e: PointerEvent) => {
-      if (grab) room.aim(e.clientX, e.clientY);
+      if (grab) room.moveHand(e.clientX, e.clientY);
       if (orbit) { room.orbitBy(e.clientX - orbit.x, e.clientY - orbit.y); orbit = { x: e.clientX, y: e.clientY }; }
       el.style.cursor = grab ? 'grabbing' : room.bladeAt(e.clientX, e.clientY) != null ? 'crosshair' : 'grab';
     };
@@ -50,7 +50,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
         const still = Math.hypot(e.clientX - grab.x, e.clientY - grab.y) < 5 && performance.now() - grab.at < 250;
         const at = still ? room.bladeAt(e.clientX, e.clientY) : null;
         if (at != null) room.trigger('blast', at);
-        grab = null;
+        grab = null; room.release();
       } else orbit = null;
     };
     const wheel = (e: WheelEvent) => { e.preventDefault(); room.addTwist(e.deltaY * 0.12); };
@@ -85,7 +85,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
 
   return (
     <div style={{ position: 'relative', flex: 1, minHeight: 0, margin: '-18px -24px', overflow: 'hidden' }}>
-      <div ref={host} style={{ position: 'absolute', inset: 0, cursor: 'grab', touchAction: 'none' }} role="img" aria-label="A saber in a dark room. Drag to swing it." />
+      <div ref={host} style={{ position: 'absolute', inset: 0, cursor: 'grab', touchAction: 'none' }} role="img" aria-label="A saber in a dark room. Drag to move the hand that holds it." />
       {failed && <div className="note red" style={{ position: 'absolute', left: 20, top: 20, maxWidth: 420 }}><Icon name="x" /><span>The demo room needs WebGL, which is not available here. {failed}</span></div>}
 
       <section className="panel" style={{ position: 'absolute', left: 20, top: 20, width: 300, background: 'rgba(12,17,23,.88)' }} aria-label="Demo controls">
@@ -127,7 +127,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
       </div>
 
       <div style={{ position: 'absolute', left: 20, bottom: 18, display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 14px', fontSize: 12, color: 'var(--dim)', pointerEvents: 'none' }}>
-        {[['Drag', 'swing and tilt the saber'], ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['R', 'reset the pose']].map(([k, v]) => (
+        {[['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down'], ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['R', 'reset the pose']].map(([k, v]) => (
           <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11.5 }}>{k}</span><span>{v}</span></div>
         ))}
       </div>
