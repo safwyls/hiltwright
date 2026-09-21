@@ -105,9 +105,9 @@ function createWindow(): void {
         .then((text) => writeFile(dump, String(text)))
         .then(() => console.log('[main] dumped', dump), (err) => console.log('[main] dump failed', String(err)));
     }, 6000);
-    // Dev aid: HILTWRIGHT_SHOT=<file.png> captures the window a few seconds after load.
+    // Dev aid: HILTWRIGHT_SHOT=<file.png> captures the window a few seconds after load; HILTWRIGHT_SHOT_JS runs first.
     const shot = process.env.HILTWRIGHT_SHOT;
-    if (shot) setTimeout(() => { void win.webContents.executeJavaScript(`window.hiltwrightGoto && window.hiltwrightGoto(${JSON.stringify(process.env.HILTWRIGHT_PAGE ?? 'armory')})`, true).then(() => new Promise((r) => setTimeout(r, 800))).then(() => win.webContents.capturePage()).then((img) => writeFile(shot, img.toPNG())).then(() => console.log('[main] screenshot', shot)); }, process.env.HILTWRIGHT_BUILD_E2E ? 75000 : process.env.HILTWRIGHT_E2E ? 30000 : 6000);
+    if (shot) setTimeout(() => { void win.webContents.executeJavaScript(`window.hiltwrightGoto && window.hiltwrightGoto(${JSON.stringify(process.env.HILTWRIGHT_PAGE ?? 'armory')})`, true).then(() => new Promise((r) => setTimeout(r, 800))).then(() => (process.env.HILTWRIGHT_SHOT_JS ? win.webContents.executeJavaScript(process.env.HILTWRIGHT_SHOT_JS, true).then(() => new Promise((r) => setTimeout(r, 600))) : null)).then(() => win.webContents.capturePage()).then((img) => writeFile(shot, img.toPNG())).then(() => console.log('[main] screenshot', shot)); }, process.env.HILTWRIGHT_BUILD_E2E ? 75000 : process.env.HILTWRIGHT_E2E ? 30000 : 6000);
   });
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void win.loadFile(join(import.meta.dirname, '../renderer/index.html'));

@@ -219,6 +219,15 @@ export function Build({ board }: { board: Board }) {
     setDriverCheck(usb.bootloaderPresent ? `Still no driver (Windows reports ${usb.bootloaderDriver ?? 'none'}). Run the installer with the board plugged in, then check again.` : 'The board is no longer in bootloader mode. Hold BOOT, tap RESET, release BOOT, then check again.');
   }, [writeFromBootloader]);
 
+  // Dev aid: pretend a build finished, to look at the states that follow one without compiling.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as { hiltwrightPretendBuilt?: (confirmed: boolean) => void }).hiltwrightPretendBuilt = (confirmed) => {
+      setResult({ ok: true, cached: true, ms: 0, textBytes: 184400, flashBytes: 262144, flashPct: 70, problems: [], output: '', dfuPath: null } as unknown as BuildResult);
+      setStep('built'); setConfirmedWiring(confirmed);
+    };
+  }, []);
+
   // Dev aid: main calls this to run a compile-only pass against the connected board.
   useEffect(() => {
     (window as unknown as { hiltwrightBuildE2E?: () => Promise<string> }).hiltwrightBuildE2E = async () => {
@@ -366,6 +375,17 @@ export function Build({ board }: { board: Board }) {
               <span className="hint">By hand instead: <button type="button" className="holo" onClick={() => void api().app.openHelp(DRIVER_HELP)}>open the ProffieOS setup page</button>, run <span className="mono">proffie-dfu-setup.exe</span>, then Check again.</span>
               {driverCheck && <span className="hint">{driverCheck}</span>}
             </div>
+          ) : built && !confirmedWiring ? (
+            // The one thing standing between a finished build and the install: say so here, with the switch itself,
+            // instead of a greyed-out button and a line of small print.
+            <div className="col" style={{ gap: 10, padding: 12, border: '1px solid var(--amber)', background: 'rgba(255,181,71,.08)' }}>
+              <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}><span className="amber" style={{ display: 'flex', width: 16, flex: 'none', marginTop: 2 }}><Icon name="warn" /></span><span className="small"><b style={{ fontWeight: 600 }}>Confirm the wiring to unlock the install.</b> Wrong power pins can damage hardware, so Hiltwright will not write firmware until you have checked them.</span></div>
+              <label className="row" style={{ gap: 10, fontSize: 13, alignItems: 'flex-start' }}>
+                <button type="button" className={`tog ${confirmedWiring ? 'on' : ''}`} role="switch" aria-checked={confirmedWiring} disabled={busy} onClick={() => setConfirmedWiring(true)}><i /></button>
+                I checked every data pin and power pin against the installer's wiring
+              </label>
+              {tab !== 'wiring' && <button type="button" className="btn sm full" onClick={() => setTab('wiring')}><span className="b"><span className="i"><Icon name="blade" />Look at the wiring</span></span></button>}
+            </div>
           ) : !armed ? (
             <button type="button" className={`btn full ${nowStep === 4 ? 'warn' : ''}`} disabled={busy || step !== 'built' || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>
           ) : (
@@ -374,7 +394,7 @@ export function Build({ board }: { board: Board }) {
               <button type="button" className="btn ghost" onClick={() => setArmed(false)}><span className="b"><span className="i">Cancel</span></span></button>
             </div>
           )}
-          {step !== 'driver' && <span className="hint">{!built ? 'Build first.' : !confirmedWiring ? 'Confirm the wiring first.' : !canInstall ? (offline ? 'Plug the saber in to install. Everything up to here works without it.' : 'Reconnect the saber to install.') : inBootloader ? 'The board is in bootloader mode and ready to write.' : 'The whole flash is read to a backup file before anything is written.'}</span>}
+          {step !== 'driver' && !(built && !confirmedWiring) && <span className="hint">{!built ? (confirmedWiring ? 'Build first.' : 'Build first. The wiring also needs confirming before anything is written.') : !canInstall ? (offline ? 'Plug the saber in to install. Everything up to here works without it.' : 'Reconnect the saber to install.') : inBootloader ? 'The board is in bootloader mode and ready to write.' : 'The whole flash is read to a backup file before anything is written.'}</span>}
         </div>
 
         {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span>{note.text}</span></div>}
