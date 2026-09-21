@@ -17,6 +17,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { BladeSim, type EffectType, type LockupType } from '@hiltwright/core';
 import { Wield } from './wield';
+import { Steer } from './steer';
 
 const BLADE_LENGTH = 0.92; // metres: a 36 inch blade
 const BLADE_RADIUS = 0.0127; // a one inch tube
@@ -25,9 +26,22 @@ const HOME: [number, number, number] = [0.12, 1.35, 0]; // where the hand starts
 const REACH = { x: 0.8, low: 0.7, high: 1.8 }; // how far the hand can go
 /** See wield.ts. The chest sits behind the hand so the blade leans toward the viewer a little; under-damped so a swing follows through. */
 const WIELD = { length: BLADE_LENGTH, chest: [0, 1.05, -0.2] as [number, number, number], stiffness: 70, damping: 9.5, handSpeed: 22 };
+/** Steer mode: where the hand stays, how the blade starts (pointing right and a little away, tilted up), and how it answers a drag. */
+const STEER_HAND: [number, number, number] = [-0.42, 0.98, 0.1];
+const STEER_START = { yaw: 62, pitch: 42 };
+const STEER = { yawPerPixel: 0.35, pitchPerPixel: 0.3, follow: 16, minPitch: -85, maxPitch: 85 };
+/** The view the room opens with: a little to one side and above, so the floor reads as a floor. */
+const VIEW = { yaw: 0.42, pitch: 0.3, distance: 2.0, focus: [-0.36, 1.33, 0.05] as [number, number, number] };
 const UP = new THREE.Vector3(0, 1, 0);
 /** How far past white the blade is drawn. The excess is what the bloom pass turns into glow; too much and every colour reads as white. */
 const BOOST = 1.2;
+
+/**
+ * How the mouse moves the saber.
+ * 'steer': the hand stays put; dragging left and right swings the blade in an arc parallel to the floor, up and down tilts it.
+ * 'hold': the drag moves the hand that holds the hilt and the blade follows with its own weight (wield.ts).
+ */
+export type ControlMode = 'steer' | 'hold';
 
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
 
@@ -55,18 +69,21 @@ export class DemoScene {
 
   /** The hand follows the cursor and the blade follows the hand: see wield.ts. */
   private readonly wield = new Wield(HOME, WIELD);
-  private readonly hand = new THREE.Vector3(...HOME);
-  private readonly dir = new THREE.Vector3(...this.wield.dir);
+  private readonly steer = new Steer(STEER_START.yaw, STEER_START.pitch, STEER);
+  private mode: ControlMode = 'steer';
+  private readonly hand = new THREE.Vector3(...STEER_HAND);
+  private readonly dir = new THREE.Vector3(...this.steer.dir);
+  private lastDrag: { x: number; y: number } | null = null;
   private grabOffset: THREE.Vector3 | null = null;
   private swing = 0;
   private twistTarget = 0;
   private twist = 0;
-  private orbit = { yaw: 0, pitch: 0.12 };
+  private orbit = { yaw: VIEW.yaw, pitch: VIEW.pitch };
   /** Where the camera looks, moved by panning. */
-  private readonly focus = new THREE.Vector3(0, 1.45, 0);
+  private readonly focus = new THREE.Vector3(...VIEW.focus);
   /** How far the camera stands from what it looks at; it eases toward the distance asked for. */
-  private distance = 3.6;
-  private distanceTarget = 3.6;
+  private distance = VIEW.distance;
+  private distanceTarget = VIEW.distance;
   onMotion: ((m: Motion) => void) | null = null;
   private lastReport = 0;
 
@@ -203,7 +220,13 @@ export class DemoScene {
   trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (this.sim.isOn) this.sim.trigger(type, pos); }
   setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) this.sim.setLockup(type); }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
-  resetPose(): void { this.wield.handTarget = [...HOME]; this.twistTarget = 0; this.orbit = { yaw: 0, pitch: 0.12 }; this.focus.set(0, 1.45, 0); this.distanceTarget = 3.6; }
+  resetPose(): void {
+    this.wield.handTarget = [...HOME];
+    this.steer.aimAt(STEER_START.yaw + Math.round((this.steer.yaw - STEER_START.yaw) / 360) * 360, STEER_START.pitch); // the short way round
+    this.twistTarget = 0; this.orbit = { yaw: VIEW.yaw, pitch: VIEW.pitch }; this.focus.set(...VIEW.focus); this.distanceTarget = VIEW.distance;
+  }
+  get controlMode(): ControlMode { return this.mode; }
+  setControlMode(mode: ControlMode): void { this.mode = mode; this.lastDrag = null; this.grabOffset = null; if (mode === 'hold') this.wield.handTarget = [...HOME]; }
   /** Step closer (negative) or further away (positive). Each notch changes the distance by a fixed proportion, so it feels even near and far. */
   zoomBy(notches: number): void { this.distanceTarget = Math.max(1.1, Math.min(9, this.distanceTarget * Math.pow(1.12, notches))); }
 
@@ -229,11 +252,18 @@ export class DemoScene {
 
   /** Take hold of the hilt. The hand does not jump to the cursor: it keeps its place and moves as the cursor moves. */
   grab(clientX: number, clientY: number): void {
+    this.lastDrag = { x: clientX, y: clientY };
+    if (this.mode === 'steer') return;
     const at = this.onHandPlane(clientX, clientY);
     this.grabOffset = at ? new THREE.Vector3(...this.wield.handTarget).sub(at) : null;
   }
   /** Move the hand with the cursor while the hilt is held. */
   moveHand(clientX: number, clientY: number): void {
+    if (this.mode === 'steer') {
+      if (this.lastDrag) this.steer.dragBy(clientX - this.lastDrag.x, clientY - this.lastDrag.y);
+      this.lastDrag = { x: clientX, y: clientY };
+      return;
+    }
     const at = this.onHandPlane(clientX, clientY);
     if (!at || !this.grabOffset) return;
     const to = at.add(this.grabOffset);
@@ -242,7 +272,7 @@ export class DemoScene {
     to.y = Math.max(REACH.low, Math.min(REACH.high, to.y));
     this.wield.handTarget = [to.x, to.y, to.z];
   }
-  release(): void { this.grabOffset = null; }
+  release(): void { this.grabOffset = null; this.lastDrag = null; }
 
   /** Where along the blade the cursor is (0 hilt, 1 tip), or null when it is not over the blade. */
   bladeAt(clientX: number, clientY: number): number | null {
@@ -264,14 +294,23 @@ export class DemoScene {
     const dt = Math.min(0.05, this.lastFrame ? (now - this.lastFrame) / 1000 : 0.016);
     this.lastFrame = now;
 
-    // The hand goes to where it is dragged and the blade follows it with its own weight (wield.ts). Swing speed is
-    // how fast the blade really turned, which is what the saber's gyro would report.
-    this.wield.step(dt);
-    this.hand.set(...this.wield.hand);
-    this.dir.set(...this.wield.dir);
+    // Either the blade is steered about a hand that stays put (steer.ts), or the hand is dragged and the blade
+    // follows with its own weight (wield.ts). Both report how fast the blade really turned, which is what the
+    // saber's gyro would read, and its elevation, which is what it reads from gravity.
+    let speed: number; let tilt: number;
+    if (this.mode === 'steer') {
+      this.steer.step(dt);
+      this.hand.lerp(new THREE.Vector3(...STEER_HAND), 1 - Math.exp(-dt * 10));
+      this.dir.set(...this.steer.dir);
+      speed = this.steer.turnRate; tilt = this.steer.tilt;
+    } else {
+      this.wield.step(dt);
+      // Coming from steer mode the hand may be elsewhere: glide to where the wrist model has it.
+      this.hand.lerp(new THREE.Vector3(...this.wield.hand), 1 - Math.exp(-dt * 30));
+      this.dir.set(...this.wield.dir);
+      speed = this.wield.turnRate; tilt = this.wield.tilt;
+    }
     this.saber.position.copy(this.hand);
-    const speed = this.wield.turnRate;
-    const tilt = this.wield.tilt;
     this.swing += (speed - this.swing) * Math.min(1, dt * 12);
     this.twist += (this.twistTarget - this.twist) * Math.min(1, dt * 10);
 

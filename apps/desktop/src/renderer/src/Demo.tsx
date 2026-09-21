@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupType } from '@hiltwright/core';
-import { DemoScene, type Motion } from './demoScene';
+import { DemoScene, type ControlMode, type Motion } from './demoScene';
 import { Icon } from './Icon';
 
 const LOOKS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
@@ -17,6 +17,8 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
   const [hold, setHold] = useState<LockupType | null>(null);
   const [motion, setMotion] = useState<Motion>({ swing: 0, tilt: 0, twist: 0, on: false });
   const [failed, setFailed] = useState<string | null>(null);
+  const [control, setControl] = useState<ControlMode>(() => { try { return localStorage.getItem('hiltwright.demo.control') === 'hold' ? 'hold' : 'steer'; } catch { return 'steer'; } });
+  useEffect(() => { scene.current?.setControlMode(control); try { localStorage.setItem('hiltwright.demo.control', control); } catch { /* private mode */ } }, [control]);
   const look = LOOKS.find((l) => l.id === lookId) ?? LOOKS[0];
   const args = useMemo(() => new Map(Object.entries(tried).map(([n, v]) => [Number(n), hexToColorWord(v)])), [tried]);
   const holdRef = useRef(hold);
@@ -29,6 +31,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
     let room: DemoScene;
     try { room = new DemoScene(el, lookId); } catch (err) { setFailed(String(err)); return; }
     scene.current = room;
+    room.setControlMode(control);
     room.onMotion = setMotion;
     const ro = new ResizeObserver(() => room.resize());
     ro.observe(el);
@@ -117,6 +120,13 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
               })}
             </div>
           )}
+          <div className="col" style={{ gap: 4 }}>
+            <span className="label">Mouse control</span>
+            <div className="seg" role="radiogroup" aria-label="Mouse control">
+              <button type="button" role="radio" aria-checked={control === 'steer'} className={control === 'steer' ? 'on' : ''} onClick={() => setControl('steer')}>Tilt and swing</button>
+              <button type="button" role="radio" aria-checked={control === 'hold'} className={control === 'hold' ? 'on' : ''} onClick={() => setControl('hold')}>Hold the hilt</button>
+            </div>
+          </div>
           <div className="row wrap" style={{ gap: 6 }}>
             <button type="button" className="btn sm pri" onClick={() => { room?.setOn(!motion.on); setHold(null); }}><span className="b"><span className="i">{motion.on ? 'Retract' : 'Ignite'}</span></span></button>
             <button type="button" className="chip" disabled={!motion.on} onClick={() => room?.trigger('clash')}>Clash</button>
@@ -135,7 +145,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
       </div>
 
       <div style={{ position: 'absolute', left: 20, bottom: 18, display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 14px', fontSize: 12, color: 'var(--dim)', pointerEvents: 'none' }}>
-        {[['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down'], ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll or + −', 'zoom'], ['R', 'reset the pose and the view']].map(([k, v]) => (
+        {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll or + −', 'zoom'], ['R', 'reset the pose and the view']].map(([k, v]) => (
           <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11.5 }}>{k}</span><span>{v}</span></div>
         ))}
       </div>
