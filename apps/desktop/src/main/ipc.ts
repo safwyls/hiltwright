@@ -12,6 +12,7 @@ import { checkFontDir, copyFont, listFonts, listTracks, locateCards, readVoicePa
 import { defaultToolchainRoot, installToolchain, toolchainStatus } from './toolchain';
 import { buildFirmware } from './build';
 import { installBootloaderDriver } from './driver';
+import { importXenoFont, scanXenoCard, type XenoFontInfo } from './importer';
 import { backupFlash, describeBootloader, listBackups, restoreBackup, usbState, waitFor, writeFirmware } from './flash';
 import type { JobEvent } from '../shared/api';
 import type { FirmwareManifest } from '@hiltwright/core';
@@ -123,6 +124,21 @@ export function registerIpc(): void {
     const s = str(src, 1000);
     if (!pickedFonts.has(s)) throw new Error('Pick the font folder first');
     return copyFont(s, root(r), replace === true);
+  });
+
+  // Import from a Xenopixel card. The owner picks the folder; only fonts found by that scan can be imported.
+  let xenoFonts = new Map<string, XenoFontInfo>();
+  ipcMain.handle('import:pickXeno', async () => {
+    const res = await dialog.showOpenDialog({ title: 'Choose the Xenopixel SD card (or a copy of it)', properties: ['openDirectory'] });
+    if (res.canceled || !res.filePaths[0]) return null;
+    const fonts = await scanXenoCard(res.filePaths[0]);
+    xenoFonts = new Map(fonts.map((f) => [f.path, f]));
+    return { root: res.filePaths[0], fonts };
+  });
+  ipcMain.handle('import:xenoFont', (_e, src: unknown, r: unknown, folder: unknown, replace: unknown) => {
+    const f = xenoFonts.get(str(src, 1000));
+    if (!f) throw new Error('Choose the Xenopixel card first');
+    return importXenoFont(f.path, root(r), str(folder, 60), replace === true);
   });
 
   // ---- Tier 2: toolchain, build, flash ----

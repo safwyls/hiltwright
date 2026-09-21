@@ -58,6 +58,21 @@ export interface FontEntry {
   report: FontReport;
 }
 
+export interface XenoFontInfo {
+  slot: string;
+  path: string;
+  name: string;
+  /** Folder name the font gets on the ProffieOS card. */
+  folder: string;
+  hex: string;
+  /** Colour as a ProffieOS style argument word. */
+  colorWord: string;
+  effect: string | null;
+  sounds: number;
+  tracks: number;
+  bytes: number;
+}
+
 export interface ToolchainStatus {
   root: string;
   cli: boolean;
@@ -143,6 +158,13 @@ export interface HiltwrightApi {
     /** Ask the user for a font folder on this computer and check it without copying. */
     pickFont(): Promise<FontEntry | null>;
     copyFont(src: string, root: string, replace: boolean): Promise<FontEntry>;
+  };
+  /** Bring fonts over from another board's SD card. The source is only read. */
+  importer: {
+    /** Ask for a Xenopixel card folder and list the fonts on it. Null when cancelled. */
+    pickXeno(): Promise<{ root: string; fonts: XenoFontInfo[] } | null>;
+    /** Convert one listed font onto the ProffieOS card at `root`, as folder `folder`. */
+    xenoFont(src: string, root: string, folder: string, replace: boolean): Promise<FontEntry>;
   };
   toolchain: {
     status(): Promise<ToolchainStatus>;

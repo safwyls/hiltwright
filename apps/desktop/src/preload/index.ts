@@ -33,6 +33,10 @@ const api: HiltwrightApi = {
     pickFont: () => ipcRenderer.invoke('sd:pickFont'),
     copyFont: (src, root, replace) => ipcRenderer.invoke('sd:copyFont', src, root, replace),
   },
+  importer: {
+    pickXeno: () => ipcRenderer.invoke('import:pickXeno'),
+    xenoFont: (src, root, folder, replace) => ipcRenderer.invoke('import:xenoFont', src, root, folder, replace),
+  },
   toolchain: {
     status: () => ipcRenderer.invoke('toolchain:status'),
     install: () => ipcRenderer.invoke('toolchain:install'),

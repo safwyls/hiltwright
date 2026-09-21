@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { VoicePackStatus } from '@hiltwright/core';
 import type { CardInfo, FontEntry } from '../../shared/api';
+import type { Board } from './board';
+import { XenoImport } from './XenoImport';
 import { Icon } from './Icon';
 
 const api = () => window.hiltwright;
@@ -13,7 +15,7 @@ function mb(bytes: number | null): string {
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${(bytes / 1e6).toFixed(0)} MB`;
 }
 
-export function Fonts() {
+export function Fonts({ board }: { board: Board }) {
   const [cards, setCards] = useState<CardInfo[]>([]);
   const [card, setCard] = useState<CardInfo | null>(null);
   const [fonts, setFonts] = useState<FontEntry[]>([]);
@@ -146,6 +148,8 @@ export function Fonts() {
               )}
             </div>
           </section>
+
+          <XenoImport card={card} board={board} onChanged={() => void scan()} />
 
           <section className="panel" aria-label="Font detail" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div className="ph"><h2>{sel ? sel.name : 'Tracks'}</h2><span className="hint">{sel ? `${sel.report.type} · ${sel.report.files} files` : `${tracks.length} on the card`}</span></div>

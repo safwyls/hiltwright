@@ -58,7 +58,7 @@ export function App() {
       </header>
 
       <main className="main">
-        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} /> : page === 'fonts' ? <Fonts /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}</ErrorBoundary>
+        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} /> : page === 'fonts' ? <Fonts board={board} /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}</ErrorBoundary>
       </main>
 
       <footer className="status" aria-label="Board status">

@@ -232,11 +232,15 @@ export function useBoard() {
 
   // ---------- Presets ----------
 
+  // The ref is updated in the same breath as the state: queued writes that follow each other (duplicate, then edit)
+  // read it between renders, and editPreset must act on the preset the board has just made current.
   const applyList = useCallback((r: ListResult) => {
+    if (infoRef.current) infoRef.current = { ...infoRef.current, presets: r.presets, currentPreset: r.current };
     setInfo((i) => (i ? { ...i, presets: r.presets, currentPreset: r.current } : i));
   }, []);
 
   const replacePreset = useCallback((index: number, preset: PresetRecord) => {
+    if (infoRef.current) infoRef.current = { ...infoRef.current, presets: infoRef.current.presets.map((p, k) => (k === index ? preset : p)) };
     setInfo((i) => (i ? { ...i, presets: i.presets.map((p, k) => (k === index ? preset : p)) } : i));
   }, []);
 
@@ -347,6 +351,12 @@ export function useBoard() {
     await editPreset(patch, `Restore "${meta.label}"`);
   }, [editPreset]);
 
+  /** The current preset as of this instant (state in closures can be a render behind after a queued write). */
+  const currentPresetNow = useCallback((): PresetRecord | null => {
+    const i = infoRef.current;
+    return i && i.currentPreset != null ? i.presets[i.currentPreset] ?? null : null;
+  }, []);
+
   /** Store the build model and/or firmware manifest on the current saber's record. */
   const updateSaber = useCallback(async (patch: SaberPatch, id?: string) => {
     const target = id ?? saberRef.current?.id;
@@ -425,7 +435,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, updateSaber, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
+  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, updateSaber, currentPresetNow, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
 }
 
 export type Board = ReturnType<typeof useBoard>;
