@@ -126,6 +126,48 @@ describe('blade simulator', () => {
     expect(Math.min(...blues)).toBeLessThan(0.01);
   });
 
+  it('stardust sparks appear and fade; the heartbeat beats twice per cycle; the scanner travels', () => {
+    const dust = new BladeSim('hw_stardust', N);
+    dust.setOn(true);
+    let sparked = 0;
+    for (let t = 0; t < 3000; t += 1000 / 60) { const f = dust.frame(t); if (t > 600) for (let i = 0; i < N; i++) if (f[i * 3] > 0.5) { sparked++; break; } }
+    expect(sparked).toBeGreaterThan(20); // red only appears where a white spark is
+    expect(sparked).toBeLessThan(160);
+
+    const heart = new BladeSim('hw_heartbeat', 1);
+    heart.setOn(true); run(heart, 0, 1000);
+    const reds: number[] = [];
+    for (let t = 1260; t < 1260 + 1260; t += 10) reds.push(heart.frame(t)[0]);
+    let peaks = 0;
+    for (let i = 1; i < reds.length - 1; i++) if (reds[i] > 0.9 && reds[i] >= reds[i - 1] && reds[i] > reds[i + 1]) peaks++;
+    expect(peaks).toBe(2);
+    expect(Math.min(...reds)).toBeLessThan(0.2);
+
+    const scan = new BladeSim('hw_scanner', 40);
+    scan.setOn(true);
+    const brightest = (f: Float32Array) => { let at = 0; for (let i = 1; i < 40; i++) if (f[i * 3] > f[at * 3]) at = i; return at; };
+    const seen = new Set<number>();
+    for (let t = 0; t < 2000; t += 50) seen.add(brightest(scan.frame(t)));
+    expect(seen.size).toBeGreaterThan(15);
+  });
+
+  it('the emitter flare stays at the hilt and the current runs faster in a swing', () => {
+    const flare = new BladeSim('hw_emitter', N);
+    flare.setOn(true);
+    const f = run(flare, 0, 1500);
+    expect(f[0]).toBeGreaterThan(0.5); // white over blue at the first LED
+    expect(f[60 * 3]).toBe(0);
+
+    const changes = (swing: number) => {
+      const sim = new BladeSim('hw_current', N, 3);
+      sim.setOn(true); sim.setSwing(swing); run(sim, 0, 1000);
+      let prev = sim.frame(1001)[60 * 3 + 1]; let total = 0;
+      for (let t = 1017; t < 2000; t += 1000 / 60) { const v = sim.frame(t)[60 * 3 + 1]; total += Math.abs(v - prev); prev = v; }
+      return total;
+    };
+    expect(changes(450)).toBeGreaterThan(changes(0) * 3);
+  });
+
   it('is deterministic for a given seed', () => {
     const a = new BladeSim('hw_unstable', 40, 7); const b = new BladeSim('hw_unstable', 40, 7);
     a.setOn(true); b.setOn(true);

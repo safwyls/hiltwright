@@ -112,6 +112,29 @@ function slowNoise(speed: number): IntFn {
   };
 }
 
+/** RandomF: one random value per frame, the same for every LED. */
+const randomF = (): IntFn => { let v = 0; return { run(c) { v = c.rnd(32768); }, get: () => v }; };
+
+/** SparkleF<chance, intensity>: sparks land at random, then spread into their neighbours and fade, every 10 ms. */
+function sparkleF(chancePromille = 300, intensity = 1024): IntFn {
+  let sparks: Int32Array | null = null; let last = -1e9;
+  return {
+    run(c) {
+      let cur: Int32Array = sparks && sparks.length === c.n + 4 ? sparks : new Int32Array(c.n + 4);
+      if (c.now - last > 200) last = c.now - 10;
+      while (c.now - last >= 10) {
+        last += 10;
+        const next = new Int32Array(cur.length);
+        for (let i = 2; i < c.n + 2; i++) next[i] = ((cur[i - 1] + cur[i + 1]) * 200 + cur[i] * 570) >> 10;
+        cur = next;
+        if (c.rnd(1000) < chancePromille) { const at = c.rnd(c.n) + 2; cur[at] = Math.min(32767, cur[at] + intensity); }
+      }
+      sparks = cur;
+    },
+    get: (led) => clamp(sparks ? sparks[led + 2] : 0, 0, 256) << 7,
+  };
+}
+
 const randomPerLed = (): IntFn => { let rnd: Ctx['rnd'] = () => 0; return { run(c) { rnd = c.rnd; }, get: () => rnd(32768) }; };
 const swingSpeed = (max: number): IntFn => { let v = 0; return { run(c) { v = clamp(Math.trunc((c.swing / max) * 32768), 0, 32768); }, get: () => v }; };
 const soundCompat = (): IntFn => { let v = 0; return { run(c) { v = c.sound; }, get: () => v }; };
@@ -186,17 +209,20 @@ function rainbow(): ColorFn {
 }
 
 /** Stripes<width, speed, colours...>: sine-weighted bands sliding along the blade. */
-function stripes(width: number, speed: number, colors: ColorFn[]): ColorFn {
+function stripes(width: number | IntFn, speed: number | IntFn, colors: ColorFn[]): ColorFn {
   let m = 0; let last = -1; let mult = 0;
+  const wf = typeof width === 'number' ? constInt(width) : width;
+  const sf = typeof speed === 'number' ? constInt(speed) : speed;
   const period = colors.length * 341;
   return {
     run(c) {
       for (const x of colors) x.run(c);
+      wf.run(c); sf.run(c);
       const deltaMicros = last < 0 ? 0 : (c.now - last) * 1000;
       last = c.now;
       const span = period * 1024;
-      m = (((m + Math.trunc((deltaMicros * speed) / 333)) % span) + span) % span;
-      mult = Math.trunc((50000 * 1024) / width);
+      m = (((m + Math.trunc((deltaMicros * sf.get(0)) / 333)) % span) + span) % span;
+      mult = Math.trunc((50000 * 1024) / Math.max(1, wf.get(0)));
     },
     get(led) {
       const p0 = ((m + led * mult) >> 10) % period;
@@ -359,6 +385,29 @@ function lockupL(type: LockupType, layer: LayerFn, tr1: Tr, tr2: Tr): LayerFn {
   };
 }
 
+/**
+ * TransitionLoopL<TrConcat<TR, COLOR, TR, COLOR, ..., TR>>: from transparent through each colour and back to
+ * transparent, over and over. A fade blends its two ends; a delay holds the earlier one.
+ */
+function loopL(segs: { kind: 'fade' | 'delay'; ms: number }[], nodes: ColorFn[]): LayerFn {
+  let start = -1; let t = 0;
+  const total = segs.reduce((a, x) => a + x.ms, 0);
+  return {
+    run(c) { for (const n of nodes) n.run(c); if (start < 0) start = c.now; t = (c.now - start) % total; },
+    get(led) {
+      let at = t; let i = 0;
+      while (i < segs.length - 1 && at >= segs[i].ms) { at -= segs[i].ms; i++; }
+      const from = i === 0 ? null : nodes[i - 1].get(led);
+      const to = i === segs.length - 1 ? null : nodes[i].get(led);
+      if (segs[i].kind === 'delay') return { c: from ?? BLACK, a: from ? 32768 : 0 };
+      const f = Math.trunc((at / segs[i].ms) * 32768);
+      if (!from) return { c: to ?? BLACK, a: to ? f : 0 };
+      if (!to) return { c: from, a: 32768 - f };
+      return { c: mixRGB(from, to, f), a: 32768 };
+    },
+  };
+}
+
 /** InOutTrL<OUT_TR, IN_TR, OFF>: OFF covers the blade while off, wiped or faded away on ignition and back on retraction. */
 function inOutL(outTr: Tr, inTr: Tr, off: ColorFn = solid(BLACK)): LayerFn {
   let ctx: Ctx | null = null; let was = false; let changed = -1e9;
@@ -403,6 +452,9 @@ function hwFx(b: ColorFn): ColorFn {
     inOutL({ kind: 'wipe', ms: ign }, { kind: 'wipein', ms: ret }));
 }
 
+/** Mix<Int<f>, Black, COLOR>: COLOR at f/32768 of its brightness. */
+const dim = (f: number, col: ColorFn): ColorFn => mix(constInt(f), solid(BLACK), col);
+
 const SIM_LOOKS: Record<string, () => ColorFn> = {
   hw_blade: () => hwFx(base()),
   hw_hum: () => hwFx(layers(base(), alphaL(alt(0, 0, 128), soundCompat()))),
@@ -413,12 +465,32 @@ const SIM_LOOKS: Record<string, () => ColorFn> = {
   hw_swing: () => hwFx(layers(base(), alphaL(rgbArg(18, WHITE), scale(swingSpeed(500), 0, 28000)))),
   hw_tip: () => hwFx(gradient([base(), base(), base(), alt(255, 255, 255)])),
   hw_rainbow: () => hwFx(rainbow()),
+  hw_film: () => hwFx(layers(base(), alphaL(dim(21000, base()), randomF()))),
+  hw_surge: () => hwFx(stripes(9000, -3000, [base(), base(), base(), base(), base(), alt(140, 200, 255)])),
+  hw_stardust: () => hwFx(layers(base(), alphaL(alt(255, 255, 255), sparkleF(300, 1024)))),
+  hw_lava: () => hwFx(layers(base(255, 30, 0),
+    alphaL(alt(255, 160, 0), bump(scale(sinF(5), 3000, 29000), constInt(18000))),
+    alphaL(alt(255, 160, 0), bump(scale(sinF(8), 30000, 6000), constInt(12000))),
+    alphaL(alt(255, 160, 0), bump(scale(sinF(3), 10000, 24000), constInt(9000))))),
+  hw_emitter: () => hwFx(layers(base(), alphaL(rgbArg(20, WHITE), smoothStep(scale(soundCompat(), 1200, 5200), constInt(-5000))))),
+  hw_aurora: () => hwFx(mix(smoothStep(scale(sinF(7), -6000, 38000), constInt(26000)), base(0, 255, 90), alt(140, 0, 255))),
+  hw_current: () => hwFx(stripes(9000, scale(swingSpeed(450), -500, -5000), [base(0, 80, 255), dim(14000, base(0, 80, 255)), alt(0, 255, 255)])),
+  hw_dark: () => hwFx(layers(stripes(2600, -3400, [base(255, 255, 255), dim(9000, base(255, 255, 255)), base(255, 255, 255), dim(18000, base(255, 255, 255))]),
+    alphaL(alphaL(solid(BLACK), constInt(9000)), randomPerLed()))),
   hw_accent: () => layers(base(), inOutL({ kind: 'fade', ms: ign }, { kind: 'fade', ms: ret })),
   hw_crystal: () => layers(mix(sinF(18), base(), mix(constInt(9000), solid(BLACK), base())), simpleClashL(rgbArg(10, WHITE)),
     inOutL({ kind: 'fade', ms: ign }, { kind: 'fade', ms: ret }, mix(pulsingF(3500), rgbArg(31, rgb8(0, 0, 40)), solid(BLACK)))),
   hw_spark: () => layers(solid(BLACK), blastL(rgbArg(9, WHITE)), simpleClashL(rgbArg(10, WHITE)), inOutL({ kind: 'instant' }, { kind: 'instant' })),
   hw_battery: () => layers(mix(batteryLevel(), solid(rgb8(255, 0, 0)), solid(rgb8(0, 255, 0))),
     inOutL({ kind: 'instant' }, { kind: 'instant' }, mix(batteryLevel(), solid(rgb8(60, 0, 0)), solid(rgb8(0, 60, 0))))),
+  hw_heartbeat: () => layers(dim(4000, base(255, 0, 0)),
+    loopL([{ kind: 'fade', ms: 70 }, { kind: 'fade', ms: 170 }, { kind: 'fade', ms: 70 }, { kind: 'fade', ms: 300 }, { kind: 'delay', ms: 650 }],
+      [base(255, 0, 0), dim(4000, base(255, 0, 0)), base(255, 0, 0), dim(4000, base(255, 0, 0))]),
+    inOutL({ kind: 'fade', ms: ign }, { kind: 'fade', ms: ret }, mix(pulsingF(4000), dim(2500, base(255, 0, 0)), solid(BLACK)))),
+  hw_scanner: () => layers(solid(BLACK), alphaL(base(255, 0, 0), bump(sinF(32), constInt(11000))), inOutL({ kind: 'instant' }, { kind: 'instant' })),
+  hw_meter: () => layers(solid(BLACK),
+    alphaL(gradient([base(0, 255, 0), base(0, 255, 0), alt(255, 0, 0)]), smoothStep(scale(soundCompat(), 1000, 36000), constInt(-3000))),
+    inOutL({ kind: 'instant' }, { kind: 'instant' })),
   hw_motor: () => layers(solid(WHITE), inOutL({ kind: 'instant' }, { kind: 'instant' })),
 };
 

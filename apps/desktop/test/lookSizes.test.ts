@@ -7,6 +7,8 @@ import { buildFirmware } from '../src/main/build';
 // Needs HILTWRIGHT_TOOLCHAIN_DIR; HILTWRIGHT_LOOK_SIZES=<file.json> writes the measurements out.
 const root = process.env.HILTWRIGHT_TOOLCHAIN_DIR;
 const out = process.env.HILTWRIGHT_LOOK_SIZES;
+// HILTWRIGHT_LOOK_ONLY=hw_a,hw_b measures just those looks (each compile takes most of a minute).
+const only = process.env.HILTWRIGHT_LOOK_ONLY?.split(',').map((x) => x.trim()).filter(Boolean) ?? null;
 
 const main: ModelBlade = { id: 'b1', role: 'main', type: 'pixel', pixels: 132, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2', 'bladePowerPin3'] } };
 const crystal: ModelBlade = { id: 'b2', role: 'crystal', type: 'pixel', pixels: 2, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own', dataPin: 'blade2Pin', powerPins: ['bladePowerPin4'] } };
@@ -28,6 +30,7 @@ describe.skipIf(!root)('look library on the real toolchain', () => {
     const sizes: Record<string, number> = {};
     const failures: string[] = [];
     for (const l of LIBRARY_LOOKS) {
+      if (only && !only.includes(l.id)) continue;
       if (l.roles.includes('motor')) continue; // a motor needs a simple blade; covered by the generator tests and the default build
       const r = await buildFirmware({ toolchainRoot: root!, saberId: 'look-sizes', model: model(`hw_sizes_${l.id}`, l.id), force: true });
       if (!r.ok || r.textBytes == null || base.textBytes == null) { failures.push(`${l.id}: ${r.problems[0] ?? 'no size'}\n${r.output.slice(0, 1500)}`); continue; }

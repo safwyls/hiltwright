@@ -115,7 +115,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
             {(['main', 'crystal', 'accent', 'motor'] as BladeRole[]).map((r) => <button key={r} type="button" className={`chip ${roleFilter === r ? 'sel' : ''}`} aria-pressed={roleFilter === r} onClick={() => setRoleFilter(roleFilter === r ? null : r)}>{ROLE_LABEL[r]}</button>)}
             <button type="button" className="btn sm" style={{ marginLeft: 'auto' }} onClick={() => setPasting(true)}><span className="b"><span className="i"><Icon name="import" />Paste style code</span></span></button>
           </div>
-          <div className="grid3 scroll" style={{ gap: 12, alignContent: 'start', paddingRight: 4 }}>
+          <div className="scroll" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(176px, 1fr))', gap: 10, alignContent: 'start', paddingRight: 4 }}>
             {visible.map((l) => (
               <button key={l.id} type="button" className={`lookcard ${l.id === sel.id ? 'on' : ''}`} aria-pressed={l.id === sel.id} onClick={() => { setSelectedId(l.id); setNote(null); }}>
                 <div style={{ padding: '8px 14px 0', width: '100%', boxSizing: 'border-box' }}>
