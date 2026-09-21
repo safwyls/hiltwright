@@ -47,8 +47,9 @@ function grantSerial(): void {
 
 function createWindow(): void {
   const win = new BrowserWindow({
-    width: 1480,
-    height: 980,
+    width: Number(process.env.HILTWRIGHT_W) || 1480,
+    height: Number(process.env.HILTWRIGHT_H) || 980,
+    show: !process.env.HILTWRIGHT_OFFSCREEN,
     minWidth: 1180,
     minHeight: 700,
     backgroundColor: '#0a0e13',
@@ -59,6 +60,8 @@ function createWindow(): void {
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
+      // Dev aid: HILTWRIGHT_OFFSCREEN=1 renders without a display, so HILTWRIGHT_SHOT works with the screen asleep.
+      offscreen: !!process.env.HILTWRIGHT_OFFSCREEN,
     },
   });
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

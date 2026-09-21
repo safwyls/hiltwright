@@ -19,7 +19,8 @@ interface Props {
   /** A single LED (crystal chamber, accent) instead of a blade. */
   dot?: boolean;
   hilt?: boolean;
-  controls?: boolean;
+  /** 'compact' is one row of triggers with no swing slider or explanation, for use beside other controls. */
+  controls?: boolean | 'compact';
   size?: 'sm' | 'md';
 }
 
@@ -72,7 +73,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
   if (!ok) {
     return (
       <div className="col" style={{ gap: 6 }}>
-        <div className="row" style={{ gap: 0 }}>{hilt && <Hilt />}<BladeBar color={fallbackColor} thin={size === 'sm'} /></div>
+        <div className="row" style={{ gap: 0, height, paddingRight: 28 }}>{hilt && <Hilt />}<BladeBar color={fallbackColor} thin={size === 'sm'} /></div>
         {controls && <span className="hint">{broken ? 'The live preview needs WebGL, which is not available here. This bar only shows the main colour.' : 'No live preview for this look: only Hiltwright’s own looks can be simulated. This bar only shows its main colour.'}</span>}
       </div>
     );
@@ -92,7 +93,16 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
             onClick={(e) => { if (!controls || dot) return; const r = e.currentTarget.getBoundingClientRect(); hit('blast', Math.min(1, Math.max(0, (e.clientX - r.left) / Math.max(1, r.width - Math.min(28, height / 2))))); }} />
         </div>
       </div>
-      {controls && (
+      {controls === 'compact' && (
+        <div className="row wrap" style={{ gap: 6 }}>
+          <button type="button" className="chip" onClick={() => { setOn(!on); setLockup(null); }}>{on ? 'Retract' : 'Ignite'}</button>
+          <button type="button" className="chip" disabled={!on} onClick={() => hit('clash')}>Clash</button>
+          <button type="button" className="chip" disabled={!on} onClick={() => hit('blast')}>Blast</button>
+          {!dot && hold('normal', 'Lockup')}
+          <span className="hint">preview only</span>
+        </div>
+      )}
+      {controls === true && (
         <div className="col" style={{ gap: 8 }}>
           <div className="row wrap" style={{ gap: 6 }}>
             <button type="button" className="btn sm" onClick={() => { setOn(!on); setLockup(null); }}><span className="b"><span className="i">{on ? 'Retract' : 'Ignite'}</span></span></button>

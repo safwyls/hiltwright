@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import type { PresetRecord } from '@hiltwright/core';
 import { LookRows } from './LookRows';
+import { SaberControls } from './Controls';
 import type { Board } from './board';
 import { Icon } from './Icon';
 
@@ -27,14 +28,12 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
   const current = info && info.currentPreset != null ? info.presets[info.currentPreset] : null;
   const [name, setName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [side, setSide] = useState<'try' | 'history'>('try');
   useEffect(() => { setName(current?.name ?? ''); setConfirmDelete(false); }, [current?.name, info?.currentPreset]);
 
   if (!connected || !info) {
     return (
-      <>
-        <div className="page-head"><div><div className="eyebrow">Presets · live on the saber</div><h1>Presets</h1></div></div>
-        <section className="panel"><div className="pb dim">Connect a saber first. Presets are read from and written to the board itself.</div></section>
-      </>
+      <section className="panel"><div className="pb col" style={{ gap: 6 }}><h3>Connect a saber to edit its presets</h3><span className="dim small">Presets live on the saber itself. Every change is written to it and read back before it shows as saved.</span></div></section>
     );
   }
 
@@ -46,15 +45,7 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
 
   return (
     <>
-      <div className="page-head">
-        <div><div className="eyebrow">Presets · live on the saber</div><h1>{saber?.name ?? 'Saber'}</h1></div>
-        <div className="row">
-          <SaveChip save={save} />
-          <button type="button" className="btn sm" disabled={busy || snapshots.length === 0} onClick={() => void board.restoreSnapshot(snapshots[0])}><span className="b"><span className="i"><Icon name="undo" />Undo</span></span></button>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '300px minmax(0,1fr) 320px', gap: 20, flex: 1, minHeight: 0 }}>
+      <div className="work" style={{ gridTemplateColumns: 'minmax(220px,280px) minmax(0,1fr) minmax(260px,320px)' }}>
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }} aria-label="Preset list">
           <div className="ph"><h2>Presets · {info.presets.length}</h2>
             <div className="row" style={{ gap: 4 }}>
@@ -66,7 +57,7 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
             {info.presets.map((p, i) => (
               <button key={i} type="button" role="option" aria-selected={i === idx} className={`li click ${i === idx ? 'on' : ''}`} disabled={busy} onClick={() => void board.choosePreset(i)}>
                 <span className="n">{i + 1}</span>
-                <span className="col grow" style={{ gap: 0 }}><span className="ellip" style={{ fontWeight: 600, fontSize: 13.5, whiteSpace: 'pre-line' }}>{p.name}</span><span className="hint ellip">{splitFont(p.font).folder}</span></span>
+                <span className="col grow" style={{ gap: 0 }}><span className="ellip" style={{ fontWeight: 600, fontSize: 13.5 }}>{p.name.replace(/\s*\n\s*/g, ' ')}</span><span className="hint ellip">{splitFont(p.font).folder}</span></span>
               </button>
             ))}
           </div>
@@ -79,9 +70,14 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
         </section>
 
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }} aria-label="Preset editor">
-          <div className="ph"><h2 className="ellip">{current ? current.name.replace('\n', ' ') : 'No preset'}</h2><span className="mono mute" style={{ fontSize: 11.5 }}>preset {idx + 1} of {info.presets.length}</span></div>
+          <div className="ph"><h2 className="ellip" style={{ minWidth: 0 }}>{current ? current.name.replace('\n', ' ') : 'No preset'}</h2>
+            <div className="row" style={{ gap: 8 }}>
+              <SaveChip save={save} />
+              <button type="button" className="btn sm" disabled={busy || snapshots.length === 0} title="Put back the values from before the last change" onClick={() => void board.restoreSnapshot(snapshots[0])}><span className="b"><span className="i"><Icon name="undo" />Undo</span></span></button>
+            </div>
+          </div>
           {current && (
-            <div className="pb col" style={{ gap: 18, overflow: 'auto' }}>
+            <div className="pb col" style={{ gap: 16, overflowY: 'auto', overflowX: 'hidden' }}>
               <form className="grid2" onSubmit={(e) => { e.preventDefault(); if (name !== current.name) void board.editPreset({ name }, 'Rename'); }}>
                 <label className="field"><span className="label">Name</span>
                   <span className="input sans"><input type="text" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => { if (name !== current.name) void board.editPreset({ name }, 'Rename'); }} disabled={busy} aria-label="Preset name" /></span>
@@ -100,7 +96,7 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
                     </select>
                   </span>
                 </label>
-                <label className="row" style={{ gap: 10, alignSelf: 'end', height: 38, fontSize: 13, color: 'var(--dim)', whiteSpace: 'nowrap' }}>
+                <label className="row" style={{ gap: 10, alignSelf: 'end', minHeight: 38, fontSize: 13, color: 'var(--dim)' }}>
                   <button type="button" className={`tog ${cf.common ? 'on' : ''}`} role="switch" aria-checked={cf.common} disabled={busy} aria-label="Also use the common folder" onClick={() => void board.editPreset({ font: joinFont(cf.folder, !cf.common) }, cf.common ? 'Drop common fallback' : 'Add common fallback')}><i /></button>
                   Also use <span className="mono">common</span> sounds
                 </label>
@@ -114,11 +110,15 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
               </div>
             </div>
           )}
-          <div className="note" style={{ margin: 'auto 18px 18px' }}><Icon name="info" /><span>Each change is written to the saber's <span className="mono">presets.ini</span>, then read back. "Saved" only appears once the saber reports the new value. A snapshot is written to disk before each change.</span></div>
         </section>
 
-        <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }} aria-label="Snapshots">
-          <div className="ph"><h2>Snapshots</h2><span className="hint">{snapshots.length} on disk</span></div>
+        <section className="panel fill" aria-label="Try it and history">
+          <div className="tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={side === 'try'} className={side === 'try' ? 'on' : ''} onClick={() => setSide('try')}><Icon name="bolt" />Try it</button>
+            <button type="button" role="tab" aria-selected={side === 'history'} className={side === 'history' ? 'on' : ''} onClick={() => setSide('history')}><Icon name="clock" />History<span className="count">{snapshots.length}</span></button>
+          </div>
+          {side === 'try' && <SaberControls board={board} bare />}
+          {side === 'history' && <>
           <div className="list" style={{ overflow: 'auto' }}>
             {snapshots.length === 0 && <div className="li hint" style={{ minHeight: 40 }}>No snapshots yet.</div>}
             {snapshots.map((s, i) => (
@@ -128,7 +128,8 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
               </div>
             ))}
           </div>
-          <div className="hint" style={{ marginTop: 'auto', padding: '14px 18px', borderTop: '1px solid var(--line)' }}>Snapshots are real <span className="mono">presets.ini</span> files in the app's data folder. Restore re-sends the earlier values for the current preset and waits for the saber to confirm.</div>
+          <div className="hint" style={{ marginTop: 'auto', padding: '12px 18px', borderTop: '1px solid var(--line)' }}>A snapshot of the saber's presets is kept before every change. Restore sends the earlier values back and waits for the saber to confirm them.</div>
+          </>}
         </section>
       </div>
     </>
@@ -138,7 +139,7 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
 function SaveChip({ save }: { save: Board['save'] }) {
   switch (save.kind) {
     case 'writing': return <span className="chip warn"><span className="dot" />Writing {save.what}…</span>;
-    case 'saved': return <span className="chip ok"><Icon name="check" />Saved to saber · {save.what} · {save.ms} ms</span>;
+    case 'saved': return <span className="chip ok"><Icon name="check" />Saved, {save.what}</span>;
     case 'failed': return <span className="chip err"><Icon name="x" />{save.what} failed: {save.error}</span>;
     default: return <span className="chip"><span className="dot" />No changes yet</span>;
   }

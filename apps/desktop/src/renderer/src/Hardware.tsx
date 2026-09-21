@@ -38,7 +38,7 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 16 }}>
       <div className="col" style={{ gap: 10 }}>
         <div className="row" style={{ gap: 18 }}>
           <div className="row" style={{ gap: 0 }} role="group" aria-label="Number of blades">
@@ -62,7 +62,7 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
               <button key={b.id} type="button" className={`bcard sum ${problem ? 'warn' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', width: '100%', textAlign: 'left' }} aria-expanded={false} onClick={() => setOpen(b.id)}>
                 <span className="mono mute" style={{ fontSize: 11, width: 16 }}>{i + 1}</span>
                 <span style={{ display: 'flex', width: 18, color: problem ? 'var(--amber)' : 'var(--holo)' }}><Icon name={{ main: 'blade', crystal: 'crystal', accent: 'led', side: 'side', motor: 'motor' }[b.role]} /></span>
-                <span style={{ fontWeight: 600, fontSize: 13.5, width: 150, flex: 'none' }}>{ROLE_META[b.role].label}</span>
+                <span className="nowrap" style={{ fontWeight: 600, fontSize: 13.5, flex: 'none', paddingRight: 8 }}>{ROLE_META[b.role].label}</span>
                 <span className="dim grow ellip small">{problem ?? bladeSummary(blades, b, board)}</span>
                 <span style={{ color: problem ? 'var(--amber)' : 'var(--green)', display: 'flex', width: 16 }}><Icon name={problem ? 'warn' : 'check'} /></span>
                 <span className="mute" style={{ display: 'flex', width: 16 }}><Icon name="down" /></span>
@@ -191,7 +191,7 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
         })}
       </div>
 
-      <aside className="col" style={{ gap: 12 }}>
+      <aside className="col sticky" style={{ gap: 12 }}>
         <div style={{ border: '1px solid var(--line)', background: '#0b1016', padding: 12 }} className="col">
           <div className="row" style={{ gap: 0, padding: '4px 0 10px' }}><Hilt crystal={crystal ? '#ff3d3d' : null} /><BladeBar color="#3d7bff" /></div>
           <div className="list" style={{ border: '1px solid var(--line)' }}>
@@ -211,7 +211,7 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
             })}
           </div>
         </div>
-        <div style={{ border: '1px solid var(--line)', background: '#0b1016', padding: 12 }} className="col">
+        <div style={{ border: '1px solid var(--line)', background: '#0b1016', padding: 12, gap: 0 }} className="col">
           <div className="row between" style={{ paddingBottom: 6 }}><b style={{ fontWeight: 600, fontSize: 13 }}>Pins · Proffieboard {board}</b>{pins.problems.length ? <span className="chip err"><Icon name="x" />{pins.problems.length} problem{pins.problems.length > 1 ? 's' : ''}</span> : pins.shared.length ? <span className="chip warn"><Icon name="info" />Shared power</span> : <span className="chip ok"><Icon name="check" />No conflicts</span>}</div>
           {pins.data.map((r) => <div key={r.pin} className={`pin ${r.conflict ? 'bad' : ''}`}><span className="k">{r.pin}</span>{r.users.length ? <span className="v">{r.users.map((id) => `Blade ${blades.findIndex((b) => b.id === id) + 1}`).join(', then ')}</span> : <span className="free">free</span>}</div>)}
           <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />

@@ -70,7 +70,7 @@ export function LookRows({ board, current, onLooks }: { board: Board; current: P
 
   return (
     <div className="col" style={{ gap: 6 }}>
-      <div className="row between"><h2 style={{ fontSize: 10.5, color: 'var(--dim)' }}>Look per blade</h2><span className="hint">{manifest ? 'Looks Hiltwright compiled into this saber. Colours write live.' : 'Any look compiled into this firmware, per blade slot.'}</span></div>
+      <div className="row between"><h2 style={{ fontSize: 10.5, color: 'var(--dim)' }}>Look per blade</h2><span className="hint">{manifest ? 'Colours are written to the saber as you pick them.' : 'Any look compiled into this firmware.'}</span></div>
       {current.styles.map((s, k) => {
         const b = parseBuiltin(s);
         const value = b ? formatBuiltin({ ...b, args: null }) : s;
@@ -96,11 +96,7 @@ export function LookRows({ board, current, onLooks }: { board: Board; current: P
                 </select>
               </span>
             </div>
-            {look && canSimulate(look.id) && (
-              <div style={{ paddingLeft: 24 }}>
-                <BladePreview lookId={look.id} args={previewArgs(k, args)} leds={pixels(k)} dot={pixels(k) <= 4} controls={k === 0} size={k === 0 ? 'md' : 'sm'} />
-              </div>
-            )}
+            {look && canSimulate(look.id) && <div style={{ paddingLeft: 24 }}><BladePreview lookId={look.id} args={previewArgs(k, args)} leds={pixels(k)} dot={pixels(k) <= 4} size="sm" controls={pixels(k) > 4 ? 'compact' : undefined} /></div>}
             {look && look.args.length > 0 && (
               <div className="row wrap" style={{ gap: 8, paddingLeft: 24 }}>
                 {look.args.map((n) => {

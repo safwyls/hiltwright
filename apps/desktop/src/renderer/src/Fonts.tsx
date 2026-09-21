@@ -74,16 +74,8 @@ export function Fonts({ board }: { board: Board }) {
 
   return (
     <>
-      <div className="page-head">
-        <div><div className="eyebrow">Fonts &amp; SD card</div><h1>Sound fonts</h1></div>
-        <div className="row">
-          <button type="button" className="btn" disabled={busy} onClick={() => void scan()}><span className="b"><span className="i"><Icon name="undo" />Look again</span></span></button>
-          <button type="button" className="btn pri" disabled={busy || !card} onClick={() => void pick()}><span className="b"><span className="i"><Icon name="plus" />Add font folder</span></span></button>
-        </div>
-      </div>
-
       <section className="panel" aria-label="SD card status">
-        <div className="row" style={{ padding: '14px 18px', gap: 18 }}>
+        <div className="row" style={{ padding: '12px 18px', gap: 16 }}>
           <span style={{ color: card ? 'var(--holo)' : 'var(--mute)', display: 'flex', width: 26, height: 26 }}><Icon name="sd" /></span>
           <div className="col grow" style={{ gap: 2 }}>
             <h3>{card ? `ProffieOS card at ${card.root}${card.label ? ` (${card.label})` : ''}` : busy ? 'Looking for a card…' : 'No ProffieOS card found'}</h3>
@@ -93,13 +85,14 @@ export function Fonts({ board }: { board: Board }) {
                 : 'Put the saber\'s SD card in a card reader. This saber\'s firmware does not expose the card over USB.'}
             </div>
           </div>
-          {card && <span className="chip live"><span className="dot" />Card reader</span>}
+          <button type="button" className="btn sm" disabled={busy} onClick={() => void scan()}><span className="b"><span className="i"><Icon name="undo" />Look again</span></span></button>
         </div>
         {message && <div style={{ padding: '0 18px 16px' }}><div className={`note ${message.tone}`}><Icon name={message.tone === 'green' ? 'check' : message.tone === 'red' ? 'x' : 'warn'} /><span>{message.text}</span></div></div>}
       </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 400px', gap: 20, flex: 1, minHeight: 0 }}>
-        <section className="panel" aria-label="Fonts on the card" style={{ minHeight: 0, overflow: 'auto' }}>
+      <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px' }}>
+        <section className="panel fill" aria-label="Fonts on the card">
+          <div className="scroll">
           <table>
             <thead><tr><th>Font</th><th>Type</th><th>Files</th><th>Size</th><th>Status</th></tr></thead>
             <tbody>
@@ -123,6 +116,7 @@ export function Fonts({ board }: { board: Board }) {
               {issues.length > 8 && <span className="hint">{issues.length - 8} more…</span>}
             </div>
           )}
+          </div>
         </section>
 
         <aside className="col" style={{ gap: 20, minHeight: 0 }}>

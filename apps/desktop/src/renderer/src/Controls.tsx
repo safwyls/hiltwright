@@ -19,7 +19,7 @@ const EFFECTS: { cmd: string; label: string; needsOn?: boolean }[] = [
   { cmd: 'force', label: 'Force', needsOn: true }, { cmd: 'stab', label: 'Stab', needsOn: true },
 ];
 
-export function SaberControls({ board }: { board: Board }) {
+export function SaberControls({ board, bare }: { board: Board; bare?: boolean }) {
   const connected = board.status === 'connected';
   const [values, setValues] = useState<Record<string, number | null>>({});
   const [pending, setPending] = useState<Record<string, number>>({});
@@ -64,31 +64,42 @@ export function SaberControls({ board }: { board: Board }) {
   };
 
   const known = SETTINGS.filter((s) => values[s.key] != null);
+  const state = (
+    <div className="row" style={{ gap: 8 }}>{on != null && <span className={`chip ${on ? 'ok' : ''}`}><span className="dot" />{on ? 'Blade on' : 'Blade off'}</span>}<button type="button" className="chip" disabled={!connected} onClick={() => void read()}><Icon name="undo" />Read again</button></div>
+  );
+  const effects = connected && (
+    <div className="col" style={{ gap: 6 }}>
+      {!bare && <span className="label">Try an effect</span>}
+      <div className="row wrap" style={{ gap: 6 }}>{EFFECTS.map((e) => <button key={e.cmd} type="button" className="btn sm" disabled={!!e.needsOn && on === false} onClick={() => void effect(e.cmd)}><span className="b"><span className="i">{e.label}</span></span></button>)}</div>
+      <span className="hint">The same triggers the buttons and motion sensors send. Keep the blade clear of anything breakable before igniting.</span>
+    </div>
+  );
+  const sliders = known.map((s) => {
+    const v = pending[s.key] ?? values[s.key]!;
+    return (
+      <label key={s.key} className="col" style={{ gap: 4 }}>
+        <span className="row between"><span className="label">{s.label}</span><span className="mono small">{s.show(v)}{s.unit}{pending[s.key] != null ? ' …' : ''}</span></span>
+        <input type="range" min={s.min} max={s.max} step={s.step} value={v} aria-label={s.label} onChange={(e) => change(s, Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--holo)' }} />
+        {!bare && <span className="hint">{s.hint}</span>}
+      </label>
+    );
+  });
+  const body = (
+    <div className="pb col scroll" style={{ gap: 14 }}>
+      {bare && state}
+      {!connected && <span className="hint">Connect a saber to change its settings.</span>}
+      {bare && effects}
+      {connected && known.length === 0 && <span className="hint">This firmware does not answer the settings commands. Hiltwright firmware does.</span>}
+      {sliders}
+      {!bare && effects}
+      {known.length > 0 && <span className="hint">The saber saves these itself once its speaker goes quiet, so they survive a restart.</span>}
+    </div>
+  );
+  if (bare) return body;
   return (
-    <section className="panel" aria-label="Saber settings">
-      <div className="ph"><h2>Saber settings</h2><div className="row" style={{ gap: 8 }}>{on != null && <span className={`chip ${on ? 'ok' : ''}`}><span className="dot" />{on ? 'Blade on' : 'Blade off'}</span>}<button type="button" className="chip" disabled={!connected} onClick={() => void read()}><Icon name="undo" />Read again</button></div></div>
-      <div className="pb col" style={{ gap: 14 }}>
-        {!connected && <span className="hint">Connect a saber to change its settings.</span>}
-        {connected && known.length === 0 && <span className="hint">This firmware does not answer the settings commands. Hiltwright firmware does.</span>}
-        {known.map((s) => {
-          const v = pending[s.key] ?? values[s.key]!;
-          return (
-            <label key={s.key} className="col" style={{ gap: 4 }}>
-              <span className="row between"><span className="label">{s.label}</span><span className="mono small">{s.show(v)}{s.unit}{pending[s.key] != null ? ' …' : ''}</span></span>
-              <input type="range" min={s.min} max={s.max} step={s.step} value={v} aria-label={s.label} onChange={(e) => change(s, Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--holo)' }} />
-              <span className="hint">{s.hint}</span>
-            </label>
-          );
-        })}
-        {connected && (
-          <div className="col" style={{ gap: 6 }}>
-            <span className="label">Try an effect</span>
-            <div className="row wrap" style={{ gap: 6 }}>{EFFECTS.map((e) => <button key={e.cmd} type="button" className="btn sm" disabled={!!e.needsOn && on === false} onClick={() => void effect(e.cmd)}><span className="b"><span className="i">{e.label}</span></span></button>)}</div>
-            <span className="hint">These are the same triggers the buttons and motion sensors send. Keep the blade clear of anything breakable before igniting.</span>
-          </div>
-        )}
-        {known.length > 0 && <span className="hint">The saber saves these itself once its speaker goes quiet, so they survive a restart.</span>}
-      </div>
+    <section className="panel fill" aria-label="Saber settings">
+      <div className="ph"><h2>Saber settings</h2>{state}</div>
+      {body}
     </section>
   );
 }

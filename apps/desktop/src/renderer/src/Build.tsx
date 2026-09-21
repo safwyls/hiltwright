@@ -14,6 +14,7 @@ const PROPS: { value: Prop; label: string }[] = [
   { value: 'fett263', label: 'Fett263 · edit mode, gestures' }, { value: 'sa22c', label: 'SA22C' }, { value: 'bc', label: 'BC' }, { value: 'default', label: 'ProffieOS default' },
 ];
 
+type Tab = 'wiring' | 'config' | 'log' | 'backups';
 type Step = 'idle' | 'building' | 'built' | 'backup' | 'bootloader' | 'driver' | 'writing' | 'verifying' | 'done' | 'failed';
 const DRIVER_HELP = 'https://pod.hubbe.net/proffieboard-setup.html';
 const fmtGB = (b: number) => `${(b / 1073741824).toFixed(1)} GB`;
@@ -38,12 +39,12 @@ export function Build({ board }: { board: Board }) {
   const [variants, setVariants] = useState<BladeVariant[]>([]);
   const [confirmedWiring, setConfirmedWiring] = useState(!!saber?.model && !!saber?.firmware);
   const [preview, setPreview] = useState<{ text: string; hash: string; warnings: string[]; errors: string[] } | null>(null);
-  const [showConfig, setShowConfig] = useState(false);
   const [log, setLog] = useState<JobEvent[]>([]);
   const [result, setResult] = useState<BuildResult | null>(null);
   const [step, setStep] = useState<Step>('idle');
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [armed, setArmed] = useState(false);
+  const [tab, setTab] = useState<Tab>('wiring');
   // The Fett263 prop needs a voice pack on the card. The saber can tell us over serial: no card reader needed.
   const [voice, setVoice] = useState<VoicePackStatus | null>(null);
   useEffect(() => {
@@ -78,6 +79,8 @@ export function Build({ board }: { board: Board }) {
   useEffect(() => {
     if (info && !blades.length) { setBlades(saber?.model?.blades ?? guessBlades(info.pixelBlades.length ? info.pixelBlades : [132])); if (saber?.model) { setProp(saber.model.prop); setVariants(saber.model.bladeId?.variants ?? []); /* a saved model only counts as confirmed wiring once it has actually been installed */ setConfirmedWiring(!!saber.firmware); } }
   }, [info, saber, blades.length]);
+  // Work in progress is watched in the log; nobody should have to go and find it.
+  useEffect(() => { if (step === 'building' || step === 'bootloader') setTab('log'); }, [step]);
   useEffect(() => {
     if (step === 'building' || step === 'writing' || step === 'backup') { const t = setInterval(() => setElapsed((e) => e + 1), 1000); return () => clearInterval(t); }
   }, [step]);
@@ -228,70 +231,58 @@ export function Build({ board }: { board: Board }) {
 
   const pct = result?.flashPct ?? null;
   const busy = step === 'building' || step === 'backup' || step === 'bootloader' || step === 'writing' || step === 'verifying';
-  const stepLabel: Record<Step, string> = { idle: 'Ready', building: 'Building firmware…', built: 'Firmware built', backup: 'Backing up the saber…', bootloader: 'Rebooting into bootloader…', driver: 'Windows needs a driver for the bootloader', writing: 'Writing firmware…', verifying: 'Waiting for the saber to come back…', done: 'Installed', failed: 'Stopped' };
+  const stepLabel: Record<Step, string> = { idle: 'Ready', building: 'Building firmware…', built: 'Firmware built', backup: 'Backing up the saber…', bootloader: 'Rebooting into bootloader…', driver: 'Windows needs a driver', writing: 'Writing firmware…', verifying: 'Waiting for the saber…', done: 'Installed', failed: 'Stopped' };
+  const lowSpace = !!tool && tool.freeBytes != null && tool.freeBytes < 2.5 * 1073741824;
 
-  const setupPanel = (
-    <section className={`panel ${tool && !tool.ready ? 'amber' : ''}`} aria-label="Toolchain">
-      <div className="ph"><h2>{tool?.ready ? 'Toolchain' : 'One-time setup'}</h2>{tool?.ready ? <span className="chip ok"><Icon name="check" />Ready</span> : installing ? <span className="chip warn"><span className="dot" />Installing · {installStarted ? Math.round((Date.now() - installStarted) / 1000) : 0}s</span> : <span className="chip warn"><Icon name="warn" />Not installed</span>}</div>
-      <div className="pb col" style={{ gap: 10 }}>
-        {tool && !tool.ready && !installing && (
-          <>
-            <p className="dim" style={{ fontSize: 13, margin: 0 }}>Building firmware needs the ProffieOS sources, the Arduino command line and the ARM compiler. Hiltwright downloads them once from the ProffieOS and Arduino projects and keeps them in its own folder. Nothing else on this computer is touched.</p>
-            <div className="list" style={{ border: '1px solid var(--line)' }}>
-              {[['Download', 'about 360 MB'], ['On disk', 'about 1.7 GB'], ['Free space here', tool.freeBytes != null ? fmtGB(tool.freeBytes) : 'unknown'], ['Folder', tool.root]].map(([k, v]) => (
-                <div key={k} className="li" style={{ minHeight: 34 }}><span className="grow small dim">{k}</span><span className="mono small ellip" style={{ maxWidth: 260 }}>{v}</span></div>
-              ))}
-            </div>
-            {tool.freeBytes != null && tool.freeBytes < 2.5 * 1073741824 && <div className="note red"><Icon name="x" /><span>Not enough free space. Free up at least 2.5 GB, then try again.</span></div>}
-            {tool.pathTooLong && <div className="note red"><Icon name="x" /><span>This folder path is too long for the compiler on Windows. Set HILTWRIGHT_TOOLCHAIN_DIR to a short path, or unset it to use the default.</span></div>}
-            {installError && <div className="note red"><Icon name="x" /><span>{installError}</span></div>}
-            <button type="button" className="btn pri" disabled={installing || tool.pathTooLong || (tool.freeBytes != null && tool.freeBytes < 2.5 * 1073741824)} onClick={() => void install()}><span className="b"><span className="i"><Icon name="import" />{installError ? 'Try again' : 'Download and install'}</span></span></button>
-          </>
-        )}
-        {(installing || tool?.ready) && tool && (
-          <div className="list" style={{ border: '1px solid var(--line)' }}>
-            {[['arduino-cli', tool.cli ? tool.cliVersion ?? 'present' : 'missing'], ['Proffieboard core + GCC', tool.core && tool.gcc ? 'installed' : 'missing'], ['dfu-util', tool.dfuUtil ? 'present' : 'missing'], ['ProffieOS', tool.proffieOS ? tool.proffieOSVersion ?? 'present' : 'missing']].map(([k, v]) => (
-              <div key={k} className="li" style={{ minHeight: 34 }}><span className="grow small dim">{k}</span><span className="mono small">{v}</span></div>
-            ))}
+  const toolStep = (now: boolean) => (
+    <div className={`stepc ${tool?.ready ? 'done' : now ? 'now' : ''}`}>
+      <div className="head"><span className="nbox">{tool?.ready ? <Icon name="check" /> : 2}</span><b>Compiler</b><span className="what">{tool?.ready ? `ProffieOS ${tool.proffieOSVersion ?? ''} ready` : installing ? `installing, ${installStarted ? Math.round((Date.now() - installStarted) / 1000) : 0} s` : 'one-time download'}</span></div>
+      {tool && !tool.ready && !installing && (
+        <>
+          <span className="hint">Building firmware needs the ProffieOS sources, the Arduino command line and the ARM compiler. Hiltwright downloads them once into its own folder and touches nothing else.</span>
+          <div>
+            <div className="kv"><span>Download</span><span>about 360 MB</span></div>
+            <div className="kv"><span>On disk</span><span>about 1.7 GB</span></div>
+            <div className="kv"><span>Free space</span><span>{tool.freeBytes != null ? fmtGB(tool.freeBytes) : 'unknown'}</span></div>
+            <div className="kv"><span>Folder</span><span title={tool.root}>{tool.root}</span></div>
           </div>
-        )}
-        {installing && <div className="console" style={{ maxHeight: 160, minHeight: 60 }}>{log.filter((e) => e.job === 'toolchain').slice(-12).map((e, i) => <div key={i}>{e.line}</div>)}</div>}
-        {tool?.ready && <span className="hint mono" style={{ fontSize: 11 }}>{tool.root}</span>}
-      </div>
-    </section>
+          {lowSpace && <div className="note red"><Icon name="x" /><span>Not enough free space. Free up at least 2.5 GB, then try again.</span></div>}
+          {tool.pathTooLong && <div className="note red"><Icon name="x" /><span>This folder path is too long for the compiler on Windows. Set HILTWRIGHT_TOOLCHAIN_DIR to a short path, or unset it to use the default.</span></div>}
+          {installError && <div className="note red"><Icon name="x" /><span>{installError}</span></div>}
+          <button type="button" className={`btn full ${now ? 'pri' : ''}`} disabled={installing || tool.pathTooLong || lowSpace} onClick={() => void install()}><span className="b"><span className="i"><Icon name="import" />{installError ? 'Try again' : 'Download and install'}</span></span></button>
+        </>
+      )}
+      {installing && <div className="console" style={{ maxHeight: 120, minHeight: 48, fontSize: 11 }}>{log.filter((e) => e.job === 'toolchain').slice(-6).map((e, i) => <div key={i}>{e.line}</div>)}</div>}
+    </div>
   );
 
   if (!info || !saber) {
     return (
-      <>
-        <div className="page-head"><div><div className="eyebrow">Build &amp; install</div><h1>Adopt this saber</h1></div></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 420px', gap: 20 }}>
-          <section className="panel"><div className="pb dim">Connect a saber first. Adoption reads its presets and blade layout from the board, then builds Hiltwright firmware for it.</div></section>
-          {setupPanel}
-        </div>
-      </>
+      <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) 360px' }}>
+        <section className="panel"><div className="pb col" style={{ gap: 6 }}><h3>Connect a saber to begin</h3><span className="dim small">Hiltwright reads its presets and blade layout, then builds firmware for it. Once a saber has been seen, this page also works with it unplugged. The compiler can be downloaded in the meantime.</span></div></section>
+        <aside className="rail">{toolStep(true)}</aside>
+      </div>
     );
   }
 
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">Build &amp; install</div>
-          <h1>{saber.firmware ? `Rebuild ${saber.name}` : `Adopt ${saber.name} onto Hiltwright firmware`}</h1>
-          <p className="lead" style={{ marginTop: 8 }}>Keeps every preset's font, track and name. Blade looks become Hiltwright starter looks with colours you can change live. The saber is backed up first and the backup can always be put back.</p>
-        </div>
-        <div className="row">
-          {offline && status !== 'connected' && <span className="chip"><Icon name="usb" />Not plugged in · preparing from memory</span>}
-          <span className={`chip ${step === 'done' ? 'ok' : step === 'failed' ? 'err' : busy ? 'warn' : ''}`}><span className="dot" />{stepLabel[step]}{busy ? ` · ${elapsed}s` : ''}</span>
-        </div>
-      </div>
+  const wiringOk = confirmedWiring && !preview?.errors.length;
+  const built = !!result?.ok && step !== 'building';
+  const nowStep = !wiringOk ? 1 : !tool?.ready ? 2 : !built ? 3 : step === 'done' ? 0 : 4;
+  const verdict = voicePackVerdict(prop, voice);
+  const canBuild = !busy && !!tool?.ready && !!model && !preview?.errors.length;
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
-        <section className="panel amber" aria-label="Wiring">
-          <div className="ph"><h2>1 · Wiring</h2>{confirmedWiring ? <span className="chip ok"><Icon name="check" />Confirmed</span> : <span className="chip warn"><Icon name="warn" />Guessed from the board</span>}</div>
-          <div className="pb col" style={{ gap: 12 }}>
-            <div className="note amber"><Icon name="warn" /><span>The saber reported {info.pixelBlades.length} pixel blade{info.pixelBlades.length === 1 ? '' : 's'} ({info.pixelBlades.join(', ')} px) but old firmware cannot say which pins they use. Check every pin against your installer's diagram. Wrong power pins can damage hardware.</span></div>
+  return (
+    <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) 360px' }}>
+      <section className="panel fill" aria-label="Build workspace">
+        <div className="tabs" role="tablist">
+          {([['wiring', 'Wiring', 'blade'], ['config', 'Config', 'build'], ['log', 'Log', 'diag'], ['backups', 'Backups', 'shield']] as [Tab, string, Parameters<typeof Icon>[0]['name']][]).map(([id, label, icon]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}><Icon name={icon} />{label}{id === 'backups' && <span className="count">{backups.length}</span>}{id === 'wiring' && !wiringOk && <span className="count" style={{ color: 'var(--amber)' }}>check</span>}</button>
+          ))}
+        </div>
+
+        {tab === 'wiring' && (
+          <div className="pb col scroll" style={{ gap: 12 }}>
+            {!confirmedWiring && <div className="note amber"><Icon name="warn" /><span>The saber reported {info.pixelBlades.length} pixel blade{info.pixelBlades.length === 1 ? '' : 's'} ({info.pixelBlades.join(', ')} px), but old firmware cannot say which pins they use. Check every pin against your installer's diagram: wrong power pins can damage hardware.</span></div>}
             <HardwareEditor blades={blades} board={model?.board ?? 'V2'} detected={info.pixelBlades} locked={busy} onChange={(b) => { setBlades(b); setConfirmedWiring(false); setResult(null); setStep('idle'); }}
               swap={{
                 variants,
@@ -301,107 +292,96 @@ export function Build({ board }: { board: Board }) {
                 measureBlocked: board.status !== 'connected' ? 'Connect the saber to measure a blade.' : !saber.firmware?.bladeId ? 'Turn this on, then build and install once. After that the saber can measure each blade, and a second install teaches it all of them.' : null,
                 measure: async () => { const r = await board.send('scanid', { idleMs: 1500 }); return parseId([...r.lines, ...r.events]); },
               }} />
-            <div className="row wrap" style={{ gap: 14 }}>
-              <label className="field" style={{ width: 300 }}><span className="label">Button behaviour</span><span className="input sans"><span className="ellip">{PROPS.find((p) => p.value === prop)?.label}</span><span className="caret"><Icon name="down" /></span><select value={prop} disabled={busy} aria-label="Button behaviour" onChange={(e) => setProp(e.target.value as Prop)}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></span></label>
-              <span className="hint">Board: Proffieboard {model?.board} · {model?.buttons} buttons · {info.presets.length} presets carried over{queuedLooks.length ? ` · ${queuedLooks.length} look${queuedLooks.length === 1 ? '' : 's'} to compile` : ''}</span>
-            </div>
-            <label className="row" style={{ gap: 10, fontSize: 13, color: 'var(--dim)' }}>
-              <button type="button" className={`tog ${confirmedWiring ? 'on' : ''}`} role="switch" aria-checked={confirmedWiring} disabled={busy} onClick={() => setConfirmedWiring(!confirmedWiring)}><i /></button>
-              I checked every data pin and power pin against the installer's wiring
-            </label>
-            {preview?.errors.length ? <div className="note red"><Icon name="x" /><span>{preview.errors.join(' ')}</span></div> : null}
-            {(() => { const v = voicePackVerdict(prop, voice); return v ? <div className={`note ${v.tone}`}><Icon name={v.ok ? 'check' : 'warn'} /><span>{v.text}</span></div> : null; })()}
-            {preview?.warnings.map((w) => <div key={w} className="note"><Icon name="info" /><span>{w}</span></div>)}
           </div>
-        </section>
-
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 420px', gap: 20, alignItems: 'start' }}>
-        <section className="panel" aria-label="Build and install">
-          <div className="ph">
-            <h2>2 · Build, then 3 · Install</h2>
-            <div className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn sm ghost" onClick={() => setShowConfig((s) => !s)}><span className="b"><span className="i">{showConfig ? 'Hide config' : 'Show config'}</span></span></button>
-              <button type="button" className="btn sm" disabled={busy || !tool?.ready || !model || !!preview?.errors.length} onClick={() => void build(true)}><span className="b"><span className="i"><Icon name="build" />Build firmware</span></span></button>
-            </div>
+        )}
+        {tab === 'config' && <pre className="console grow scroll" style={{ margin: 0, border: 0 }}>{preview?.text ?? 'The config appears once the wiring is described.'}</pre>}
+        {tab === 'log' && (
+          <div className="console grow scroll" style={{ border: 0 }}>
+            {log.length === 0 ? <span className="mute">Build and install output appears here.</span> : log.map((e, i) => <div key={i}><span className="mute">{new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {e.job}</span>  {e.line}</div>)}
           </div>
-          <div className="pb col" style={{ gap: 14 }}>
-            {showConfig && preview && <pre className="console" style={{ maxHeight: 260, margin: 0 }}>{preview.text}</pre>}
-            {result && (
-              <div className="col" style={{ gap: 8 }}>
-                <div className="row" style={{ alignItems: 'baseline', gap: 10 }}>
-                  <span className="mono" style={{ fontSize: 26 }}>{result.textBytes != null ? (result.textBytes / 1024).toFixed(1) : '?'}</span>
-                  <span className="mono dim">of {result.flashBytes / 1024} KB · {pct ?? '?'}%{result.cached ? ' · cached build' : ` · built in ${(result.ms / 1000).toFixed(0)} s`}</span>
-                </div>
-                <div style={{ height: 10, background: '#1b2836' }}><div style={{ height: '100%', width: `${Math.min(100, pct ?? 0)}%`, background: (pct ?? 0) > 90 ? 'var(--red)' : (pct ?? 0) > 70 ? 'var(--amber)' : 'var(--holo)' }} /></div>
-                {result.problems.map((p) => <div key={p} className="note red"><Icon name="x" /><span>{p}</span></div>)}
-              </div>
-            )}
-            <div className="console" style={{ maxHeight: 220, minHeight: 90 }}>
-              {log.length === 0 ? <span className="mute">Build and install output appears here.</span> : log.map((e, i) => <div key={i}><span className="mute">{new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {e.job}</span>  {e.line}</div>)}
-            </div>
-            {step === 'driver' && (
-              <div className="col" style={{ gap: 10, padding: 14, border: '1px solid var(--amber)', background: 'rgba(255,181,71,.06)' }}>
-                <b style={{ fontWeight: 600 }}>One-time Windows step: the bootloader driver</b>
-                <p className="dim" style={{ margin: 0, fontSize: 13 }}>The saber is in bootloader mode, but Windows has no driver for it yet, so nothing can be written. This happens once per computer. Nothing has been changed on the saber; the backup has not been taken yet.</p>
-                <p className="dim" style={{ margin: 0, fontSize: 13 }}>Hiltwright can do it for you: it downloads the driver installer published by the ProffieOS author (3 MB, from fredrik.hubbe.net), checks the file, and starts it. Windows will ask for administrator approval, because installing a driver needs it. Leave the saber plugged in. The install carries on by itself afterwards.</p>
-                <div className="row wrap" style={{ gap: 8 }}>
-                  <button type="button" className="btn pri" disabled={driverBusy} onClick={() => void installDriver()}><span className="b"><span className="i"><Icon name="shield" />{driverBusy ? 'Installing the driver…' : 'Install the driver'}</span></span></button>
-                  <button type="button" className="btn" disabled={driverBusy} onClick={() => void checkDriver()}><span className="b"><span className="i"><Icon name="usb" />Check again</span></span></button>
-                  <button type="button" className="btn ghost" disabled={driverBusy} onClick={() => { setStep('built'); setDriverCheck(null); }}><span className="b"><span className="i">Cancel</span></span></button>
-                </div>
-                <span className="hint">Prefer to do it by hand? <button type="button" className="holo" onClick={() => void api().app.openHelp(DRIVER_HELP)}>Open the ProffieOS setup page</button>, run <span className="mono">proffie-dfu-setup.exe</span> from its Windows section, then press Check again.</span>
-                {driverCheck && <span className="hint">{driverCheck}</span>}
-              </div>
-            )}
-            {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span>{note.text}</span></div>}
-            <div className="row" style={{ gap: 10 }}>
-              {!armed
-                ? <button type="button" className="btn warn" disabled={busy || step !== 'built' || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>
-                : <>
-                    <button type="button" className="btn danger" disabled={busy} onClick={() => { setArmed(false); void install2(); }}><span className="b"><span className="i"><Icon name="bolt" />Yes, write the firmware</span></span></button>
-                    <button type="button" className="btn ghost" onClick={() => setArmed(false)}><span className="b"><span className="i">Cancel</span></span></button>
-                  </>}
-              <span className="hint">{step === 'built' && !confirmedWiring ? 'Confirm the wiring above first.' : step === 'built' && !canInstall ? 'Reconnect the saber to install.' : inBootloader ? 'The board is in bootloader mode and ready to write.' : 'Backs up the whole flash before writing. About two minutes.'}</span>
-            </div>
-          </div>
-        </section>
-
-        <div className="col" style={{ gap: 20 }}>
-          {setupPanel}
-        <section className="panel" aria-label="What happens">
-          <div className="ph"><h2>What happens</h2></div>
-          <div className="list">
-            {[
-              ['Build', 'Hiltwright writes a config from the wiring and your presets, then compiles ProffieOS 8.10 for it.'],
-              ['Back up', 'The saber reboots into its bootloader and the whole flash is read to a file first.'],
-              ['Write', 'dfu-util writes the new firmware. About a minute.'],
-              ['Verify', 'The saber restarts, Hiltwright reconnects and checks the version it reports.'],
-              ['Presets', 'Fonts, tracks and names carry over. Looks become Hiltwright starter looks; change colours live afterwards.'],
-            ].map(([t, d]) => <div key={t} className="li" style={{ gap: 12, minHeight: 48, alignItems: 'flex-start', padding: '8px 14px' }}><span style={{ width: 70, flex: 'none', fontWeight: 600 }}>{t}</span><span className="hint">{d}</span></div>)}
-          </div>
-          <div className="pb"><div className="note amber"><Icon name="warn" /><span>If the saber ever fails to show up after a reboot: hold BOOT, tap RESET, release BOOT, then press Install again. The backup can always be restored.</span></div></div>
-        </section>
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
-          <section className="panel" aria-label="Backups">
-            <div className="ph"><h2>4 · Backups and going back</h2><span className="hint">{backups.length} on this computer</span></div>
-            <div className="list" style={{ maxHeight: 320, overflow: 'auto' }}>
+        )}
+        {tab === 'backups' && (
+          <>
+            <div className="list scroll">
               {backups.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>None yet. Every install reads the saber's whole firmware to a file first.</div>}
               {backups.map((b) => (
                 <div key={b.file} className="li" style={{ minHeight: 48, gap: 8 }}>
-                  <span className="col grow" style={{ gap: 0 }}><span className="small">{new Date(b.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {b.label}</span><span className="hint mono" style={{ fontSize: 11 }}>{Math.round(b.bytes / 1024)} KB{b.valid ? '' : ' · not a usable image'}</span></span>
+                  <span className="col grow" style={{ gap: 0 }}><span className="small">{new Date(b.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}, {b.label}</span><span className="hint mono" style={{ fontSize: 11 }}>{Math.round(b.bytes / 1024)} KB{b.valid ? '' : ', not a usable image'}</span></span>
                   {restoreArmed === b.file
                     ? <><button type="button" className="btn sm danger" disabled={busy} onClick={() => void restore(b)}><span className="b"><span className="i">Yes, put it back</span></span></button><button type="button" className="chip" onClick={() => setRestoreArmed(null)}>Cancel</button></>
-                    : <button type="button" className="holo" style={{ fontSize: 11.5, fontWeight: 600 }} disabled={busy || !b.valid || !canInstall} title={!canInstall ? 'Connect the saber first' : undefined} onClick={() => setRestoreArmed(b.file)}>Put back</button>}
+                    : <button type="button" className="btn sm" disabled={busy || !b.valid || !canInstall} title={!canInstall ? 'Connect the saber first' : undefined} onClick={() => setRestoreArmed(b.file)}><span className="b"><span className="i"><Icon name="undo" />Put back</span></span></button>}
                 </div>
               ))}
             </div>
-            <div className="pb hint" style={{ paddingTop: 10 }}>Putting a backup back replaces the saber's firmware with exactly what it had at that moment. Presets and fonts on the SD card are not touched.</div>
-          </section>
-      </div>
-    </>
+            <div className="hint" style={{ marginTop: 'auto', padding: '12px 18px', borderTop: '1px solid var(--line)' }}>Putting a backup back replaces the saber's firmware with exactly what it had at that moment. Presets and fonts on the SD card are not touched.</div>
+          </>
+        )}
+      </section>
+
+      <aside className="rail" aria-label="Steps">
+        <div className="row between" style={{ minHeight: 24 }}>
+          <b style={{ fontWeight: 600 }} className="ellip">{saber.firmware ? `Rebuild ${saber.name}` : `Adopt ${saber.name}`}</b>
+          <span className={`chip ${step === 'done' ? 'ok' : step === 'failed' ? 'err' : busy ? 'warn' : ''}`}><span className="dot" />{stepLabel[step]}{busy ? ` ${elapsed}s` : ''}</span>
+        </div>
+
+        <div className={`stepc ${wiringOk ? 'done' : nowStep === 1 ? 'now' : ''} ${preview?.errors.length ? 'bad' : ''}`}>
+          <div className="head"><span className="nbox">{wiringOk ? <Icon name="check" /> : 1}</span><b>Wiring</b><span className="what">{blades.length} blade{blades.length === 1 ? '' : 's'}, {info.presets.length} presets{queuedLooks.length ? `, ${queuedLooks.length} new look${queuedLooks.length === 1 ? '' : 's'}` : ''}</span></div>
+          <label className="row" style={{ gap: 10 }}>
+            <span className="small dim" style={{ flex: 'none' }}>Buttons</span>
+            <span className="input sans" style={{ height: 30 }}><span className="ellip">{PROPS.find((p) => p.value === prop)?.label}</span><span className="caret"><Icon name="down" /></span><select value={prop} disabled={busy} aria-label="Button behaviour" onChange={(e) => setProp(e.target.value as Prop)}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></span>
+          </label>
+          {preview?.errors.length ? <div className="note red"><Icon name="x" /><span>{preview.errors.join(' ')}</span></div> : null}
+          <label className="row" style={{ gap: 10, fontSize: 12.5, color: 'var(--dim)', alignItems: 'flex-start' }}>
+            <button type="button" className={`tog ${confirmedWiring ? 'on' : ''}`} role="switch" aria-checked={confirmedWiring} disabled={busy} onClick={() => setConfirmedWiring(!confirmedWiring)}><i /></button>
+            I checked every data pin and power pin against the installer's wiring
+          </label>
+          {tab !== 'wiring' && !wiringOk && <button type="button" className="holo small" onClick={() => setTab('wiring')}>Open the wiring</button>}
+        </div>
+
+        {toolStep(nowStep === 2)}
+
+        <div className={`stepc ${built ? 'done' : nowStep === 3 ? 'now' : ''} ${result && !result.ok ? 'bad' : ''}`}>
+          <div className="head"><span className="nbox">{built ? <Icon name="check" /> : 3}</span><b>Build</b><span className="what">{step === 'building' ? `compiling, ${elapsed} s` : result?.ok ? (result.cached ? 'unchanged, reused' : `built in ${(result.ms / 1000).toFixed(0)} s`) : 'about a minute'}</span></div>
+          {result?.ok && (
+            <div className="col" style={{ gap: 5 }}>
+              <div className="row between" style={{ alignItems: 'baseline' }}><span className="mono" style={{ fontSize: 18 }}>{pct ?? '?'}%<span className="mute small"> of flash</span></span><span className="mono mute small">{result.textBytes != null ? (result.textBytes / 1024).toFixed(1) : '?'} of {result.flashBytes / 1024} KB</span></div>
+              <div style={{ height: 6, background: '#1b2836' }}><div style={{ height: '100%', width: `${Math.min(100, pct ?? 0)}%`, background: (pct ?? 0) > 90 ? 'var(--red)' : (pct ?? 0) > 70 ? 'var(--amber)' : 'var(--holo)' }} /></div>
+            </div>
+          )}
+          {result?.problems.map((p) => <div key={p} className="note red"><Icon name="x" /><span>{p}</span></div>)}
+          <button type="button" className={`btn full ${nowStep === 3 ? 'pri' : ''}`} disabled={!canBuild} onClick={() => void build(true)}><span className="b"><span className="i"><Icon name="build" />{step === 'building' ? 'Building…' : built ? 'Build again' : 'Build firmware'}</span></span></button>
+        </div>
+
+        <div className={`stepc ${step === 'done' ? 'done' : nowStep === 4 ? 'now' : ''}`}>
+          <div className="head"><span className="nbox">{step === 'done' ? <Icon name="check" /> : 4}</span><b>Install</b><span className="what">{step === 'backup' ? `backing up, ${elapsed} s` : step === 'writing' ? `writing, ${elapsed} s` : 'backup first, about two minutes'}</span></div>
+          {step === 'driver' ? (
+            <div className="col" style={{ gap: 8 }}>
+              <span className="small"><b style={{ fontWeight: 600 }}>Windows has no driver for the bootloader yet.</b> This happens once per computer. Nothing has been changed on the saber.</span>
+              <span className="hint">Hiltwright downloads the driver installer published by the ProffieOS author (3 MB, fredrik.hubbe.net), checks the file and starts it. Windows asks for administrator approval. Leave the saber plugged in; the install carries on by itself.</span>
+              <button type="button" className="btn full pri" disabled={driverBusy} onClick={() => void installDriver()}><span className="b"><span className="i"><Icon name="shield" />{driverBusy ? 'Installing the driver…' : 'Install the driver'}</span></span></button>
+              <div className="row" style={{ gap: 8 }}>
+                <button type="button" className="btn sm grow" disabled={driverBusy} onClick={() => void checkDriver()}><span className="b"><span className="i"><Icon name="usb" />Check again</span></span></button>
+                <button type="button" className="btn sm ghost" disabled={driverBusy} onClick={() => { setStep('built'); setDriverCheck(null); }}><span className="b"><span className="i">Cancel</span></span></button>
+              </div>
+              <span className="hint">By hand instead: <button type="button" className="holo" onClick={() => void api().app.openHelp(DRIVER_HELP)}>open the ProffieOS setup page</button>, run <span className="mono">proffie-dfu-setup.exe</span>, then Check again.</span>
+              {driverCheck && <span className="hint">{driverCheck}</span>}
+            </div>
+          ) : !armed ? (
+            <button type="button" className={`btn full ${nowStep === 4 ? 'warn' : ''}`} disabled={busy || step !== 'built' || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>
+          ) : (
+            <div className="row" style={{ gap: 8 }}>
+              <button type="button" className="btn danger grow" disabled={busy} onClick={() => { setArmed(false); void install2(); }}><span className="b"><span className="i"><Icon name="bolt" />Yes, write the firmware</span></span></button>
+              <button type="button" className="btn ghost" onClick={() => setArmed(false)}><span className="b"><span className="i">Cancel</span></span></button>
+            </div>
+          )}
+          {step !== 'driver' && <span className="hint">{!built ? 'Build first.' : !confirmedWiring ? 'Confirm the wiring first.' : !canInstall ? (offline ? 'Plug the saber in to install. Everything up to here works without it.' : 'Reconnect the saber to install.') : inBootloader ? 'The board is in bootloader mode and ready to write.' : 'The whole flash is read to a backup file before anything is written.'}</span>}
+        </div>
+
+        {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span>{note.text}</span></div>}
+        {verdict && <div className={`note ${verdict.tone}`}><Icon name={verdict.ok ? 'check' : 'warn'} /><span>{verdict.text}</span></div>}
+        {preview?.warnings.map((w) => <div key={w} className="note"><Icon name="info" /><span>{w}</span></div>)}
+        {step === 'failed' && <span className="hint">If the saber does not show up after a reboot: hold BOOT, tap RESET, release BOOT, then press Install again. A backup can always be put back from the Backups tab.</span>}
+      </aside>
+    </div>
   );
 }
