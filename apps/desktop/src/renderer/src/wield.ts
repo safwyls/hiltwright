@@ -1,9 +1,12 @@
 // How a saber held by the hilt moves. Pure maths, no renderer, so it can be tested.
 //
-// The hand goes where it is put. The blade is a rod of fixed length with its mass at the tip: the wrist pulls the
-// tip toward where it would naturally hold it, which is pointing away from the chest, so a raised hand points the
-// blade up and a lowered one points it down and out. Because the tip has mass it trails a quick move of the hand,
-// whips through, overshoots a little (the follow-through of a swing) and settles.
+// The wielder is the viewer: they stand on the camera's side of the room (positive z) and face into it, so
+// "forward" is negative z. The hand goes where it is put. The blade is a rod of fixed length with its mass at the
+// tip: the wrist pulls the tip toward where it would naturally hold it, which is pointing away from the chest. With
+// the chest behind the hand, a sweep of the hand from left to right carries the blade through forward, level with
+// the floor, not up and over; a raised hand points it up and a lowered one points it down. Because the tip has
+// mass it trails a quick move of the hand, whips through, overshoots a little (the follow-through of a swing) and
+// settles.
 
 export type Vec = [number, number, number];
 
@@ -12,6 +15,15 @@ const add = (a: Vec, b: Vec, k = 1): Vec => [a[0] + b[0] * k, a[1] + b[1] * k, a
 const dot = (a: Vec, b: Vec) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const len = (a: Vec) => Math.hypot(a[0], a[1], a[2]);
 const unit = (a: Vec, fallback: Vec): Vec => { const l = len(a); return l < 1e-9 ? fallback : [a[0] / l, a[1] / l, a[2] / l]; };
+
+/**
+ * Where the hand really is for a position (x across, y up) chosen by the drag. A sideways sweep is an arc, not a
+ * line: the arm reaches furthest forward in the middle and comes back toward the body at either side.
+ */
+export function handOnArc(x: number, y: number, reachX: number, push: number): Vec {
+  const t = Math.max(-1, Math.min(1, x / reachX));
+  return [x, y, -push * Math.cos((t * Math.PI) / 2)];
+}
 
 export interface WieldOptions {
   length: number;

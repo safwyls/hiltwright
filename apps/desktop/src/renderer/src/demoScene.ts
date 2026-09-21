@@ -16,22 +16,25 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { BladeSim, type EffectType, type LockupType } from '@hiltwright/core';
-import { Wield } from './wield';
+import { Wield, handOnArc } from './wield';
 import { Steer } from './steer';
 
 const BLADE_LENGTH = 0.92; // metres: a 36 inch blade
 const BLADE_RADIUS = 0.0127; // a one inch tube
 const HILT_LENGTH = 0.27;
-const HOME: [number, number, number] = [0.12, 1.35, 0]; // where the hand starts
-const REACH = { x: 0.8, low: 0.7, high: 1.8 }; // how far the hand can go
-/** See wield.ts. The chest sits behind the hand so the blade leans toward the viewer a little; under-damped so a swing follows through. */
-const WIELD = { length: BLADE_LENGTH, chest: [0, 1.05, -0.2] as [number, number, number], stiffness: 70, damping: 9.5, handSpeed: 22 };
+const HOME_AT = { x: 0.3, y: 1.3 }; // where the hand starts, across and up
+const REACH = { x: 0.8, low: 0.7, high: 1.8, push: 0.32 }; // how far the hand can go, and how far forward it reaches mid-sweep
+const HOME = handOnArc(HOME_AT.x, HOME_AT.y, REACH.x, REACH.push);
+/** See wield.ts. The wielder stands on the viewer's side, so the chest is behind the hand and the blade points into the room; under-damped so a swing follows through. */
+const WIELD = { length: BLADE_LENGTH, chest: [0, 1.08, 0.5] as [number, number, number], stiffness: 70, damping: 9.5, handSpeed: 22 };
 /** Steer mode: where the hand stays, how the blade starts (pointing right and a little away, tilted up), and how it answers a drag. */
 const STEER_HAND: [number, number, number] = [-0.42, 0.98, 0.1];
 const STEER_START = { yaw: 62, pitch: 42 };
 const STEER = { yawPerPixel: 0.35, pitchPerPixel: 0.3, follow: 16, minPitch: -85, maxPitch: 85 };
 /** The view the room opens with: a little to one side and above, so the floor reads as a floor. */
 const VIEW = { yaw: 0.42, pitch: 0.3, distance: 2.0, focus: [-0.36, 1.33, 0.05] as [number, number, number] };
+/** Hold mode is wielded from the viewer's side, so its view is from behind the wielder: nearly straight on and well above, so a level sweep reads as an arc over the floor. */
+const VIEW_HOLD = { yaw: 0.16, pitch: 0.52, distance: 3.0, focus: [0, 1.2, -0.45] as [number, number, number] };
 const UP = new THREE.Vector3(0, 1, 0);
 /** How far past white the blade is drawn. The excess is what the bloom pass turns into glow; too much and every colour reads as white. */
 const BOOST = 1.2;
@@ -74,7 +77,9 @@ export class DemoScene {
   private readonly hand = new THREE.Vector3(...STEER_HAND);
   private readonly dir = new THREE.Vector3(...this.steer.dir);
   private lastDrag: { x: number; y: number } | null = null;
-  private grabOffset: THREE.Vector3 | null = null;
+  /** Where the drag has put the hand, across and up; its depth comes from the arc of the arm. */
+  private readonly handAt = { ...HOME_AT };
+  private grabOffset: { x: number; y: number } | null = null;
   private swing = 0;
   private twistTarget = 0;
   private twist = 0;
@@ -221,12 +226,16 @@ export class DemoScene {
   setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) this.sim.setLockup(type); }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
   resetPose(): void {
+    this.handAt.x = HOME_AT.x; this.handAt.y = HOME_AT.y;
     this.wield.handTarget = [...HOME];
     this.steer.aimAt(STEER_START.yaw + Math.round((this.steer.yaw - STEER_START.yaw) / 360) * 360, STEER_START.pitch); // the short way round
-    this.twistTarget = 0; this.orbit = { yaw: VIEW.yaw, pitch: VIEW.pitch }; this.focus.set(...VIEW.focus); this.distanceTarget = VIEW.distance;
+    this.twistTarget = 0;
+    const view = this.mode === 'hold' ? VIEW_HOLD : VIEW;
+    this.orbit = { yaw: view.yaw, pitch: view.pitch }; this.focus.set(...view.focus); this.distanceTarget = view.distance;
   }
   get controlMode(): ControlMode { return this.mode; }
-  setControlMode(mode: ControlMode): void { this.mode = mode; this.lastDrag = null; this.grabOffset = null; if (mode === 'hold') this.wield.handTarget = [...HOME]; }
+  /** Each way of wielding has its own pose and view, so changing mode starts that mode afresh. */
+  setControlMode(mode: ControlMode): void { if (mode === this.mode) return; this.mode = mode; this.lastDrag = null; this.grabOffset = null; this.resetPose(); }
   /** Step closer (negative) or further away (positive). Each notch changes the distance by a fixed proportion, so it feels even near and far. */
   zoomBy(notches: number): void { this.distanceTarget = Math.max(1.1, Math.min(9, this.distanceTarget * Math.pow(1.12, notches))); }
 
@@ -241,21 +250,25 @@ export class DemoScene {
   }
   orbitBy(dx: number, dy: number): void { this.orbit.yaw -= dx * 0.005; this.orbit.pitch = Math.max(-0.05, Math.min(0.9, this.orbit.pitch + dy * 0.004)); }
 
-  /** The point under the cursor on the plane the hand moves in: upright, facing the viewer, through the room's middle. */
-  private onHandPlane(clientX: number, clientY: number): THREE.Vector3 | null {
+  /** The cursor as a place for the hand: how far across and how high, read off an upright plane facing the viewer. */
+  private handPlaceAt(clientX: number, clientY: number): { x: number; y: number } | null {
     const r = this.renderer.domElement.getBoundingClientRect();
     const ndc = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
-    const toViewer = new THREE.Vector3(this.camera.position.x, 0, this.camera.position.z).normalize();
-    return this.raycaster.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(toViewer, new THREE.Vector3(0, 1, 0)), new THREE.Vector3());
+    const toViewer = new THREE.Vector3(this.camera.position.x - this.focus.x, 0, this.camera.position.z - this.focus.z).normalize();
+    const origin = new THREE.Vector3(0, 1, 0);
+    const at = this.raycaster.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(toViewer, origin), new THREE.Vector3());
+    if (!at) return null;
+    const across = new THREE.Vector3(toViewer.z, 0, -toViewer.x);
+    return { x: at.sub(origin).dot(across), y: at.y + origin.y };
   }
 
   /** Take hold of the hilt. The hand does not jump to the cursor: it keeps its place and moves as the cursor moves. */
   grab(clientX: number, clientY: number): void {
     this.lastDrag = { x: clientX, y: clientY };
     if (this.mode === 'steer') return;
-    const at = this.onHandPlane(clientX, clientY);
-    this.grabOffset = at ? new THREE.Vector3(...this.wield.handTarget).sub(at) : null;
+    const at = this.handPlaceAt(clientX, clientY);
+    this.grabOffset = at ? { x: this.handAt.x - at.x, y: this.handAt.y - at.y } : null;
   }
   /** Move the hand with the cursor while the hilt is held. */
   moveHand(clientX: number, clientY: number): void {
@@ -264,13 +277,11 @@ export class DemoScene {
       this.lastDrag = { x: clientX, y: clientY };
       return;
     }
-    const at = this.onHandPlane(clientX, clientY);
+    const at = this.handPlaceAt(clientX, clientY);
     if (!at || !this.grabOffset) return;
-    const to = at.add(this.grabOffset);
-    const side = Math.hypot(to.x, to.z);
-    if (side > REACH.x) { to.x *= REACH.x / side; to.z *= REACH.x / side; }
-    to.y = Math.max(REACH.low, Math.min(REACH.high, to.y));
-    this.wield.handTarget = [to.x, to.y, to.z];
+    this.handAt.x = Math.max(-REACH.x, Math.min(REACH.x, at.x + this.grabOffset.x));
+    this.handAt.y = Math.max(REACH.low, Math.min(REACH.high, at.y + this.grabOffset.y));
+    this.wield.handTarget = handOnArc(this.handAt.x, this.handAt.y, REACH.x, REACH.push);
   }
   release(): void { this.grabOffset = null; this.lastDrag = null; }
 
