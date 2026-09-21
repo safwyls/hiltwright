@@ -18,6 +18,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { BladeSim, type EffectType, type LockupType } from '@hiltwright/core';
 import { Wield, handOnArc } from './wield';
 import { Steer } from './steer';
+import { disposeObject, fitHilt, type HiltFit } from './hiltModel';
 
 const BLADE_LENGTH = 0.92; // metres: a 36 inch blade
 const BLADE_RADIUS = 0.0127; // a one inch tube
@@ -108,6 +109,8 @@ export class DemoScene {
   private settings: SceneSettings = { ...DEFAULT_SCENE };
   private bladeMaterial!: THREE.MeshBasicMaterial;
   private grid!: THREE.GridHelper;
+  private builtInHilt!: THREE.Group;
+  private customHilt: { model: THREE.Object3D; group: THREE.Group } | null = null;
   private roomLamps: { light: THREE.Light; base: number }[] = [];
   onMotion: ((m: Motion) => void) | null = null;
   private lastReport = 0;
@@ -140,7 +143,8 @@ export class DemoScene {
     const tip = new THREE.Mesh(new THREE.SphereGeometry(BLADE_RADIUS, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), this.tipMaterial);
     tip.position.y = HILT_LENGTH / 2 + BLADE_LENGTH;
     this.glowing.add(tube); this.glowing.add(tip);
-    this.roll.add(tube, tip, this.buildHilt());
+    this.builtInHilt = this.buildHilt();
+    this.roll.add(tube, tip, this.builtInHilt);
     this.saber.add(this.roll);
     this.saber.position.copy(this.hand);
     this.scene.add(this.saber);
@@ -245,6 +249,21 @@ export class DemoScene {
     for (const { light, base } of this.roomLamps) light.intensity = base * next.roomLight;
     (this.scene.fog as THREE.FogExp2).density = next.haze;
     this.grid.visible = next.grid;
+  }
+
+  /**
+   * Swap the hilt. `model` is a loaded object (hiltModel.ts) or null for the built-in one; calling again with the same
+   * model and a new fit re-seats it. Returns the length it was given, in metres.
+   */
+  setHilt(model: THREE.Object3D | null, fit: HiltFit): number {
+    const old = this.customHilt;
+    if (old) { this.roll.remove(old.group); if (old.model !== model) disposeObject(old.model); this.customHilt = null; }
+    this.builtInHilt.visible = model === null;
+    if (!model) return HILT_LENGTH;
+    const { group, length } = fitHilt(model, fit, HILT_LENGTH / 2);
+    this.roll.add(group);
+    this.customHilt = { model, group };
+    return length;
   }
 
   // ---- what the page asks of the saber ----

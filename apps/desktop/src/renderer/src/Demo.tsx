@@ -5,6 +5,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupType } from '@hiltwright/core';
 import { DEFAULT_SCENE, DemoScene, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
+import { DEFAULT_FIT, formatOf, parseHilt, type HiltFit, type StoredHilt } from './hiltModel';
+import { listHilts, removeHilt, saveHilt } from './hiltStore';
+import type { Object3D } from 'three';
 
 const LOOKS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
 const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid'>; label: string; min: number; max: number; step: number; hint: string }[] = [
@@ -31,6 +34,49 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
   const [failed, setFailed] = useState<string | null>(null);
   const [control, setControl] = useState<ControlMode>(() => { try { return localStorage.getItem('hiltwright.demo.control') === 'steer' ? 'steer' : 'hold'; } catch { return 'hold'; } });
   const [look3d, setLook3d] = useState<SceneSettings>(loadScene);
+  // Custom hilts: model files the owner loaded, kept in the browser's database, one of them (or none) in use.
+  const [hilts, setHilts] = useState<StoredHilt[]>([]);
+  const [hiltName, setHiltName] = useState<string>(() => { try { return localStorage.getItem('hiltwright.demo.hilt') ?? ''; } catch { return ''; } });
+  const [hiltNote, setHiltNote] = useState<string | null>(null);
+  const [hiltLength, setHiltLength] = useState<number | null>(null);
+  const loaded = useRef<{ name: string; model: Object3D } | null>(null);
+  const hilt = hilts.find((h) => h.name === hiltName) ?? null;
+  useEffect(() => { void listHilts().then(setHilts).catch(() => setHilts([])); }, []);
+  useEffect(() => { try { localStorage.setItem('hiltwright.demo.hilt', hiltName); } catch { /* private mode */ } }, [hiltName]);
+  useEffect(() => {
+    const room = scene.current;
+    if (!room) return;
+    if (!hilt) { loaded.current = null; room.setHilt(null, DEFAULT_FIT); setHiltLength(null); return; }
+    let live = true;
+    void (async () => {
+      try {
+        // Parsing is the slow part: only when the file changes, not for every nudge of a slider.
+        if (loaded.current?.name !== hilt.name) loaded.current = { name: hilt.name, model: await parseHilt(hilt.format, hilt.data.slice(0)) };
+        if (live) { setHiltLength(room.setHilt(loaded.current.model, hilt.fit)); setHiltNote(null); }
+      } catch (err) { if (live) { room.setHilt(null, DEFAULT_FIT); setHiltNote(`That model could not be read: ${String(err).replace(/^Error: /, '')}`); } }
+    })();
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hilt?.name, hilt?.fit.flip, hilt?.fit.rollDeg, hilt?.fit.lengthCm, hilts.length]);
+  const loadHiltFile = async (file: File | undefined) => {
+    if (!file) return;
+    const format = formatOf(file.name);
+    if (!format) { setHiltNote('Use a .glb, .obj or .stl file. A .gltf only works when it is a single self-contained file.'); return; }
+    const entry: StoredHilt = { name: file.name.replace(/\.[^.]+$/, ''), format, data: await file.arrayBuffer(), fit: { ...DEFAULT_FIT } };
+    try { await parseHilt(format, entry.data.slice(0)); } catch (err) { setHiltNote(`That model could not be read: ${String(err).replace(/^Error: /, '')}`); return; }
+    await saveHilt(entry).catch(() => undefined);
+    loaded.current = null;
+    setHilts((all) => [...all.filter((h) => h.name !== entry.name), entry]);
+    setHiltName(entry.name); setHiltNote(null);
+  };
+  const setFit = (patch: Partial<HiltFit>) => {
+    if (!hilt) return;
+    const next = { ...hilt, fit: { ...hilt.fit, ...patch } };
+    setHilts((all) => all.map((h) => (h.name === hilt.name ? next : h)));
+    void saveHilt(next).catch(() => undefined);
+  };
+  const forgetHilt = () => { if (!hilt) return; void removeHilt(hilt.name).catch(() => undefined); setHilts((all) => all.filter((h) => h.name !== hilt.name)); setHiltName(''); };
+
   const [sceneOpen, setSceneOpen] = useState(() => { try { return localStorage.getItem('hiltwright.demo.sceneOpen') !== '0'; } catch { return true; } });
   useEffect(() => { scene.current?.applySettings(look3d); try { localStorage.setItem('hiltwright.demo.scene', JSON.stringify(look3d)); } catch { /* private mode */ } }, [look3d]);
   useEffect(() => { try { localStorage.setItem('hiltwright.demo.sceneOpen', sceneOpen ? '1' : '0'); } catch { /* private mode */ } }, [sceneOpen]);
@@ -180,6 +226,34 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
                 <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{look3d[sl.key].toFixed(look3d[sl.key] < 1 && sl.max <= 1 ? 2 : 1)}</span>
               </label>
             ))}
+            <div className="col" style={{ gap: 6, paddingTop: 6, marginTop: 2, borderTop: '1px solid var(--line)' }}>
+              <div className="row" style={{ gap: 8 }}>
+                <span className="dim" style={{ width: 76, flex: 'none' }}>Hilt</span>
+                <span className="input sans" style={{ height: 28, fontSize: 12 }}><span className="ellip">{hilt?.name ?? 'Built-in'}</span><span className="caret"><Icon name="down" /></span>
+                  <select value={hilt?.name ?? ''} aria-label="Hilt model" onChange={(e) => setHiltName(e.target.value)}><option value="">Built-in</option>{hilts.map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}</select></span>
+                <label className="chip" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }} title="Load a .glb, .obj or .stl file"><Icon name="import" />Load
+                  <input type="file" accept=".glb,.gltf,.obj,.stl" aria-label="Load a hilt model" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} onChange={(e) => { void loadHiltFile(e.target.files?.[0]); e.target.value = ''; }} /></label>
+              </div>
+              {hilt && (
+                <>
+                  <label className="row" style={{ gap: 8 }} title="Overall length of the hilt">
+                    <span className="dim" style={{ width: 76, flex: 'none' }}>Length</span>
+                    <input type="range" min={15} max={45} step={0.5} value={hilt.fit.lengthCm ?? Math.round((hiltLength ?? 0.28) * 200) / 2} aria-label="Hilt length in centimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ lengthCm: Number(e.target.value) })} />
+                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.lengthCm ?? (hiltLength ?? 0.28) * 100).toFixed(0)}cm</span>
+                  </label>
+                  <label className="row" style={{ gap: 8 }} title="Turn the hilt about the blade so its controls face where you want">
+                    <span className="dim" style={{ width: 76, flex: 'none' }}>Turn</span>
+                    <input type="range" min={-180} max={180} step={5} value={hilt.fit.rollDeg} aria-label="Turn the hilt about the blade" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ rollDeg: Number(e.target.value) })} />
+                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{hilt.fit.rollDeg}°</span>
+                  </label>
+                  <div className="row between">
+                    <label className="row" style={{ gap: 10 }}><button type="button" className={`tog ${hilt.fit.flip ? 'on' : ''}`} role="switch" aria-checked={hilt.fit.flip} aria-label="Blade comes out of the other end" onClick={() => setFit({ flip: !hilt.fit.flip })}><i /></button><span className="dim">Blade at the other end</span></label>
+                    <button type="button" className="holo small" onClick={forgetHilt}>Remove</button>
+                  </div>
+                </>
+              )}
+              {hiltNote && <span className="red small">{hiltNote}</span>}
+            </div>
             <label className="row" style={{ gap: 10, paddingTop: 2 }}>
               <button type="button" className={`tog ${look3d.grid ? 'on' : ''}`} role="switch" aria-checked={look3d.grid} aria-label="Floor grid" onClick={() => setLook3d((v) => ({ ...v, grid: !v.grid }))}><i /></button>
               <span className="dim">Floor grid</span>
