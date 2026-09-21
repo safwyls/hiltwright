@@ -99,6 +99,8 @@ export interface UsbState {
   bootloaderProblem: number | null;
 }
 
+export interface BackupInfo { file: string; at: string; label: string; bytes: number; /** Starts like real firmware; anything else is refused. */ valid: boolean }
+
 export interface FlashStepResult { ok: boolean; ms: number; detail: string; file?: string }
 
 /** Progress lines from long-running main-process jobs. */
@@ -161,6 +163,10 @@ export interface HiltwrightApi {
     write(dfuPath: string): Promise<FlashStepResult>;
     /** Windows: download the official bootloader driver installer, run it elevated, wait for WinUSB to bind. */
     installDriver(): Promise<{ ok: boolean; text: string }>;
+    /** Flash backups taken before installs for this saber, newest first. */
+    listBackups(saberId: string): Promise<BackupInfo[]>;
+    /** Write one of this saber's backups back. The board must be in bootloader mode. */
+    restore(saberId: string, file: string): Promise<FlashStepResult>;
     /** Wait for the running firmware's serial device to be back. */
     waitForRuntime(timeoutMs: number): Promise<boolean>;
   };

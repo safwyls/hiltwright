@@ -12,7 +12,7 @@ import { checkFontDir, copyFont, listFonts, listTracks, locateCards, readVoicePa
 import { defaultToolchainRoot, installToolchain, toolchainStatus } from './toolchain';
 import { buildFirmware } from './build';
 import { installBootloaderDriver } from './driver';
-import { backupFlash, describeBootloader, usbState, waitFor, writeFirmware } from './flash';
+import { backupFlash, describeBootloader, listBackups, restoreBackup, usbState, waitFor, writeFirmware } from './flash';
 import type { JobEvent } from '../shared/api';
 import type { FirmwareManifest } from '@hiltwright/core';
 import type { SaberIdentity } from '../shared/api';
@@ -163,6 +163,14 @@ export function registerIpc(): void {
     const norm = (x: string) => resolve(x).replace(/[\\/]+/g, '/').toLowerCase();
     if (!norm(p).startsWith(norm(toolchainRoot) + '/')) throw new Error('Only firmware built by Hiltwright can be written');
     return writeFirmware(toolchainRoot, p, (l) => emit('flash', l));
+  });
+  const backupsDir = (saberId: unknown) => join(userData, 'sabers', str(saberId, 40).replace(/[^A-Za-z0-9_-]/g, '_'), 'backups');
+  ipcMain.handle('flash:listBackups', (_e, saberId: unknown) => listBackups(backupsDir(saberId)));
+  ipcMain.handle('flash:restore', (_e, saberId: unknown, file: unknown) => {
+    const name = str(file, 200);
+    // Only a plain file name from this saber's own backups folder; never a path.
+    if (!/^[A-Za-z0-9._-]+\.bin$/.test(name)) throw new Error('Not a backup file name');
+    return restoreBackup(toolchainRoot, join(backupsDir(saberId), name), (l) => emit('flash', l));
   });
   // The installer is kept in the owner's own data folder, not the shared toolchain folder: it runs elevated.
   ipcMain.handle('flash:installDriver', () => installBootloaderDriver(join(userData, 'drivers'), (l) => emit('flash', l)));

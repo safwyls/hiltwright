@@ -3,7 +3,7 @@
 // writes with dfu-util, and waits for the board to come back. Commands are exactly the ones the spike proved.
 
 import { execFile } from 'node:child_process';
-import { mkdir, stat } from 'node:fs/promises';
+import { mkdir, open, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { findDfuUtil, run, toolchainPaths, type Progress } from './toolchain';
 
@@ -91,6 +91,43 @@ export async function writeFirmware(toolchainRoot: string, dfuFile: string, onLi
   const r = await run(dfuUtil, ['-d', `${RUNTIME_VIDPID},${DFU_VIDPID}`, '-a', '0', '-s', '0x08000000:leave', '-D', dfuFile], { timeoutMs: 300000, onLine });
   const ok = r.code === 0 && /File downloaded successfully|Download done/i.test(r.stdout + r.stderr);
   return { ok, ms: r.ms, detail: ok ? `wrote ${size} bytes in ${(r.ms / 1000).toFixed(1)} s` : (r.stderr || r.stdout).slice(-800), file: dfuFile };
+}
+
+export interface BackupInfo { file: string; at: string; label: string; bytes: number; valid: boolean }
+
+/**
+ * A flash image starts with the initial stack pointer, which on these chips always points into SRAM (0x20xxxxxx).
+ * An erased or read-protected dump does not, and must never be written back.
+ */
+async function looksLikeFirmware(path: string): Promise<boolean> {
+  try {
+    const fh = await open(path, 'r');
+    try { const b = Buffer.alloc(8); await fh.read(b, 0, 8, 0); return b[3] === 0x20 && b[7] === 0x08; } finally { await fh.close(); }
+  } catch { return false; }
+}
+
+/** Backups taken before installs, newest first. File names carry the time and a label. */
+export async function listBackups(backupDir: string): Promise<BackupInfo[]> {
+  let names: string[] = [];
+  try { names = await readdir(backupDir); } catch { return []; }
+  const out: BackupInfo[] = [];
+  for (const file of names.filter((n) => /\.bin$/i.test(n))) {
+    const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z-(.*)\.bin$/.exec(file);
+    const path = join(backupDir, file);
+    const st = await stat(path).catch(() => null);
+    if (!st) continue;
+    out.push({ file, at: m ? `${m[1]}T${m[2]}:${m[3]}:${m[4]}.${m[5]}Z` : st.mtime.toISOString(), label: m ? m[6].replace(/_/g, ' ') : file, bytes: st.size, valid: await looksLikeFirmware(path) });
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+/** Write a backup image back. Refuses anything that does not look like firmware for this chip family. */
+export async function restoreBackup(toolchainRoot: string, path: string, onLine: Progress): Promise<FlashStepResult> {
+  const st = await stat(path).catch(() => null);
+  if (!st || (st.size !== 262144 && st.size !== 524288)) return { ok: false, ms: 0, detail: 'That file is not a full flash backup (256 KB or 512 KB).' };
+  if (!(await looksLikeFirmware(path))) return { ok: false, ms: 0, detail: 'That backup does not look like firmware (it may be an erased or protected read), so it was not written.' };
+  onLine(`restoring ${st.size} bytes from ${path}`);
+  return writeFirmware(toolchainRoot, path, onLine);
 }
 
 /** Explain the Windows driver situation in the owner's terms. */

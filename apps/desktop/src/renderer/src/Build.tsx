@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseId, voicePackFromSerial, voicePackVerdict, type BladeVariant, type ModelBlade, type Prop, type SaberConfigModel, type VoicePackStatus } from '@hiltwright/core';
 import { draftModel, guessBlades, queuedLookIds } from './saberModel';
 import { HardwareEditor } from './Hardware';
-import type { BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
+import type { BackupInfo, BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
 import type { Board } from './board';
 import { Icon } from './Icon';
 
@@ -180,6 +180,38 @@ export function Build({ board }: { board: Board }) {
 
   /** After the owner installed the driver: check the bootloader again and carry on. */
   const [driverCheck, setDriverCheck] = useState<string | null>(null);
+
+  // Backups taken before each install, and the way back to any of them.
+  const [backups, setBackups] = useState<BackupInfo[]>([]);
+  const [restoreArmed, setRestoreArmed] = useState<string | null>(null);
+  const saberId = saber?.id ?? null;
+  const loadBackups = useCallback(() => { if (saberId) void api().flash.listBackups(saberId).then(setBackups); }, [saberId]);
+  useEffect(() => { loadBackups(); }, [loadBackups, step]);
+  const restore = useCallback(async (b: BackupInfo) => {
+    if (!saberId) return;
+    setRestoreArmed(null); setNote(null); setElapsed(0);
+    try {
+      setStep('bootloader');
+      if (!(await api().flash.usb()).bootloaderPresent) {
+        const touched = await board.rebootToBootloader();
+        if (!touched) { setStep('failed'); setNote({ tone: 'red', text: 'Could not reboot the saber into bootloader mode. Hold BOOT, tap RESET, release BOOT, then try again.' }); return; }
+      }
+      const boot = await api().flash.waitForBootloader(20000);
+      if (!boot.ok) { setStep('failed'); setNote({ tone: 'red', text: boot.text }); return; }
+      setStep('writing');
+      const w = await api().flash.restore(saberId, b.file);
+      if (!w.ok) { setStep('failed'); setNote({ tone: 'red', text: `The backup was not written. ${w.detail}` }); return; }
+      setStep('verifying');
+      const back = await api().flash.waitForRuntime(25000);
+      if (!back) { setStep('failed'); setNote({ tone: 'amber', text: 'The backup was written but the saber has not reappeared yet. Unplug and replug it, then press Connect.' }); return; }
+      await new Promise((r) => setTimeout(r, 1500));
+      // The restored firmware is not the one Hiltwright built: forget the manifest so looks and colours are not mislabelled.
+      await board.updateSaber({ firmware: null }, saberId);
+      await board.connect(false);
+      setStep('done');
+      setNote({ tone: 'green', text: `Restored the backup from ${new Date(b.at).toLocaleString()}.` });
+    } catch (err) { setStep('failed'); setNote({ tone: 'red', text: String(err) }); }
+  }, [saberId, board]);
   const checkDriver = useCallback(async () => {
     setDriverCheck('Checking…');
     const boot = await api().flash.waitForBootloader(5000);
@@ -342,6 +374,21 @@ export function Build({ board }: { board: Board }) {
 
         <div className="col" style={{ gap: 20, minHeight: 0, overflow: "auto" }}>
           {setupPanel}
+          <section className="panel" aria-label="Backups">
+            <div className="ph"><h2>Backups</h2><span className="hint">{backups.length} on this computer</span></div>
+            <div className="list" style={{ maxHeight: 220, overflow: 'auto' }}>
+              {backups.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>None yet. Every install reads the saber's whole firmware to a file first.</div>}
+              {backups.map((b) => (
+                <div key={b.file} className="li" style={{ minHeight: 48, gap: 8 }}>
+                  <span className="col grow" style={{ gap: 0 }}><span className="small">{new Date(b.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {b.label}</span><span className="hint mono" style={{ fontSize: 11 }}>{Math.round(b.bytes / 1024)} KB{b.valid ? '' : ' · not a usable image'}</span></span>
+                  {restoreArmed === b.file
+                    ? <><button type="button" className="btn sm danger" disabled={busy} onClick={() => void restore(b)}><span className="b"><span className="i">Yes, put it back</span></span></button><button type="button" className="chip" onClick={() => setRestoreArmed(null)}>Cancel</button></>
+                    : <button type="button" className="holo" style={{ fontSize: 11.5, fontWeight: 600 }} disabled={busy || !b.valid || !canInstall} title={!canInstall ? 'Connect the saber first' : undefined} onClick={() => setRestoreArmed(b.file)}>Put back</button>}
+                </div>
+              ))}
+            </div>
+            <div className="pb hint" style={{ paddingTop: 10 }}>Putting a backup back replaces the saber's firmware with exactly what it had at that moment. Presets and fonts on the SD card are not touched.</div>
+          </section>
         <section className="panel" aria-label="What happens">
           <div className="ph"><h2>What happens</h2></div>
           <div className="list">
