@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { STARTER_LOOKS, analyzeStyleCode, argInfo, lookSlots, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
-import { BladeBar, Hilt, type Fx } from './Saber';
+import { BladePreview } from './BladePreview';
 import { draftModel, infoFromRecord, queuedLookIds, withLookInSlot } from './saberModel';
 
 const api = () => window.hiltwright;
@@ -25,7 +25,6 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
   const [q, setQ] = useState('');
   const [onlyFirmware, setOnlyFirmware] = useState(false);
   const [roleFilter, setRoleFilter] = useState<BladeRole | null>(null);
-  const [fx, setFx] = useState<Fx>('on');
   const [pasting, setPasting] = useState(false);
   const [code, setCode] = useState('');
   const [lookName, setLookName] = useState('');
@@ -53,7 +52,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
   const analysis = useMemo(() => (code.trim() ? analyzeStyleCode(code) : null), [code]);
   const bladesForLook = model ? model.blades.map((b, i) => ({ n: i + 1, role: b.role, fits: sel.roles.includes(b.role) })) : [];
   const fittingBlade = bladesForLook.find((b) => b.n === targetBlade) ?? bladesForLook.find((b) => b.fits) ?? bladesForLook[0];
-  const pulse = (s: Fx, ms: number) => { setFx(s); setTimeout(() => setFx('on'), ms); };
+  const isDot = (l: LookDef) => !l.roles.includes('main') && !l.roles.includes('side');
 
   const savePasted = async () => {
     if (!analysis?.ok) return;
@@ -119,9 +118,8 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
               const st = stateOf(l.id);
               return (
                 <button key={l.id} type="button" className={`lookcard ${l.id === sel.id ? 'on' : ''}`} aria-pressed={l.id === sel.id} onClick={() => setSelectedId(l.id)}>
-                  <div className="col" style={{ padding: '18px 16px 12px', width: '100%', gap: 6 }}>
-                    <BladeBar color={l.preview} thin={!l.roles.includes('main') && !l.roles.includes('side')} />
-                    {l.preview2 ? <BladeBar color={l.preview2} thin style={{ maxWidth: '55%' }} /> : <div style={{ height: 6 }} />}
+                  <div style={{ padding: '10px 16px 4px', width: '100%', boxSizing: 'border-box' }}>
+                    <BladePreview lookId={l.id} fallbackColor={l.preview} dot={isDot(l)} size="sm" />
                   </div>
                   <div className="col" style={{ padding: '4px 16px 14px', gap: 6, width: '100%' }}>
                     <div className="row between"><b style={{ fontWeight: 600, fontSize: 14 }}>{l.name}</b>{st === 'compiled' ? <span className="chip ok"><Icon name="check" />Compiled in</span> : st === 'queued' ? <span className="chip warn"><Icon name="clock" />Queued</span> : <span className="chip warn">Needs build</span>}</div>
@@ -141,14 +139,8 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
             {selState === 'compiled' ? <span className="chip ok"><Icon name="check" />Compiled in</span> : selState === 'queued' ? <span className="chip warn"><Icon name="clock" />Queued</span> : <span className="chip warn">Needs build</span>}
           </div>
           <div className="pb col" style={{ gap: 16, overflow: 'auto' }}>
-            <div className="col" style={{ gap: 8, padding: '10px 0 4px' }}>
-              <div className="row" style={{ gap: 0 }}><Hilt /><BladeBar color={sel.preview} fx={fx} /></div>
-              {sel.preview2 && <div className="row" style={{ gap: 0 }}><span style={{ width: 64, flex: 'none' }} /><BladeBar color={sel.preview2} fx={fx} thin /></div>}
-            </div>
-            <div className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn sm" onClick={() => setFx(fx === 'off' ? 'on' : 'off')}><span className="b"><span className="i">{fx === 'off' ? 'Ignite' : 'Retract'}</span></span></button>
-              <button type="button" className="btn sm" onClick={() => fx !== 'off' && pulse('clash', 220)}><span className="b"><span className="i">Clash</span></span></button>
-              <button type="button" className="btn sm" onClick={() => fx !== 'off' && pulse('blast', 300)}><span className="b"><span className="i">Blast</span></span></button>
+            <div style={{ padding: '6px 0 0' }}>
+              <BladePreview key={sel.id} lookId={sel.id} fallbackColor={sel.preview} dot={isDot(sel)} hilt={!isDot(sel)} controls />
             </div>
             <p className="dim" style={{ fontSize: 13 }}>{sel.description}</p>
             {sel.kb != null && <span className="hint">Costs about {sel.kb.toFixed(1)} KB of firmware space the first time it is used on a saber. Reusing it in more presets is free.</span>}

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { argInfo, colorWordToHex, formatBuiltin, formatStyleArgs, hexToColorWord, lookAtSlot, lookSlots, parseBuiltin, parseStyleArgs, type PresetRecord } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
+import { BladePreview, canSimulate } from './BladePreview';
 
 /** Colour pickers fire on every drag step; the saber rewrites a 256 KB file per write, so only the settled value goes out. */
 const SETTLE_MS = 450;
@@ -31,6 +32,14 @@ export function LookRows({ board, current, onLooks }: { board: Board; current: P
     timers.current[key] = setTimeout(fire, SETTLE_MS);
   };
   if (!info) return null;
+  /** LED count the saber reports for blade slot `k` (0-based); the preview uses it so wipes and bumps are to scale. */
+  const pixels = (k: number) => Math.max(1, Math.min(288, info.pixelBlades[k] ?? 132));
+  /** The slot's arguments with any colour still being dragged laid over them, so the preview follows the picker at once. */
+  const previewArgs = (k: number, args: Map<number, string>) => {
+    const m = new Map(args);
+    for (const [key, hex] of Object.entries(pending)) { const [blade, n] = key.split(':').map(Number); if (blade === k) m.set(n, hexToColorWord(hex)); }
+    return m;
+  };
 
   /** Choices for blade slot `blade` (1-based). With a manifest: one per look; otherwise one per compiled slot. */
   const choices = (blade: number, currentStyle: string) => {
@@ -87,6 +96,11 @@ export function LookRows({ board, current, onLooks }: { board: Board; current: P
                 </select>
               </span>
             </div>
+            {look && canSimulate(look.id) && (
+              <div style={{ paddingLeft: 24 }}>
+                <BladePreview lookId={look.id} args={previewArgs(k, args)} leds={pixels(k)} dot={pixels(k) <= 4} controls={k === 0} size={k === 0 ? 'md' : 'sm'} />
+              </div>
+            )}
             {look && look.args.length > 0 && (
               <div className="row wrap" style={{ gap: 8, paddingLeft: 24 }}>
                 {look.args.map((n) => {
