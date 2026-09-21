@@ -35,14 +35,16 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
 
     let grab: { x: number; y: number; at: number } | null = null;
     let orbit: { x: number; y: number } | null = null;
+    let pan: { x: number; y: number } | null = null;
     const down = (e: PointerEvent) => {
       el.setPointerCapture(e.pointerId);
-      if (e.button === 0) { grab = { x: e.clientX, y: e.clientY, at: performance.now() }; room.grab(e.clientX, e.clientY); } else { orbit = { x: e.clientX, y: e.clientY }; }
+      if (e.button === 0) { grab = { x: e.clientX, y: e.clientY, at: performance.now() }; room.grab(e.clientX, e.clientY); } else if (e.button === 1) { e.preventDefault(); pan = { x: e.clientX, y: e.clientY }; } else { orbit = { x: e.clientX, y: e.clientY }; }
     };
     const move = (e: PointerEvent) => {
       if (grab) room.moveHand(e.clientX, e.clientY);
+      if (pan) { room.panBy(e.clientX - pan.x, e.clientY - pan.y); pan = { x: e.clientX, y: e.clientY }; }
       if (orbit) { room.orbitBy(e.clientX - orbit.x, e.clientY - orbit.y); orbit = { x: e.clientX, y: e.clientY }; }
-      el.style.cursor = grab ? 'grabbing' : room.bladeAt(e.clientX, e.clientY) != null ? 'crosshair' : 'grab';
+      el.style.cursor = pan ? 'move' : grab ? 'grabbing' : room.bladeAt(e.clientX, e.clientY) != null ? 'crosshair' : 'grab';
     };
     const up = (e: PointerEvent) => {
       if (e.button === 0 && grab) {
@@ -51,11 +53,13 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
         const at = still ? room.bladeAt(e.clientX, e.clientY) : null;
         if (at != null) room.trigger('blast', at);
         grab = null; room.release();
-      } else orbit = null;
+      } else if (e.button === 1) pan = null; else orbit = null;
     };
     const wheel = (e: WheelEvent) => { e.preventDefault(); room.addTwist(e.deltaY * 0.12); };
     const dbl = () => room.setOn(!room.isOn);
     const menu = (e: Event) => e.preventDefault();
+    // Chromium starts its own autoscroll on a middle press unless told not to.
+    const noAutoscroll = (e: MouseEvent) => { if (e.button === 1) e.preventDefault(); };
     const key = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.altKey || e.metaKey || /^(INPUT|SELECT|TEXTAREA)$/.test((e.target as HTMLElement)?.tagName ?? '')) return;
       const k = e.key.toLowerCase();
@@ -63,13 +67,13 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
       else { const h = HOLDS.find((x) => x.key === k); if (h && !e.repeat) setHold(holdRef.current === h.type ? null : h.type); }
     };
     el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
-    el.addEventListener('wheel', wheel, { passive: false }); el.addEventListener('dblclick', dbl); el.addEventListener('contextmenu', menu);
+    el.addEventListener('wheel', wheel, { passive: false }); el.addEventListener('dblclick', dbl); el.addEventListener('contextmenu', menu); el.addEventListener('mousedown', noAutoscroll);
     window.addEventListener('keydown', key);
     const igniteSoon = setTimeout(() => room.setOn(true), 500);
     return () => {
       clearTimeout(igniteSoon); ro.disconnect(); window.removeEventListener('keydown', key);
       el.removeEventListener('pointerdown', down); el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up);
-      el.removeEventListener('wheel', wheel); el.removeEventListener('dblclick', dbl); el.removeEventListener('contextmenu', menu);
+      el.removeEventListener('wheel', wheel); el.removeEventListener('dblclick', dbl); el.removeEventListener('contextmenu', menu); el.removeEventListener('mousedown', noAutoscroll);
       room.dispose(); scene.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,7 +131,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
       </div>
 
       <div style={{ position: 'absolute', left: 20, bottom: 18, display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 14px', fontSize: 12, color: 'var(--dim)', pointerEvents: 'none' }}>
-        {[['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down'], ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['R', 'reset the pose']].map(([k, v]) => (
+        {[['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down'], ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['R', 'reset the pose and the view']].map(([k, v]) => (
           <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11.5 }}>{k}</span><span>{v}</span></div>
         ))}
       </div>
