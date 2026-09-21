@@ -321,7 +321,7 @@ export function Build({ board }: { board: Board }) {
 
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 420px', gap: 20, flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 420px', gap: 20, alignItems: 'start' }}>
         <section className="panel" aria-label="Build and install">
           <div className="ph">
             <h2>2 · Build, then 3 · Install</h2>
@@ -372,23 +372,8 @@ export function Build({ board }: { board: Board }) {
           </div>
         </section>
 
-        <div className="col" style={{ gap: 20, minHeight: 0, overflow: "auto" }}>
+        <div className="col" style={{ gap: 20 }}>
           {setupPanel}
-          <section className="panel" aria-label="Backups">
-            <div className="ph"><h2>Backups</h2><span className="hint">{backups.length} on this computer</span></div>
-            <div className="list" style={{ maxHeight: 220, overflow: 'auto' }}>
-              {backups.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>None yet. Every install reads the saber's whole firmware to a file first.</div>}
-              {backups.map((b) => (
-                <div key={b.file} className="li" style={{ minHeight: 48, gap: 8 }}>
-                  <span className="col grow" style={{ gap: 0 }}><span className="small">{new Date(b.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {b.label}</span><span className="hint mono" style={{ fontSize: 11 }}>{Math.round(b.bytes / 1024)} KB{b.valid ? '' : ' · not a usable image'}</span></span>
-                  {restoreArmed === b.file
-                    ? <><button type="button" className="btn sm danger" disabled={busy} onClick={() => void restore(b)}><span className="b"><span className="i">Yes, put it back</span></span></button><button type="button" className="chip" onClick={() => setRestoreArmed(null)}>Cancel</button></>
-                    : <button type="button" className="holo" style={{ fontSize: 11.5, fontWeight: 600 }} disabled={busy || !b.valid || !canInstall} title={!canInstall ? 'Connect the saber first' : undefined} onClick={() => setRestoreArmed(b.file)}>Put back</button>}
-                </div>
-              ))}
-            </div>
-            <div className="pb hint" style={{ paddingTop: 10 }}>Putting a backup back replaces the saber's firmware with exactly what it had at that moment. Presets and fonts on the SD card are not touched.</div>
-          </section>
         <section className="panel" aria-label="What happens">
           <div className="ph"><h2>What happens</h2></div>
           <div className="list">
@@ -403,6 +388,23 @@ export function Build({ board }: { board: Board }) {
           <div className="pb"><div className="note amber"><Icon name="warn" /><span>If the saber ever fails to show up after a reboot: hold BOOT, tap RESET, release BOOT, then press Install again. The backup can always be restored.</span></div></div>
         </section>
         </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
+          <section className="panel" aria-label="Backups">
+            <div className="ph"><h2>4 · Backups and going back</h2><span className="hint">{backups.length} on this computer</span></div>
+            <div className="list" style={{ maxHeight: 320, overflow: 'auto' }}>
+              {backups.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>None yet. Every install reads the saber's whole firmware to a file first.</div>}
+              {backups.map((b) => (
+                <div key={b.file} className="li" style={{ minHeight: 48, gap: 8 }}>
+                  <span className="col grow" style={{ gap: 0 }}><span className="small">{new Date(b.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {b.label}</span><span className="hint mono" style={{ fontSize: 11 }}>{Math.round(b.bytes / 1024)} KB{b.valid ? '' : ' · not a usable image'}</span></span>
+                  {restoreArmed === b.file
+                    ? <><button type="button" className="btn sm danger" disabled={busy} onClick={() => void restore(b)}><span className="b"><span className="i">Yes, put it back</span></span></button><button type="button" className="chip" onClick={() => setRestoreArmed(null)}>Cancel</button></>
+                    : <button type="button" className="holo" style={{ fontSize: 11.5, fontWeight: 600 }} disabled={busy || !b.valid || !canInstall} title={!canInstall ? 'Connect the saber first' : undefined} onClick={() => setRestoreArmed(b.file)}>Put back</button>}
+                </div>
+              ))}
+            </div>
+            <div className="pb hint" style={{ paddingTop: 10 }}>Putting a backup back replaces the saber's firmware with exactly what it had at that moment. Presets and fonts on the SD card are not touched.</div>
+          </section>
       </div>
     </>
   );
