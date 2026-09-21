@@ -46,6 +46,22 @@ const BOOST = 1.2;
  */
 export type ControlMode = 'steer' | 'hold';
 
+/** How the room is lit and drawn. Every value is a plain number the page can put on a slider. */
+export interface SceneSettings {
+  /** Strength of the glow around the blade, and how far it spreads (0 to 1). */
+  glow: number; glowSpread: number;
+  /** How far past white the blade itself is drawn. Higher is hotter and paler; lower keeps more colour in the core. */
+  bladeBrightness: number;
+  /** How strongly the blade lights the floor and hilt. */
+  bladeLight: number;
+  /** The room's own lighting, a multiplier on its lamps. 0 leaves only the blade. */
+  roomLight: number;
+  /** Haze in the air: how quickly things fade with distance. */
+  haze: number;
+  grid: boolean;
+}
+export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true };
+
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
 
 export class DemoScene {
@@ -73,9 +89,9 @@ export class DemoScene {
   /** The hand follows the cursor and the blade follows the hand: see wield.ts. */
   private readonly wield = new Wield(HOME, WIELD);
   private readonly steer = new Steer(STEER_START.yaw, STEER_START.pitch, STEER);
-  private mode: ControlMode = 'steer';
-  private readonly hand = new THREE.Vector3(...STEER_HAND);
-  private readonly dir = new THREE.Vector3(...this.steer.dir);
+  private mode: ControlMode = 'hold';
+  private readonly hand = new THREE.Vector3(...HOME);
+  private readonly dir = new THREE.Vector3(...this.wield.dir);
   private lastDrag: { x: number; y: number } | null = null;
   /** Where the drag has put the hand, across and up; its depth comes from the arc of the arm. */
   private readonly handAt = { ...HOME_AT };
@@ -83,12 +99,16 @@ export class DemoScene {
   private swing = 0;
   private twistTarget = 0;
   private twist = 0;
-  private orbit = { yaw: VIEW.yaw, pitch: VIEW.pitch };
+  private orbit = { yaw: VIEW_HOLD.yaw, pitch: VIEW_HOLD.pitch };
   /** Where the camera looks, moved by panning. */
-  private readonly focus = new THREE.Vector3(...VIEW.focus);
+  private readonly focus = new THREE.Vector3(...VIEW_HOLD.focus);
   /** How far the camera stands from what it looks at; it eases toward the distance asked for. */
-  private distance = VIEW.distance;
-  private distanceTarget = VIEW.distance;
+  private distance = VIEW_HOLD.distance;
+  private distanceTarget = VIEW_HOLD.distance;
+  private settings: SceneSettings = { ...DEFAULT_SCENE };
+  private bladeMaterial!: THREE.MeshBasicMaterial;
+  private grid!: THREE.GridHelper;
+  private roomLamps: { light: THREE.Light; base: number }[] = [];
   onMotion: ((m: Motion) => void) | null = null;
   private lastReport = 0;
 
@@ -114,6 +134,7 @@ export class DemoScene {
     this.ledTexture.needsUpdate = true;
     // Brighter than white on purpose: the bloom pass turns the excess into the glow around the blade.
     const bladeMaterial = new THREE.MeshBasicMaterial({ map: this.ledTexture, color: new THREE.Color(BOOST, BOOST, BOOST), toneMapped: false });
+    this.bladeMaterial = bladeMaterial;
     const tube = new THREE.Mesh(new THREE.CylinderGeometry(BLADE_RADIUS, BLADE_RADIUS, BLADE_LENGTH, 20, 1, true), bladeMaterial);
     tube.position.y = HILT_LENGTH / 2 + BLADE_LENGTH / 2;
     const tip = new THREE.Mesh(new THREE.SphereGeometry(BLADE_RADIUS, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), this.tipMaterial);
@@ -160,11 +181,13 @@ export class DemoScene {
     floor.rotation.x = -Math.PI / 2;
     this.scene.add(floor);
     const grid = new THREE.GridHelper(28, 56, 0x27465a, 0x16222c);
+    this.grid = grid;
     grid.position.y = 0.002;
     (grid.material as THREE.Material).transparent = true;
     (grid.material as THREE.Material).opacity = 0.55;
     this.scene.add(grid);
-    this.scene.add(new THREE.AmbientLight(0x8fa4b8, 0.5));
+    const ambient = new THREE.AmbientLight(0x8fa4b8, 0.5);
+    this.scene.add(ambient);
     // A soft lamp by the viewer, so the hilt reads as metal even with the blade off.
     const fill = new THREE.PointLight(0xdfe9f2, 6, 8, 2);
     fill.position.set(0.6, 1.7, 2.0);
@@ -172,6 +195,7 @@ export class DemoScene {
     const key = new THREE.DirectionalLight(0xbfd4e8, 0.9);
     key.position.set(-2, 4, 3);
     this.scene.add(key);
+    this.roomLamps = [{ light: ambient, base: 0.5 }, { light: fill, base: 6 }, { light: key, base: 0.9 }];
   }
 
   /** A plain hilt, deliberately not round all the way: the control box is what makes a twist visible. */
@@ -209,6 +233,18 @@ export class DemoScene {
     this.glowComposer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+  }
+
+  // ---- how the room looks ----
+
+  applySettings(next: SceneSettings): void {
+    this.settings = { ...next };
+    this.bloom.strength = next.glow;
+    this.bloom.radius = next.glowSpread;
+    this.bladeMaterial.color.setRGB(next.bladeBrightness, next.bladeBrightness, next.bladeBrightness);
+    for (const { light, base } of this.roomLamps) light.intensity = base * next.roomLight;
+    (this.scene.fog as THREE.FogExp2).density = next.haze;
+    this.grid.visible = next.grid;
   }
 
   // ---- what the page asks of the saber ----
@@ -385,12 +421,13 @@ export class DemoScene {
     }
     this.ledTexture.needsUpdate = true;
     const last = (n - 1) * 4;
-    this.tipMaterial.color.setRGB((out[last] / 255) * BOOST, (out[last + 1] / 255) * BOOST, (out[last + 2] / 255) * BOOST, THREE.SRGBColorSpace);
+    const boost = this.settings.bladeBrightness;
+    this.tipMaterial.color.setRGB((out[last] / 255) * boost, (out[last + 1] / 255) * boost, (out[last + 2] / 255) * boost, THREE.SRGBColorSpace);
     const per = n / 3;
     this.lights.forEach((lamp, i) => {
       const [r, g, b] = sums[i].map((v) => v / per);
       const level = Math.max(r, g, b);
-      lamp.intensity = level * 7;
+      lamp.intensity = level * 7 * this.settings.bladeLight;
       if (level > 0.001) lamp.color.setRGB(r / level, g / level, b / level);
     });
   }

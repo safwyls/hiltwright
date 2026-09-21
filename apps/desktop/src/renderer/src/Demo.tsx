@@ -3,10 +3,22 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupType } from '@hiltwright/core';
-import { DemoScene, type ControlMode, type Motion } from './demoScene';
+import { DEFAULT_SCENE, DemoScene, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
 
 const LOOKS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
+const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid'>; label: string; min: number; max: number; step: number; hint: string }[] = [
+  { key: 'glow', label: 'Glow', min: 0, max: 3, step: 0.05, hint: 'Strength of the glow around the blade' },
+  { key: 'glowSpread', label: 'Glow spread', min: 0, max: 1, step: 0.02, hint: 'How far the glow reaches' },
+  { key: 'bladeBrightness', label: 'Blade', min: 0.7, max: 2.5, step: 0.05, hint: 'Higher is hotter and paler; lower keeps more colour in the core' },
+  { key: 'bladeLight', label: 'Blade light', min: 0, max: 3, step: 0.05, hint: 'How strongly the blade lights the floor and the hilt' },
+  { key: 'roomLight', label: 'Room light', min: 0, max: 2.5, step: 0.05, hint: 'The room\u2019s own lamps. At zero only the blade lights the scene' },
+  { key: 'haze', label: 'Haze', min: 0, max: 0.3, step: 0.005, hint: 'How quickly the room fades with distance' },
+];
+function loadScene(): SceneSettings {
+  try { const raw = localStorage.getItem('hiltwright.demo.scene'); return raw ? { ...DEFAULT_SCENE, ...(JSON.parse(raw) as Partial<SceneSettings>) } : { ...DEFAULT_SCENE }; } catch { return { ...DEFAULT_SCENE }; }
+}
+
 const HOLDS: { type: LockupType; label: string; key: string }[] = [{ type: 'normal', label: 'Lockup', key: 'l' }, { type: 'drag', label: 'Drag', key: 'd' }, { type: 'lb', label: 'Lightning', key: 'n' }];
 
 export function Demo({ initialLook }: { initialLook?: string | null }) {
@@ -17,7 +29,11 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
   const [hold, setHold] = useState<LockupType | null>(null);
   const [motion, setMotion] = useState<Motion>({ swing: 0, tilt: 0, twist: 0, on: false });
   const [failed, setFailed] = useState<string | null>(null);
-  const [control, setControl] = useState<ControlMode>(() => { try { return localStorage.getItem('hiltwright.demo.control') === 'hold' ? 'hold' : 'steer'; } catch { return 'steer'; } });
+  const [control, setControl] = useState<ControlMode>(() => { try { return localStorage.getItem('hiltwright.demo.control') === 'steer' ? 'steer' : 'hold'; } catch { return 'hold'; } });
+  const [look3d, setLook3d] = useState<SceneSettings>(loadScene);
+  const [sceneOpen, setSceneOpen] = useState(() => { try { return localStorage.getItem('hiltwright.demo.sceneOpen') !== '0'; } catch { return true; } });
+  useEffect(() => { scene.current?.applySettings(look3d); try { localStorage.setItem('hiltwright.demo.scene', JSON.stringify(look3d)); } catch { /* private mode */ } }, [look3d]);
+  useEffect(() => { try { localStorage.setItem('hiltwright.demo.sceneOpen', sceneOpen ? '1' : '0'); } catch { /* private mode */ } }, [sceneOpen]);
   useEffect(() => { scene.current?.setControlMode(control); try { localStorage.setItem('hiltwright.demo.control', control); } catch { /* private mode */ } }, [control]);
   const look = LOOKS.find((l) => l.id === lookId) ?? LOOKS[0];
   const args = useMemo(() => new Map(Object.entries(tried).map(([n, v]) => [Number(n), hexToColorWord(v)])), [tried]);
@@ -32,6 +48,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
     try { room = new DemoScene(el, lookId); } catch (err) { setFailed(String(err)); return; }
     scene.current = room;
     room.setControlMode(control);
+    room.applySettings(look3d);
     room.onMotion = setMotion;
     const ro = new ResizeObserver(() => room.resize());
     ro.observe(el);
@@ -123,8 +140,8 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
           <div className="col" style={{ gap: 4 }}>
             <span className="label">Mouse control</span>
             <div className="seg" role="radiogroup" aria-label="Mouse control">
-              <button type="button" role="radio" aria-checked={control === 'steer'} className={control === 'steer' ? 'on' : ''} onClick={() => setControl('steer')}>Tilt and swing</button>
               <button type="button" role="radio" aria-checked={control === 'hold'} className={control === 'hold' ? 'on' : ''} onClick={() => setControl('hold')}>Hold the hilt</button>
+              <button type="button" role="radio" aria-checked={control === 'steer'} className={control === 'steer' ? 'on' : ''} onClick={() => setControl('steer')}>Tilt and swing</button>
             </div>
           </div>
           <div className="row wrap" style={{ gap: 6 }}>
@@ -149,6 +166,27 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
           <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11.5 }}>{k}</span><span>{v}</span></div>
         ))}
       </div>
+      <section className="panel" style={{ position: 'absolute', right: 20, bottom: 18, width: 280, background: 'rgba(12,17,23,.88)' }} aria-label="Scene">
+        <div className="row between" style={{ padding: '8px 12px' }}>
+          <button type="button" className="row" style={{ gap: 8 }} aria-expanded={sceneOpen} onClick={() => setSceneOpen((o) => !o)}><Icon name={sceneOpen ? 'down' : 'up'} /><b style={{ fontWeight: 600, fontSize: 13 }}>Scene</b></button>
+          {sceneOpen && <button type="button" className="holo small" onClick={() => setLook3d({ ...DEFAULT_SCENE })}>Reset</button>}
+        </div>
+        {sceneOpen && (
+          <div className="col" style={{ gap: 7, padding: '2px 12px 12px', fontSize: 12 }}>
+            {SLIDERS.map((sl) => (
+              <label key={sl.key} className="row" style={{ gap: 8 }} title={sl.hint}>
+                <span className="dim" style={{ width: 76, flex: 'none' }}>{sl.label}</span>
+                <input type="range" min={sl.min} max={sl.max} step={sl.step} value={look3d[sl.key]} aria-label={sl.hint} style={{ flex: 1, minWidth: 0 }} onChange={(e) => setLook3d((v) => ({ ...v, [sl.key]: Number(e.target.value) }))} />
+                <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{look3d[sl.key].toFixed(look3d[sl.key] < 1 && sl.max <= 1 ? 2 : 1)}</span>
+              </label>
+            ))}
+            <label className="row" style={{ gap: 10, paddingTop: 2 }}>
+              <button type="button" className={`tog ${look3d.grid ? 'on' : ''}`} role="switch" aria-checked={look3d.grid} aria-label="Floor grid" onClick={() => setLook3d((v) => ({ ...v, grid: !v.grid }))}><i /></button>
+              <span className="dim">Floor grid</span>
+            </label>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
