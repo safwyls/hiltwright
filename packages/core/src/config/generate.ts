@@ -198,7 +198,6 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     '',
   ].join('\n');
   if (shared.length) warnings.push(`Power ${shared.length > 1 ? 'pins' : 'pin'} ${shared.join(', ')} shared between blades: SHARED_POWER_PINS added.`);
-  if (m.prop === 'fett263') warnings.push('Fett263 button controls with the edit menu need the Fett263 Voice Pack version 2 in the common folder on the SD card (voicepack.ini plus its menu sounds). Without it the saber announces a voice pack error on every preset change.');
   manifest.hash = hash;
   return { text: header + body, hash, sharedPower: shared, warnings, manifest };
 }

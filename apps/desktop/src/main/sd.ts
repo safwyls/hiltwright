@@ -2,9 +2,9 @@
 // The card is any mounted volume with the ProffieOS layout (font folders with hum sounds, a tracks folder, presets.ini).
 
 import { execFile } from 'node:child_process';
-import { cp, open, readdir, stat } from 'node:fs/promises';
+import { cp, open, readFile, readdir, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import { checkFont, classifySound, parseWavHeader, type FontFile, type FontReport } from '@hiltwright/core';
+import { checkFont, classifySound, hasMenuSounds, parseVoicePackIni, parseWavHeader, type FontFile, type FontReport, type VoicePackStatus } from '@hiltwright/core';
 
 export interface CardInfo {
   root: string;
@@ -111,6 +111,16 @@ export async function listFonts(root: string): Promise<FontEntry[]> {
     out.push(await checkFontDir(p));
   }
   return out;
+}
+
+/** The Fett263 voice pack in the card's common folder: voicepack.ini and the menu number sounds. */
+export async function readVoicePack(root: string): Promise<VoicePackStatus> {
+  const common = join(root, 'common');
+  let text: string | null = null;
+  try { text = await readFile(join(common, 'voicepack.ini'), 'utf8'); } catch { /* no file */ }
+  let names: string[] = [];
+  try { names = await readdir(common); } catch { /* no common folder */ }
+  return { ...parseVoicePackIni(text), menuSounds: hasMenuSounds(names) };
 }
 
 export async function listTracks(root: string): Promise<{ name: string; size: number }[]> {

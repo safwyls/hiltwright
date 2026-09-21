@@ -2,7 +2,7 @@
 // Wiring form (the one thing old firmware cannot tell us) → generated config → build → backup → bootloader → write → verify.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
+import { voicePackFromSerial, voicePackVerdict, type ModelBlade, type Prop, type SaberConfigModel, type VoicePackStatus } from '@hiltwright/core';
 import { draftModel, guessBlades, queuedLookIds } from './saberModel';
 import { HardwareEditor } from './Hardware';
 import type { BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
@@ -37,6 +37,22 @@ export function Build({ board }: { board: Board }) {
   const [step, setStep] = useState<Step>('idle');
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [armed, setArmed] = useState(false);
+  // The Fett263 prop needs a voice pack on the card. The saber can tell us over serial: no card reader needed.
+  const [voice, setVoice] = useState<VoicePackStatus | null>(null);
+  useEffect(() => {
+    if (board.status !== 'connected') return;
+    let live = true;
+    void (async () => {
+      try {
+        const cat = await board.send('cat common/voicepack.ini', { idleMs: 700 });
+        const dir = await board.send('dir common', { idleMs: 900, until: (l) => /^(Done listing files\.|No such directory\.)/.test(l) });
+        const rejected = [...cat.lines, ...dir.lines].some((l) => /^Whut\? :/.test(l));
+        if (live) setVoice(rejected ? null : voicePackFromSerial(cat.lines, dir.lines));
+      } catch { if (live) setVoice(null); }
+    })();
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board.status, board.saber?.id]);
   // Poll USB while disconnected so an install can proceed from a board that is already in its bootloader.
   const [inBootloader, setInBootloader] = useState(false);
   useEffect(() => {
@@ -237,6 +253,7 @@ export function Build({ board }: { board: Board }) {
               I checked every data pin and power pin against the installer's wiring
             </label>
             {preview?.errors.length ? <div className="note red"><Icon name="x" /><span>{preview.errors.join(' ')}</span></div> : null}
+            {(() => { const v = voicePackVerdict(prop, voice); return v ? <div className={`note ${v.tone}`}><Icon name={v.ok ? 'check' : 'warn'} /><span>{v.text}</span></div> : null; })()}
             {preview?.warnings.map((w) => <div key={w} className="note"><Icon name="info" /><span>{w}</span></div>)}
           </div>
         </section>

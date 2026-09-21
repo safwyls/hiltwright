@@ -8,7 +8,7 @@ import { LooksStore, looksPath } from './looksStore';
 import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
 import { proffieSerials } from './usb';
-import { checkFontDir, copyFont, listFonts, listTracks, locateCards } from './sd';
+import { checkFontDir, copyFont, listFonts, listTracks, locateCards, readVoicePack } from './sd';
 import { defaultToolchainRoot, installToolchain, toolchainStatus } from './toolchain';
 import { buildFirmware } from './build';
 import { installBootloaderDriver } from './driver';
@@ -110,6 +110,7 @@ export function registerIpc(): void {
   ipcMain.handle('sd:locate', async () => { const cards = await locateCards(); knownRoots = new Set(cards.map((c) => c.root)); return cards; });
   ipcMain.handle('sd:listFonts', (_e, r: unknown) => listFonts(root(r)));
   ipcMain.handle('sd:listTracks', (_e, r: unknown) => listTracks(root(r)));
+  ipcMain.handle('sd:voicePack', (_e, r: unknown) => readVoicePack(root(r)));
   let pickedFonts = new Set<string>();
   ipcMain.handle('sd:pickFont', async () => {
     const res = await dialog.showOpenDialog({ title: 'Choose a sound font folder', properties: ['openDirectory'] });

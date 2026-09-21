@@ -2,6 +2,7 @@
 // lists tracks, and copies a font folder from this computer onto the card after checking it.
 
 import { useCallback, useEffect, useState } from 'react';
+import type { VoicePackStatus } from '@hiltwright/core';
 import type { CardInfo, FontEntry } from '../../shared/api';
 import { Icon } from './Icon';
 
@@ -21,6 +22,7 @@ export function Fonts() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: '' | 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [voice, setVoice] = useState<VoicePackStatus | null>(null);
 
   const scan = useCallback(async () => {
     setBusy(true);
@@ -30,13 +32,15 @@ export function Fonts() {
       const best = found.find((c) => c.proffie) ?? null;
       setCard(best);
       if (best) {
-        const [f, t] = await Promise.all([api().sd.listFonts(best.root), api().sd.listTracks(best.root)]);
+        const [f, t, vp] = await Promise.all([api().sd.listFonts(best.root), api().sd.listTracks(best.root), api().sd.voicePack(best.root)]);
+        setVoice(vp);
         setFonts(f);
         setTracks(t);
         console.log(`[sd] card ${best.root} fonts=${f.length} tracks=${t.length} issues=${f.reduce((a, x) => a + x.report.issues.length, 0)}`);
       } else {
         setFonts([]);
         setTracks([]);
+        setVoice(null);
         console.log(`[sd] no ProffieOS card among ${found.length} removable volume(s)`);
       }
     } finally { setBusy(false); }
@@ -82,7 +86,7 @@ export function Fonts() {
           <div className="col grow" style={{ gap: 2 }}>
             <h3>{card ? `ProffieOS card at ${card.root}${card.label ? ` (${card.label})` : ''}` : busy ? 'Looking for a card…' : 'No ProffieOS card found'}</h3>
             <div className="dim small">
-              {card ? `${mb(card.freeBytes)} free of ${mb(card.totalBytes)} · ${fonts.length} fonts · ${tracks.length} tracks · presets.ini ${card.hasPresetsIni ? 'present' : 'not present'}`
+              {card ? `${mb(card.freeBytes)} free of ${mb(card.totalBytes)} · ${fonts.length} fonts · ${tracks.length} tracks · presets.ini ${card.hasPresetsIni ? 'present' : 'not present'} · voice pack ${voice?.ini || voice?.menuSounds ? `version ${voice.version ?? 1}${voice.menuSounds ? '' : ', menu sounds missing'}` : 'not found'}`
                 : cards.length ? `${cards.length} removable volume${cards.length > 1 ? 's' : ''} seen, none with fonts on it. Put the saber's card in a reader.`
                 : 'Put the saber\'s SD card in a card reader. This saber\'s firmware does not expose the card over USB.'}
             </div>

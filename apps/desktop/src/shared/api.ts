@@ -1,7 +1,7 @@
 // The typed contract between renderer and main, exposed by the preload script as window.hiltwright.
 // Only data crosses this boundary: no handles, no callbacks except the event subscriptions listed here.
 
-import type { FirmwareManifest, FontReport, LookDef, PresetRecord, SaberConfigModel } from '@hiltwright/core';
+import type { FirmwareManifest, FontReport, LookDef, PresetRecord, SaberConfigModel, VoicePackStatus } from '@hiltwright/core';
 
 /** What the app can learn about a board without touching its SD card. */
 export interface SaberIdentity {
@@ -136,6 +136,8 @@ export interface HiltwrightApi {
     locate(): Promise<CardInfo[]>;
     listFonts(root: string): Promise<FontEntry[]>;
     listTracks(root: string): Promise<{ name: string; size: number }[]>;
+    /** The Fett263 voice pack in the card's common folder. */
+    voicePack(root: string): Promise<VoicePackStatus>;
     /** Ask the user for a font folder on this computer and check it without copying. */
     pickFont(): Promise<FontEntry | null>;
     copyFont(src: string, root: string, replace: boolean): Promise<FontEntry>;
