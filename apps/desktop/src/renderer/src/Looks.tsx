@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { STARTER_LOOKS, analyzeStyleCode, argInfo, formatBuiltin, formatStyleArgs, hexToColorWord, lookSlots, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
-import { BladePreview } from './BladePreview';
+import { BladePreview, canSimulate } from './BladePreview';
 import { draftModel, infoFromRecord, queuedLookIds, withLookInSlot } from './saberModel';
 
 const api = () => window.hiltwright;
@@ -16,7 +16,7 @@ const usesMotion = (l: LookDef) => /BladeAngle|TwistAngle|SwingSpeed|SwingAccele
 
 type LookState = 'compiled' | 'queued' | 'new';
 
-export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: () => void; onBuild: () => void }) {
+export function Looks({ board, onPresets, onBuild, onDemo }: { board: Board; onPresets: () => void; onBuild: () => void; onDemo: (lookId: string) => void }) {
   const { status } = board;
   // Looks can be chosen for a remembered saber with nothing plugged in; only the install needs the board.
   const live = status === 'connected' && !!board.info && !!board.saber;
@@ -164,7 +164,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
         <section className="panel fill" aria-label="Selected look">
           <div className="ph">
             <div className="col" style={{ gap: 2, minWidth: 0 }}><h2 className="ellip">{sel.name}</h2><span className="hint ellip">{sel.by}, for {sel.roles.map((r) => ROLE_LABEL[r]).join(' or ')}</span></div>
-            {stateChip(selState)}
+            <div className="row" style={{ gap: 8 }}>{canSimulate(sel.id) && !isDot(sel) && <button type="button" className="chip" title="Swing it in the demo room" onClick={() => onDemo(sel.id)}><Icon name="play" />Demo room</button>}{stateChip(selState)}</div>
           </div>
           <div className="pb col scroll" style={{ gap: 14, overflowX: 'hidden' }}>
             <BladePreview key={sel.id} lookId={sel.id} args={triedArgs} fallbackColor={tried[1] ?? sel.preview} dot={isDot(sel)} hilt={!isDot(sel)} controls />

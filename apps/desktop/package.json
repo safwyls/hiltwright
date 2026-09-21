@@ -17,12 +17,14 @@
     "@hiltwright/core": "*",
     "pixi.js": "^8.21.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "three": "^0.170.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.170.0",
     "@types/w3c-web-serial": "^1.0.8",
     "@vitejs/plugin-react": "^4.5.0",
     "electron": "37.10.3",

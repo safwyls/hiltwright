@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { lookAtSlot, parseBuiltin } from '@hiltwright/core';
 import { useBoard } from './board';
 import { Icon, Mark } from './Icon';
@@ -11,9 +11,12 @@ import { SaberControls } from './Controls';
 import { infoFromRecord, queuedLookIds } from './saberModel';
 import { usePendingLookColours } from './pendingColours';
 
-type Page = 'armory' | 'presets' | 'looks' | 'fonts' | 'build' | 'diag';
+// three.js is only needed in the demo room, so it loads when that page is first opened.
+const Demo = lazy(() => import('./Demo').then((m) => ({ default: m.Demo })));
+
+type Page = 'armory' | 'presets' | 'looks' | 'demo' | 'fonts' | 'build' | 'diag';
 const PAGES: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
-  { id: 'armory', title: 'Armory', icon: 'armory' }, { id: 'presets', title: 'Presets', icon: 'presets' }, { id: 'looks', title: 'Looks', icon: 'looks' },
+  { id: 'armory', title: 'Armory', icon: 'armory' }, { id: 'presets', title: 'Presets', icon: 'presets' }, { id: 'looks', title: 'Looks', icon: 'looks' }, { id: 'demo', title: 'Demo room', icon: 'play' },
   { id: 'fonts', title: 'Fonts & SD', icon: 'fonts' }, { id: 'build', title: 'Build & Install', icon: 'build' }, { id: 'diag', title: 'Diagnostics', icon: 'diag' },
 ];
 
@@ -26,12 +29,13 @@ export function App() {
   const lib0 = real.library[0];
   const board: typeof real = fake && import.meta.env.DEV && lib0 ? { ...real, status: 'connected', portName: 'FAKE', saber: lib0, info: { ...infoFromRecord(lib0), currentPreset: 0, battery: 3.91, volume: 1800 } } : real;
   const [page, setPage] = useState<Page>('armory');
+  const [demoLook, setDemoLook] = useState<string | null>(null);
   const { status, info } = board;
   const connected = status === 'connected';
   const configName = info?.version?.config?.replace(/^config\//, '').replace(/\.h$/, '') ?? null;
   // Dev aid: lets main switch pages for screenshots.
   useEffect(() => { (window as unknown as { hiltwrightGoto?: (p: string) => void }).hiltwrightGoto = (p) => { setFake(p.startsWith('fake:')); setPage(p.replace('fake:', '') as Page); }; }, []);
-  // Ctrl+1..6 switch pages.
+  // Ctrl+1..7 switch pages.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (!e.ctrlKey || e.altKey || e.shiftKey) return; const p = PAGES[Number(e.key) - 1]; if (p) { e.preventDefault(); setPage(p.id); } };
     window.addEventListener('keydown', onKey);
@@ -74,7 +78,7 @@ export function App() {
       </header>
 
       <main className="main">
-        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} go={setPage} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} /> : page === 'fonts' ? <Fonts board={board} /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}</ErrorBoundary>
+        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page === 'demo' ? 'Demo room' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} go={setPage} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} /> : page === 'demo' ? <Suspense fallback={<span className="hint">Opening the demo room…</span>}><Demo initialLook={demoLook} /></Suspense> : page === 'fonts' ? <Fonts board={board} /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}</ErrorBoundary>
       </main>
 
     </div>
