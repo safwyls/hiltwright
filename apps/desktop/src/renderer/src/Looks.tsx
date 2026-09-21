@@ -3,7 +3,7 @@
 // "queued" when it is in the build model but not yet installed, and "new" otherwise.
 
 import { useEffect, useMemo, useState } from 'react';
-import { STARTER_LOOKS, analyzeStyleCode, argInfo, lookSlots, type BladeRole, type LookDef } from '@hiltwright/core';
+import { STARTER_LOOKS, analyzeStyleCode, argInfo, hexToColorWord, lookSlots, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { BladePreview } from './BladePreview';
@@ -32,6 +32,9 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
   const [targetPreset, setTargetPreset] = useState<number>(0);
   const [targetBlade, setTargetBlade] = useState<number>(1);
   const [note, setNote] = useState<string | null>(null);
+  // Colours and timings tried on the preview only. Nothing here reaches the saber: saved colours belong to a preset.
+  const [tried, setTried] = useState<Record<number, string>>({});
+  useEffect(() => { setTried({}); }, [selectedId]);
 
   useEffect(() => { void api().looks.list().then(setPasted); }, []);
   useEffect(() => {
@@ -82,6 +85,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
     setNote(`"${sel.name}" will be compiled into preset ${targetPreset + 1} (${info?.presets[targetPreset]?.name.replace('\n', ' ') ?? ''}), blade ${fittingBlade.n}. Build & Install puts it on the saber.`);
   };
 
+  const triedArgs = useMemo(() => new Map(Object.entries(tried).map(([n, v]) => [Number(n), /^#/.test(v) ? hexToColorWord(v) : v])), [tried]);
   const stateChip = (st: LookState) => (st === 'compiled' ? <span className="chip ok"><Icon name="check" />On the saber</span> : st === 'queued' ? <span className="chip warn"><Icon name="clock" />Queued</span> : <span className="chip">Needs a build</span>);
 
   return (
@@ -137,7 +141,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
             {stateChip(selState)}
           </div>
           <div className="pb col scroll" style={{ gap: 14 }}>
-            <BladePreview key={sel.id} lookId={sel.id} fallbackColor={sel.preview} dot={isDot(sel)} hilt={!isDot(sel)} controls />
+            <BladePreview key={sel.id} lookId={sel.id} args={triedArgs} fallbackColor={tried[1] ?? sel.preview} dot={isDot(sel)} hilt={!isDot(sel)} controls />
 
             <div className="col" style={{ gap: 8, padding: 12, border: '1px solid var(--line2)', background: '#0d131a' }}>
               {!connected && <span className="hint">Connect a saber once and Hiltwright remembers it. After that, looks can be added with it unplugged.</span>}
@@ -167,19 +171,30 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
             <p className="dim" style={{ fontSize: 13 }}>{sel.description}</p>
 
             {sel.args.length > 0 && (
-              <div className="col" style={{ gap: 6 }}>
-                <span className="small" style={{ fontWeight: 600 }}>Change live, without a rebuild</span>
-                <div className="grid2" style={{ gap: '2px 14px' }}>
+              <div className="col" style={{ gap: 8 }}>
+                <div className="row between"><span className="small" style={{ fontWeight: 600 }}>Try its colours</span>{Object.keys(tried).length > 0 && <button type="button" className="holo small" onClick={() => setTried({})}>Back to defaults</button>}</div>
+                <div className="grid2" style={{ gap: 6 }}>
                   {sel.args.map((n) => {
                     const a = argInfo(n);
+                    if (a.kind === 'color') {
+                      const shown = tried[n] ?? sel.defaults?.[n] ?? (n === 1 ? sel.preview : '#ffffff');
+                      return (
+                        <label key={n} className={`swatch ${tried[n] ? '' : 'linked'}`} style={{ height: 32 }} title={`Style argument ${n}`}>
+                          <span className="sq" style={{ width: 14, height: 14, background: shown, boxShadow: `0 0 8px ${shown}` }} />
+                          <span className="small ellip">{a.name}</span>
+                          <input type="color" value={shown} aria-label={`Try a ${a.name.toLowerCase()}`} onChange={(e) => setTried((t) => ({ ...t, [n]: e.target.value }))} />
+                        </label>
+                      );
+                    }
                     return (
-                      <div key={n} className="row" style={{ minHeight: 26, gap: 8 }} title={`Style argument ${n}`}>
-                        <span style={{ width: 11, height: 11, flex: 'none', background: a.kind === 'color' ? (sel.defaults?.[n] ?? (n === 1 ? sel.preview : '#fff')) : 'transparent', border: a.kind === 'color' ? 'none' : '1px solid var(--line2)' }} />
-                        <span className="small dim ellip">{a.name}</span>
-                      </div>
+                      <label key={n} className="row" style={{ gap: 8, height: 32 }} title={`Style argument ${n}`}>
+                        <span className="small dim ellip grow">{a.name}</span>
+                        <span className="input" style={{ width: 84, height: 28 }}><input type="number" min={0} step={50} value={tried[n] ?? ''} placeholder="default" aria-label={`Try a ${a.name.toLowerCase()}`} onChange={(e) => setTried((t) => { const { [n]: _drop, ...rest } = t; return e.target.value === '' ? rest : { ...rest, [n]: String(Math.max(0, Math.round(Number(e.target.value)))) }; })} /></span>
+                      </label>
                     );
                   })}
                 </div>
+                <span className="hint">This only changes the preview. Colours are saved per preset: on the <button type="button" className="holo" onClick={onPresets}>Presets page</button>, pick a preset and use the swatches under each blade. They write to the saber as you pick, with no rebuild{selState === 'compiled' ? '' : ', once this look has been installed'}.</span>
               </div>
             )}
             {sel.args.length === 0 && <span className="hint">Nothing in this look can be changed live.</span>}

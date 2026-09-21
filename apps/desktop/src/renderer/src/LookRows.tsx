@@ -70,7 +70,7 @@ export function LookRows({ board, current, onLooks }: { board: Board; current: P
 
   return (
     <div className="col" style={{ gap: 6 }}>
-      <div className="row between"><h2 style={{ fontSize: 10.5, color: 'var(--dim)' }}>Look per blade</h2><span className="hint">{manifest ? 'Colours are written to the saber as you pick them.' : 'Any look compiled into this firmware.'}</span></div>
+      <div className="row between"><h2 style={{ fontSize: 10.5, color: 'var(--dim)' }}>Look per blade</h2><span className="hint">{manifest ? 'Click a swatch to change a colour. It is written to the saber as you pick.' : 'Colours can be changed here once Hiltwright firmware is installed (Build & Install).'}</span></div>
       {current.styles.map((s, k) => {
         const b = parseBuiltin(s);
         const value = b ? formatBuiltin({ ...b, args: null }) : s;
