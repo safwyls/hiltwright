@@ -140,7 +140,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
             <div className="col" style={{ gap: 2, minWidth: 0 }}><h2 className="ellip">{sel.name}</h2><span className="hint ellip">{sel.by}, for {sel.roles.map((r) => ROLE_LABEL[r]).join(' or ')}</span></div>
             {stateChip(selState)}
           </div>
-          <div className="pb col scroll" style={{ gap: 14 }}>
+          <div className="pb col scroll" style={{ gap: 14, overflowX: 'hidden' }}>
             <BladePreview key={sel.id} lookId={sel.id} args={triedArgs} fallbackColor={tried[1] ?? sel.preview} dot={isDot(sel)} hilt={!isDot(sel)} controls />
 
             <div className="col" style={{ gap: 8, padding: 12, border: '1px solid var(--line2)', background: '#0d131a' }}>
@@ -189,7 +189,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
                     return (
                       <label key={n} className="row" style={{ gap: 8, height: 32 }} title={`Style argument ${n}`}>
                         <span className="small dim ellip grow">{a.name}</span>
-                        <span className="input" style={{ width: 84, height: 28 }}><input type="number" min={0} step={50} value={tried[n] ?? ''} placeholder="default" aria-label={`Try a ${a.name.toLowerCase()}`} onChange={(e) => setTried((t) => { const { [n]: _drop, ...rest } = t; return e.target.value === '' ? rest : { ...rest, [n]: String(Math.max(0, Math.round(Number(e.target.value)))) }; })} /></span>
+                        <span className="input" style={{ width: 104, height: 28, flex: 'none' }}><input type="number" min={0} step={50} value={tried[n] ?? ''} placeholder="default" aria-label={`Try a ${a.name.toLowerCase()}`} onChange={(e) => setTried((t) => { const { [n]: _drop, ...rest } = t; return e.target.value === '' ? rest : { ...rest, [n]: String(Math.max(0, Math.round(Number(e.target.value)))) }; })} /></span>
                       </label>
                     );
                   })}

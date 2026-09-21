@@ -31,6 +31,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
   const [on, setOn] = useState(true);
   const [lockup, setLockup] = useState<LockupType | null>(null);
   const [swing, setSwing] = useState(0);
+  const [tilt, setTilt] = useState(0);
   const [broken, setBroken] = useState(bladeRenderer.unavailable);
   const ok = canSimulate(lookId) && !broken;
   const n = dot ? 1 : leds;
@@ -43,7 +44,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
     const sim = new BladeSim(lookId, n, 1 + Math.floor(Math.random() * 1e6));
     sim.setOn(true);
     simRef.current = sim;
-    setOn(true); setLockup(null); setSwing(0);
+    setOn(true); setLockup(null); setSwing(0); setTilt(0);
     const el = canvas.current; const box = wrap.current;
     const ctx = el?.getContext('2d') ?? null;
     if (!el || !box || !ctx) return;
@@ -69,6 +70,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
   useEffect(() => { simRef.current?.setOn(on); }, [on]);
   useEffect(() => { simRef.current?.setLockup(lockup, 0.55); }, [lockup]);
   useEffect(() => { simRef.current?.setSwing(swing); }, [swing]);
+  useEffect(() => { simRef.current?.setAngle(tilt); }, [tilt]);
 
   if (!ok) {
     return (
@@ -114,11 +116,18 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
             {!dot && hold('lb', 'Lightning')}
           </div>
           {!dot && (
-            <label className="row" style={{ gap: 10, fontSize: 12 }}>
-              <span className="dim" style={{ width: 72, flex: 'none' }}>Swing speed</span>
-              <input type="range" min={0} max={600} step={10} value={swing} onChange={(e) => setSwing(Number(e.target.value))} style={{ flex: 1 }} aria-label="Swing speed" />
-              <span className="mono mute" style={{ width: 52, textAlign: 'right' }}>{swing}°/s</span>
-            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '4px 14px', fontSize: 12 }}>
+              <label className="row" style={{ gap: 8 }}>
+                <span className="dim" style={{ flex: 'none' }}>Swing</span>
+                <input type="range" min={0} max={600} step={10} value={swing} onChange={(e) => setSwing(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} aria-label="Swing speed" />
+                <span className="mono mute" style={{ width: 44, textAlign: 'right' }}>{swing}°/s</span>
+              </label>
+              <label className="row" style={{ gap: 8 }}>
+                <span className="dim" style={{ flex: 'none' }}>Tilt</span>
+                <input type="range" min={-90} max={90} step={5} value={tilt} onChange={(e) => setTilt(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} aria-label="Blade tilt, from pointing down to pointing up" />
+                <span className="mono mute" style={{ width: 44, textAlign: 'right' }}>{tilt > 0 ? 'up ' : tilt < 0 ? 'dn ' : ''}{Math.abs(tilt)}°</span>
+              </label>
+            </div>
           )}
           <span className="hint">Simulated from the same maths the saber runs, LED by LED. {dot ? '' : 'Click the blade to land a blast there. '}Sound and motion are stand-ins, so hum-driven flicker is typical rather than exact.</span>
         </div>

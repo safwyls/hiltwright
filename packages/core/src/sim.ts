@@ -20,6 +20,7 @@ type Ctx = {
   swing: number; // degrees per second
   sound: number; // 0..32768, NoisySoundLevel-like
   battery: number; // 0..32768
+  angle: number; // 0 pointing straight down, 16384 level, 32768 straight up
 };
 export type EffectType = 'clash' | 'blast' | 'stab';
 export type LockupType = 'normal' | 'drag' | 'lb';
@@ -111,6 +112,21 @@ function slowNoise(speed: number): IntFn {
     get: () => value,
   };
 }
+
+/** Saw<Int<rpm>>: 0..32768 ramp, then back to 0. */
+function saw(rpm: number): IntFn {
+  let pos = 0; let last = -1;
+  return { run(c) { const d = last < 0 ? 0 : c.now - last; last = c.now; pos = (pos + (d / 60000) * rpm) % 1; }, get: () => Math.trunc(pos * 32768) };
+}
+
+/** HumpFlickerF<width>: 0 at a spot that moves to a random LED every frame, rising to 32768 `width` LEDs away. */
+function humpFlicker(width: number): IntFn {
+  let pos = 0;
+  return { run(c) { pos = c.rnd(c.n); }, get: (led) => clamp(Math.trunc((Math.abs(led - pos) * 32768) / width), 0, 32768) };
+}
+
+/** BladeAngle<>: where the blade points, 0 down to 32768 up. */
+const bladeAngle = (): IntFn => { let v = 16384; return { run(c) { v = c.angle; }, get: () => v }; };
 
 /** RandomF: one random value per frame, the same for every LED. */
 const randomF = (): IntFn => { let v = 0; return { run(c) { v = c.rnd(32768); }, get: () => v }; };
@@ -334,17 +350,36 @@ function simpleClashL(col: ColorFn, ms = 40): LayerFn {
   };
 }
 
-type Tr = { kind: 'instant' } | { kind: 'fade' | 'wipe' | 'wipein'; ms: number | ((c: Ctx) => number) };
+type Spark = { color: ColorFn; size: number; center: number };
+type Tr = { kind: 'instant' } | { kind: 'fade' | 'wipe' | 'wipein' | 'center' | 'centerin'; ms: number | ((c: Ctx) => number); spark?: Spark };
 /** Fraction of B showing on `led`, `t` ms into transition `tr` (0..32768), or null when it has finished. */
 function trMix(tr: Tr, t: number, led: number, c: Ctx): number | null {
   if (tr.kind === 'instant') return null;
   const ms = typeof tr.ms === 'function' ? tr.ms(c) : tr.ms;
   if (t >= ms) return null;
   if (tr.kind === 'fade') return Math.trunc((t / ms) * 32768);
+  if (tr.kind === 'center' || tr.kind === 'centerin') {
+    // TrCenterWipeX opens a range from the middle; TrCenterWipeInX closes one from both ends.
+    const p = t / ms; const end = 256 * c.n; const mid = c.n * 128;
+    const lo0 = led * 256; const hi0 = lo0 + 256;
+    const [from, to] = tr.kind === 'center' ? [mid - mid * p, mid + (end - mid) * p] : [mid * p, end - (end - mid) * p];
+    const overlap = clamp(Math.min(hi0, to) - Math.max(lo0, from), 0, 256);
+    return (tr.kind === 'center' ? overlap : 256 - overlap) * 128;
+  }
   const fade = (t / ms) * 256 * c.n;
   const lo = led * 256; const hi = lo + 256;
   const size = tr.kind === 'wipe' ? clamp(Math.min(hi, fade) - lo, 0, 256) : clamp(hi - Math.max(lo, 256 * c.n - fade), 0, 256);
   return size * 128;
+}
+/** TrSparkX joined to a wipe: how much of the spark colour sits on `led`, `t` ms in (0..32768). */
+function sparkMix(tr: Tr, t: number, led: number, c: Ctx): number {
+  if (tr.kind === 'instant' || !tr.spark) return 0;
+  const ms = typeof tr.ms === 'function' ? tr.ms(c) : tr.ms;
+  if (t >= ms) return 0;
+  const offset = Math.trunc((t / ms) * 32768);
+  const dist = Math.abs(tr.spark.center - Math.trunc((led * 32768) / c.n));
+  const N = (Math.abs(dist - offset) * tr.spark.size) >> 15;
+  return N < 32 ? HUMP[N] << 7 : 0;
 }
 const trMs = (tr: Tr, c: Ctx) => (tr.kind === 'instant' ? 0 : typeof tr.ms === 'function' ? tr.ms(c) : tr.ms);
 
@@ -411,13 +446,21 @@ function loopL(segs: { kind: 'fade' | 'delay'; ms: number }[], nodes: ColorFn[])
 /** InOutTrL<OUT_TR, IN_TR, OFF>: OFF covers the blade while off, wiped or faded away on ignition and back on retraction. */
 function inOutL(outTr: Tr, inTr: Tr, off: ColorFn = solid(BLACK)): LayerFn {
   let ctx: Ctx | null = null; let was = false; let changed = -1e9;
+  const sparks = [outTr, inTr].flatMap((t) => (t.kind !== 'instant' && t.spark ? [t.spark.color] : []));
   return {
-    run(c) { off.run(c); ctx = c; if (c.on !== was) { was = c.on; changed = c.now; } },
+    run(c) { off.run(c); for (const s of sparks) s.run(c); ctx = c; if (c.on !== was) { was = c.on; changed = c.now; } },
     get(led) {
       const c = ctx!; const t = c.now - changed;
-      if (was) { const f = trMix(outTr, t, led, c); return { c: off.get(led), a: f == null ? 0 : 32768 - f }; }
-      const f = trMix(inTr, t, led, c);
-      return { c: off.get(led), a: f == null ? 32768 : f };
+      const tr = was ? outTr : inTr;
+      const f = trMix(tr, t, led, c);
+      const a = was ? (f == null ? 0 : 32768 - f) : (f == null ? 32768 : f);
+      const m = sparkMix(tr, t, led, c);
+      if (m <= 0 || tr.kind === 'instant' || !tr.spark) return { c: off.get(led), a };
+      // The spark is painted over the off colour: one layer with both, alpha 1 - (1 - a)(1 - m).
+      const alpha = 32768 - Math.trunc(((32768 - a) * (32768 - m)) / 32768);
+      const under = (a * (32768 - m)) / 32768;
+      const o = off.get(led); const s = tr.spark.color.get(led);
+      return { c: [(o[0] * under + s[0] * m) / alpha, (o[1] * under + s[1] * m) / alpha, (o[2] * under + s[2] * m) / alpha], a: alpha };
     },
   };
 }
@@ -431,7 +474,7 @@ const ret = timeArg(26, 500);
 /** Blade angle is fixed at horizontal (16384): TOP resolves to 26000, so hits land at Scale(16384, 26000, 6000). */
 const hitPos = (): IntFn => { let v = 16000; return { run(c) { v = c.lockupPos >= 0 ? Math.trunc(c.lockupPos * 32768) : 16000; }, get: () => v }; };
 
-function hwFx(b: ColorFn): ColorFn {
+function hwFx(b: ColorFn, inOut: LayerFn = inOutL({ kind: 'wipe', ms: ign }, { kind: 'wipein', ms: ret })): ColorFn {
   const lbColor = rgbArg(15, rgb8(160, 200, 255));
   const s1 = slowNoise(2100); const s2 = slowNoise(2200); const s3 = slowNoise(2300); const s4 = slowNoise(2000);
   const b1 = bump(scale(s1, 3000, 16000), scale(brownNoise(10), 7000, 11500));
@@ -449,7 +492,7 @@ function hwFx(b: ColorFn): ColorFn {
     lockupL('lb', alphaL(lbColor, lbShape), { kind: 'instant' }, { kind: 'instant' }),
     lockupL('drag', alphaL(rgbArg(13, rgb8(255, 180, 60)), smoothStep(constInt(32000), constInt(6000))), { kind: 'instant' }, { kind: 'instant' }),
     effectL('stab', { kind: 'wipein', ms: 600 }, alphaL(rgbArg(16, rgb8(255, 120, 0)), smoothStep(constInt(32000), constInt(11000))), { kind: 'wipe', ms: 600 }),
-    inOutL({ kind: 'wipe', ms: ign }, { kind: 'wipein', ms: ret }));
+    inOut);
 }
 
 /** Mix<Int<f>, Black, COLOR>: COLOR at f/32768 of its brightness. */
@@ -477,6 +520,23 @@ const SIM_LOOKS: Record<string, () => ColorFn> = {
   hw_current: () => hwFx(stripes(9000, scale(swingSpeed(450), -500, -5000), [base(0, 80, 255), dim(14000, base(0, 80, 255)), alt(0, 255, 255)])),
   hw_dark: () => hwFx(layers(stripes(2600, -3400, [base(255, 255, 255), dim(9000, base(255, 255, 255)), base(255, 255, 255), dim(18000, base(255, 255, 255))]),
     alphaL(alphaL(solid(BLACK), constInt(9000)), randomPerLed()))),
+  hw_embers: () => hwFx(layers(alt(255, 140, 0), alphaL(base(255, 20, 0), humpFlicker(45)))),
+  hw_horizon: () => hwFx(mix(bladeAngle(), base(), alt(255, 0, 0))),
+  hw_core: () => hwFx(layers(base(), alphaL(alt(255, 255, 255), bump(constInt(16384), scale(sinF(20), 3000, 26000))))),
+  hw_tracer: () => hwFx(layers(base(),
+    alphaL(alt(255, 255, 255), bump(saw(38), constInt(5000))),
+    alphaL(alt(255, 255, 255), bump(saw(23), constInt(8000))),
+    alphaL(alt(255, 255, 255), bump(saw(61), constInt(3500))))),
+  hw_split: () => hwFx(mix(smoothStep(scale(swingSpeed(400), 16384, 27000), constInt(5000)), base(), alt(255, 0, 0))),
+  hw_barber: () => hwFx(stripes(5000, -700, [base(255, 0, 0), alt(255, 255, 255)])),
+  hw_static: () => hwFx(layers(base(), alphaL(alphaL(solid(BLACK), constInt(26000)), randomPerLed()), alphaL(alphaL(solid(BLACK), constInt(16000)), brownNoise(400)))),
+  hw_resonance: () => hwFx(layers(dim(3500, base()), alphaL(base(), bump(constInt(16384), scale(soundCompat(), 6000, 60000))))),
+  hw_comet: () => hwFx(layers(base(), alphaL(rgbArg(18, WHITE), smoothStep(scale(swingSpeed(500), 36000, 12000), constInt(9000))))),
+  hw_weave: () => hwFx(layers(stripes(7000, -1500, [base(), dim(8000, base())]), alphaL(stripes(9000, 1900, [alt(0, 255, 255), base()]), constInt(14000)))),
+  hw_sparktip: () => hwFx(base(), inOutL(
+    { kind: 'wipe', ms: ign, spark: { color: rgbArg(7, WHITE), size: 400, center: 0 } },
+    { kind: 'wipein', ms: ret, spark: { color: rgbArg(28, WHITE), size: 400, center: 32768 } })),
+  hw_unfold: () => hwFx(base(), inOutL({ kind: 'center', ms: ign }, { kind: 'centerin', ms: ret })),
   hw_accent: () => layers(base(), inOutL({ kind: 'fade', ms: ign }, { kind: 'fade', ms: ret })),
   hw_crystal: () => layers(mix(sinF(18), base(), mix(constInt(9000), solid(BLACK), base())), simpleClashL(rgbArg(10, WHITE)),
     inOutL({ kind: 'fade', ms: ign }, { kind: 'fade', ms: ret }, mix(pulsingF(3500), rgbArg(31, rgb8(0, 0, 40)), solid(BLACK)))),
@@ -515,7 +575,7 @@ export class BladeSim {
     if (!make) throw new Error(`No simulator for look ${lookId}`);
     this.style = make();
     this.rand = mulberry32(seed);
-    this.ctx = { now: 0, n: numLeds, rnd: (n) => (n > 0 ? Math.floor(this.rand() * n) : 0), on: false, args: new Map(), effects: [], lockup: null, lockupPos: -1, swing: 0, sound: 0, battery: 26000 };
+    this.ctx = { now: 0, n: numLeds, rnd: (n) => (n > 0 ? Math.floor(this.rand() * n) : 0), on: false, args: new Map(), effects: [], lockup: null, lockupPos: -1, swing: 0, sound: 0, battery: 26000, angle: 16384 };
     this.leds = new Float32Array(numLeds * 3);
   }
 
@@ -524,6 +584,8 @@ export class BladeSim {
   setOn(on: boolean): void { this.ctx.on = on; }
   /** Swing speed in degrees per second (a hard swing is 400 to 600). */
   setSwing(degPerSec: number): void { this.ctx.swing = Math.max(0, degPerSec); }
+  /** Where the blade points, in degrees: -90 straight down, 0 level, 90 straight up. */
+  setAngle(degrees: number): void { this.ctx.angle = clamp(Math.round(((degrees + 90) / 180) * 32768), 0, 32768); }
   setBattery(fraction: number): void { this.ctx.battery = clamp(Math.round(fraction * 32768), 0, 32768); }
   /** A one-shot effect at `pos` along the blade (0 hilt, 1 tip). */
   trigger(type: EffectType, pos = 0.5): void { this.pending.push({ type, pos: clamp(pos, 0, 1) }); }

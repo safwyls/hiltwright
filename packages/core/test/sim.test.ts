@@ -168,6 +168,33 @@ describe('blade simulator', () => {
     expect(changes(450)).toBeGreaterThan(changes(0) * 3);
   });
 
+  it('unfold opens from the middle; the spark rides the ignition edge; horizon follows the tilt', () => {
+    const unfold = new BladeSim('hw_unfold', N);
+    unfold.setOn(true); unfold.frame(0);
+    const half = unfold.frame(150).slice();
+    expect(lum(half, 66)).toBeGreaterThan(0);
+    expect(lum(half, 5)).toBe(0);
+    expect(lum(half, N - 5)).toBe(0);
+    expect(lum(unfold.frame(400), 5)).toBeGreaterThan(0);
+    unfold.setOn(false); unfold.frame(1000);
+    const closing = unfold.frame(1250).slice();
+    expect(lum(closing, 66)).toBeGreaterThan(0);
+    expect(lum(closing, 5)).toBe(0);
+
+    const spark = new BladeSim('hw_sparktip', N);
+    spark.setOn(true); spark.frame(0);
+    const f = spark.frame(150);
+    let edge = 0; for (let i = 0; i < N; i++) if (f[i * 3 + 2] > 0.5) edge = i;
+    expect(f[(edge - 1) * 3]).toBeGreaterThan(0.5); // white at the leading edge of a blue blade
+    expect(f[10 * 3]).toBe(0); // plain blue behind it
+
+    const horizon = new BladeSim('hw_horizon', N);
+    horizon.setOn(true); horizon.setAngle(-90);
+    expect(led(run(horizon, 0, 600), 60)).toEqual([0, 0, 1]);
+    horizon.setAngle(90);
+    expect(led(run(horizon, 601, 700), 60)).toEqual([1, 0, 0]);
+  });
+
   it('is deterministic for a given seed', () => {
     const a = new BladeSim('hw_unstable', 40, 7); const b = new BladeSim('hw_unstable', 40, 7);
     a.setOn(true); b.setOn(true);

@@ -102,7 +102,7 @@ describe('the Hiltwright look library', () => {
       expect(l.define.startsWith(`using ${l.alias} = `), l.id).toBe(true);
       expect(l.define.trim().endsWith(';'), l.id).toBe(true);
       expect((l.define.match(/</g) ?? []).length, `${l.id} brackets`).toBe((l.define.match(/>/g) ?? []).length);
-      expect(l.usesFx, l.id).toBe(/\bHwFx</.test(l.define));
+      expect(l.usesFx, l.id).toBe(/\bHwFx(Tr)?</.test(l.define));
       expect(l.description.length, l.id).toBeGreaterThan(30);
     }
     expect((LOOK_FX.match(/</g) ?? []).length).toBe((LOOK_FX.match(/>/g) ?? []).length);
