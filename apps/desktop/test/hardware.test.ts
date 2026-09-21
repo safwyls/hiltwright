@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateConfig, validateModel, type ModelBlade, type SaberConfigModel } from '@hiltwright/core';
-import { bladeSummary, kindOf, newBlade, pinTable, withKind } from '../src/renderer/src/Hardware';
+import { bladeSummary, kindOf, newBlade, pinTable, withKind } from '../src/renderer/src/hardwareModel';
 
 const main: ModelBlade = { id: 'b1', role: 'main', type: 'pixel', pixels: 132, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2', 'bladePowerPin3'] } };
 const model = (blades: ModelBlade[], board: 'V2' | 'V3' = 'V2'): SaberConfigModel => ({ name: 'hw_editor', board, buttons: 2, prop: 'sa22c', blades, presets: [{ font: 'A', track: '', name: 'One' }] });
