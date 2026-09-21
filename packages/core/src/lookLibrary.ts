@@ -215,6 +215,24 @@ export const LIBRARY_LOOKS: readonly LibraryLook[] = [
     description: 'A steady blade that opens from the middle toward both ends, and closes from both ends back to the middle.',
   },
   {
+    id: 'hw_liquid', name: 'Liquid', roles: ['main', 'side'], alias: 'HwLiquid', usesFx: true, kb: 1.0, preview: '#0000ff', preview2: '#00ffc8',
+    define: `using HwLiquid = HwFx<Mix<BladeAngle<9000, 23768>,
+  Mix<SmoothStep<Int<18000>, Int<5000>>, ${BASE}, ${ALT(0, 255, 200)}>,
+  Mix<SmoothStep<Int<14700>, Int<-5000>>, ${BASE}, ${ALT(0, 255, 200)}>>>;`,
+    description: 'The blade is half full of the second colour, and it runs to whichever end is lower: into the tip when you point down, back to the hilt when you raise it, spread thin when level.',
+  },
+  {
+    id: 'hw_gravity', name: 'Downhill', roles: ['main', 'side'], alias: 'HwGravity', usesFx: true, kb: 1.0, preview: '#0000ff', preview2: '#00a0ff',
+    define: `using HwGravity = HwFx<StripesX<Int<6000>, Scale<BladeAngle<>, Int<-1200>, Int<1200>>,
+  ${BASE}, Mix<Int<11000>, Black, ${BASE}>, ${ALT(0, 160, 255)}>>;`,
+    description: 'Bands that always run downhill: toward the tip when the blade points down, toward the hilt when it points up, faster the steeper it is, and still when level.',
+  },
+  {
+    id: 'hw_twist', name: 'Twist dial', roles: ['main', 'side'], alias: 'HwTwist', usesFx: true, kb: 0.7, preview: '#0000ff', preview2: '#ff00c8',
+    define: `using HwTwist = HwFx<Mix<TwistAngle<>, ${BASE}, ${ALT(255, 0, 200)}>>;`,
+    description: 'Roll your wrist to dial between two colours: the base colour with the hilt flat, the second colour a quarter turn either way.',
+  },
+  {
     id: 'hw_accent', name: 'Follow the blade', roles: ['crystal', 'accent'], alias: 'HwAccent', usesFx: false, preview: '#0000ff',
     define: `using HwAccent = Layers<${BASE},
   InOutTrL<TrFadeX<IgnitionTime<300>>, TrFadeX<RetractionTime<500>>>>;`,

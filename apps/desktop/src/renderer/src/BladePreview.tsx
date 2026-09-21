@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { BladeSim, SIMULATED_LOOKS, type LockupType } from '@hiltwright/core';
 import { addPreview, bladeRenderer } from './bladeRender';
 import { BladeBar, Hilt } from './Saber';
+import { MotionPad } from './MotionPad';
 
 export const canSimulate = (lookId: string | null | undefined): lookId is string => !!lookId && SIMULATED_LOOKS.includes(lookId);
 
@@ -32,6 +33,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
   const [lockup, setLockup] = useState<LockupType | null>(null);
   const [swing, setSwing] = useState(0);
   const [tilt, setTilt] = useState(0);
+  const [twist, setTwist] = useState(0);
   const [broken, setBroken] = useState(bladeRenderer.unavailable);
   const ok = canSimulate(lookId) && !broken;
   const n = dot ? 1 : leds;
@@ -44,7 +46,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
     const sim = new BladeSim(lookId, n, 1 + Math.floor(Math.random() * 1e6));
     sim.setOn(true);
     simRef.current = sim;
-    setOn(true); setLockup(null); setSwing(0); setTilt(0);
+    setOn(true); setLockup(null); setSwing(0); setTilt(0); setTwist(0);
     const el = canvas.current; const box = wrap.current;
     const ctx = el?.getContext('2d') ?? null;
     if (!el || !box || !ctx) return;
@@ -71,6 +73,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
   useEffect(() => { simRef.current?.setLockup(lockup, 0.55); }, [lockup]);
   useEffect(() => { simRef.current?.setSwing(swing); }, [swing]);
   useEffect(() => { simRef.current?.setAngle(tilt); }, [tilt]);
+  useEffect(() => { simRef.current?.setTwist(twist); }, [twist]);
 
   if (!ok) {
     return (
@@ -116,20 +119,22 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
             {!dot && hold('lb', 'Lightning')}
           </div>
           {!dot && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '4px 14px', fontSize: 12 }}>
-              <label className="row" style={{ gap: 8 }}>
-                <span className="dim" style={{ flex: 'none' }}>Swing</span>
-                <input type="range" min={0} max={600} step={10} value={swing} onChange={(e) => setSwing(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} aria-label="Swing speed" />
-                <span className="mono mute" style={{ width: 44, textAlign: 'right' }}>{swing}°/s</span>
-              </label>
-              <label className="row" style={{ gap: 8 }}>
-                <span className="dim" style={{ flex: 'none' }}>Tilt</span>
-                <input type="range" min={-90} max={90} step={5} value={tilt} onChange={(e) => setTilt(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} aria-label="Blade tilt, from pointing down to pointing up" />
-                <span className="mono mute" style={{ width: 44, textAlign: 'right' }}>{tilt > 0 ? 'up ' : tilt < 0 ? 'dn ' : ''}{Math.abs(tilt)}°</span>
-              </label>
+            <div className="row" style={{ gap: 12, alignItems: 'stretch' }}>
+              <MotionPad tilt={tilt} color={fallbackColor} onTilt={setTilt} onSwing={setSwing} />
+              <div className="col grow" style={{ gap: 4, fontSize: 12, justifyContent: 'center', minWidth: 0 }}>
+                <span className="small" style={{ fontWeight: 600 }}>Move it</span>
+                <span className="hint" style={{ fontSize: 11.5 }}>Drag the saber to tilt it; drag fast to swing. Tilt is what the saber reads from gravity, swing and twist from its gyro.</span>
+                {([['Swing', swing, setSwing, 0, 600, 10, `${swing}°/s`, 'Swing speed'], ['Tilt', tilt, setTilt, -90, 90, 5, `${tilt > 0 ? 'up ' : tilt < 0 ? 'down ' : ''}${Math.abs(tilt)}°`, 'Blade tilt, from pointing down to pointing up'], ['Twist', twist, setTwist, -180, 180, 5, `${twist}°`, 'Hilt rolled about the blade']] as [string, number, (v: number) => void, number, number, number, string, string][]).map(([label, value, set, min, max, step, shown, aria]) => (
+                  <label key={label} className="row" style={{ gap: 8 }}>
+                    <span className="dim" style={{ width: 34, flex: 'none' }}>{label}</span>
+                    <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => set(Number(e.target.value))} style={{ flex: 1, minWidth: 0 }} aria-label={aria} />
+                    <span className="mono mute nowrap" style={{ width: 62, textAlign: 'right' }}>{shown}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
-          <span className="hint">Simulated from the same maths the saber runs, LED by LED. {dot ? '' : 'Click the blade to land a blast there. '}Sound and motion are stand-ins, so hum-driven flicker is typical rather than exact.</span>
+          <span className="hint">Simulated from the same maths the saber runs, LED by LED. {dot ? '' : 'Click the blade to land a blast there. Clashes and lockups land where the tilt puts them, as on the saber. '}Sound is a stand-in, so hum-driven flicker is typical rather than exact.</span>
         </div>
       )}
     </div>

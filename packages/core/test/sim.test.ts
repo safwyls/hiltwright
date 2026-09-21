@@ -83,10 +83,11 @@ describe('blade simulator', () => {
   it('lockup holds while active and lets go afterwards', () => {
     const sim = new BladeSim('hw_blade', N);
     sim.setOn(true); run(sim, 0, 1000);
-    sim.setLockup('normal', 0.4);
-    expect(run(sim, 1001, 2500)[Math.round(0.4 * N) * 3]).toBeGreaterThan(0.8);
+    sim.setLockup('normal');
+    const at = Math.round((16000 / 32768) * N); // a level blade is met in the middle
+    expect(run(sim, 1001, 2500)[at * 3]).toBeGreaterThan(0.8);
     sim.setLockup(null);
-    expect(run(sim, 2501, 3000)[Math.round(0.4 * N) * 3]).toBe(0);
+    expect(run(sim, 2501, 3000)[at * 3]).toBe(0);
   });
 
   it('swing flare brightens with speed; pulsing moves between its two colours; fire burns', () => {
@@ -193,6 +194,53 @@ describe('blade simulator', () => {
     expect(led(run(horizon, 0, 600), 60)).toEqual([0, 0, 1]);
     horizon.setAngle(90);
     expect(led(run(horizon, 601, 700), 60)).toEqual([1, 0, 0]);
+  });
+
+  it('gravity: liquid pools at the low end, bands run downhill, a lockup slides with the tilt, a twist blends', () => {
+    const green = (f: Float32Array, i: number) => f[i * 3 + 1];
+    const liquid = new BladeSim('hw_liquid', N);
+    liquid.setOn(true); liquid.setAngle(-80);
+    let f = run(liquid, 0, 600).slice();
+    expect(green(f, N - 5)).toBeGreaterThan(0.9); // pointing down: the second colour is in the tip
+    expect(green(f, 5)).toBe(0);
+    liquid.setAngle(80);
+    f = run(liquid, 601, 700).slice();
+    expect(green(f, 5)).toBeGreaterThan(0.9); // raised: it has run back to the hilt
+    expect(green(f, N - 5)).toBe(0);
+    liquid.setAngle(0);
+    f = run(liquid, 701, 800).slice();
+    expect(green(f, 5)).toBeGreaterThan(0.3); expect(green(f, N - 5)).toBeGreaterThan(0.3); // level: spread along it
+
+    // Follow a band: with the blade down the pattern moves toward the tip, raised it moves toward the hilt.
+    const shift = (deg: number) => {
+      const sim = new BladeSim('hw_gravity', N, 5);
+      sim.setOn(true); sim.setAngle(deg); run(sim, 0, 1000);
+      const a = Array.from(sim.frame(1001)).filter((_, i) => i % 3 === 1);
+      const b = Array.from(sim.frame(1006)).filter((_, i) => i % 3 === 1);
+      let best = 0; let bestErr = Infinity;
+      for (let d = -8; d <= 8; d++) { let err = 0; for (let i = 20; i < N - 20; i++) err += (a[i] - b[i + d]) ** 2; if (err < bestErr) { bestErr = err; best = d; } }
+      return best;
+    };
+    expect(shift(-90)).toBeGreaterThan(0);
+    expect(shift(90)).toBeLessThan(0);
+    expect(shift(0)).toBe(0);
+
+    const peak = (deg: number) => {
+      const sim = new BladeSim('hw_blade', N);
+      sim.setOn(true); sim.setAngle(deg); run(sim, 0, 1000); sim.setLockup('normal');
+      const g = run(sim, 1001, 1500); let at = 0; for (let i = 1; i < N; i++) if (g[i * 3] > g[at * 3]) at = i; return at;
+    };
+    expect(peak(80)).toBeLessThan(peak(0)); // raised: met near the hilt
+    expect(peak(0)).toBeGreaterThan(50);
+
+    const twist = new BladeSim('hw_twist', N);
+    twist.setOn(true);
+    expect(led(run(twist, 0, 600), 60)).toEqual([0, 0, 1]);
+    twist.setTwist(90);
+    expect(run(twist, 601, 700)[60 * 3]).toBe(1);
+    twist.setTwist(45);
+    const half = run(twist, 701, 800)[60 * 3];
+    expect(half).toBeGreaterThan(0.4); expect(half).toBeLessThan(0.6);
   });
 
   it('is deterministic for a given seed', () => {

@@ -11,6 +11,9 @@ import { draftModel, infoFromRecord, queuedLookIds, withLookInSlot } from './sab
 
 const api = () => window.hiltwright;
 const ROLE_LABEL: Record<BladeRole, string> = { main: 'main blade', side: 'side blade', crystal: 'crystal', accent: 'accent', motor: 'motor' };
+/** Looks that read the saber's motion sensors: tilt from gravity, swing and twist from the gyro. */
+const usesMotion = (l: LookDef) => /BladeAngle|TwistAngle|SwingSpeed|SwingAcceleration/.test(l.define ?? l.code);
+
 type LookState = 'compiled' | 'queued' | 'new';
 
 export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: () => void; onBuild: () => void }) {
@@ -25,6 +28,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
   const [q, setQ] = useState('');
   const [onlyFirmware, setOnlyFirmware] = useState(false);
   const [roleFilter, setRoleFilter] = useState<BladeRole | null>(null);
+  const [onlyMotion, setOnlyMotion] = useState(false);
   const [pasting, setPasting] = useState(false);
   const [code, setCode] = useState('');
   const [lookName, setLookName] = useState('');
@@ -54,6 +58,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
     if (q && !l.name.toLowerCase().includes(q.toLowerCase()) && !l.by.toLowerCase().includes(q.toLowerCase())) return false;
     if (onlyFirmware && stateOf(l.id) !== 'compiled') return false;
     if (roleFilter && !l.roles.includes(roleFilter)) return false;
+    if (onlyMotion && !usesMotion(l)) return false;
     return true;
   });
   const sel = looks.find((l) => l.id === selectedId) ?? looks[0];
@@ -117,6 +122,7 @@ export function Looks({ board, onPresets, onBuild }: { board: Board; onPresets: 
             <label className="input sans" style={{ width: 180, height: 32 }}><Icon name="search" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search looks" aria-label="Search looks" style={{ position: 'static', color: 'var(--text)' }} /></label>
             <button type="button" className={`chip ${onlyFirmware ? 'sel' : ''}`} aria-pressed={onlyFirmware} disabled={!saber?.firmware} onClick={() => setOnlyFirmware((v) => !v)}><Icon name="check" />On the saber {compiled.size}</button>
             {(['main', 'crystal', 'accent', 'motor'] as BladeRole[]).map((r) => <button key={r} type="button" className={`chip ${roleFilter === r ? 'sel' : ''}`} aria-pressed={roleFilter === r} onClick={() => setRoleFilter(roleFilter === r ? null : r)}>{ROLE_LABEL[r]}</button>)}
+            <button type="button" className={`chip ${onlyMotion ? 'sel' : ''}`} aria-pressed={onlyMotion} title="Looks that respond to tilt, swing or twist" onClick={() => setOnlyMotion((v) => !v)}>Motion</button>
             <button type="button" className="btn sm" style={{ marginLeft: 'auto' }} onClick={() => setPasting(true)}><span className="b"><span className="i"><Icon name="import" />Paste style code</span></span></button>
           </div>
           <div className="scroll" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(176px, 1fr))', gap: 10, alignContent: 'start', paddingRight: 4 }}>

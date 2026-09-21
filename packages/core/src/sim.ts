@@ -4,8 +4,8 @@
 // Sin, Gradient, Rainbow, Stripes, StyleFire, BrownNoiseF, RandomPerLEDF, Bump, SmoothStep, BlastF, SimpleClashL,
 // TransitionEffectL, LockupTrL, InOutTrL with wipe and fade transitions), using the same 0..32768 fixed-point
 // conventions and the same tables, so timing, shapes and blending match the firmware. Two inputs are modelled
-// because a desk has no saber in it: the sound level (AudioFlicker, lightning block) and motion (swing speed,
-// blade angle fixed at horizontal). ProffieOS is GPL-3.0; this file is a derivative of its style headers.
+// because a desk has no saber in it: the sound level (AudioFlicker, lightning block) is modelled, and motion (swing
+// speed, blade tilt, twist) is whatever the caller sets, which is how the preview's motion pad drives it. ProffieOS is GPL-3.0; this file is a derivative of its style headers.
 
 export type RGB = [number, number, number]; // 0..65535 per channel, linear, as Color16
 type Ctx = {
@@ -21,6 +21,7 @@ type Ctx = {
   sound: number; // 0..32768, NoisySoundLevel-like
   battery: number; // 0..32768
   angle: number; // 0 pointing straight down, 16384 level, 32768 straight up
+  twist: number; // degrees the hilt is rolled about the blade's axis
 };
 export type EffectType = 'clash' | 'blast' | 'stab';
 export type LockupType = 'normal' | 'drag' | 'lb';
@@ -126,7 +127,13 @@ function humpFlicker(width: number): IntFn {
 }
 
 /** BladeAngle<>: where the blade points, 0 down to 32768 up. */
-const bladeAngle = (): IntFn => { let v = 16384; return { run(c) { v = c.angle; }, get: () => v }; };
+const bladeAngle = (min = 0, max = 32768): IntFn => { let v = 16384; return { run(c) { v = clamp(Math.trunc(((c.angle - min) * 32768) / (max - min)), 0, 32768); }, get: () => v }; };
+
+/** TwistAngle<2>: 0 with the hilt flat, 32768 a quarter turn either way, and back again by a half turn. */
+const twistAngle = (): IntFn => {
+  let v = 0;
+  return { run(c) { const a = Math.trunc((c.twist / 180) * 32768); let x = (((a * 2) % 65536) + 65536) % 65536; if (x >= 32768) x = 65536 - x; v = x; }, get: () => v };
+};
 
 /** RandomF: one random value per frame, the same for every LED. */
 const randomF = (): IntFn => { let v = 0; return { run(c) { v = c.rnd(32768); }, get: () => v }; };
@@ -471,8 +478,22 @@ const base = (r = 0, g = 0, b = 255) => rgbArg(1, rgb8(r, g, b));
 const alt = (r: number, g: number, b: number) => rgbArg(2, rgb8(r, g, b));
 const ign = timeArg(5, 300);
 const ret = timeArg(26, 500);
-/** Blade angle is fixed at horizontal (16384): TOP resolves to 26000, so hits land at Scale(16384, 26000, 6000). */
-const hitPos = (): IntFn => { let v = 16000; return { run(c) { v = c.lockupPos >= 0 ? Math.trunc(c.lockupPos * 32768) : 16000; }, get: () => v }; };
+/**
+ * Where clashes, lockups and the lightning block land. The firmware has no touch sensor: it places them from the
+ * blade's tilt, Scale<BladeAngle<>, TOP, BOTTOM> with TOP = Scale<BladeAngle<0,16000>, 4000, 26000> and BOTTOM = 6000,
+ * so a raised blade is hit near the hilt and a lowered one further out.
+ */
+const hitPos = (): IntFn => {
+  let v = 16000;
+  return {
+    run(c) {
+      const low = clamp(Math.trunc((c.angle * 32768) / 16000), 0, 32768);
+      const top = 4000 + Math.trunc((low * (26000 - 4000)) / 32768);
+      v = top + Math.trunc((c.angle * (6000 - top)) / 32768);
+    },
+    get: () => v,
+  };
+};
 
 function hwFx(b: ColorFn, inOut: LayerFn = inOutL({ kind: 'wipe', ms: ign }, { kind: 'wipein', ms: ret })): ColorFn {
   const lbColor = rgbArg(15, rgb8(160, 200, 255));
@@ -537,6 +558,11 @@ const SIM_LOOKS: Record<string, () => ColorFn> = {
     { kind: 'wipe', ms: ign, spark: { color: rgbArg(7, WHITE), size: 400, center: 0 } },
     { kind: 'wipein', ms: ret, spark: { color: rgbArg(28, WHITE), size: 400, center: 32768 } })),
   hw_unfold: () => hwFx(base(), inOutL({ kind: 'center', ms: ign }, { kind: 'centerin', ms: ret })),
+  hw_liquid: () => hwFx(mix(bladeAngle(9000, 23768),
+    mix(smoothStep(constInt(18000), constInt(5000)), base(), alt(0, 255, 200)),
+    mix(smoothStep(constInt(14700), constInt(-5000)), base(), alt(0, 255, 200)))),
+  hw_gravity: () => hwFx(stripes(6000, scale(bladeAngle(), -1200, 1200), [base(), dim(11000, base()), alt(0, 160, 255)])),
+  hw_twist: () => hwFx(mix(twistAngle(), base(), alt(255, 0, 200))),
   hw_accent: () => layers(base(), inOutL({ kind: 'fade', ms: ign }, { kind: 'fade', ms: ret })),
   hw_crystal: () => layers(mix(sinF(18), base(), mix(constInt(9000), solid(BLACK), base())), simpleClashL(rgbArg(10, WHITE)),
     inOutL({ kind: 'fade', ms: ign }, { kind: 'fade', ms: ret }, mix(pulsingF(3500), rgbArg(31, rgb8(0, 0, 40)), solid(BLACK)))),
@@ -575,7 +601,7 @@ export class BladeSim {
     if (!make) throw new Error(`No simulator for look ${lookId}`);
     this.style = make();
     this.rand = mulberry32(seed);
-    this.ctx = { now: 0, n: numLeds, rnd: (n) => (n > 0 ? Math.floor(this.rand() * n) : 0), on: false, args: new Map(), effects: [], lockup: null, lockupPos: -1, swing: 0, sound: 0, battery: 26000, angle: 16384 };
+    this.ctx = { now: 0, n: numLeds, rnd: (n) => (n > 0 ? Math.floor(this.rand() * n) : 0), on: false, args: new Map(), effects: [], lockup: null, lockupPos: -1, swing: 0, sound: 0, battery: 26000, angle: 16384, twist: 0 };
     this.leds = new Float32Array(numLeds * 3);
   }
 
@@ -586,6 +612,8 @@ export class BladeSim {
   setSwing(degPerSec: number): void { this.ctx.swing = Math.max(0, degPerSec); }
   /** Where the blade points, in degrees: -90 straight down, 0 level, 90 straight up. */
   setAngle(degrees: number): void { this.ctx.angle = clamp(Math.round(((degrees + 90) / 180) * 32768), 0, 32768); }
+  /** How far the hilt is rolled about the blade's axis, in degrees. */
+  setTwist(degrees: number): void { this.ctx.twist = degrees; }
   setBattery(fraction: number): void { this.ctx.battery = clamp(Math.round(fraction * 32768), 0, 32768); }
   /** A one-shot effect at `pos` along the blade (0 hilt, 1 tip). */
   trigger(type: EffectType, pos = 0.5): void { this.pending.push({ type, pos: clamp(pos, 0, 1) }); }
