@@ -161,6 +161,36 @@ describe('tagged framing (OS 8.10)', () => {
     expect(events.filter((e) => e.startsWith('(late h'))).toEqual([]);
   });
 
+  it('does not kick a board that is still talking, however long the command takes', async () => {
+    const timers = new FakeTimers();
+    let cb: ((c: string) => void) | null = null;
+    const sent: string[] = [];
+    const board: Transport = {
+      write: (t) => {
+        for (const raw of String(t).split('\n')) {
+          const m = /^([A-Za-z0-9_]+)\| (.*)$/.exec(raw.trim());
+          if (!m) continue;
+          sent.push(raw.trim());
+          const [, tag, inner] = m;
+          if (inner === 'version') timers.after(10, () => cb?.(`1,5,${tag}|v8.10\n`));
+          else if (inner === 'list_tracks') for (let i = 0; i < 8; i++) timers.after(10 + i * 500, () => cb?.(`${i + 1},9,${tag}|track${i}.wav\n`));
+          else timers.after(tag.endsWith('x') ? 3600 : 10, () => cb?.(`Whut? :${tag}|\r\n`));
+        }
+      },
+      onData: (f) => { cb = f; return () => { cb = null; }; },
+    };
+    const client = new BoardClient(board, { now: () => timers.now, setTimer: (fn, ms) => timers.after(ms, fn), clearTimer: (h) => timers.cancel(h) });
+    const d = client.detectTagging();
+    await timers.run(1000);
+    await d;
+    const p = client.send('list_tracks');
+    await timers.run(12000);
+    const r = await p;
+    expect(r.lines).toHaveLength(8);
+    // Three and a half seconds of steady output with gaps shorter than the kick interval: no kick was needed.
+    expect(sent.filter((c) => /^k\d+\| /.test(c))).toEqual([]);
+  });
+
   it('an OS 7 board that rejects the probe stays untagged', async () => {
     const timers = new FakeTimers();
     const board: Transport & { cb?: (c: string) => void } = { write: (t) => { timers.after(10, () => board.cb?.(`Whut? :${String(t).trim().split(' ')[0]}\r\n`)); }, onData: (cb) => { board.cb = cb; return () => undefined; } };

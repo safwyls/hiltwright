@@ -85,6 +85,8 @@ export class BoardClient {
   private readonly kickMs: number;
   private readonly maxKicks: number;
   private kicks = 0;
+  /** When the board last sent anything at all. A board that is talking is not stuck, however long the command runs. */
+  private lastHeard = 0;
   private readonly onEvent: (line: string) => void;
   private readonly now: () => number;
   private readonly setTimer: (fn: () => void, ms: number) => unknown;
@@ -136,6 +138,7 @@ export class BoardClient {
   }
 
   private receive(chunk: string): void {
+    this.lastHeard = this.now();
     for (const raw of this.lines.push(chunk)) {
       const cur = this.current;
       const m = TAGGED.exec(raw);
@@ -218,14 +221,16 @@ export class BoardClient {
       this.current = { command, tag, sentinel: useTags ? `${tag}x` : null, lines: [], events: [], sawTag: false, opts, resolve: (done) => finish(!done), touch };
       timeoutHandle = this.setTimer(() => finish(true), opts.timeoutMs);
       touch();
-      // Kicks: while a tagged command has produced nothing (explicit tag) or no sentinel yet (auto tag), send a
-      // harmless rejected line every kickMs. A board running N lines behind needs N of them; a healthy one none.
+      // Kicks: while a tagged command has produced nothing (explicit tag) or no sentinel yet (auto tag), and the board
+      // has been silent for kickMs, send a harmless rejected line. A board running N lines behind needs N of them; a healthy one none.
       if (tag) {
         let sent = 0;
         const kick = () => {
           if (settled) return;
           const need = useTags || !this.current?.sawTag;
-          if (need && sent < this.maxKicks) {
+          // Only a silent board gets kicked. Long commands (font scans, listings) keep printing and need no help.
+          const silent = this.now() - Math.max(this.lastHeard, started) >= this.kickMs;
+          if (need && silent && sent < this.maxKicks) {
             sent++;
             this.out(`k${++this.kicks}| hw_end\n`);
             this.onEvent(`(kick ${sent} for ${tag})`);
