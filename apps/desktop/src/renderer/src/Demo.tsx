@@ -45,6 +45,14 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const [staffTried, setStaffTried] = useState<Record<number, string>>({});
   const [bladeTab, setBladeTab] = useState<'main' | 'staff'>('main');
   const [hold, setHold] = useState<LockupType | null>(null);
+  // The saber panel's tab, and whether the controls legend is up; both remembered.
+  type Tab = 'blade' | 'sound' | 'saber' | 'help';
+  const toggleHelpRef = useRef(() => {});
+  const [tab, setTab] = useState<Tab>(() => { try { const t = localStorage.getItem('hiltwright.demo.tab'); return t === 'sound' || t === 'saber' || t === 'blade' ? t : 'help'; } catch { return 'help'; } }); // first visit opens on the controls
+  const lastTab = useRef<Tab>('blade');
+  useEffect(() => { if (tab !== 'help') lastTab.current = tab; try { localStorage.setItem('hiltwright.demo.tab', tab); } catch { /* private mode */ } }, [tab]);
+  const toggleHelp = () => setTab((t) => (t === 'help' ? lastTab.current : 'help'));
+  toggleHelpRef.current = toggleHelp;
   // The prop file decides what a style can do to the saber (turn it off, answer an ability): the saber's own unless changed here.
   const saberProp = board.saber?.model?.prop ?? board.library[0]?.model?.prop ?? null;
   const [propKey, setPropKey] = useState<string>(() => saberProp ?? 'fett263');
@@ -269,7 +277,8 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       const k = e.key.toLowerCase();
       if (k === '+' || k === '=') { room.zoomBy(-1); return; }
       if (k === '-' || k === '_') { room.zoomBy(1); return; }
-      if (k === ' ') { e.preventDefault(); room.setOn(!room.isOn); setHold(null); } else if (k === 'c') room.trigger('clash'); else if (k === 'b') room.trigger('blast'); else if (k === 's') room.trigger('stab'); else if (k === 'r') room.resetPose(); else if (/^[1-4]$/.test(k) && !e.repeat) room.raise(`EFFECT_USER${k}`);
+      if (k === '?') { toggleHelpRef.current(); return; }
+      if (k === ' ') { e.preventDefault(); room.setOn(!room.isOn); setHold(null); } else if (k === 'c') room.trigger('clash', undefined, e.shiftKey); else if (k === 'b') room.trigger('blast'); else if (k === 's') room.trigger('stab'); else if (k === 'r') room.resetPose(); else if (/^[1-4]$/.test(k) && !e.repeat) room.raise(`EFFECT_USER${k}`);
       else { const h = HOLDS.find((x) => x.key === k); if (h && !e.repeat) setHold(holdRef.current === h.type ? null : h.type); }
     };
     el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
@@ -299,15 +308,15 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       <div ref={host} style={{ position: 'absolute', inset: 0, cursor: 'grab', touchAction: 'none' }} role="img" aria-label="A saber in a dark room. Drag to move the hand that holds it." />
       {failed && <div className="note red" style={{ position: 'absolute', left: 20, top: 20, maxWidth: 420 }}><Icon name="x" /><span>The demo room needs WebGL, which is not available here. {failed}</span></div>}
 
-      <section className="panel" style={{ position: 'absolute', left: 20, top: 20, width: 300, maxHeight: 'calc(100% - 220px)', display: 'flex', flexDirection: 'column', background: 'rgba(12,17,23,.88)' }} aria-label="Demo controls">
-        <div className="pb col scroll" style={{ gap: 12, padding: 14 }}>
-          {look3d.staff && (
-            <div className="seg" role="tablist" aria-label="Which blade" style={{ alignSelf: 'flex-start' }}>
-              <button type="button" role="tab" aria-selected={bladeTab === 'main'} className={bladeTab === 'main' ? 'on' : ''} onClick={() => setBladeTab('main')}>Main blade</button>
-              <button type="button" role="tab" aria-selected={bladeTab === 'staff'} className={bladeTab === 'staff' ? 'on' : ''} onClick={() => setBladeTab('staff')}>Staff blade</button>
-            </div>
-          )}
-          {(() => {
+      {/* The saber panel: what is on the blade, what it sounds like, what the saber around it does; the deck of things to do to it stays at the foot. */}
+      <section className="panel" style={{ position: 'absolute', left: 20, top: 20, width: 340, maxHeight: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column', background: 'rgba(12,17,23,.9)' }} aria-label="Saber">
+        <div className="seg" role="tablist" aria-label="Saber panel" style={{ margin: 10, marginBottom: 0, height: 32 }}>
+          {([['blade', 'Blade'], ['sound', 'Sound'], ['saber', 'Saber'], ['help', 'Help']] as const).map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} style={{ flex: 1, justifyContent: 'center', height: 30, fontSize: 12.5 }} onClick={() => setTab(id)}>{label}</button>
+          ))}
+        </div>
+        <div className="pb col scroll" style={{ gap: 12, padding: 12, minHeight: 0 }}>
+          {tab === 'blade' && (() => {
             const staff = look3d.staff && bladeTab === 'staff';
             const cur = staff ? staffLook : look; const curId = staff ? staffLook.id : lookId; const curTried = staff ? staffTried : tried;
             const setId = staff ? (v: string) => { setStaffLookId(v); setStaffTried({}); } : (v: string) => { setLookId(v); setTried({}); };
@@ -315,78 +324,135 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
             const cols = cur.args.filter((n) => argInfo(n).kind === 'color');
             return (
               <>
+                {look3d.staff && (
+                  <div className="seg" role="tablist" aria-label="Which blade" style={{ alignSelf: 'flex-start', height: 28 }}>
+                    <button type="button" role="tab" aria-selected={bladeTab === 'main'} className={bladeTab === 'main' ? 'on' : ''} style={{ height: 26, fontSize: 12, padding: '0 10px' }} onClick={() => setBladeTab('main')}>Main blade</button>
+                    <button type="button" role="tab" aria-selected={bladeTab === 'staff'} className={bladeTab === 'staff' ? 'on' : ''} style={{ height: 26, fontSize: 12, padding: '0 10px' }} onClick={() => setBladeTab('staff')}>Staff blade</button>
+                  </div>
+                )}
                 <label className="field"><span className="label">{staff ? 'Staff blade look' : 'Look'}</span>
                   <span className="input sans"><span className="ellip">{cur.name}</span><span className="caret"><Icon name="down" /></span>
                     <select value={curId} aria-label={staff ? 'Staff blade look' : 'Look'} onChange={(e) => setId(e.target.value)}><optgroup label="Hiltwright">{STARTERS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>{saved.length > 0 && <optgroup label="Your looks">{saved.map((l) => <option key={l.id} value={l.id}>{l.name}{l.by && l.by !== 'you' ? ` (${l.by})` : ''}</option>)}</optgroup>}</select></span>
                 </label>
                 <span className="hint" style={{ fontSize: 12 }}>{cur.description}</span>
                 {cols.length > 0 && (
-                  <div className="row wrap" style={{ gap: 6 }}>
-                    {cols.map((n) => {
-                      const shown = curTried[n] ?? cur.defaults?.[n] ?? (n === 1 ? cur.preview : '#ffffff');
-                      return (
-                        <label key={n} className={`swatch ${curTried[n] ? '' : 'linked'}`} style={{ width: 'auto', height: 28, padding: '0 8px', gap: 6 }} title={argInfo(n).name}>
-                          <span className="sq" style={{ width: 12, height: 12, background: shown, boxShadow: `0 0 8px ${shown}` }} />
-                          <span className="small nowrap">{argInfo(n).name.replace(/ colour$/i, '')}</span>
-                          <input type="color" value={shown} aria-label={`${argInfo(n).name}${staff ? ' of the staff blade' : ''}`} onChange={(e) => setCol((t) => ({ ...t, [n]: e.target.value }))} />
-                        </label>
-                      );
-                    })}
+                  <div className="col" style={{ gap: 6 }}>
+                    <span className="label">Colours</span>
+                    <div className="row wrap" style={{ gap: 6 }}>
+                      {cols.map((n) => {
+                        const shown = curTried[n] ?? cur.defaults?.[n] ?? (n === 1 ? cur.preview : '#ffffff');
+                        return (
+                          <label key={n} className={`swatch ${curTried[n] ? '' : 'linked'}`} style={{ width: 'auto', height: 28, padding: '0 8px', gap: 6 }} title={argInfo(n).name}>
+                            <span className="sq" style={{ width: 12, height: 12, background: shown, boxShadow: `0 0 8px ${shown}` }} />
+                            <span className="small nowrap">{argInfo(n).name.replace(/ colour$/i, '')}</span>
+                            <input type="color" value={shown} aria-label={`${argInfo(n).name}${staff ? ' of the staff blade' : ''}`} onChange={(e) => setCol((t) => ({ ...t, [n]: e.target.value }))} />
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <span className="hint" style={{ fontSize: 11.5 }}>Tried here only; the saber's own colours are set on Presets.</span>
+                  </div>
+                )}
+                {presets.length > 0 && (
+                  <div className="col" style={{ gap: 6, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+                    <span className="label">From {saber?.name ?? 'the saber'}</span>
+                    <div className="row" style={{ gap: 6 }} title="Set the look and the font from one of the saber's presets">
+                      <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{presets[presetIndex]?.name.replace(/\s*\n\s*/g, ' ') ?? 'Preset'}</span><span className="caret"><Icon name="down" /></span>
+                        <select value={presetIndex} aria-label="Saber preset" onChange={(e) => setPresetIndex(Number(e.target.value))}>{presets.map((p, i) => <option key={i} value={i}>{i + 1}. {p.name.replace(/\s*\n\s*/g, ' ')}</option>)}</select></span>
+                      <button type="button" className="chip" disabled={!!loading} onClick={() => void loadFromSaber(presetIndex)}><Icon name="play" />Load</button>
+                    </div>
+                    <span className="hint" style={{ fontSize: 11.5 }}>The preset's look and its font, as they are on the saber.</span>
                   </div>
                 )}
               </>
             );
           })()}
-          <div className="col" style={{ gap: 4 }}>
-            <span className="label">Mouse control</span>
-            <div className="seg" role="radiogroup" aria-label="Mouse control">
-              <button type="button" role="radio" aria-checked={control === 'hold'} className={control === 'hold' ? 'on' : ''} onClick={() => setControl('hold')}>Hold the hilt</button>
-              <button type="button" role="radio" aria-checked={control === 'steer'} className={control === 'steer' ? 'on' : ''} onClick={() => setControl('steer')}>Tilt and swing</button>
-            </div>
-          </div>
-          <div className="col" style={{ gap: 6, paddingTop: 8, borderTop: '1px solid var(--line)' }}>
-            <div className="row between"><span className="label">Sound</span>{engine && <span className="hint">{engine.hasSmoothSwing ? 'SmoothSwing' : 'no swing sounds'}</span>}</div>
-            {sources.length === 0
-              ? <span className="hint">No fonts to hand. Put a card in a reader, share the saber's card on Fonts &amp; SD, or <button type="button" className="holo" onClick={() => void pickBank()}>choose a folder of fonts</button> on this computer.</span>
-              : (
-                <div className="row" style={{ gap: 6 }}>
-                  <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{source?.label ?? 'Source'}</span><span className="caret"><Icon name="down" /></span>
-                    <select value={source?.root ?? ''} aria-label="Where the fonts are" onChange={(e) => setSource(sources.find((x) => x.root === e.target.value) ?? null)}>{sources.map((x) => <option key={x.root} value={x.root}>{x.label}</option>)}</select></span>
-                  <button type="button" className="chip" title="Choose a folder of fonts on this computer" onClick={() => void pickBank()}><Icon name="import" /></button>
-                  <button type="button" className="chip" title="Look again for cards" onClick={() => void refreshSources()}><Icon name="undo" /></button>
+
+          {tab === 'sound' && (
+            <>
+              <div className="col" style={{ gap: 6 }}>
+                <span className="label">Fonts from</span>
+                {sources.length === 0
+                  ? <span className="hint">No fonts to hand. Put a card in a reader, share the saber's card on Fonts &amp; SD, or <button type="button" className="holo" onClick={() => void pickBank()}>choose a folder of fonts</button> on this computer.</span>
+                  : (
+                    <div className="row" style={{ gap: 6 }}>
+                      <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{source?.label ?? 'Source'}</span><span className="caret"><Icon name="down" /></span>
+                        <select value={source?.root ?? ''} aria-label="Where the fonts are" onChange={(e) => setSource(sources.find((x) => x.root === e.target.value) ?? null)}>{sources.map((x) => <option key={x.root} value={x.root}>{x.label}</option>)}</select></span>
+                      <button type="button" className="chip" title="Choose a folder of fonts on this computer" onClick={() => void pickBank()}><Icon name="import" /></button>
+                      <button type="button" className="chip" title="Look again for cards" onClick={() => void refreshSources()}><Icon name="undo" /></button>
+                    </div>
+                  )}
+              </div>
+              {source && (
+                <div className="col" style={{ gap: 6 }}>
+                  <div className="row between"><span className="label">Font</span>{engine && <span className="hint" style={{ fontSize: 11.5 }}>{engine.hasSmoothSwing ? 'SmoothSwing' : 'no swing sounds'}</span>}</div>
+                  <span className="input sans" style={{ height: 28, fontSize: 12 }}><span className="ellip">{fontName || (fonts.length ? 'Pick a font' : 'No fonts here')}</span><span className="caret"><Icon name="down" /></span>
+                    <select value={fontName} aria-label="Sound font" disabled={!!loading} onChange={(e) => void loadFont(e.target.value)}><option value="">Pick a font</option>{fonts.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}</select></span>
                 </div>
               )}
-            {source && (
-              <div className="row" style={{ gap: 6 }}>
-                <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{fontName || (fonts.length ? 'Pick a font' : 'No fonts here')}</span><span className="caret"><Icon name="down" /></span>
-                  <select value={fontName} aria-label="Sound font" disabled={!!loading} onChange={(e) => void loadFont(e.target.value)}><option value="">Pick a font</option>{fonts.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}</select></span>
-                <input type="range" min={0} max={1} step={0.05} value={volume} aria-label="Volume" title="Volume" style={{ width: 70 }} onChange={(e) => setVolume(Number(e.target.value))} />
+              <label className="col" style={{ gap: 6 }}>
+                <div className="row between"><span className="label">Volume</span><span className="mono mute" style={{ fontSize: 11 }}>{Math.round(volume * 100)}%</span></div>
+                <input type="range" min={0} max={1} step={0.05} value={volume} aria-label="Volume" onChange={(e) => setVolume(Number(e.target.value))} />
+              </label>
+              {loading && <span className="hint">{loading.what === 'reading' ? 'Reading' : 'Decoding'} {loading.done}{loading.total ? ` of ${loading.total}` : ''}{source?.kind === 'card' ? ' (slow over the saber’s USB link)' : ''}…</span>}
+              {soundNote && <span className="hint">{soundNote}</span>}
+              {!engine && !loading && source && <span className="hint" style={{ fontSize: 11.5 }}>Pick a font and the saber hums, swings, clashes and answers every effect with its sounds.</span>}
+            </>
+          )}
+
+          {tab === 'help' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '118px minmax(0, 1fr)', gap: '5px 12px', fontSize: 12, color: 'var(--dim)', alignContent: 'start' }} role="note" aria-label="Controls">
+              {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high, low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Dbl-click, Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  ⇧C  B  S', 'clash, hard clash, blast, stab'], ['L  D  M  N', 'hold lockup, drag, melt, lightning'], ['1  2  3  4', 'special abilities'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll, +, −', 'zoom'], ['R', 'reset the pose and the view'], ['?', 'this page']].map(([k, v]) => (
+                <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11 }}>{k}</span><span>{v}</span></div>
+              ))}
+              <span className="hint" style={{ gridColumn: '1 / -1', marginTop: 6 }}>{control === 'hold' ? 'You are holding the hilt: the blade follows your hand.' : 'Tilt and swing: the mouse steers the blade directly.'} Change it on the Saber tab.</span>
+            </div>
+          )}
+
+          {tab === 'saber' && (
+            <>
+              <label className="field"><span className="label">Prop file</span>
+                <span className="input sans"><span className="ellip">{prop.name}</span><span className="caret"><Icon name="down" /></span>
+                  <select value={propKey} aria-label="Prop file" onChange={(e) => setPropKey(e.target.value)}>{Object.keys(PROPS).map((k) => <option key={k} value={k}>{PROPS[k].name}{k === saberProp ? ' (this saber)' : ''}</option>)}</select></span>
+              </label>
+              <ul className="col" style={{ gap: 4, margin: 0, paddingLeft: 16, fontSize: 12, color: 'var(--dim)' }}>
+                <li>{prop.stylesCanPower ? 'A look can turn the saber off and back on itself.' : 'A look cannot turn the saber off or on; those parts of a look do not happen.'}</li>
+                <li>{prop.abilities ? `Special abilities: ${prop.abilityGesture}.` : 'No special abilities.'}</li>
+                <li>{prop.transitionSounds ? 'Plays a look’s own sounds (tr files).' : 'Does not play a look’s own sounds.'}</li>
+                {prop.abilitiesDefine && <li>Hiltwright adds {prop.abilitiesDefine} to the build when a look uses abilities.</li>}
+              </ul>
+              <div className="col" style={{ gap: 6, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+                <span className="label">Mouse control</span>
+                <div className="seg" role="radiogroup" aria-label="Mouse control">
+                  <button type="button" role="radio" aria-checked={control === 'hold'} className={control === 'hold' ? 'on' : ''} style={{ flex: 1, justifyContent: 'center' }} onClick={() => setControl('hold')}>Hold the hilt</button>
+                  <button type="button" role="radio" aria-checked={control === 'steer'} className={control === 'steer' ? 'on' : ''} style={{ flex: 1, justifyContent: 'center' }} onClick={() => setControl('steer')}>Tilt and swing</button>
+                </div>
+                <span className="hint" style={{ fontSize: 11.5 }}>{control === 'hold' ? 'Drag to move the hand; the blade follows it, high or low.' : 'Drag left and right to swing level with the floor, up and down to tilt.'}</span>
               </div>
-            )}
-            {loading && <span className="hint">{loading.what === 'reading' ? 'Reading' : 'Decoding'} {loading.done}{loading.total ? ` of ${loading.total}` : ''}{source?.kind === 'card' ? ' (slow over the saber\u2019s USB link)' : ''}…</span>}
-            {soundNote && <span className="hint">{soundNote}</span>}
-            {presets.length > 0 && (
-              <div className="row" style={{ gap: 6 }} title="Set the look and the font from one of the saber's presets">
-                <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{presets[presetIndex]?.name.replace(/\s*\n\s*/g, ' ') ?? 'Preset'}</span><span className="caret"><Icon name="down" /></span>
-                  <select value={presetIndex} aria-label="Saber preset" onChange={(e) => setPresetIndex(Number(e.target.value))}>{presets.map((p, i) => <option key={i} value={i}>{i + 1}. {p.name.replace(/\s*\n\s*/g, ' ')}</option>)}</select></span>
-                <button type="button" className="chip" disabled={!!loading} onClick={() => void loadFromSaber(presetIndex)}><Icon name="play" />As on {saber?.name ?? 'the saber'}</button>
-              </div>
-            )}
+            </>
+          )}
+        </div>
+
+        {/* The deck: everything you can do to the saber, with its key. */}
+        <div className="col" style={{ gap: 8, padding: 12, borderTop: '1px solid var(--line)', background: 'rgba(8,12,17,.6)' }}>
+          <div className="row" style={{ gap: 8 }}>
+            <button type="button" className="btn sm pri grow" style={{ justifyContent: 'center' }} onClick={() => { room?.setOn(!motion.on); setHold(null); }}><span className="b"><span className="i">{motion.on ? 'Retract' : 'Ignite'}<kbd className="kbd">Space</kbd></span></span></button>
+            <button type="button" className="chip" aria-pressed={tab === 'help'} title="Every mouse and keyboard control" onClick={toggleHelp}><kbd className="kbd" style={{ margin: '0 6px 0 0' }}>?</kbd>Controls</button>
           </div>
-          <div className="row wrap" style={{ gap: 6 }}>
-            <button type="button" className="btn sm pri" onClick={() => { room?.setOn(!motion.on); setHold(null); }}><span className="b"><span className="i">{motion.on ? 'Retract' : 'Ignite'}</span></span></button>
-            <button type="button" className="chip" disabled={!motion.on} onClick={() => room?.trigger('clash')}>Clash</button>
-            <button type="button" className="chip" disabled={!motion.on} onClick={() => room?.trigger('blast')}>Blast</button>
-            <button type="button" className="chip" disabled={!motion.on} onClick={() => room?.trigger('stab')}>Stab</button>
-            <button type="button" className="chip" disabled={!motion.on} title="A clash as hard as the accelerometer ever reports" onClick={() => room?.trigger('clash', undefined, true)}>Hard clash</button>
-            {HOLDS.map((h) => <button key={h.type} type="button" className={`chip ${hold === h.type ? 'sel' : ''}`} aria-pressed={hold === h.type} disabled={!motion.on} onClick={() => setHold(hold === h.type ? null : h.type)}>{h.label}</button>)}
-            {[1, 2, 3, 4].map((n) => <button key={n} type="button" className="chip" disabled={prop.abilities < n} title={prop.abilities >= n ? `Special ability ${n} (EFFECT_USER${n}): ${prop.abilityGesture}` : `The ${prop.name} prop has no gesture for special abilities`} onClick={() => room?.raise(`EFFECT_USER${n}`)}>Ability {n}</button>)}
+          <div className="col" style={{ gap: 4 }}>
+            <span className="label">Hit</span>
+            <Deck items={[['Clash', 'C', () => room?.trigger('clash')], ['Hard', '⇧C', () => room?.trigger('clash', undefined, true)], ['Blast', 'B', () => room?.trigger('blast')], ['Stab', 'S', () => room?.trigger('stab')]]} disabled={!motion.on} />
           </div>
-          <label className="field"><span className="label">Prop file</span>
-            <span className="input sans"><span className="ellip">{prop.name}</span><span className="caret"><Icon name="down" /></span>
-              <select value={propKey} aria-label="Prop file" onChange={(e) => setPropKey(e.target.value)}>{Object.keys(PROPS).map((k) => <option key={k} value={k}>{PROPS[k].name}{k === saberProp ? ' (this saber)' : ''}</option>)}</select></span>
-          </label>
-          <span className="hint" style={{ fontSize: 12 }}>{prop.stylesCanPower ? 'A style can turn the saber off and on itself with this prop' : 'With this prop a style cannot turn the saber off or on, so those parts of a look do not happen'}{prop.abilities ? `; abilities: ${prop.abilityGesture}` : '; no special abilities'}{prop.abilitiesDefine ? ` (Hiltwright adds ${prop.abilitiesDefine} to the build when a look uses them)` : ''}.</span>
+          <div className="col" style={{ gap: 4 }}>
+            <span className="label">Hold</span>
+            <Deck items={HOLDS.map((h) => [h.label, h.key.toUpperCase(), () => setHold(hold === h.type ? null : h.type), hold === h.type] as const)} disabled={!motion.on} cols={2} />
+          </div>
+          {prop.abilities > 0 && (
+            <div className="col" style={{ gap: 4 }}>
+              <span className="label" title={`Special abilities: ${prop.abilityGesture}`}>Special ability</span>
+              <Deck items={[1, 2, 3, 4].map((n) => [`${n}`, `${n}`, () => room?.raise(`EFFECT_USER${n}`)] as const)} disabled={false} />
+            </div>
+          )}
         </div>
       </section>
 
@@ -397,18 +463,14 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
         <div className="mute">what the saber's sensors would read</div>
       </div>
 
-      <div style={{ position: 'absolute', left: 20, bottom: 18, display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 14px', fontSize: 12, color: 'var(--dim)', pointerEvents: 'none' }}>
-        {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  M  N', 'hold lockup, drag, melt, lightning'], ['1 2 3 4', 'special abilities 1 to 4'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll or + −', 'zoom'], ['R', 'reset the pose and the view']].map(([k, v]) => (
-          <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11.5 }}>{k}</span><span>{v}</span></div>
-        ))}
-      </div>
-      <section className="panel" style={{ position: 'absolute', right: 20, bottom: 18, width: 280, background: 'rgba(12,17,23,.88)' }} aria-label="Scene">
-        <div className="row between" style={{ padding: '8px 12px' }}>
+      <section className="panel" style={{ position: 'absolute', right: 20, bottom: 18, width: 280, maxHeight: 'calc(100% - 130px)', display: 'flex', flexDirection: 'column', background: 'rgba(12,17,23,.9)' }} aria-label="Scene">
+        <div className="row between" style={{ padding: '8px 12px', flex: 'none' }}>
           <button type="button" className="row" style={{ gap: 8 }} aria-expanded={sceneOpen} onClick={() => setSceneOpen((o) => !o)}><Icon name={sceneOpen ? 'down' : 'up'} /><b style={{ fontWeight: 600, fontSize: 13 }}>Scene</b></button>
           {sceneOpen && <button type="button" className="holo small" onClick={() => setLook3d({ ...DEFAULT_SCENE })}>Reset</button>}
         </div>
         {sceneOpen && (
-          <div className="col" style={{ gap: 7, padding: '2px 12px 12px', fontSize: 12 }}>
+          <div className="col scroll" style={{ gap: 7, padding: '0 12px 12px', fontSize: 12, minHeight: 0 }}>
+            <span className="label">Light</span>
             {SLIDERS.map((sl) => (
               <label key={sl.key} className="row" style={{ gap: 8 }} title={sl.hint}>
                 <span className="dim" style={{ width: 76, flex: 'none' }}>{sl.label}</span>
@@ -416,100 +478,111 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
                 <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{look3d[sl.key].toFixed(look3d[sl.key] < 1 && sl.max <= 1 ? 2 : 1)}</span>
               </label>
             ))}
-            <div className="col" style={{ gap: 6, paddingTop: 6, marginTop: 2, borderTop: '1px solid var(--line)' }}>
-              <label className="row" style={{ gap: 8 }} title="Blade length, in inches">
-                <span className="dim" style={{ width: 76, flex: 'none' }}>Blade</span>
-                <input type="range" min={20} max={40} step={1} value={look3d.bladeInches} aria-label="Blade length in inches" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setLook3d((v) => ({ ...v, bladeInches: Number(e.target.value) }))} />
-                <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{look3d.bladeInches}"</span>
-              </label>
-              <div className="row" style={{ gap: 8 }} title="How densely the strip inside is populated. The count follows from the length: a shorter blade has fewer LEDs, and every look runs on that many.">
-                <span className="dim" style={{ width: 76, flex: 'none' }}>Strip</span>
-                <span className="input sans" style={{ height: 28, fontSize: 12, width: 92, flex: 'none' }}><span className="ellip">{look3d.ledsPerMetre}/m</span><span className="caret"><Icon name="down" /></span>
-                  <select value={look3d.ledsPerMetre} aria-label="LEDs per metre of strip" onChange={(e) => setLook3d((v) => ({ ...v, ledsPerMetre: Number(e.target.value) }))}>{STRIP_DENSITIES.map((d) => <option key={d} value={d}>{d} per metre</option>)}</select></span>
-                <span className="mono mute" style={{ flex: 1, textAlign: 'right' }}>{ledsFor(look3d.bladeInches * 0.0254, look3d.ledsPerMetre)} LEDs</span>
-              </div>
-              <div className="row" style={{ gap: 8 }}>
-                <span className="dim" style={{ width: 76, flex: 'none' }}>Diameter</span>
-                <div className="seg" role="radiogroup" aria-label="Blade diameter" style={{ height: 28 }}>
-                  {(Object.keys(BLADE_DIAMETERS) as BladeDiameter[]).map((d) => <button key={d} type="button" role="radio" aria-checked={look3d.bladeDiameter === d} className={look3d.bladeDiameter === d ? 'on' : ''} style={{ height: 26, padding: '0 10px', fontSize: 12 }} onClick={() => setLook3d((v) => ({ ...v, bladeDiameter: d }))}>{d}"</button>)}
-                </div>
-              </div>
-              <label className="row" style={{ gap: 10 }} title="Show the unlit blade tube while the saber is off. Off, the blade only exists while it is lit.">
-                <button type="button" className={`tog ${look3d.bladeWhenOff ? 'on' : ''}`} role="switch" aria-checked={look3d.bladeWhenOff} aria-label="Show the blade when off" onClick={() => setLook3d((v) => ({ ...v, bladeWhenOff: !v.bladeWhenOff }))}><i /></button>
-                <span className="dim">Blade shown when off</span>
-              </label>
-              <label className="row" style={{ gap: 10 }} title="A second blade out of the pommel, as on a staff hilt. It shows the same LEDs as the first.">
-                <button type="button" className={`tog ${look3d.staff ? 'on' : ''}`} role="switch" aria-checked={look3d.staff} aria-label="Second blade, staff" onClick={() => setLook3d((v) => ({ ...v, staff: !v.staff }))}><i /></button>
-                <span className="dim">Second blade (staff)</span>
-              </label>
-              <div className="row" style={{ gap: 8 }}>
-                <span className="dim" style={{ width: 76, flex: 'none' }}>Hilt</span>
-                <span className="input sans" style={{ height: 28, fontSize: 12 }}><span className="ellip">{hilt?.name ?? 'Built-in'}</span><span className="caret"><Icon name="down" /></span>
-                  <select value={hilt?.name ?? ''} aria-label="Hilt model" onChange={(e) => setHiltName(e.target.value)}><option value="">Built-in</option>{hilts.map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}</select></span>
-                <label className="chip" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }} title="Load a .glb, .obj or .stl file. For an OBJ, select its .mtl and textures with it."><Icon name="import" />Load
-                  <input type="file" multiple accept=".glb,.gltf,.obj,.stl,.mtl,.png,.jpg,.jpeg,.webp,.tga" aria-label="Load a hilt model" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} onChange={(e) => { void loadHiltFiles(e.target.files); e.target.value = ''; }} /></label>
-              </div>
-              {hilt && (
-                <button type="button" className="row nowrap" style={{ gap: 6, alignSelf: 'flex-start' }} aria-expanded={fitOpen} onClick={() => setFitOpen((o) => !o)}><span style={{ display: 'flex', width: 14, height: 14, color: 'var(--mute)' }}><Icon name={fitOpen ? 'down' : 'chev'} /></span><span className="small dim">Fit and placement</span></button>
-              )}
-              {hilt && fitOpen && (
-                <>
-                  <label className="row" style={{ gap: 8 }} title="Overall length of the hilt">
-                    <span className="dim" style={{ width: 76, flex: 'none' }}>Length</span>
-                    <input type="range" min={15} max={45} step={0.5} value={hilt.fit.lengthCm ?? Math.round((hiltLength ?? 0.28) * 200) / 2} aria-label="Hilt length in centimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ lengthCm: Number(e.target.value) })} />
-                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.lengthCm ?? (hiltLength ?? 0.28) * 100).toFixed(0)}cm</span>
-                  </label>
-                  <label className="row" style={{ gap: 8 }} title="Turn the hilt about the blade so its controls face where you want">
-                    <span className="dim" style={{ width: 76, flex: 'none' }}>Turn</span>
-                    <input type="range" min={-180} max={180} step={5} value={hilt.fit.rollDeg} aria-label="Turn the hilt about the blade" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ rollDeg: Number(e.target.value) })} />
-                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{hilt.fit.rollDeg}°</span>
-                  </label>
-                  {([['Shift X', 'offsetXmm'], ['Shift Z', 'offsetZmm']] as ['Shift X' | 'Shift Z', 'offsetXmm' | 'offsetZmm'][]).map(([label, key]) => (
-                    <label key={key} className="row" style={{ gap: 8 }} title="Slide the hilt sideways so the blade sits in its bore. In millimetres, in the hilt's own frame, so it stays put when you turn it.">
-                      <span className="dim" style={{ width: 76, flex: 'none' }}>{label}</span>
-                      <input type="range" min={-30} max={30} step={0.5} value={hilt.fit[key] ?? 0} aria-label={`${label}: sideways shift in millimetres`} style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ [key]: Number(e.target.value) })} />
-                      <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit[key] ?? 0).toFixed(1)}</span>
-                    </label>
-                  ))}
-                  <label className="row" style={{ gap: 8 }} title="How deep the blade sits in the emitter. Raise it when the emitter's shroud or a flare extends past the socket, so the blade starts inside the hilt rather than at its very top.">
-                    <span className="dim" style={{ width: 76, flex: 'none' }}>Seat</span>
-                    <input type="range" min={-40} max={120} step={0.5} value={hilt.fit.seatMm ?? 0} aria-label="Seat: how deep the blade sits in the emitter, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ seatMm: Number(e.target.value) })} />
-                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.seatMm ?? 0).toFixed(1)}</span>
-                  </label>
-                  {look3d.staff && (
-                    <label className="row" style={{ gap: 8 }} title="How deep the staff's second blade sits in the pommel">
-                      <span className="dim" style={{ width: 76, flex: 'none' }}>Staff seat</span>
-                      <input type="range" min={-40} max={120} step={0.5} value={hilt.fit.staffSeatMm ?? 0} aria-label="Staff seat: how deep the second blade sits in the pommel, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ staffSeatMm: Number(e.target.value) })} />
-                      <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.staffSeatMm ?? 0).toFixed(1)}</span>
-                    </label>
-                  )}
-                  {([['Lean', 'tiltXDeg'], ['Lean side', 'tiltZDeg']] as [string, 'tiltXDeg' | 'tiltZDeg'][]).map(([label, key]) => (
-                    <label key={key} className="row" style={{ gap: 8 }} title="Tilt the hilt relative to the blade, about the point where the blade enters it. For a curved hilt, whose long dimension does not run along the bore.">
-                      <span className="dim" style={{ width: 76, flex: 'none' }}>{label}</span>
-                      <input type="range" min={-45} max={45} step={0.5} value={hilt.fit[key] ?? 0} aria-label={`${label}: tilt of the hilt relative to the blade, in degrees`} style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ [key]: Number(e.target.value) })} />
-                      <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit[key] ?? 0).toFixed(1)}°</span>
-                    </label>
-                  ))}
-                  <div className="row" style={{ gap: 8 }} title="Where the blade's axis is in the file. Drawn around the bore: the file's own axis. Box centre: the middle of the model. Auto picks the first when the file's axis runs through the model.">
-                    <span className="dim" style={{ width: 76, flex: 'none' }}>Axis</span>
-                    <div className="seg" role="radiogroup" aria-label="Blade axis in the file" style={{ height: 28 }}>
-                      {([['auto', 'Auto'], ['origin', 'File'], ['box', 'Box']] as ['auto' | 'origin' | 'box', string][]).map(([v, label]) => <button key={v} type="button" role="radio" aria-checked={(hilt.fit.axis ?? 'auto') === v} className={(hilt.fit.axis ?? 'auto') === v ? 'on' : ''} style={{ height: 26, padding: '0 8px', fontSize: 12 }} onClick={() => setFit({ axis: v })}>{label}</button>)}
-                    </div>
-                  </div>
-                  <label className="row" style={{ gap: 10 }}><button type="button" className={`tog ${hilt.fit.flip ? 'on' : ''}`} role="switch" aria-checked={hilt.fit.flip} aria-label="Blade comes out of the other end" onClick={() => setFit({ flip: !hilt.fit.flip })}><i /></button><span className="dim">Blade at the other end</span></label>
-                  <div className="row" style={{ gap: 14, justifyContent: 'flex-end' }}><button type="button" className="holo small" title="Copy the fit as text" onClick={copyFit}>Copy fit</button><button type="button" className="holo small" onClick={forgetHilt}>{hilt.packId ? 'Reset fit' : 'Remove'}</button></div>
-                </>
-              )}
-              {hilt?.creator && <span className="hint">{hilt.name} by {hilt.creator}{packs.find((p) => p.id === hilt.packId)?.licence ? `, ${packs.find((p) => p.id === hilt.packId)!.licence}` : ''}</span>}
-              {hiltNote && <span className={hiltNote === 'Fit copied.' ? 'hint' : 'red small'}>{hiltNote}</span>}
-            </div>
-            <label className="row" style={{ gap: 10, paddingTop: 2 }}>
+            <label className="row" style={{ gap: 10 }}>
               <button type="button" className={`tog ${look3d.grid ? 'on' : ''}`} role="switch" aria-checked={look3d.grid} aria-label="Floor grid" onClick={() => setLook3d((v) => ({ ...v, grid: !v.grid }))}><i /></button>
               <span className="dim">Floor grid</span>
             </label>
+            <span className="label" style={{ paddingTop: 8, marginTop: 2, borderTop: '1px solid var(--line)' }}>Blade</span>
+            <label className="row" style={{ gap: 8 }} title="Blade length, in inches">
+              <span className="dim" style={{ width: 76, flex: 'none' }}>Length</span>
+              <input type="range" min={20} max={40} step={1} value={look3d.bladeInches} aria-label="Blade length in inches" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setLook3d((v) => ({ ...v, bladeInches: Number(e.target.value) }))} />
+              <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{look3d.bladeInches}"</span>
+            </label>
+            <div className="row" style={{ gap: 8 }} title="How densely the strip inside is populated. The count follows from the length: a shorter blade has fewer LEDs, and every look runs on that many.">
+              <span className="dim" style={{ width: 76, flex: 'none' }}>Strip</span>
+              <span className="input sans" style={{ height: 28, fontSize: 12, width: 92, flex: 'none' }}><span className="ellip">{look3d.ledsPerMetre}/m</span><span className="caret"><Icon name="down" /></span>
+                <select value={look3d.ledsPerMetre} aria-label="LEDs per metre of strip" onChange={(e) => setLook3d((v) => ({ ...v, ledsPerMetre: Number(e.target.value) }))}>{STRIP_DENSITIES.map((d) => <option key={d} value={d}>{d} per metre</option>)}</select></span>
+              <span className="mono mute" style={{ flex: 1, textAlign: 'right' }}>{ledsFor(look3d.bladeInches * 0.0254, look3d.ledsPerMetre)} LEDs</span>
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <span className="dim" style={{ width: 76, flex: 'none' }}>Diameter</span>
+              <div className="seg" role="radiogroup" aria-label="Blade diameter" style={{ height: 28 }}>
+                {(Object.keys(BLADE_DIAMETERS) as BladeDiameter[]).map((d) => <button key={d} type="button" role="radio" aria-checked={look3d.bladeDiameter === d} className={look3d.bladeDiameter === d ? 'on' : ''} style={{ height: 26, padding: '0 10px', fontSize: 12 }} onClick={() => setLook3d((v) => ({ ...v, bladeDiameter: d }))}>{d}"</button>)}
+              </div>
+            </div>
+            <label className="row" style={{ gap: 10 }} title="Show the unlit blade tube while the saber is off. Off, the blade only exists while it is lit.">
+              <button type="button" className={`tog ${look3d.bladeWhenOff ? 'on' : ''}`} role="switch" aria-checked={look3d.bladeWhenOff} aria-label="Show the blade when off" onClick={() => setLook3d((v) => ({ ...v, bladeWhenOff: !v.bladeWhenOff }))}><i /></button>
+              <span className="dim">Blade shown when off</span>
+            </label>
+            <label className="row" style={{ gap: 10 }} title="A second blade out of the pommel, as on a staff hilt. It shows the same LEDs as the first.">
+              <button type="button" className={`tog ${look3d.staff ? 'on' : ''}`} role="switch" aria-checked={look3d.staff} aria-label="Second blade, staff" onClick={() => setLook3d((v) => ({ ...v, staff: !v.staff }))}><i /></button>
+              <span className="dim">Second blade (staff)</span>
+            </label>
+            <span className="label" style={{ paddingTop: 8, marginTop: 2, borderTop: '1px solid var(--line)' }}>Hilt</span>
+            <div className="row" style={{ gap: 8 }}>
+              <span className="dim" style={{ width: 76, flex: 'none' }}>Model</span>
+              <span className="input sans" style={{ height: 28, fontSize: 12 }}><span className="ellip">{hilt?.name ?? 'Built-in'}</span><span className="caret"><Icon name="down" /></span>
+                <select value={hilt?.name ?? ''} aria-label="Hilt model" onChange={(e) => setHiltName(e.target.value)}><option value="">Built-in</option>{hilts.map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}</select></span>
+              <label className="chip" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }} title="Load a .glb, .obj or .stl file. For an OBJ, select its .mtl and textures with it."><Icon name="import" />Load
+                <input type="file" multiple accept=".glb,.gltf,.obj,.stl,.mtl,.png,.jpg,.jpeg,.webp,.tga" aria-label="Load a hilt model" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} onChange={(e) => { void loadHiltFiles(e.target.files); e.target.value = ''; }} /></label>
+            </div>
+            {hilt && (
+              <button type="button" className="row nowrap" style={{ gap: 6, alignSelf: 'flex-start' }} aria-expanded={fitOpen} onClick={() => setFitOpen((o) => !o)}><span style={{ display: 'flex', width: 14, height: 14, color: 'var(--mute)' }}><Icon name={fitOpen ? 'down' : 'chev'} /></span><span className="small dim">Fit and placement</span></button>
+            )}
+            {hilt && fitOpen && (
+              <>
+                <label className="row" style={{ gap: 8 }} title="Overall length of the hilt">
+                  <span className="dim" style={{ width: 76, flex: 'none' }}>Length</span>
+                  <input type="range" min={15} max={45} step={0.5} value={hilt.fit.lengthCm ?? Math.round((hiltLength ?? 0.28) * 200) / 2} aria-label="Hilt length in centimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ lengthCm: Number(e.target.value) })} />
+                  <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.lengthCm ?? (hiltLength ?? 0.28) * 100).toFixed(0)}cm</span>
+                </label>
+                <label className="row" style={{ gap: 8 }} title="Turn the hilt about the blade so its controls face where you want">
+                  <span className="dim" style={{ width: 76, flex: 'none' }}>Turn</span>
+                  <input type="range" min={-180} max={180} step={5} value={hilt.fit.rollDeg} aria-label="Turn the hilt about the blade" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ rollDeg: Number(e.target.value) })} />
+                  <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{hilt.fit.rollDeg}°</span>
+                </label>
+                {([['Shift X', 'offsetXmm'], ['Shift Z', 'offsetZmm']] as ['Shift X' | 'Shift Z', 'offsetXmm' | 'offsetZmm'][]).map(([label, key]) => (
+                  <label key={key} className="row" style={{ gap: 8 }} title="Slide the hilt sideways so the blade sits in its bore. In millimetres, in the hilt's own frame, so it stays put when you turn it.">
+                    <span className="dim" style={{ width: 76, flex: 'none' }}>{label}</span>
+                    <input type="range" min={-30} max={30} step={0.5} value={hilt.fit[key] ?? 0} aria-label={`${label}: sideways shift in millimetres`} style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ [key]: Number(e.target.value) })} />
+                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit[key] ?? 0).toFixed(1)}</span>
+                  </label>
+                ))}
+                <label className="row" style={{ gap: 8 }} title="How deep the blade sits in the emitter. Raise it when the emitter's shroud or a flare extends past the socket, so the blade starts inside the hilt rather than at its very top.">
+                  <span className="dim" style={{ width: 76, flex: 'none' }}>Seat</span>
+                  <input type="range" min={-40} max={120} step={0.5} value={hilt.fit.seatMm ?? 0} aria-label="Seat: how deep the blade sits in the emitter, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ seatMm: Number(e.target.value) })} />
+                  <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.seatMm ?? 0).toFixed(1)}</span>
+                </label>
+                {look3d.staff && (
+                  <label className="row" style={{ gap: 8 }} title="How deep the staff's second blade sits in the pommel">
+                    <span className="dim" style={{ width: 76, flex: 'none' }}>Staff seat</span>
+                    <input type="range" min={-40} max={120} step={0.5} value={hilt.fit.staffSeatMm ?? 0} aria-label="Staff seat: how deep the second blade sits in the pommel, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ staffSeatMm: Number(e.target.value) })} />
+                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.staffSeatMm ?? 0).toFixed(1)}</span>
+                  </label>
+                )}
+                {([['Lean', 'tiltXDeg'], ['Lean side', 'tiltZDeg']] as [string, 'tiltXDeg' | 'tiltZDeg'][]).map(([label, key]) => (
+                  <label key={key} className="row" style={{ gap: 8 }} title="Tilt the hilt relative to the blade, about the point where the blade enters it. For a curved hilt, whose long dimension does not run along the bore.">
+                    <span className="dim" style={{ width: 76, flex: 'none' }}>{label}</span>
+                    <input type="range" min={-45} max={45} step={0.5} value={hilt.fit[key] ?? 0} aria-label={`${label}: tilt of the hilt relative to the blade, in degrees`} style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ [key]: Number(e.target.value) })} />
+                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit[key] ?? 0).toFixed(1)}°</span>
+                  </label>
+                ))}
+                <div className="row" style={{ gap: 8 }} title="Where the blade's axis is in the file. Drawn around the bore: the file's own axis. Box centre: the middle of the model. Auto picks the first when the file's axis runs through the model.">
+                  <span className="dim" style={{ width: 76, flex: 'none' }}>Axis</span>
+                  <div className="seg" role="radiogroup" aria-label="Blade axis in the file" style={{ height: 28 }}>
+                    {([['auto', 'Auto'], ['origin', 'File'], ['box', 'Box']] as ['auto' | 'origin' | 'box', string][]).map(([v, label]) => <button key={v} type="button" role="radio" aria-checked={(hilt.fit.axis ?? 'auto') === v} className={(hilt.fit.axis ?? 'auto') === v ? 'on' : ''} style={{ height: 26, padding: '0 8px', fontSize: 12 }} onClick={() => setFit({ axis: v })}>{label}</button>)}
+                  </div>
+                </div>
+                <label className="row" style={{ gap: 10 }}><button type="button" className={`tog ${hilt.fit.flip ? 'on' : ''}`} role="switch" aria-checked={hilt.fit.flip} aria-label="Blade comes out of the other end" onClick={() => setFit({ flip: !hilt.fit.flip })}><i /></button><span className="dim">Blade at the other end</span></label>
+                <div className="row" style={{ gap: 14, justifyContent: 'flex-end' }}><button type="button" className="holo small" title="Copy the fit as text" onClick={copyFit}>Copy fit</button><button type="button" className="holo small" onClick={forgetHilt}>{hilt.packId ? 'Reset fit' : 'Remove'}</button></div>
+              </>
+            )}
+            {hilt?.creator && <span className="hint">{hilt.name} by {hilt.creator}{packs.find((p) => p.id === hilt.packId)?.licence ? `, ${packs.find((p) => p.id === hilt.packId)!.licence}` : ''}</span>}
+            {hiltNote && <span className={hiltNote === 'Fit copied.' ? 'hint' : 'red small'}>{hiltNote}</span>}
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/** A row of same-sized chips, each with the key that does the same thing. */
+function Deck({ items, disabled, cols = 4 }: { items: readonly (readonly [string, string, () => void] | readonly [string, string, () => void, boolean])[]; disabled: boolean; cols?: number }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 4 }}>
+      {items.map(([label, key, go, on]) => (
+        <button key={label} type="button" className={`chip deck ${on ? 'sel' : ''}`} aria-pressed={on} disabled={disabled} title={`${label} (${key})`} onClick={go}><span className="ellip">{label}</span><kbd className="kbd">{key}</kbd></button>
+      ))}
     </div>
   );
 }

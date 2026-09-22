@@ -282,3 +282,12 @@ tr.on td{background:rgba(95,211,255,.06)}
 .dialog-back{position:fixed;inset:0;background:rgba(5,8,12,.74);z-index:40;display:flex;align-items:center;justify-content:center}
 .dialog{width:min(780px,92vw);max-height:88vh;display:flex;flex-direction:column}
 .sticky{position:sticky;top:0;align-self:start}
+
+/* A key cap beside the thing the key does. */
+.kbd{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;margin-left:6px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:3px;font-family:var(--mono);font-size:9.5px;letter-spacing:0;text-transform:none;color:var(--mute);background:rgba(255,255,255,.03);flex:none}
+.chip.sel .kbd,.btn.pri .kbd{color:inherit;border-color:rgba(255,255,255,.35)}
+button:disabled .kbd{opacity:.5}
+/* The demo room's deck: plain words, a key on the right, all the same width. */
+.chip.deck{flex:1;min-width:0;height:28px;padding:0 5px 0 8px;justify-content:space-between;font-family:'Exo 2',sans-serif;font-size:12px;letter-spacing:0;text-transform:none;color:var(--text)}
+.chip.deck:disabled{color:var(--mute)}
+.chip.deck .kbd{margin-left:4px;min-width:14px}
