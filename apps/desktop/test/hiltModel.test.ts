@@ -54,6 +54,37 @@ describe('fitting a custom hilt', () => {
     expect(sized.group.rotation.y).toBeCloseTo(Math.PI / 2);
   });
 
+  it('a hilt drawn around its bore keeps the bore on the blade whichever way it is turned, box or no box', () => {
+    // A round body on the file's axis with a control box off to one side: the bounding box centre is off the bore.
+    const make = () => {
+      const m = new THREE.Group();
+      m.add(new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 280, 24), new THREE.MeshBasicMaterial()));
+      const box = new THREE.Mesh(new THREE.BoxGeometry(16, 60, 20), new THREE.MeshBasicMaterial()); box.position.set(0, 40, 26); box.name = 'switch';
+      m.add(box);
+      return m;
+    };
+    const bodyAxisAfter = (roll: number, axis: 'auto' | 'origin' | 'box') => {
+      const model = make();
+      const g = fitHilt(model, { ...DEFAULT_FIT, rollDeg: roll, axis }, 0.135).group;
+      g.updateMatrixWorld(true);
+      return model.children[0].getWorldPosition(new THREE.Vector3());
+    };
+    for (const roll of [0, 90, 180, 270]) {
+      const p = bodyAxisAfter(roll, 'auto');
+      expect(Math.hypot(p.x, p.z), `auto, turned ${roll}`).toBeLessThan(1e-6); // the body's axis is the blade's
+    }
+    const wobble = bodyAxisAfter(90, 'box');
+    expect(Math.hypot(wobble.x, wobble.z)).toBeGreaterThan(0.003); // box-centring is what put it off, by half the switch
+  });
+
+  it('falls back to the box centre for a file modelled off in space', () => {
+    const b = bar('y', 280, 36); // bar() places the model far from the origin
+    const g = fitHilt(b, DEFAULT_FIT, 0.135).group;
+    const box = boxOf(g);
+    expect((box.min.x + box.max.x) / 2).toBeCloseTo(0, 5);
+    expect((box.min.z + box.max.z) / 2).toBeCloseTo(0, 5);
+  });
+
   it('shifts the model sideways by finished millimetres, in the hilt\'s own frame, whatever the file\'s units', () => {
     for (const [long, thick] of [[280, 36], [0.28, 0.036]]) { // millimetres and metres
       const plain = boxOf(fitHilt(bar('y', long, thick), DEFAULT_FIT, 0.135).group);

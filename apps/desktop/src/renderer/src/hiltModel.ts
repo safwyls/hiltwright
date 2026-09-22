@@ -21,11 +21,17 @@ export interface HiltFit {
   /** Sideways shift of the model so the blade sits in its bore, in millimetres of finished hilt, in the hilt's own frame (before the turn). */
   offsetXmm?: number;
   offsetZmm?: number;
+  /**
+   * Where the blade's axis is in the file. 'origin': the model was drawn around the bore, so the file's own axis is
+   * the blade's. 'box': the middle of the model's bounding box. 'auto' (the default) uses the origin when it runs
+   * through the model, and the box otherwise (a file modelled off in space).
+   */
+  axis?: 'auto' | 'origin' | 'box';
 }
 /** A file that came with the model: an OBJ's .mtl, and any textures the .mtl names. */
 export interface SideFile { name: string; data: ArrayBuffer }
 export interface StoredHilt { name: string; format: HiltFormat; data: ArrayBuffer; fit: HiltFit; sideFiles?: SideFile[] }
-export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0 };
+export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0, axis: 'auto' };
 
 export function formatOf(fileName: string): HiltFormat | null {
   const ext = fileName.toLowerCase().split('.').pop();
@@ -104,9 +110,10 @@ export async function parseHilt(format: HiltFormat, data: ArrayBuffer, sideFiles
 }
 
 /**
- * Stand `model` up along +Y with the blade end at `emitterY`, at hilt size, centred on the axis by its bounding box and
- * then shifted by the fit's offset, since a hilt's bore is rarely at the centre of its box (a clamp card or a
- * side-mounted emitter pulls the box off to one side).
+ * Stand `model` up along +Y with the blade end at `emitterY`, at hilt size, with the blade's axis where the file
+ * says it is (see HiltFit.axis) and then shifted by the fit's offset. Centring by the bounding box is wrong for any
+ * hilt with a control box or a clamp card on one side: the box centre is off the bore, and turning the hilt about
+ * it makes the body wobble around the blade. A file drawn around the bore has its axis at the origin.
  * Returns the group to add to the saber and the length it ended up, in metres.
  */
 export function fitHilt(model: THREE.Object3D, fit: HiltFit, emitterY: number): { group: THREE.Group; length: number } {
@@ -124,7 +131,12 @@ export function fitHilt(model: THREE.Object3D, fit: HiltFit, emitterY: number): 
   const raw = Math.max(1e-6, box.max.y - box.min.y);
   const length = fit.lengthCm != null ? fit.lengthCm / 100 : guessLength(raw);
   const k = length / raw;
-  const centre = box.getCenter(new THREE.Vector3());
+  const boxCentre = box.getCenter(new THREE.Vector3());
+  // The file's own axis, after standing up and flipping, is wherever its origin went.
+  const origin = new THREE.Vector3(0, 0, 0).applyMatrix4(oriented.matrixWorld);
+  const originInside = origin.x >= box.min.x && origin.x <= box.max.x && origin.z >= box.min.z && origin.z <= box.max.z;
+  const useOrigin = fit.axis === 'origin' || (fit.axis !== 'box' && originInside);
+  const centre = useOrigin ? origin : boxCentre;
 
   const group = new THREE.Group();
   group.add(oriented);
