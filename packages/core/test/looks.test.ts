@@ -142,3 +142,31 @@ describe('the Hiltwright look library', () => {
     expect(STARTER_LOOKS.find((l) => l.roles.includes('motor'))?.id).toBe('hw_motor');
   });
 });
+
+describe('special abilities and the prop', () => {
+  const code = 'StylePtr<Layers<Blue, TransitionEffectL<TrDoEffectX<TrInstant,EFFECT_TRANSITION_SOUND,Int<0>>,EFFECT_USER1>, InOutTrL<TrWipe<300>,TrWipeIn<500>>>>()';
+  const cortosis: LookDef = { ...analyzeStyleCode(code), id: 'cortosis', name: 'Cortosis', source: 'pasted', by: 'Fett263', code, roles: ['main'], description: '' };
+  const model = (prop: SaberConfigModel['prop']): SaberConfigModel => ({
+    name: 'hw_test', board: 'V2', buttons: 2, prop,
+    blades: [{ id: 'main', role: 'main', type: 'pixel', pixels: 132, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2'] } }],
+    presets: [{ font: 'A', track: '', name: 'One', looks: ['cortosis'] }],
+    looks: [cortosis],
+  });
+
+  it('adds FETT263_SPECIAL_ABILITIES for a Fett263 saber when a used look has an ability', () => {
+    const g = generateConfig(model('fett263'));
+    expect(g.text).toMatch(/#define FETT263_SPECIAL_ABILITIES/);
+    expect(g.warnings.some((w) => /special abilities/.test(w))).toBe(true);
+  });
+
+  it('does not add it when no used look has an ability', () => {
+    const m = model('fett263'); m.presets[0].looks = [null];
+    expect(generateConfig(m).text).not.toMatch(/SPECIAL_ABILITIES/);
+  });
+
+  it('warns that the sa22c prop cannot raise abilities', () => {
+    const g = generateConfig(model('sa22c'));
+    expect(g.text).not.toMatch(/SPECIAL_ABILITIES/);
+    expect(g.warnings.some((w) => /no gesture/.test(w))).toBe(true);
+  });
+});

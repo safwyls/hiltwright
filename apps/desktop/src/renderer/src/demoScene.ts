@@ -16,7 +16,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { BladeSim, CLASH_G, type EffectType, type LockupType } from '@hiltwright/core';
+import { BladeSim, CLASH_G, PROPS, type EffectType, type LockupType, type PropBehaviour } from '@hiltwright/core';
 import { Wield, handOnArc } from './wield';
 import { Steer } from './steer';
 import { disposeObject, fitHilt, type HiltFit } from './hiltModel';
@@ -158,6 +158,7 @@ export class DemoScene {
     this.leds = leds; this.lookId = lookId; this.staffLookId = lookId;
     this.sim = new BladeSim(lookId, leds, 1 + Math.floor(Math.random() * 1e6));
     this.listen(this.sim);
+    this.sim.prop = this.prop;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.renderer.setClearColor(0x05070a);
@@ -244,6 +245,7 @@ export class DemoScene {
     this.sim = new BladeSim(this.lookId, leds, 1 + Math.floor(Math.random() * 1e6));
     this.sim.setArgs(this.args);
     this.listen(this.sim);
+    this.sim.prop = this.prop;
     this.sim.setOn(on);
     if (this.staff) this.buildStaffStrip();
   }
@@ -259,6 +261,7 @@ export class DemoScene {
     const on = this.staffSim?.isOn ?? this.sim.isOn;
     this.staffSim = new BladeSim(this.staffLookId, this.leds, 1 + Math.floor(Math.random() * 1e6));
     this.staffSim.setArgs(this.staffArgs);
+    this.staffSim.prop = this.prop;
     this.staffSim.setOn(on);
     this.staffSim.setAngle(-this.lastTilt); this.staffSim.setTwist(this.twist);
   }
@@ -414,6 +417,7 @@ export class DemoScene {
     this.sim = new BladeSim(lookId, this.leds, 1 + Math.floor(Math.random() * 1e6));
     this.sim.setArgs(args);
     this.listen(this.sim);
+    this.sim.prop = this.prop;
     this.sim.setOn(wasOn);
   }
   setArgs(args: Map<number, string>, blade: 'main' | 'staff' = 'main'): void {
@@ -440,6 +444,9 @@ export class DemoScene {
   trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45, hard = false): void { if (!this.sim.isOn) return; const g = hard ? CLASH_G.hard : Math.min(CLASH_G.hard, CLASH_G.soft + (this.swing / 600) * (CLASH_G.hard - CLASH_G.soft)); for (const sim of this.sims()) sim.trigger(type, pos, g); }
   /** A prop-level effect by its ProffieOS name: the special abilities (EFFECT_USER1..4), force, and so on. */
   raise(effectName: string): void { for (const sim of this.sims()) sim.raise(effectName); }
+  /** The prop file around the blade: what it does with the effects a style raises. */
+  setProp(prop: PropBehaviour): void { this.prop = prop; for (const sim of this.sims()) sim.prop = prop; }
+  private prop: PropBehaviour = PROPS.fett263;
   setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) { for (const sim of this.sims()) sim.setLockup(type); this.onEvent?.({ kind: 'lockup', type }); } }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
   resetPose(): void {

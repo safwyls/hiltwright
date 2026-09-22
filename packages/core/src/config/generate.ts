@@ -180,6 +180,13 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
   }));
   const usedLooks = modelLooks(m).filter((l) => slotLooks.some((row) => row.some((x) => x.id === l.id)));
   const pastedHeaders = usedLooks.filter((l) => l.source !== 'starter' && l.header).map((l) => `// Look "${l.name}" (${l.by}):\n${l.header}`);
+  // Special abilities (EFFECT_USER1..4) are gestures the prop raises: Fett263 needs a define for them, sa22c has none.
+  const abilityLooks = usedLooks.filter((l) => /EFFECT_USER[1-8]\b/.test(`${l.define ?? ''} ${l.code}`));
+  if (abilityLooks.length) {
+    const names = abilityLooks.map((l) => `"${l.name}"`).join(', ');
+    if (m.prop === 'fett263') { defines.push('FETT263_SPECIAL_ABILITIES'); warnings.push(`${names} use${abilityLooks.length > 1 ? '' : 's'} special abilities: FETT263_SPECIAL_ABILITIES added, so hold Power and turn the hilt to use them.`); }
+    else if (m.prop !== 'bc') warnings.push(`${names} use${abilityLooks.length > 1 ? '' : 's'} special abilities, which the ${m.prop} prop has no gesture for; that part of the look will not trigger on this saber.`);
+  }
   const manifest: GeneratedConfig['manifest'] = {
     hash: '',
     bladeId: swapping,

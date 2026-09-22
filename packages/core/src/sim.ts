@@ -31,6 +31,32 @@ type Ctx = {
 export type EffectType = 'clash' | 'blast' | 'stab';
 /** An effect on the bus: the short names for the three the library looks answer to, ProffieOS's EFFECT_ names for the rest. */
 export interface SimEffect { type: string; at: number; pos: number; wavnum: number; seq: number; strength: number }
+/**
+ * What a prop file does with the effects a style can raise. The style's own layers see every effect on the bus
+ * regardless; this is about the saber around them: whether FAST_OFF/ON actually power the blade, whether the prop
+ * has gestures for the special abilities, and whether it plays tr sounds. Read from the prop sources, 2026-09-22.
+ */
+export interface PropBehaviour {
+  name: string;
+  /** EFFECT_FAST_OFF/OFF turn the blade off and EFFECT_FAST_ON/ON turn it on (prop_base only plays a sound). */
+  stylesCanPower: boolean;
+  /** Gestures raise EFFECT_USER1.. this many; 0 when the prop has none. */
+  abilities: number;
+  /** A define the prop needs before those gestures exist. */
+  abilitiesDefine?: string;
+  /** How the gesture is done, for the panel. */
+  abilityGesture?: string;
+  /** EFFECT_TRANSITION_SOUND plays trNN.wav. */
+  transitionSounds: boolean;
+}
+export const PROPS: Record<string, PropBehaviour> = {
+  fett263: { name: 'Fett263', stylesCanPower: true, abilities: 4, abilitiesDefine: 'FETT263_SPECIAL_ABILITIES', abilityGesture: 'hold Power and turn right (1), turn left (2); with Aux for 3 and 4', transitionSounds: true },
+  bc: { name: 'BC', stylesCanPower: false, abilities: 8, abilityGesture: 'hold Power and twist; 5 to 8 with the blade off', transitionSounds: true },
+  sa22c: { name: 'sa22c', stylesCanPower: false, abilities: 0, transitionSounds: false },
+  default: { name: 'ProffieOS default', stylesCanPower: false, abilities: 0, transitionSounds: false },
+};
+export const propBehaviour = (prop: string | null | undefined): PropBehaviour => PROPS[prop ?? ''] ?? PROPS.fett263;
+
 /** ProffieOS's clash strength in g for a clash without a swing behind it, and with a hard one. */
 export const CLASH_G = { soft: 5, hard: 16 };
 export type LockupType = 'normal' | 'drag' | 'melt' | 'lb';
@@ -637,6 +663,8 @@ export class BladeSim {
   onEffect: ((e: SimEffect) => void) | null = null;
   /** The strength in g of the last clash, as ClashImpactF reads it. */
   clashStrength = CLASH_G.soft;
+  /** The prop around the blade: decides whether a style can power the saber. Fett263 unless told otherwise. */
+  prop: PropBehaviour = PROPS.fett263;
   private seq = 0;
   private push(type: string, pos: number, wavnum: number, strength = 0): void {
     const c = this.ctx;
@@ -650,8 +678,8 @@ export class BladeSim {
    */
   doEffect(type: string, pos = 0.5, wavnum = -1): void {
     const c = this.ctx;
-    if (type === 'EFFECT_FAST_OFF' || type === 'EFFECT_OFF') { this.push(type, pos, wavnum); if (c.on) this.setOn(false); return; }
-    if (type === 'EFFECT_FAST_ON' || type === 'EFFECT_ON') { this.push(type, pos, wavnum); if (!c.on) this.setOn(true); return; }
+    if (type === 'EFFECT_FAST_OFF' || type === 'EFFECT_OFF') { this.push(type, pos, wavnum); if (c.on && this.prop.stylesCanPower) this.setOn(false); return; }
+    if (type === 'EFFECT_FAST_ON' || type === 'EFFECT_ON') { this.push(type, pos, wavnum); if (!c.on && this.prop.stylesCanPower) this.setOn(true); return; }
     if (type === 'EFFECT_CLASH' || type === 'EFFECT_BLAST' || type === 'EFFECT_STAB') { this.trigger(type.slice(7).toLowerCase() as EffectType, pos); return; }
     this.push(type, pos, wavnum);
   }

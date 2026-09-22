@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BladeSim, registerStyleSim, unregisterStyleSim } from '../src/sim';
+import { BladeSim, PROPS, registerStyleSim, unregisterStyleSim } from '../src/sim';
 import { CATALOGUE, cloneNode, defaultFor, evaluateStyle, kindOf, newNode, paramFor, parseStyle, printStyle } from '../src/styleTree';
 
 const USER_EXAMPLE = `Layers<Red, ResponsiveLockupL<White,TrInstant,TrFade<100>,Int<26000>>, ResponsiveLightningBlockL<White>, ResponsiveMeltL<Mix<TwistAngle<>,Red,Yellow>>, ResponsiveDragL<White>, ResponsiveClashL<White,TrInstant,TrFade<200>,Int<26000>>, ResponsiveBlastL<White>, ResponsiveBlastWaveL<White>, ResponsiveBlastFadeL<White>, ResponsiveStabL<White>, InOutTrL<TrWipe<300>,TrWipeIn<500>>>`;
@@ -240,6 +240,21 @@ describe('a style that steers the prop', () => {
       expect(sparks).toBeGreaterThan(3); expect(tipLit).toBe(0);
       for (let t = 5050; t <= 8000; t += 50) sim.frame(t);
       expect(sim.isOn).toBe(true); expect(lit(sim.frame(8000))).toBe(40);
+    } finally { unregisterStyleSim('ctl'); }
+  });
+});
+
+describe('the prop around the style', () => {
+  it('sa22c ignores a style turning the saber off; Fett263 obeys it', () => {
+    registerStyleSim('ctl', evaluateStyle(parseStyle(CONTROL_LOOP)).make);
+    try {
+      for (const [key, expectOff] of [['sa22c', false], ['fett263', true]] as const) {
+        const sim = new BladeSim('ctl', 40);
+        sim.prop = PROPS[key];
+        sim.frame(0); sim.setOn(true); for (let t = 50; t <= 2000; t += 50) sim.frame(t);
+        sim.raise('EFFECT_USER1'); sim.frame(2050); sim.trigger('clash'); for (let t = 2100; t <= 3500; t += 50) sim.frame(t);
+        expect(sim.isOn, key).toBe(!expectOff);
+      }
     } finally { unregisterStyleSim('ctl'); }
   });
 });

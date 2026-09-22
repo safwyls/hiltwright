@@ -2,7 +2,7 @@
 // driven by the motion of the saber on screen.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, canSimulateLook, hexToColorWord, registerLookSim, type LockupType, type LookDef } from '@hiltwright/core';
+import { PROPS, SIMULATED_LOOKS, STARTER_LOOKS, argInfo, canSimulateLook, hexToColorWord, propBehaviour, registerLookSim, type LockupType, type LookDef } from '@hiltwright/core';
 import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
 import { DEFAULT_FIT, formatOf, meshFromPack, parseHilt, type HiltFit, type SideFile, type StoredHilt } from './hiltModel';
@@ -45,6 +45,11 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const [staffTried, setStaffTried] = useState<Record<number, string>>({});
   const [bladeTab, setBladeTab] = useState<'main' | 'staff'>('main');
   const [hold, setHold] = useState<LockupType | null>(null);
+  // The prop file decides what a style can do to the saber (turn it off, answer an ability): the saber's own unless changed here.
+  const saberProp = board.saber?.model?.prop ?? board.library[0]?.model?.prop ?? null;
+  const [propKey, setPropKey] = useState<string>(() => saberProp ?? 'fett263');
+  const prop = propBehaviour(propKey);
+  useEffect(() => { scene.current?.setProp(prop); }, [prop]);
   const [motion, setMotion] = useState<Motion>({ swing: 0, tilt: 0, twist: 0, on: false });
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -215,6 +220,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     try { room = new DemoScene(el, canSimulateLook(lookId) ? lookId : STARTERS[0].id); } catch (err) { setFailed(String(err)); return; }
     scene.current = room;
     room.setControlMode(control);
+    room.setProp(propBehaviour(propKey));
     room.applySettings(look3d);
     room.onMotion = setMotion;
     room.onEvent = (ev) => {
@@ -223,7 +229,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       if (ev.kind === 'on') eng.ignite(); else if (ev.kind === 'off') eng.retract();
       else if (ev.kind === 'clash' || ev.kind === 'blast' || ev.kind === 'stab') eng.effect(ev.kind);
       else if (ev.kind === 'lockup') { if (ev.type) eng.beginLockup(ev.type === 'normal' ? 'lock' : ev.type === 'melt' ? 'drag' : ev.type); else eng.endLockup(); }
-      else if (ev.kind === 'sound') eng.transition(ev.n);
+      else if (ev.kind === 'sound') { if (propBehaviour(propKey).transitionSounds) eng.transition(ev.n); }
       else if (ev.kind === 'motion') eng.motion(ev.degPerSec, ev.dt);
     };
     const ro = new ResizeObserver(() => room.resize());
@@ -374,8 +380,13 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
             <button type="button" className="chip" disabled={!motion.on} onClick={() => room?.trigger('stab')}>Stab</button>
             <button type="button" className="chip" disabled={!motion.on} title="A clash as hard as the accelerometer ever reports" onClick={() => room?.trigger('clash', undefined, true)}>Hard clash</button>
             {HOLDS.map((h) => <button key={h.type} type="button" className={`chip ${hold === h.type ? 'sel' : ''}`} aria-pressed={hold === h.type} disabled={!motion.on} onClick={() => setHold(hold === h.type ? null : h.type)}>{h.label}</button>)}
-            {[1, 2, 3, 4].map((n) => <button key={n} type="button" className="chip" title={`Special ability ${n} (EFFECT_USER${n}), as the prop's gesture would raise it`} onClick={() => room?.raise(`EFFECT_USER${n}`)}>Ability {n}</button>)}
+            {[1, 2, 3, 4].map((n) => <button key={n} type="button" className="chip" disabled={prop.abilities < n} title={prop.abilities >= n ? `Special ability ${n} (EFFECT_USER${n}): ${prop.abilityGesture}` : `The ${prop.name} prop has no gesture for special abilities`} onClick={() => room?.raise(`EFFECT_USER${n}`)}>Ability {n}</button>)}
           </div>
+          <label className="field"><span className="label">Prop file</span>
+            <span className="input sans"><span className="ellip">{prop.name}</span><span className="caret"><Icon name="down" /></span>
+              <select value={propKey} aria-label="Prop file" onChange={(e) => setPropKey(e.target.value)}>{Object.keys(PROPS).map((k) => <option key={k} value={k}>{PROPS[k].name}{k === saberProp ? ' (this saber)' : ''}</option>)}</select></span>
+          </label>
+          <span className="hint" style={{ fontSize: 12 }}>{prop.stylesCanPower ? 'A style can turn the saber off and on itself with this prop' : 'With this prop a style cannot turn the saber off or on, so those parts of a look do not happen'}{prop.abilities ? `; abilities: ${prop.abilityGesture}` : '; no special abilities'}{prop.abilitiesDefine ? ` (Hiltwright adds ${prop.abilitiesDefine} to the build when a look uses them)` : ''}.</span>
         </div>
       </section>
 
