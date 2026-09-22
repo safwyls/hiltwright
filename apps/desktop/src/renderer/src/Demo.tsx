@@ -36,6 +36,10 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const scene = useRef<DemoScene | null>(null);
   const [lookId, setLookId] = useState(() => (initialLook && LOOKS.some((l) => l.id === initialLook) ? initialLook : LOOKS[0].id));
   const [tried, setTried] = useState<Record<number, string>>({});
+  // The staff blade has its own look and colours; the panel shows one blade at a time.
+  const [staffLookId, setStaffLookId] = useState(() => { try { return localStorage.getItem('hiltwright.demo.staffLook') || ''; } catch { return ''; } });
+  const [staffTried, setStaffTried] = useState<Record<number, string>>({});
+  const [bladeTab, setBladeTab] = useState<'main' | 'staff'>('main');
   const [hold, setHold] = useState<LockupType | null>(null);
   const [motion, setMotion] = useState<Motion>({ swing: 0, tilt: 0, twist: 0, on: false });
   const [failed, setFailed] = useState<string | null>(null);
@@ -101,6 +105,11 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     const mainBlade = (saber.model?.blades.findIndex((b) => b.role === 'main') ?? 0) + 1 || 1;
     const look = saber.firmware ? lookAtSlot(saber.firmware, i, mainBlade) : null;
     if (look && LOOKS.some((l) => l.id === look.id)) { setLookId(look.id); setTried({}); }
+    // A staff hilt's second blade: the next blade slot the saber treats as a blade.
+    const roles = saber.model?.blades.map((b) => b.role) ?? [];
+    const secondBlade = roles.findIndex((r, k) => k !== mainBlade - 1 && (r === 'main' || r === 'side')) + 1;
+    const look2 = secondBlade > 0 && saber.firmware ? lookAtSlot(saber.firmware, i, secondBlade) : null;
+    if (look2 && LOOKS.some((l) => l.id === look2.id)) { setStaffLookId(look2.id); setStaffTried({}); }
     const folder = p.font.split(';')[0];
     const from = sources.find((sr) => fonts.some((f) => f.name === folder) && sr.root === source?.root) ?? source;
     // The font may live on a different source than the one selected: try each until one has it.
@@ -148,7 +157,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     })();
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hilt?.name, hilt?.fit.flip, hilt?.fit.rollDeg, hilt?.fit.lengthCm, hilt?.fit.offsetXmm, hilt?.fit.offsetZmm, hilt?.fit.seatMm, hilt?.fit.tiltXDeg, hilt?.fit.tiltZDeg, hilt?.fit.axis, hilts.length]);
+  }, [hilt?.name, hilt?.fit.flip, hilt?.fit.rollDeg, hilt?.fit.lengthCm, hilt?.fit.offsetXmm, hilt?.fit.offsetZmm, hilt?.fit.seatMm, hilt?.fit.staffSeatMm, hilt?.fit.tiltXDeg, hilt?.fit.tiltZDeg, hilt?.fit.axis, hilts.length]);
   /** One model file, plus for an OBJ its .mtl and any textures, chosen together in the file picker. */
   const loadHiltFiles = async (files: FileList | null) => {
     const all = Array.from(files ?? []);
@@ -181,11 +190,14 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const copyFit = () => { if (!hilt) return; const f = Object.fromEntries(Object.entries(hilt.fit).filter(([k, v]) => v !== (DEFAULT_FIT as unknown as Record<string, unknown>)[k] && v != null)); void navigator.clipboard.writeText(JSON.stringify({ hilt: hilt.packId ?? hilt.name, fit: f })); setHiltNote('Fit copied.'); };
 
   const [sceneOpen, setSceneOpen] = useState(() => { try { return localStorage.getItem('hiltwright.demo.sceneOpen') !== '0'; } catch { return true; } });
-  useEffect(() => { scene.current?.applySettings(look3d); try { localStorage.setItem('hiltwright.demo.scene', JSON.stringify(look3d)); } catch { /* private mode */ } }, [look3d]);
+  useEffect(() => { if (look3d.staff) scene.current?.setLook(staffLook.id, staffArgs, 'staff'); scene.current?.applySettings(look3d); try { localStorage.setItem('hiltwright.demo.scene', JSON.stringify(look3d)); } catch { /* private mode */ } }, [look3d]);
   useEffect(() => { try { localStorage.setItem('hiltwright.demo.sceneOpen', sceneOpen ? '1' : '0'); } catch { /* private mode */ } }, [sceneOpen]);
   useEffect(() => { scene.current?.setControlMode(control); try { localStorage.setItem('hiltwright.demo.control', control); } catch { /* private mode */ } }, [control]);
   const look = LOOKS.find((l) => l.id === lookId) ?? LOOKS[0];
   const args = useMemo(() => new Map(Object.entries(tried).map(([n, v]) => [Number(n), hexToColorWord(v)])), [tried]);
+  const staffLook = LOOKS.find((l) => l.id === staffLookId) ?? look;
+  const staffArgs = useMemo(() => new Map(Object.entries(staffTried).map(([n, v]) => [Number(n), hexToColorWord(v)])), [staffTried]);
+  useEffect(() => { try { localStorage.setItem('hiltwright.demo.staffLook', staffLookId); } catch { /* private mode */ } }, [staffLookId]);
   const holdRef = useRef(hold);
   holdRef.current = hold;
 
@@ -262,10 +274,11 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
 
   useEffect(() => { scene.current?.setLook(lookId, args); setHold(null); }, [lookId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { scene.current?.setArgs(args); }, [args]);
+  useEffect(() => { scene.current?.setLook(staffLook.id, staffArgs, 'staff'); }, [staffLook.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { scene.current?.setArgs(staffArgs, 'staff'); }, [staffArgs]);
   useEffect(() => { scene.current?.setLockup(hold); }, [hold]);
   useEffect(() => { if (!motion.on && hold) setHold(null); }, [motion.on, hold]);
 
-  const colours = look.args.filter((n) => argInfo(n).kind === 'color');
   const room = scene.current;
 
   return (
@@ -273,27 +286,44 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       <div ref={host} style={{ position: 'absolute', inset: 0, cursor: 'grab', touchAction: 'none' }} role="img" aria-label="A saber in a dark room. Drag to move the hand that holds it." />
       {failed && <div className="note red" style={{ position: 'absolute', left: 20, top: 20, maxWidth: 420 }}><Icon name="x" /><span>The demo room needs WebGL, which is not available here. {failed}</span></div>}
 
-      <section className="panel" style={{ position: 'absolute', left: 20, top: 20, width: 300, background: 'rgba(12,17,23,.88)' }} aria-label="Demo controls">
-        <div className="pb col" style={{ gap: 12, padding: 14 }}>
-          <label className="field"><span className="label">Look</span>
-            <span className="input sans"><span className="ellip">{look.name}</span><span className="caret"><Icon name="down" /></span>
-              <select value={lookId} aria-label="Look" onChange={(e) => { setLookId(e.target.value); setTried({}); }}>{LOOKS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></span>
-          </label>
-          <span className="hint" style={{ fontSize: 12 }}>{look.description}</span>
-          {colours.length > 0 && (
-            <div className="row wrap" style={{ gap: 6 }}>
-              {colours.map((n) => {
-                const shown = tried[n] ?? look.defaults?.[n] ?? (n === 1 ? look.preview : '#ffffff');
-                return (
-                  <label key={n} className={`swatch ${tried[n] ? '' : 'linked'}`} style={{ width: 'auto', height: 28, padding: '0 8px', gap: 6 }} title={argInfo(n).name}>
-                    <span className="sq" style={{ width: 12, height: 12, background: shown, boxShadow: `0 0 8px ${shown}` }} />
-                    <span className="small nowrap">{argInfo(n).name.replace(/ colour$/i, '')}</span>
-                    <input type="color" value={shown} aria-label={argInfo(n).name} onChange={(e) => setTried((t) => ({ ...t, [n]: e.target.value }))} />
-                  </label>
-                );
-              })}
+      <section className="panel" style={{ position: 'absolute', left: 20, top: 20, width: 300, maxHeight: 'calc(100% - 220px)', display: 'flex', flexDirection: 'column', background: 'rgba(12,17,23,.88)' }} aria-label="Demo controls">
+        <div className="pb col scroll" style={{ gap: 12, padding: 14 }}>
+          {look3d.staff && (
+            <div className="seg" role="tablist" aria-label="Which blade" style={{ alignSelf: 'flex-start' }}>
+              <button type="button" role="tab" aria-selected={bladeTab === 'main'} className={bladeTab === 'main' ? 'on' : ''} onClick={() => setBladeTab('main')}>Main blade</button>
+              <button type="button" role="tab" aria-selected={bladeTab === 'staff'} className={bladeTab === 'staff' ? 'on' : ''} onClick={() => setBladeTab('staff')}>Staff blade</button>
             </div>
           )}
+          {(() => {
+            const staff = look3d.staff && bladeTab === 'staff';
+            const cur = staff ? staffLook : look; const curId = staff ? staffLook.id : lookId; const curTried = staff ? staffTried : tried;
+            const setId = staff ? (v: string) => { setStaffLookId(v); setStaffTried({}); } : (v: string) => { setLookId(v); setTried({}); };
+            const setCol = staff ? setStaffTried : setTried;
+            const cols = cur.args.filter((n) => argInfo(n).kind === 'color');
+            return (
+              <>
+                <label className="field"><span className="label">{staff ? 'Staff blade look' : 'Look'}</span>
+                  <span className="input sans"><span className="ellip">{cur.name}</span><span className="caret"><Icon name="down" /></span>
+                    <select value={curId} aria-label={staff ? 'Staff blade look' : 'Look'} onChange={(e) => setId(e.target.value)}>{LOOKS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></span>
+                </label>
+                <span className="hint" style={{ fontSize: 12 }}>{cur.description}</span>
+                {cols.length > 0 && (
+                  <div className="row wrap" style={{ gap: 6 }}>
+                    {cols.map((n) => {
+                      const shown = curTried[n] ?? cur.defaults?.[n] ?? (n === 1 ? cur.preview : '#ffffff');
+                      return (
+                        <label key={n} className={`swatch ${curTried[n] ? '' : 'linked'}`} style={{ width: 'auto', height: 28, padding: '0 8px', gap: 6 }} title={argInfo(n).name}>
+                          <span className="sq" style={{ width: 12, height: 12, background: shown, boxShadow: `0 0 8px ${shown}` }} />
+                          <span className="small nowrap">{argInfo(n).name.replace(/ colour$/i, '')}</span>
+                          <input type="color" value={shown} aria-label={`${argInfo(n).name}${staff ? ' of the staff blade' : ''}`} onChange={(e) => setCol((t) => ({ ...t, [n]: e.target.value }))} />
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            );
+          })()}
           <div className="col" style={{ gap: 4 }}>
             <span className="label">Mouse control</span>
             <div className="seg" role="radiogroup" aria-label="Mouse control">
@@ -419,6 +449,13 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
                     <input type="range" min={-40} max={80} step={0.5} value={hilt.fit.seatMm ?? 0} aria-label="Seat: how deep the blade sits in the emitter, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ seatMm: Number(e.target.value) })} />
                     <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.seatMm ?? 0).toFixed(1)}</span>
                   </label>
+                  {look3d.staff && (
+                    <label className="row" style={{ gap: 8 }} title="How deep the staff's second blade sits in the pommel">
+                      <span className="dim" style={{ width: 76, flex: 'none' }}>Staff seat</span>
+                      <input type="range" min={-40} max={80} step={0.5} value={hilt.fit.staffSeatMm ?? 0} aria-label="Staff seat: how deep the second blade sits in the pommel, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ staffSeatMm: Number(e.target.value) })} />
+                      <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.staffSeatMm ?? 0).toFixed(1)}</span>
+                    </label>
+                  )}
                   {([['Lean', 'tiltXDeg'], ['Lean side', 'tiltZDeg']] as [string, 'tiltXDeg' | 'tiltZDeg'][]).map(([label, key]) => (
                     <label key={key} className="row" style={{ gap: 8 }} title="Tilt the hilt relative to the blade, about the point where the blade enters it. For a curved hilt, whose long dimension does not run along the bore.">
                       <span className="dim" style={{ width: 76, flex: 'none' }}>{label}</span>

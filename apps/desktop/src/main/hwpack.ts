@@ -16,7 +16,7 @@ const MAGIC = Buffer.from('HWPK');
 // Known to anyone who reads this file; that is the nature of a key an app carries. It stops casual copying, no more.
 const APP_KEY = Buffer.from('hiltwright-pack-key-v1:4f0a9c3e6b1d2a7c8e5f0b9a3d6c1e4f', 'utf8');
 
-export interface HiltFitDefaults { flip?: boolean; rollDeg?: number; lengthCm?: number | null; offsetXmm?: number; offsetZmm?: number; seatMm?: number; tiltXDeg?: number; tiltZDeg?: number; axis?: 'auto' | 'origin' | 'box' }
+export interface HiltFitDefaults { flip?: boolean; rollDeg?: number; lengthCm?: number | null; offsetXmm?: number; offsetZmm?: number; seatMm?: number; tiltXDeg?: number; tiltZDeg?: number; staffSeatMm?: number; axis?: 'auto' | 'origin' | 'box' }
 
 export interface PackItem { name: string; kind: 'mesh' | 'wav' | 'ini'; bytes: number; offset: number; length: number }
 export interface PackManifest {

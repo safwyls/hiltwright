@@ -33,6 +33,8 @@ export interface HiltFit {
    */
   tiltXDeg?: number;
   tiltZDeg?: number;
+  /** For a staff: how deep the second blade sits in the pommel, in millimetres. */
+  staffSeatMm?: number;
   /**
    * Where the blade's axis is in the file. 'origin': the model was drawn around the bore, so the file's own axis is
    * the blade's. 'box': the middle of the model's bounding box. 'auto' (the default) uses the origin when it runs
@@ -44,7 +46,7 @@ export interface HiltFit {
 export interface SideFile { name: string; data: ArrayBuffer }
 /** A hilt the owner loaded, or one from a pack (format 'pack': `data` is empty, the mesh comes from the pack by `packId`). */
 export interface StoredHilt { name: string; format: HiltFormat; data: ArrayBuffer; fit: HiltFit; sideFiles?: SideFile[]; packId?: string; creator?: string }
-export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0, seatMm: 0, tiltXDeg: 0, tiltZDeg: 0, axis: 'auto' };
+export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0, seatMm: 0, tiltXDeg: 0, tiltZDeg: 0, staffSeatMm: 0, axis: 'auto' };
 
 export function formatOf(fileName: string): HiltFormat | null {
   const ext = fileName.toLowerCase().split('.').pop();

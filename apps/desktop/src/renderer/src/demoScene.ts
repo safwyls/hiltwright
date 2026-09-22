@@ -127,9 +127,18 @@ export class DemoScene {
   private settings: SceneSettings = { ...DEFAULT_SCENE };
   private bladeMaterial!: THREE.MeshBasicMaterial;
   private tube!: THREE.Mesh;
-  /** The staff's second blade: the same tube and tip geometry, hung from the pommel, pointing the other way. */
+  /** The staff's second blade: the same tube and tip geometry hung from the pommel, pointing the other way, with its own LEDs and look. */
   private staff: THREE.Group | null = null;
   private staffLights: THREE.PointLight[] = [];
+  private staffSim: BladeSim | null = null;
+  private staffLookId: string;
+  private staffArgs = new Map<number, string>();
+  private staffData: Uint8Array<ArrayBuffer> | null = null;
+  private staffTexture: THREE.DataTexture | null = null;
+  private staffMaterial: THREE.MeshBasicMaterial | null = null;
+  private readonly staffTipMaterial = new THREE.MeshBasicMaterial({ toneMapped: false });
+  private staffSeat = 0;
+  private lastTilt = 0;
   private hiltLength = HILT_LENGTH;
   private tipMesh!: THREE.Mesh;
   private bladeLength = BLADE_LENGTH;
@@ -143,7 +152,7 @@ export class DemoScene {
   private lastReport = 0;
 
   constructor(private readonly host: HTMLElement, lookId: string, leds = ledsFor(BLADE_LENGTH, 144)) {
-    this.leds = leds; this.lookId = lookId;
+    this.leds = leds; this.lookId = lookId; this.staffLookId = lookId;
     this.sim = new BladeSim(lookId, leds, 1 + Math.floor(Math.random() * 1e6));
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -226,6 +235,22 @@ export class DemoScene {
     this.sim = new BladeSim(this.lookId, leds, 1 + Math.floor(Math.random() * 1e6));
     this.sim.setArgs(this.args);
     this.sim.setOn(on);
+    if (this.staff) this.buildStaffStrip();
+  }
+
+  /** The staff blade's own strip texture, material and simulator, sized to the current LED count. */
+  private buildStaffStrip(): void {
+    this.staffTexture?.dispose();
+    this.staffData = new Uint8Array(new ArrayBuffer(this.leds * 4));
+    this.staffTexture = DemoScene.stripTexture(this.staffData, this.leds);
+    if (!this.staffMaterial) this.staffMaterial = new THREE.MeshBasicMaterial({ map: this.staffTexture, toneMapped: false });
+    this.staffMaterial.map = this.staffTexture; this.staffMaterial.needsUpdate = true;
+    this.staffMaterial.color.copy(this.bladeMaterial.color);
+    const on = this.staffSim?.isOn ?? this.sim.isOn;
+    this.staffSim = new BladeSim(this.staffLookId, this.leds, 1 + Math.floor(Math.random() * 1e6));
+    this.staffSim.setArgs(this.staffArgs);
+    this.staffSim.setOn(on);
+    this.staffSim.setAngle(-this.lastTilt); this.staffSim.setTwist(this.twist);
   }
 
   private buildRoom(): void {
@@ -294,6 +319,7 @@ export class DemoScene {
     this.bloom.strength = next.glow;
     this.bloom.radius = next.glowSpread;
     this.bladeMaterial.color.setRGB(next.bladeBrightness, next.bladeBrightness, next.bladeBrightness);
+    this.staffMaterial?.color.copy(this.bladeMaterial.color);
     for (const { light, base } of this.roomLamps) light.intensity = base * next.roomLight;
     (this.scene.fog as THREE.FogExp2).density = next.haze;
     this.grid.visible = next.grid;
@@ -305,8 +331,9 @@ export class DemoScene {
   private setStaff(on: boolean): void {
     if (on && !this.staff) {
       const g = new THREE.Group();
-      const tube = new THREE.Mesh(this.tube.geometry, this.bladeMaterial);
-      const tip = new THREE.Mesh(this.tipMesh.geometry, this.tipMaterial);
+      this.buildStaffStrip();
+      const tube = new THREE.Mesh(this.tube.geometry, this.staffMaterial!);
+      const tip = new THREE.Mesh(this.tipMesh.geometry, this.staffTipMaterial);
       g.add(tube, tip);
       for (let i = 0; i < 3; i++) { const lamp = new THREE.PointLight(0xffffff, 0, 7, 2); g.add(lamp); this.staffLights.push(lamp); }
       this.glowing.add(tube); this.glowing.add(tip);
@@ -315,7 +342,7 @@ export class DemoScene {
     } else if (!on && this.staff) {
       for (const o of this.staff.children) this.glowing.delete(o);
       this.roll.remove(this.staff);
-      this.staff = null; this.staffLights = [];
+      this.staff = null; this.staffLights = []; this.staffSim = null;
     }
     this.placeStaff();
   }
@@ -326,7 +353,8 @@ export class DemoScene {
     if (!g) return;
     const [tube, tip] = g.children as THREE.Mesh[];
     tube.geometry = this.tube.geometry; tip.geometry = this.tipMesh.geometry;
-    g.position.y = HILT_LENGTH / 2 - this.hiltLength;
+    // The pommel end, plus how deep the second blade is seated in it.
+    g.position.y = HILT_LENGTH / 2 - this.hiltLength + this.staffSeat;
     g.rotation.x = Math.PI;
     tube.position.y = this.bladeLength / 2;
     tip.position.y = this.bladeLength;
@@ -356,6 +384,7 @@ export class DemoScene {
     const old = this.customHilt;
     if (old) { this.roll.remove(old.group); if (old.model !== model) disposeObject(old.model); this.customHilt = null; }
     this.builtInHilt.visible = model === null;
+    this.staffSeat = (fit.staffSeatMm ?? 0) / 1000;
     if (!model) { this.hiltLength = HILT_LENGTH; this.placeStaff(); return HILT_LENGTH; }
     const { group, length } = fitHilt(model, fit, HILT_LENGTH / 2);
     this.roll.add(group);
@@ -366,18 +395,24 @@ export class DemoScene {
 
   // ---- what the page asks of the saber ----
 
-  setLook(lookId: string, args: Map<number, string>): void {
+  setLook(lookId: string, args: Map<number, string>, blade: 'main' | 'staff' = 'main'): void {
+    if (blade === 'staff') { this.staffLookId = lookId; this.staffArgs = args; if (this.staff) this.buildStaffStrip(); return; }
     const wasOn = this.sim.isOn;
     this.lookId = lookId; this.args = args;
     this.sim = new BladeSim(lookId, this.leds, 1 + Math.floor(Math.random() * 1e6));
     this.sim.setArgs(args);
     this.sim.setOn(wasOn);
   }
-  setArgs(args: Map<number, string>): void { this.args = args; this.sim.setArgs(args); }
+  setArgs(args: Map<number, string>, blade: 'main' | 'staff' = 'main'): void {
+    if (blade === 'staff') { this.staffArgs = args; this.staffSim?.setArgs(args); return; }
+    this.args = args; this.sim.setArgs(args);
+  }
+  /** Every simulator the saber is running: the main blade, and the staff blade when there is one. */
+  private sims(): BladeSim[] { return this.staffSim ? [this.sim, this.staffSim] : [this.sim]; }
   get isOn(): boolean { return this.sim.isOn; }
-  setOn(on: boolean): void { if (on === this.sim.isOn) return; this.sim.setOn(on); if (!on) { this.sim.setLockup(null); this.onEvent?.({ kind: 'lockup', type: null }); } this.onEvent?.({ kind: on ? 'on' : 'off' }); }
-  trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (!this.sim.isOn) return; this.sim.trigger(type, pos); this.onEvent?.({ kind: type }); }
-  setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) { this.sim.setLockup(type); this.onEvent?.({ kind: 'lockup', type }); } }
+  setOn(on: boolean): void { if (on === this.sim.isOn) return; for (const sim of this.sims()) sim.setOn(on); if (!on) { for (const sim of this.sims()) sim.setLockup(null); this.onEvent?.({ kind: 'lockup', type: null }); } this.onEvent?.({ kind: on ? 'on' : 'off' }); }
+  trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (!this.sim.isOn) return; for (const sim of this.sims()) sim.trigger(type, pos); this.onEvent?.({ kind: type }); }
+  setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) { for (const sim of this.sims()) sim.setLockup(type); this.onEvent?.({ kind: 'lockup', type }); } }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
   resetPose(): void {
     this.handAt.x = HOME_AT.x; this.handAt.y = HOME_AT.y;
@@ -481,12 +516,15 @@ export class DemoScene {
 
     this.saber.quaternion.setFromUnitVectors(UP, this.dir);
     this.roll.rotation.y = (this.twist * Math.PI) / 180;
+    this.lastTilt = tilt;
     this.sim.setSwing(Math.min(900, this.swing));
+    if (this.staffSim) { this.staffSim.setSwing(Math.min(900, this.swing)); this.staffSim.setAngle(-tilt); this.staffSim.setTwist(this.twist); }
     this.onEvent?.({ kind: 'motion', degPerSec: speed, dt });
     this.sim.setAngle(tilt);
     this.sim.setTwist(this.twist);
 
-    this.paintBlade(this.sim.frame(now));
+    this.paintBlade(this.sim.frame(now), this.ledData, this.ledTexture, this.tipMaterial, this.lights);
+    if (this.staffSim && this.staffData && this.staffTexture) this.paintBlade(this.staffSim.frame(now), this.staffData, this.staffTexture, this.staffTipMaterial, this.staffLights);
 
     this.distance += (this.distanceTarget - this.distance) * Math.min(1, dt * 12);
     const cy = Math.cos(this.orbit.pitch); const dist = this.distance;
@@ -518,8 +556,8 @@ export class DemoScene {
   }
 
   /** LED values to what an eye sees: diffuser smear in linear light, channel saturation, gamma. As in the 2D preview. */
-  private paintBlade(leds: Float32Array): void {
-    const n = this.leds; const out = this.ledData;
+  private paintBlade(leds: Float32Array, out: Uint8Array<ArrayBuffer>, texture: THREE.DataTexture, tipMaterial: THREE.MeshBasicMaterial, lights: THREE.PointLight[]): void {
+    const n = this.leds;
     const W = [0.07, 0.24, 0.38, 0.24, 0.07];
     const sums = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
     for (let i = 0; i < n; i++) {
@@ -538,13 +576,13 @@ export class DemoScene {
       out[i * 4 + 2] = Math.round(Math.min(1, lit[2] + 0.12 * dark) * 255);
       out[i * 4 + 3] = 255;
     }
-    this.ledTexture.needsUpdate = true;
+    texture.needsUpdate = true;
     const last = (n - 1) * 4;
     const boost = this.settings.bladeBrightness;
-    this.tipMaterial.color.setRGB((out[last] / 255) * boost, (out[last + 1] / 255) * boost, (out[last + 2] / 255) * boost, THREE.SRGBColorSpace);
+    tipMaterial.color.setRGB((out[last] / 255) * boost, (out[last + 1] / 255) * boost, (out[last + 2] / 255) * boost, THREE.SRGBColorSpace);
     const per = n / 3;
-    [...this.lights, ...this.staffLights].forEach((lamp, i) => {
-      const [r, g, b] = sums[i % 3].map((v) => v / per);
+    lights.forEach((lamp, i) => {
+      const [r, g, b] = sums[i].map((v) => v / per);
       const level = Math.max(r, g, b);
       lamp.intensity = level * 7 * this.settings.bladeLight;
       if (level > 0.001) lamp.color.setRGB(r / level, g / level, b / level);
@@ -561,6 +599,7 @@ export class DemoScene {
       if (Array.isArray(mat)) mat.forEach((x) => x.dispose()); else mat?.dispose();
     });
     this.ledTexture.dispose();
+    this.staffTexture?.dispose();
     this.composer.dispose();
     this.glowComposer.dispose();
     this.black.dispose();

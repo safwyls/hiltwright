@@ -55,7 +55,7 @@ export interface CardInfo {
 export interface PackInfo {
   id: string; kind: 'hilt' | 'font'; name: string; creator: string; licence: string;
   allow: { copyToCard: boolean; demoPlayback: boolean };
-  fit?: { flip?: boolean; rollDeg?: number; lengthCm?: number | null; offsetXmm?: number; offsetZmm?: number; seatMm?: number; tiltXDeg?: number; tiltZDeg?: number; axis?: 'auto' | 'origin' | 'box' };
+  fit?: { flip?: boolean; rollDeg?: number; lengthCm?: number | null; offsetXmm?: number; offsetZmm?: number; seatMm?: number; tiltXDeg?: number; tiltZDeg?: number; staffSeatMm?: number; axis?: 'auto' | 'origin' | 'box' };
   file: string; sounds: number; packed: string;
 }
 export interface PackMesh {
