@@ -223,7 +223,8 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       if (ev.kind === 'on') eng.ignite(); else if (ev.kind === 'off') eng.retract();
       else if (ev.kind === 'clash' || ev.kind === 'blast' || ev.kind === 'stab') eng.effect(ev.kind);
       else if (ev.kind === 'lockup') { if (ev.type) eng.beginLockup(ev.type === 'normal' ? 'lock' : ev.type === 'melt' ? 'drag' : ev.type); else eng.endLockup(); }
-      else eng.motion(ev.degPerSec, ev.dt);
+      else if (ev.kind === 'sound') eng.transition(ev.n);
+      else if (ev.kind === 'motion') eng.motion(ev.degPerSec, ev.dt);
     };
     const ro = new ResizeObserver(() => room.resize());
     ro.observe(el);
@@ -262,7 +263,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       const k = e.key.toLowerCase();
       if (k === '+' || k === '=') { room.zoomBy(-1); return; }
       if (k === '-' || k === '_') { room.zoomBy(1); return; }
-      if (k === ' ') { e.preventDefault(); room.setOn(!room.isOn); setHold(null); } else if (k === 'c') room.trigger('clash'); else if (k === 'b') room.trigger('blast'); else if (k === 's') room.trigger('stab'); else if (k === 'r') room.resetPose();
+      if (k === ' ') { e.preventDefault(); room.setOn(!room.isOn); setHold(null); } else if (k === 'c') room.trigger('clash'); else if (k === 'b') room.trigger('blast'); else if (k === 's') room.trigger('stab'); else if (k === 'r') room.resetPose(); else if (/^[1-4]$/.test(k) && !e.repeat) room.raise(`EFFECT_USER${k}`);
       else { const h = HOLDS.find((x) => x.key === k); if (h && !e.repeat) setHold(holdRef.current === h.type ? null : h.type); }
     };
     el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
@@ -371,7 +372,9 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
             <button type="button" className="chip" disabled={!motion.on} onClick={() => room?.trigger('clash')}>Clash</button>
             <button type="button" className="chip" disabled={!motion.on} onClick={() => room?.trigger('blast')}>Blast</button>
             <button type="button" className="chip" disabled={!motion.on} onClick={() => room?.trigger('stab')}>Stab</button>
+            <button type="button" className="chip" disabled={!motion.on} title="A clash as hard as the accelerometer ever reports" onClick={() => room?.trigger('clash', undefined, true)}>Hard clash</button>
             {HOLDS.map((h) => <button key={h.type} type="button" className={`chip ${hold === h.type ? 'sel' : ''}`} aria-pressed={hold === h.type} disabled={!motion.on} onClick={() => setHold(hold === h.type ? null : h.type)}>{h.label}</button>)}
+            {[1, 2, 3, 4].map((n) => <button key={n} type="button" className="chip" title={`Special ability ${n} (EFFECT_USER${n}), as the prop's gesture would raise it`} onClick={() => room?.raise(`EFFECT_USER${n}`)}>Ability {n}</button>)}
           </div>
         </div>
       </section>
@@ -384,7 +387,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       </div>
 
       <div style={{ position: 'absolute', left: 20, bottom: 18, display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 14px', fontSize: 12, color: 'var(--dim)', pointerEvents: 'none' }}>
-        {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  M  N', 'hold lockup, drag, melt, lightning'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll or + −', 'zoom'], ['R', 'reset the pose and the view']].map(([k, v]) => (
+        {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  M  N', 'hold lockup, drag, melt, lightning'], ['1 2 3 4', 'special abilities 1 to 4'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll or + −', 'zoom'], ['R', 'reset the pose and the view']].map(([k, v]) => (
           <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11.5 }}>{k}</span><span>{v}</span></div>
         ))}
       </div>

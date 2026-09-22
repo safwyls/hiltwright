@@ -3,7 +3,7 @@ export * from './config';
 export * from './protocol';
 export * from './looks';
 export * from './lookLibrary';
-export { BladeSim, SIMULATED_LOOKS, canSimulateLook, registerStyleSim, unregisterStyleSim, prims, type EffectType, type LockupType, type ColorFn } from './sim';
+export { BladeSim, CLASH_G, SIMULATED_LOOKS, canSimulateLook, registerStyleSim, unregisterStyleSim, prims, type EffectType, type LockupType, type ColorFn, type SimEffect } from './sim';
 export * from './styleBuilder';
 export * from './styleTree';
 export { registerLookSim } from './lookSim';

@@ -23,7 +23,7 @@ const EFFECT_ALIASES: Record<string, string[]> = {
 export function groupSounds(names: string[]): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const n of names) {
-    const m = /^(?:([a-z]+)\/)?([a-z]+)?(\d*)\.wav$/i.exec(n.replace(/\\/g, '/'));
+    const m = /^(?:([a-z]+)\/)?(?:\d+\/)?([a-z]+)?(\d*)\.wav$/i.exec(n.replace(/\\/g, '/'));
     if (!m) continue;
     const effect = (m[2] && !/^\d+$/.test(m[2]) ? m[2] : m[1])?.toLowerCase();
     if (!effect) continue;
@@ -174,6 +174,13 @@ export class FontEngine {
     if (inn) this.freeFx().play(inn);
     this.hum.fadeAndStop(inn ? Math.min(0.6, inn.duration) : 0.3);
     this.sw.on = false; this.swingA.fadeAndStop(0.2); this.swingB.fadeAndStop(0.2);
+  }
+
+  /** A style's transition sound: trNN.wav or tr/NNN/000.wav, as EFFECT_TRANSITION_SOUND with that number plays it. */
+  transition(n: number): void {
+    if (n < 0 || n >= this.count('tr')) return;
+    const b = this.pickIndexed('tr', n);
+    if (b) this.freeFx().play(b);
   }
 
   effect(kind: 'clash' | 'blast' | 'stab' | 'force'): void {

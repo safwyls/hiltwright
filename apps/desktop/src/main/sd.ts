@@ -88,7 +88,7 @@ export async function ejectVolume(root: string): Promise<{ ok: boolean; detail: 
 }
 
 /** The sounds a listen needs. Everything else in a font (tracks, ini files, quotes) stays on the card. */
-const PLAYABLE = /^(hum|humm|out|poweron|in|poweroff|clsh|clash|blst|blaster|stab|force|font|boot|lock|lockup|bgnlock|endlock|drag|bgndrag|enddrag|lb|bgnlb|endlb|swingl|swingh|lswing|hswing|swng|swing)$/i;
+const PLAYABLE = /^(hum|humm|out|poweron|in|poweroff|clsh|clash|blst|blaster|stab|force|font|boot|lock|lockup|bgnlock|endlock|drag|bgndrag|enddrag|lb|bgnlb|endlb|swingl|swingh|lswing|hswing|swng|swing|tr)$/i;
 const FONT_BYTES_CAP = 120 * 1024 * 1024;
 
 export interface FontSounds { name: string; files: Record<string, ArrayBuffer>; ini: Record<string, string>; smoothsw: Record<string, string>; bytes: number; skipped: number }
@@ -110,7 +110,8 @@ export async function readFontSounds(fontDir: string, onFile?: (name: string, do
     const m = /^([a-z]+)\d*\.wav$/i.exec(name);
     if (m) { if (PLAYABLE.test(m[1])) wanted.push({ key: name, p }); continue; }
     if (name.startsWith('.') || !PLAYABLE.test(name) || !(await isDir(p))) continue;
-    try { for (const f of await readdir(p)) if (/\.wav$/i.test(f)) wanted.push({ key: `${name}/${f}`, p: join(p, f) }); } catch { /* unreadable */ }
+    // Inside a sound's folder: its wavs, or numbered folders of wavs (tr/001/000.wav, the style transition sounds).
+    try { for (const f of await readdir(p)) { if (/\.wav$/i.test(f)) wanted.push({ key: `${name}/${f}`, p: join(p, f) }); else if (/^\d+$/.test(f) && (await isDir(join(p, f)))) { for (const g of await readdir(join(p, f))) if (/\.wav$/i.test(g)) wanted.push({ key: `${name}/${f}/${g}`, p: join(p, f, g) }); } } } catch { /* unreadable */ }
   }
   const files: Record<string, ArrayBuffer> = {};
   let bytes = 0; let skipped = 0; let done = 0;

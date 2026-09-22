@@ -10,6 +10,8 @@ const EFFECTS = 'CLASH BLAST FORCE STAB BOOT LOCKUP_BEGIN LOCKUP_END DRAG_BEGIN 
 const LOCKUPS = ['NORMAL', 'DRAG', 'MELT', 'ARMED', 'AUTOFIRE'].map((l) => `SaberBase::LOCKUP_${l}`);
 const COLOR_ARGS: [string, string][] = [['BASE_COLOR_ARG', 'Base colour'], ['ALT_COLOR_ARG', 'Alt colour'], ['IGNITION_COLOR_ARG', 'Ignition colour'], ['BLAST_COLOR_ARG', 'Blast colour'], ['CLASH_COLOR_ARG', 'Clash colour'], ['LOCKUP_COLOR_ARG', 'Lockup colour'], ['DRAG_COLOR_ARG', 'Drag colour'], ['LB_COLOR_ARG', 'Lightning block colour'], ['STAB_COLOR_ARG', 'Stab colour'], ['SWING_COLOR_ARG', 'Swing colour'], ['EMITTER_COLOR_ARG', 'Emitter colour'], ['PREON_COLOR_ARG', 'Pre-on colour'], ['RETRACTION_COLOR_ARG', 'Retraction colour'], ['POSTOFF_COLOR_ARG', 'Post-off colour'], ['OFF_COLOR_ARG', 'Off colour'], ['ALT_COLOR2_ARG', '2nd alt colour'], ['ALT_COLOR3_ARG', '3rd alt colour']];
 
+const APPROX_WORDS = (n: string): string => ({ ClashImpactF: 'clash strength (soft, or hard with a swing behind it)', SoundLevel: 'sound level (a modelled hum)', WavLen: 'sound lengths (1 s)', VolumeLevel: 'volume', SwingAcceleration: 'swing acceleration', TwistAcceleration: 'twist acceleration', MarbleF: 'the marble (gravity from the tilt only)', OriginalBlastF: 'the original blast shape' } as Record<string, string>)[n] ?? friendly(n);
+
 /** Catalogue entries a slot of `kind` can take, the current one included even if it is an internal helper. */
 function choicesFor(kind: Kind, current: string): CatEntry[] {
   const all = Object.values(CATALOGUE).filter((e) => !e.internal || e.name === current);
@@ -42,7 +44,7 @@ function retarget(old: Node, name: string): Node {
   return next;
 }
 
-export function TreeEditor({ tree, onChange, unsupported }: { tree: Node; onChange: (t: Node) => void; unsupported: string[] }) {
+export function TreeEditor({ tree, onChange, unsupported, approximate }: { tree: Node; onChange: (t: Node) => void; unsupported: string[]; approximate: string[] }) {
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState('');
   const update = (fn: (t: Node) => void) => { const next = cloneNode(tree); fn(next); onChange(next); };
@@ -53,6 +55,7 @@ export function TreeEditor({ tree, onChange, unsupported }: { tree: Node; onChan
   return (
     <div className="col" style={{ gap: 12 }}>
       {unsupported.length > 0 && <div className="note amber"><Icon name="warn" /><span>The preview cannot show {unsupported.map(friendly).join(', ')} yet; they compile and run on the saber as written.</span></div>}
+      {approximate.length > 0 && <span className="hint">Modelled without the saber's sensors, so only roughly: {approximate.map(APPROX_WORDS).join(', ')}.</span>}
       {isLayers ? (
         <>
           <NodeCard node={tree.args[0] ?? defaultFor('COLOR')} kind="COLOR" label="Blade" hint="What the blade does on its own, underneath every layer" depth={0}

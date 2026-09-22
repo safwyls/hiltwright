@@ -7,7 +7,7 @@
 // is honest about what it is not showing.
 
 import catalogueJson from './proffieCatalogue';
-import { prims, type ColorFn, type IntFn, type LayerFn } from './sim';
+import { CLASH_G, prims, type ColorFn, type IntFn, type LayerFn, type SimEffect } from './sim';
 import { scanStyleArgs, type LookDef } from './looks';
 
 export type Kind = 'COLOR' | 'FUNCTION' | 'TRANSITION' | 'INTEGER' | 'EFFECT' | 'LOCKUP_TYPE' | 'OTHER';
@@ -119,7 +119,7 @@ type RGB = [number, number, number];
 type Px = { c: RGB; a: number };
 const TRANSPARENT: Px = { c: [0, 0, 0], a: 0 };
 
-export interface EvalReport { unsupported: string[] }
+export interface EvalReport { unsupported: string[]; approximate: string[] }
 
 const NAMED_ARGS: Record<string, number> = { BASE_COLOR_ARG: 1, ALT_COLOR_ARG: 2, STYLE_OPTION_ARG: 3, IGNITION_OPTION_ARG: 4, IGNITION_TIME_ARG: 5, IGNITION_DELAY_ARG: 6, IGNITION_COLOR_ARG: 7, IGNITION_POWER_UP_ARG: 8, BLAST_COLOR_ARG: 9, CLASH_COLOR_ARG: 10, LOCKUP_COLOR_ARG: 11, LOCKUP_POSITION_ARG: 12, DRAG_COLOR_ARG: 13, DRAG_SIZE_ARG: 14, LB_COLOR_ARG: 15, STAB_COLOR_ARG: 16, MELT_SIZE_ARG: 17, SWING_COLOR_ARG: 18, SWING_OPTION_ARG: 19, EMITTER_COLOR_ARG: 20, EMITTER_SIZE_ARG: 21, PREON_COLOR_ARG: 22, PREON_OPTION_ARG: 23, PREON_SIZE_ARG: 24, RETRACTION_OPTION_ARG: 25, RETRACTION_TIME_ARG: 26, RETRACTION_DELAY_ARG: 27, RETRACTION_COLOR_ARG: 28, RETRACTION_POWER_DOWN_ARG: 29, POSTOFF_COLOR_ARG: 30, OFF_COLOR_ARG: 31, OFF_OPTION_ARG: 32, ALT_COLOR2_ARG: 33, ALT_COLOR3_ARG: 34, STYLE_OPTION2_ARG: 35, STYLE_OPTION3_ARG: 36, IGNITION_OPTION2_ARG: 37, RETRACTION_OPTION2_ARG: 38 };
 
@@ -185,11 +185,16 @@ function substitute(n: Node, bind: Map<string, Node | Node[]>): Node {
 }
 
 interface TrFn { begin(): void; run(c: Ctx): void; done(): boolean; get(led: number, a: Px, b: Px): Px }
-type Detector = { run(c: Ctx): boolean; pos: number };
+type Detector = { run(c: Ctx): boolean; pos: number; wavnum: number; strength: number; at: number };
 
 export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalReport } {
-  const unsupported = new Set<string>();
+  const unsupported = new Set<string>(); const approximate = new Set<string>();
   const skip = (n: Node) => { unsupported.add(n.name); };
+  const approx = (name: string) => { approximate.add(name); };
+  /** Lockup types the style answers itself (LockupTrL), which the built-in LockupL then leaves alone. */
+  const handledLockups = new Set<string>();
+  /** A clash detector also answers stabs unless the style handles stabs itself, as OneshotEffectDetector does. */
+  const handlesStab = (function scan(n: Node): boolean { return /EFFECT_STAB$/.test(n.name) || n.args.some(scan); })(root);
   let depth = 0;
   const guard = <T,>(f: () => T, fallback: () => T): T => { if (++depth > 200) { depth--; return fallback(); } try { return f(); } finally { depth--; } };
 
@@ -240,6 +245,15 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
       case 'TransitionEffectL': return transitionEffectL(() => tr(a[0]), a[1], 1);
       case 'MultiTransitionEffectL': return transitionEffectL(() => tr(a[0]), a[1], num(a[2], 3));
       case 'TransitionLoopL': { const t = tr(a[0]); let began = false; return { run(c) { if (!began || t.done()) { t.begin(); began = true; } t.run(c); }, get: (led) => t.get(led, TRANSPARENT, TRANSPARENT) }; }
+      case 'EffectSequence': { const det = detector(a[0]); const cols = a.slice(1).map(layer); let n = -1; return { run(c) { if (det.run(c)) n = (n + 1) % Math.max(1, cols.length); for (const x of cols) x.run(c); }, get: (led) => (cols.length ? cols[Math.max(0, n)].get(led) : TRANSPARENT) }; }
+      case 'ColorSequence': { const ms = Math.max(1, num(a[0], 1000)); const cols = a.slice(1).map(layer); let last = -1; let n = 0; return { run(c) { if (last < 0) last = c.now; if (c.now - last > ms) { if (c.now - last > ms * 10) { n = 0; last = c.now; } else { n = (n + 1) % Math.max(1, cols.length); last += ms; } } for (const x of cols) x.run(c); }, get: (led) => (cols.length ? cols[n].get(led) : TRANSPARENT) }; }
+      case 'ColorCycle': return colorCycle(layer(a[0]), num(a[1], 100), num(a[2], 60), a[3] ? layer(a[3]) : layer(a[0]), num(a[4], num(a[1], 100)), num(a[5], num(a[2], 60)), Math.max(1, num(a[6], 1)), a[7] ? layer(a[7]) : solid(P.BLACK));
+      case 'LockupL': return lockupL(layer(a[0]), a[1] ? layer(a[1]) : null, fn(a[2], 32768), a[3] ? fn(a[3], 0) : P.smoothStep(P.constInt(28671), P.constInt(4096)), a[4] ? fn(a[4], 0) : fn(parseStyle('LayerFunctions<Bump<Scale<SlowNoise<Int<2000>>,Int<3000>,Int<16000>>,Scale<BrownNoiseF<Int<10>>,Int<14000>,Int<8000>>>,Bump<Scale<SlowNoise<Int<2300>>,Int<26000>,Int<8000>>,Scale<NoisySoundLevel,Int<5000>,Int<10000>>>,Bump<Scale<SlowNoise<Int<2300>>,Int<20000>,Int<30000>>,Scale<IsLessThan<SlowNoise<Int<1500>>,Int<8000>>,Scale<NoisySoundLevel,Int<5000>,Int<0>>,Int<0>>>>'), 0));
+      case 'LocalizedClashL': { const col = layer(a[0]); const ms = num(a[1], 40); const width = Math.max(1, num(a[2], 50)); const det = detector(a[3] ?? { name: 'EFFECT_CLASH', args: [] }); let on = false; let mult = 1; let where = 0; return { run(c) { col.run(c); if (det.run(c)) { on = true; mult = Math.trunc((32 * 2 * 102400) / width / c.n); where = det.pos * c.n * mult; } else on = c.now - det.at < ms; }, get(led) { if (!on) return TRANSPARENT; const dist = Math.trunc(Math.abs(led * mult - where) / 1024); return dist < 32 ? scalePx(col.get(led), HUMP[dist] * 128) : TRANSPARENT; } }; }
+      case 'Remap': { const f = fn(a[0], 0); const col = layer(a[1]); let n = 1; return { run(c) { f.run(c); col.run(c); n = c.n; }, get(led) { let pos = clamp(f.get(led) * n, 0, n * 32768 - 1); const frac = pos & 0x7fff; pos = clamp(pos >> 15, 0, n - 1); return mixPx(col.get(pos), col.get(Math.min(pos + 1, n - 1)), frac, 15); } }; }
+      case 'PixelateX': { const col = layer(a[0]); const nF = fn(a[1], 2); let lastLed = -1e9; let lastPx = TRANSPARENT; return { run(c) { col.run(c); nF.run(c); lastLed = -1e9; }, get(led) { if (Math.abs(led - lastLed) >= nF.get(led)) { lastLed = led; lastPx = col.get(led); } return lastPx; } }; }
+      case 'TransitionLoopWhileL': { const loop = tr(a[0]); const end = tr(a[1]); const cond = fn(a[2], 1); let run = false; let ending = false; return { run(c) { cond.run(c); const on = cond.get(0) > 0; if (!run && on) { run = true; loop.begin(); } if (run && !on && !ending) { ending = true; end.begin(); } if (run) { if (loop.done()) loop.begin(); loop.run(c); if (ending) { end.run(c); if (end.done()) { ending = false; run = false; } } } }, get(led) { if (!run) return TRANSPARENT; let px = loop.get(led, TRANSPARENT, TRANSPARENT); if (ending) px = end.get(led, px, TRANSPARENT); return px; } }; }
+      case 'SyncAltToVarianceL': return { run() {}, get: () => TRANSPARENT };
       case 'TransitionPulseL': { const t = tr(a[0]); const pulse = fn(a[1], 0); let running = false; return { run(c) { pulse.run(c); if (pulse.get(0) > 0) { t.begin(); running = true; } if (running) { t.run(c); if (t.done()) running = false; } }, get: (led) => (running ? t.get(led, TRANSPARENT, TRANSPARENT) : TRANSPARENT) }; }
       default: {
         if (e && e.kind === 'COLOR' && e.params.length === 0 && e.doc.startsWith('rgb(')) { const m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(e.doc); if (m) return solid([Number(m[1]) * 257, Number(m[2]) * 257, Number(m[3]) * 257]); }
@@ -250,6 +264,22 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
       }
     }
   }
+  /** ColorCycle: a spinning arc of ON over OFF, widening and speeding up as the blade ignites; per styles/color_cycle.h. */
+  const colorCycle = (off: LayerFn, offPct: number, offRpm: number, on: LayerFn, onPct: number, onRpm: number, fadeMs: number, base: LayerFn): LayerFn => {
+    let fade = 0; let pos = 0; let last = -1; let start = 0; let end = 0; let n = 0; let fadeInt = 0;
+    return {
+      run(c) { off.run(c); on.run(c); base.run(c); const delta = last < 0 ? 1 : Math.max(0, c.now - last); last = c.now; let fd = delta / fadeMs; if (!c.on) fd = -fd; fade = clamp(fade + fd, 0, 1); const rpm = offRpm * (1 - fade) + onRpm * fade; const pct = offPct * (1 - fade) + onPct * fade; fadeInt = Math.trunc(16384 * fade); pos = (pos + (delta / 60000) * rpm) % 1; n = c.n * 16384; start = pos * n; if (pct >= 100) { start = 0; end = n; } else if (pct <= 0) { start = 0; end = 0; } else end = ((pos + pct / 100) % 1) * n; },
+      get(led) { const lo = led * 16384; const hi = lo + 16384; const ov = (a: number, b: number) => clamp(Math.min(b, hi) - Math.max(a, lo), 0, 16384); const black = start <= end ? ov(start, end) : ov(0, end) + ov(start, n); return mixPx(base.get(led), mixPx(off.get(led), on.get(led), fadeInt, 14), black, 14); },
+    };
+  };
+  /** LockupL: the plain lockup layer, which steps aside for any lockup type a LockupTrL in the style handles. */
+  const lockupL = (lock: LayerFn, drag: LayerFn | null, lockShape: IntFn, dragShape: IntFn, lbShape: IntFn): LayerFn => {
+    let l: string | null = null; let single = false;
+    return {
+      run(c) { lock.run(c); drag?.run(c); lockShape.run(c); dragShape.run(c); lbShape.run(c); l = c.lockup; single = c.n === 1; },
+      get(led) { if (!l || handledLockups.has(l)) return TRANSPARENT; if (l === 'drag' || l === 'melt') { const blend = single ? 32768 : dragShape.get(led); return scalePx((drag ?? lock).get(led), blend); } return scalePx(lock.get(led), l === 'lb' ? lbShape.get(led) : lockShape.get(led)); },
+    };
+  };
   const alphaOf = (l: LayerFn, f: IntFn): LayerFn => ({ run(c) { l.run(c); f.run(c); }, get: (led) => scalePx(l.get(led), f.get(led)) });
   /** Mix<F, A, B, C...>: F sweeps across the list. */
   const mixN = (cols: LayerFn[], f: number, led: number): Px => {
@@ -258,30 +288,22 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
     return mixPx(cols[i].get(led), cols[i + 1].get(led), x - (i << 15), 15);
   };
 
-  // ---- effects the firmware raises, detected from the simulator's state ----
+  // ---- effects, read off the simulator's bus the way OneshotEffectDetector does: the newest match, once ----
+  const busName = (effect: Node | undefined): string => { const n = (effect?.name ?? 'EFFECT_NONE').replace(/^SaberBase::/, ''); return n === 'EFFECT_CLASH' ? 'clash' : n === 'EFFECT_BLAST' ? 'blast' : n === 'EFFECT_STAB' ? 'stab' : n; };
   const detector = (effect: Node | undefined): Detector => {
-    const name = (effect?.name ?? 'EFFECT_NONE').replace(/^SaberBase::/, '');
-    const oneshot = name === 'EFFECT_CLASH' ? 'clash' : name === 'EFFECT_BLAST' ? 'blast' : name === 'EFFECT_STAB' ? 'stab' : null;
-    let lastAt = -1; let wasOn = false; let wasLock: string | null = null; let first = true;
-    const d: Detector = { pos: 0.5, run(c) {
-      let fired = false;
-      if (oneshot || name === 'EFFECT_NONE') {
-        for (const e of c.effects) if (e.at > lastAt && (!oneshot || e.type === oneshot) && e.at === c.now) { lastAt = e.at; d.pos = e.pos; fired = true; }
-      }
-      const lock = c.lockup; const on = c.on;
-      if (!first) {
-        if (name === 'EFFECT_LOCKUP_BEGIN' && lock && lock !== 'drag' && wasLock !== lock) { fired = true; d.pos = c.lockupPos; }
-        if (name === 'EFFECT_LOCKUP_END' && !lock && wasLock && wasLock !== 'drag') fired = true;
-        if (name === 'EFFECT_DRAG_BEGIN' && lock === 'drag' && wasLock !== 'drag') { fired = true; d.pos = c.lockupPos; }
-        if (name === 'EFFECT_DRAG_END' && lock !== 'drag' && wasLock === 'drag') fired = true;
-        if (name === 'EFFECT_IGNITION' && on && !wasOn) fired = true;
-        if (name === 'EFFECT_RETRACTION' && !on && wasOn) fired = true;
-      }
-      first = false; wasLock = lock; wasOn = on;
-      return fired;
+    const type = busName(effect); const any = type === 'EFFECT_NONE'; const alsoStab = type === 'clash' && !handlesStab;
+    let lastSeq = 0;
+    const d: Detector = { pos: 0.5, wavnum: -1, strength: 0, at: -1e9, run(c) {
+      let found: SimEffect | null = null;
+      for (const e of c.effects) if ((any || e.type === type || (alsoStab && e.type === 'stab')) && e.seq > lastSeq) found = e;
+      if (!found) return false;
+      lastSeq = found.seq; d.pos = found.pos; d.wavnum = found.wavnum; d.strength = found.strength; d.at = found.at;
+      return true;
     } };
     return d;
   };
+  /** Effects of a type still on the bus, newest first, for the wave functions that draw every recent one. */
+  const recent = (c: Ctx, type: string): SimEffect[] => { const out: SimEffect[] = []; for (let i = c.effects.length - 1; i >= 0; i--) if (c.effects[i].type === type) out.push(c.effects[i]); return out; };
 
   const transitionEffectL = (make: () => TrFn, effect: Node | undefined, n: number): LayerFn => {
     const det = detector(effect);
@@ -301,6 +323,7 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
   const lockupTrL = (col: LayerFn, beginTr: TrFn, endTr: TrFn, typeNode: Node | undefined, condition: IntFn): LayerFn => {
     const s = (typeNode?.name ?? '').replace(/^SaberBase::/, '');
     const type = /MELT/.test(s) ? 'melt' : /DRAG/.test(s) ? 'drag' : /LIGHTNING/.test(s) ? 'lb' : 'normal';
+    handledLockups.add(type);
     const b = helper(beginTr); const en = helper(endTr);
     let state: 'inactive' | 'active' | 'skipped' = 'inactive';
     return {
@@ -332,8 +355,9 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
   };
 
   // ---- functions ----
-  const fn = (n: Node | undefined, d = 0): IntFn => guard(() => fnImpl(n, d), () => P.constInt(d));
-  function fnImpl(n: Node | undefined, d: number): IntFn {
+  const fn = (n: Node | undefined, d = 0, bare = false): IntFn => guard(() => fnImpl(n, d, bare), () => P.constInt(d));
+  /** `bare`: the name came from stripping an SVF suffix, so do not expand it back into its adapter alias. */
+  function fnImpl(n: Node | undefined, d: number, bare: boolean): IntFn {
     if (!n) return P.constInt(d);
     const a = n.args;
     switch (n.name) {
@@ -347,7 +371,7 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
       case 'BladeAngle': return P.bladeAngle(num(a[0], 0), num(a[1], 32768));
       case 'BladeAngleX': return P.bladeAngle(num(a[0], 0), num(a[1], 32768));
       case 'TwistAngle': return P.twistAngle();
-      case 'NoisySoundLevel': case 'NoisySoundLevelCompat': case 'SoundLevel': case 'SmoothSoundLevel': return P.soundCompat();
+      case 'NoisySoundLevel': case 'NoisySoundLevelCompat': case 'SoundLevel': case 'SmoothSoundLevel': approx('SoundLevel'); return P.soundCompat();
       case 'BatteryLevel': return P.batteryLevel();
       case 'Bump': return P.bump(fn(a[0], 16384), fn(a[1], 10000));
       case 'SmoothStep': return P.smoothStep(fn(a[0], 16384), fn(a[1], 8000));
@@ -370,22 +394,56 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
       case 'LayerFunctions': { const fs = a.map((x) => fn(x, 0)); return { run(c) { for (const f of fs) f.run(c); }, get(led) { let inv = 32768; for (const f of fs) inv = Math.trunc((inv * (32768 - clamp(f.get(led), 0, 32768))) / 32768); return 32768 - inv; } }; }
       case 'CenterDistF': { const centre = fn(a[0], 16384); let n = 132; return { run(c) { centre.run(c); n = c.n; }, get: (led) => Math.min(32768, Math.abs(Math.trunc((led * 32768) / n) - centre.get(led)) * 2) }; }
       case 'Variation': case 'AltF': case 'SyncAltToVarianceF': return P.constInt(0);
-      case 'WavLen': return P.constInt(1000);
-      case 'ClashImpactF': case 'ClashImpactFX': return P.constInt(20000);
-      case 'EffectPosition': { const det = detector(a[0]); let v = 16384; return { run(c) { if (det.run(c)) v = Math.round(det.pos * 32768); }, get: () => v }; }
+      case 'EffectPulseF': { const det = detector(a[0]); let v = 0; return { run(c) { v = det.run(c) ? 32768 : 0; }, get: () => v }; }
+      case 'LockupPulseF': { const s = (a[0]?.name ?? '').replace(/^SaberBase::/, ''); const type = /MELT/.test(s) ? 'melt' : /DRAG/.test(s) ? 'drag' : /LIGHTNING/.test(s) ? 'lb' : 'normal'; let v = 0; return { run(c) { v = c.lockup === type ? 32768 : 0; }, get: () => v }; }
+      case 'IncrementModuloF': { const pulse = fn(a[0], 0); const max = fn(a[1], 32768); const inc = fn(a[2], 1); let v = 0; return { run(c) { pulse.run(c); max.run(c); inc.run(c); if (pulse.get(0)) { const m = max.get(0); v = m ? (v + inc.get(0)) % m : 0; } }, get: () => v }; }
+      case 'IncrementWithReset': { const pulse = fn(a[0], 0); const reset = fn(a[1], 0); const max = fn(a[2], 32768); const inc = fn(a[3], 1); let v = 0; return { run(c) { pulse.run(c); reset.run(c); max.run(c); inc.run(c); if (reset.get(0)) v = 0; if (pulse.get(0)) v = Math.min(v + inc.get(0), max.get(0)); }, get: () => v }; }
+      case 'ThresholdPulseF': { const f = fn(a[0], 0); const th = fn(a[1], 32768); const hyst = fn(a[2], 66); let trig = false; let v = 0; return { run(c) { f.run(c); th.run(c); hyst.run(c); const x = f.get(0); const t = th.get(0); v = 0; if (trig) { if (x < (t * hyst.get(0)) / 100) trig = false; } else if (x >= t) { trig = true; v = 32768; } }, get: () => v }; }
+      case 'HoldPeakF': { const f = fn(a[0], 0); const hold = fn(a[1], 1000); const speed = fn(a[2], 32768); let v = 0; let last = -1; let peakAt = -1e9; return { run(c) { f.run(c); hold.run(c); speed.run(c); const cur = f.get(0); const delta = last < 0 ? 0 : c.now - last; last = c.now; if (c.now - peakAt > hold.get(0)) v -= (delta * speed.get(0)) / 1000; if (cur > v) { v = cur; peakAt = c.now; } }, get: () => Math.round(v) }; }
+      case 'ChangeSlowly': { const f = fn(a[0], 0); const speed = fn(a[1], 32768); let v = 0; let last = -1; return { run(c) { f.run(c); speed.run(c); const delta = ((last < 0 ? 0 : c.now - last) * speed.get(0)) / 1000; last = c.now; const t = f.get(0); if (delta > Math.abs(v - t)) v = t; else if (v < t) v += delta; else v -= delta; }, get: () => Math.round(v) }; }
+      case 'Trigger': { const det = detector(a[0]); const ms = [fn(a[4], 0), fn(a[1], 300), fn(a[2], 300), fn(a[3], 300)]; let state = 4; let start = 0; let v = 0; return { run(c) { for (const m of ms) m.run(c); if (det.run(c)) { start = c.now; state = 0; } if (state === 4) { v = 0; return; } let t = c.now - start; for (;;) { const len = ms[state].get(0); if (t < len) { v = state === 1 ? Math.trunc((t * 32768) / len) : state === 2 ? 32768 : state === 3 ? 32768 - Math.trunc((t * 32768) / len) : 0; return; } state++; t -= len; start += len; if (state === 4) { v = 0; return; } } }, get: () => v }; }
+      case 'TimeSinceEffect': { const det = detector(a[0]); let at = -1e9; let v = 1e9; return { run(c) { if (det.run(c)) at = det.at; v = Math.min(1e6, c.now - at); }, get: () => v }; }
+      case 'OnSparkF': { const ms = fn(a[0], 200); let on = false; let onAt = -1e9; let v = 0; return { run(c) { ms.run(c); if (on !== c.on) { on = c.on; if (on) onAt = c.now; } const t = c.now - onAt; const m = ms.get(0); v = t < m ? 32768 - Math.trunc((32768 * t) / m) : 0; }, get: () => v }; }
+      case 'BlinkingF': { const ms = fn(a[0], 1000); const pro = fn(a[1], 500); let start = -1; let v = 0; return { run(c) { ms.run(c); pro.run(c); const m = ms.get(0); if (m <= 0) { v = 0; return; } if (start < 0) start = c.now; let p = c.now - start; if (p > m) { if (p < m * 2) start += m; else start = c.now; p = c.now - start; } v = Math.trunc((p * 1000) / m) <= pro.get(0) ? 0 : 32768; }, get: () => v }; }
+      case 'RandomBlinkF': { const mhz = fn(a[0], 1000); let last = -1e9; let bits: number[] = []; return { run(c) { mhz.run(c); if (c.now - last > 1e6 / Math.max(1, mhz.get(0))) { last = c.now; bits = Array.from({ length: c.n }, () => c.rnd(2)); } }, get: (led) => (bits[led] ?? 0) * 32768 }; }
+      case 'SequenceF': { const perBit = Math.max(1, num(a[0], 100)); const bits = num(a[1], 16); const seq = a.slice(2).map((x) => num(x, 0)); let v = 0; return { run(c) { if (!seq.length) return; const bit = Math.trunc(c.now / perBit) % Math.min(bits, seq.length * 16); v = 32768 * ((seq[bit >> 4] >> (~bit & 0xf)) & 1); }, get: () => v }; }
+      case 'RampF': { let n = 1; return { run(c) { n = c.n; }, get: (led) => Math.trunc((led * 32768) / n) }; }
+      case 'LinearSectionF': { const pos = fn(a[0], 16384); const frac = fn(a[1], 16384); let lo = 0; let hi = 0; return { run(c) { pos.run(c); frac.run(c); const f = frac.get(0); const p = pos.get(0); const max = 32768 * c.n; lo = clamp((p - f / 2) * c.n, 0, max); hi = clamp((p + f / 2) * c.n, 0, max); }, get: (led) => clamp(Math.min(hi, led * 32768 + 32768) - Math.max(lo, led * 32768), 0, 32768) }; }
+      case 'CircularSectionF': { const pos = fn(a[0], 16384); const frac = fn(a[1], 16384); let lo = 0; let hi = 0; let max = 0; return { run(c) { pos.run(c); frac.run(c); const f = frac.get(0); max = c.n * 32768; if (f >= 32768) { lo = 0; hi = max; } else if (f <= 0) { lo = 0; hi = 0; } else { const p = pos.get(0); lo = ((p + 32768 - f / 2) & 32767) * c.n; hi = ((p + f / 2) & 32767) * c.n; } }, get(led) { const l0 = led * 32768; const l1 = l0 + 32768; const ov = (x: number, y: number) => clamp(Math.min(y, l1) - Math.max(x, l0), 0, 32768); return lo <= hi ? ov(lo, hi) : ov(0, hi) + ov(lo, max); } }; }
+      case 'IntSelect': { const f = fn(a[0], 0); const vals = a.slice(1).map((x) => num(x, 0)); let v = 0; return { run(c) { f.run(c); if (!vals.length) return; let x = f.get(0); while (x < 0) x += vals.length << 8; v = vals[x % vals.length]; }, get: () => v }; }
+      case 'IntSelectX': { const f = fn(a[0], 0); const fs = a.slice(1).map((x) => fn(x, 0)); let k = 0; return { run(c) { f.run(c); for (const g of fs) g.run(c); if (fs.length) { let x = f.get(0); while (x < 0) x += fs.length << 8; k = x % fs.length; } }, get: (led) => (fs.length ? fs[k].get(led) : 0) }; }
+      case 'ModF': { const f = fn(a[0], 0); const max = fn(a[1], 32768); return { run(c) { f.run(c); max.run(c); }, get(led) { const m = max.get(led); if (!m) return 0; const r = f.get(led) % m; return r < 0 ? r + m : r; } }; }
+      case 'ClampF': { const f = fn(a[0], 0); const lo = num(a[1], 0); const hi = num(a[2], 32768); return { run(c) { f.run(c); }, get: (led) => clamp(f.get(led), lo, hi) }; }
+      case 'ClampFX': { const f = fn(a[0], 0); const lo = fn(a[1], 0); const hi = fn(a[2], 32768); return { run(c) { f.run(c); lo.run(c); hi.run(c); }, get: (led) => clamp(f.get(led), lo.get(led), hi.get(led)) }; }
+      case 'VolumeLevel': approx('VolumeLevel'); return P.constInt(26214);
+      case 'WavNum': { const det = detector(a[0]); let v = 0; return { run(c) { if (det.run(c)) v = Math.max(0, det.wavnum); }, get: () => v }; }
+      case 'BlastF': return blastF(num(a[0], 200), num(a[1], 100), num(a[2], 400), busName(a[3] ?? { name: 'EFFECT_BLAST', args: [] }));
+      case 'BlastFadeoutF': { const fadeout = Math.max(1, num(a[0], 250)); const type = busName(a[1] ?? { name: 'EFFECT_BLAST', args: [] }); let v = 0; return { run(c) { let mix = 0; for (const e of recent(c, type)) { const M = 1000 - Math.trunc(((c.now - e.at) * 1000) / fadeout); if (M > 0) mix += Math.trunc((32768 * M) / 1000); } v = Math.min(mix, 32768); }, get: () => v }; }
+      case 'OriginalBlastF': approx('OriginalBlastF'); return blastF(200, 100, 400, busName(a[0] ?? { name: 'EFFECT_BLAST', args: [] }));
+      case 'SwingAccelerationX': case 'SwingAcceleration': { approx('SwingAcceleration'); const max = fn(a[0], 130); let v = 0; let lastSwing = 0; let last = -1; return { run(c) { max.run(c); const dt = last < 0 ? 0 : (c.now - last) / 1000; last = c.now; const acc = dt > 0 ? Math.abs(c.swing - lastSwing) / dt / 100 : 0; lastSwing = c.swing; v = clamp(Math.round((acc / Math.max(1, max.get(0))) * 32768), 0, 32768); }, get: () => v }; }
+      case 'TwistAcceleration': { approx('TwistAcceleration'); const max = num(a[0], 90); let v = 0; let lastTwist = 0; let last = -1; return { run(c) { const dt = last < 0 ? 0 : (c.now - last) / 1000; last = c.now; const acc = dt > 0 ? Math.abs(c.twist - lastTwist) / dt / 10 : 0; lastTwist = c.twist; v = clamp(Math.round(((acc * 32768) / 360) / Math.max(1, max)), 0, 32768); }, get: () => v }; }
+      case 'MarbleF': { approx('MarbleF'); const offset = fn(a[0], 0); const friction = fn(a[1], 3000); const accel = fn(a[2], 0); const gravity = fn(a[3], 32768); let pos = 0; let speed = 0; let last = -1; let v = 0; return { run(c) { offset.run(c); friction.run(c); accel.run(c); gravity.run(c); const dt = last < 0 ? 0.001 : Math.min(1, (c.now - last) / 1000); last = c.now; const rad = (pos + offset.get(0) / 32768) * Math.PI * 2; const tilt = ((c.angle - 16384) / 16384) * (Math.PI / 2); const downY = Math.cos(tilt); const downZ = -Math.sin(tilt); let acc = (downY * Math.sin(rad) + downZ * Math.cos(rad)) * (gravity.get(0) / 32768); acc += accel.get(0) / 32768; acc -= (speed * friction.get(0)) / 32768; speed += acc * dt; pos = (((pos + speed * dt) % 1) + 1) % 1; v = Math.trunc(pos * 32768); }, get: () => v }; }
+      case 'WavLen': approx('WavLen'); return P.constInt(1000);
+      case 'ClashImpactFX': { approx('ClashImpactF'); const lo = fn(a[0], 200); const hi = fn(a[1], 1600); let v = 0; let g = CLASH_G.soft; return { run(c) { lo.run(c); hi.run(c); for (const e of c.effects) if (e.type === 'clash' || e.type === 'stab') g = e.strength || g; v = clamp(Math.trunc(((g * 100 - lo.get(0)) * 32768) / Math.max(1, hi.get(0))), 0, 32768); }, get: () => v }; }
+      case 'EffectPosition': { const det = detector(a[0]); let v = 0; return { run(c) { if (det.run(c)) v = Math.round(det.pos * 32768); }, get: () => v }; }
       case 'EffectRandomF': { const det = detector(a[0]); let v = 0; return { run(c) { if (det.run(c)) v = c.rnd(32768); }, get: () => v }; }
       case 'BendTimePowX': case 'ReverseTimeX': return fn(a[0], d); // the bend shapes the curve, not its length
       case 'SingleValueAdapter': return fn(a[0], d);
       default: {
         if (/^-?\d+$/.test(n.name)) return P.constInt(Number(n.name));
-        if (/SVF$/.test(n.name)) return fn({ name: n.name.replace(/SVF$/, ''), args: a }, d);
-        const x = expandAlias(n);
+        if (/SVF$/.test(n.name)) return fn({ name: n.name.replace(/SVF$/, ''), args: a }, d, true);
+        const x = bare ? null : expandAlias(n);
         if (x) return fn(x, d);
         skip(n);
         return a.length && kindOf(a[0]) === 'FUNCTION' ? fn(a[0], d) : P.constInt(d);
       }
     }
   }
+  /** BlastF: every recent effect of the type as a travelling hump that fades; per functions/blast.h. */
+  const blastF = (fadeout: number, size: number, waveMs: number, type: string): IntFn => {
+    let n = 1; let list: SimEffect[] = []; let now = 0;
+    return { run(c) { n = c.n; now = c.now; list = recent(c, type); }, get(led) { let mix = 0; for (const b of list) { const T = now - b.at; const M = 1000 - Math.trunc((T * 1000) / Math.max(1, fadeout)) ; if (M > 0) { const dist = Math.abs(b.pos - led / n); const N = Math.trunc(Math.abs(dist - T / waveMs) * size); if (N <= 32) mix += Math.trunc((HUMP[Math.min(N, 32)] * M) / 1000); } } return Math.min(mix << 7, 32768); } };
+  };
   /** Scale<F, LO, HI> where LO and HI may themselves be functions. */
   const scaleF = (f: IntFn, lo: Node | undefined, dlo: number, hi: Node | undefined, dhi: number): IntFn => {
     const l = fn(lo, dlo); const h = fn(hi, dhi);
@@ -422,16 +480,28 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
     return { begin: b.begin, done: b.done, run(c) { size.run(c); centre.run(c); col.run(c); if (b.restarting()) { ctr = centre.get(0); sz = size.get(0); } b.run(c); offset = b.update(32768); n = c.n; },
       get(led, x) { const dist = Math.abs(ctr - Math.trunc((led * 32768) / n)); const N = (Math.abs(dist - offset) * sz) >> 15; const m = N < 32 ? HUMP[N] << 7 : 0; return mixPx(x, col.get(led), m, 15); } };
   };
+  /**
+   * TrConcat: transitions in order, with colours between them where the style puts them. ProffieOS nests TrConcat2
+   * (transition, transition: both see the outer A and B) and TrConcat3 (transition, colour, transition) by position,
+   * which comes to: each step runs from the nearest colour before it (else A) to the nearest colour after it (else B).
+   */
   const trConcat = (parts: Node[]): TrFn => {
-    const trs: TrFn[] = []; const mids: LayerFn[] = [];
-    parts.forEach((p, i) => (i % 2 === 0 ? trs.push(tr(p)) : mids.push(layer(p))));
-    if (!trs.length) return trInstant();
+    const steps: { t: TrFn; before: LayerFn | null; after: LayerFn | null }[] = [];
+    const mids: LayerFn[] = [];
+    let pendingMid: LayerFn | null = null;
+    for (const p of parts) {
+      if (kindOf(p) === 'TRANSITION') { steps.push({ t: tr(p), before: pendingMid, after: null }); pendingMid = null; }
+      else { const m = layer(p); mids.push(m); if (steps.length) steps[steps.length - 1].after = m; pendingMid = m; }
+    }
+    for (let k = steps.length - 2; k >= 0; k--) if (!steps[k].after) steps[k].after = steps[k + 1].after;
+    for (let k = 1; k < steps.length; k++) if (!steps[k].before) steps[k].before = steps[k - 1].after ?? steps[k - 1].before;
+    if (!steps.length) return trInstant();
     let i = 0; let running = false;
     return {
-      begin() { i = 0; running = true; trs[0].begin(); },
+      begin() { i = 0; running = true; steps[0].t.begin(); },
       done: () => !running,
-      run(c) { for (const m of mids) m.run(c); if (!running) return; while (true) { trs[i].run(c); if (!trs[i].done()) return; if (i + 1 >= trs.length) { running = false; return; } i++; trs[i].begin(); } },
-      get(led, a, b) { if (!running) return b; const from = i === 0 ? a : mids[i - 1].get(led); const to = i >= mids.length ? b : mids[i].get(led); return trs[i].get(led, from, to); },
+      run(c) { for (const m of mids) m.run(c); if (!running) return; while (true) { steps[i].t.run(c); if (!steps[i].t.done()) return; if (i + 1 >= steps.length) { running = false; return; } i++; steps[i].t.begin(); } },
+      get(led, a, b) { if (!running) return b; const s = steps[i]; return s.t.get(led, s.before ? s.before.get(led) : a, s.after ? s.after.get(led) : b); },
     };
   };
   const trJoin = (trs: TrFn[], right: boolean): TrFn => ({
@@ -444,6 +514,16 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
   const trLoop = (t: TrFn): TrFn => ({ begin() { t.begin(); }, done: () => false, run(c) { if (t.done()) t.begin(); t.run(c); }, get: (led, a, b) => t.get(led, a, b) });
   const trPick = (trs: TrFn[], pick: (c: Ctx) => number): TrFn => { let sel = 0; let choose = false; return { begin() { choose = true; }, done: () => !choose && trs[sel].done(), run(c) { if (choose) { sel = clamp(pick(c), 0, trs.length - 1); trs[sel].begin(); choose = false; } trs[sel].run(c); }, get: (led, a, b) => trs[sel].get(led, a, b) }; };
 
+  /** TrDoEffectX raises its effect when the transition begins (only while the blade is on; the Always variant regardless). */
+  const trDoEffect = (t: TrFn, effect: string, wavnum: IntFn, location: IntFn, always: boolean): TrFn => {
+    let begun = false; let finished = false;
+    return {
+      begin() { t.begin(); begun = true; finished = false; },
+      done: () => finished || t.done(),
+      run(c) { t.run(c); wavnum.run(c); location.run(c); let loc = location.get(0); if (loc === -1) loc = c.rnd(32768) / 32768; else loc /= 32768; if (begun) { if (always || c.on) c.doEffect(effect, loc, wavnum.get(0)); begun = false; } if (!always && !finished && !c.on && !c.powered) finished = true; },
+      get: (led, x, y) => (finished ? y : t.get(led, x, y)),
+    };
+  };
   const tr = (n: Node | undefined): TrFn => guard(() => trImpl(n), trInstant);
   function trImpl(n: Node | undefined): TrFn {
     if (!n) return trInstant();
@@ -470,7 +550,8 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
       case 'TrRandom': return trPick(a.map(tr), (c) => c.rnd(a.length));
       case 'TrSelect': { const f = fn(a[0], 0); const trs = a.slice(1).map(tr); return trPick(trs, (c) => { f.run(c); return f.get(0); }); }
       case 'TrSequence': { let k = -1; return trPick(a.map(tr), () => { k = (k + 1) % a.length; return k; }); }
-      case 'TrDoEffectX': case 'TrDoEffect': return tr(a[0]);
+      case 'TrDoEffectX': case 'TrDoEffectAlwaysX': return trDoEffect(tr(a[0]), (a[1]?.name ?? 'EFFECT_NONE').replace(/^SaberBase::/, ''), fn(a[2], -1), fn(a[3], -1), n.name === 'TrDoEffectAlwaysX');
+      case 'TrLoopUntil': { const pulse = fn(a[0], 0); const t = tr(a[1]); const out = tr(a[2]); let pulsed = false; return { begin() { t.begin(); pulsed = false; }, done: () => pulsed && out.done(), run(c) { pulse.run(c); if (t.done()) t.begin(); t.run(c); if (!pulsed && pulse.get(0)) { out.begin(); pulsed = true; } if (pulsed) out.run(c); }, get: (led, x, y) => (pulsed ? out.get(led, t.get(led, x, x), y) : t.get(led, x, x)) }; }
       default: {
         const x = expandAlias(n);
         if (x) return tr(x);
@@ -482,7 +563,7 @@ export function evaluateStyle(root: Node): { make: () => ColorFn; report: EvalRe
 
   // Build once to learn what is unsupported; the factory builds fresh state each time it is called.
   color(root);
-  return { make: () => color(root), report: { unsupported: [...unsupported].sort() } };
+  return { make: () => color(root), report: { unsupported: [...unsupported].sort(), approximate: [...approximate].sort() } };
 }
 
 // ---------------- as a saved look ----------------

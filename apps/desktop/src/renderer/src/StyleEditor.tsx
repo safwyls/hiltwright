@@ -77,7 +77,7 @@ export function StyleEditor({ editing, onSaved, onDemo }: { editing: LookDef | n
           {pasting && <PasteStyle onParsed={openParsed} onClose={() => setPasting(false)} />}
 
           {mode === 'tree' ? (
-            <TreeEditor tree={tree.tree} unsupported={evaluated?.report.unsupported ?? []} onChange={(t) => setTree((cur) => ({ ...cur, tree: t }))} />
+            <TreeEditor tree={tree.tree} unsupported={evaluated?.report.unsupported ?? []} approximate={evaluated?.report.approximate ?? []} onChange={(t) => setTree((cur) => ({ ...cur, tree: t }))} />
           ) : (
             <>
               <div className="note"><Icon name="info" /><span>The simple editor covers a colour, a handful of effects and the ignition. For everything ProffieOS can do, <button type="button" className="holo" onClick={openAsTree}>open this look in the full editor</button>: every template, nested any way you like.</span></div>

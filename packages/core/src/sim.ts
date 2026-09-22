@@ -14,7 +14,12 @@ type Ctx = {
   rnd: (n: number) => number;
   on: boolean;
   args: Map<number, string>;
-  effects: { type: EffectType; at: number; pos: number }[];
+  /** Effects the saber has raised, newest last: the prop's (clash, blast, ignition, lockup begin ...) and the style's own. */
+  effects: SimEffect[];
+  /** Raise an effect from inside a style (TrDoEffect); the prop reacts as ProffieOS's would. */
+  doEffect: (type: string, pos: number, wavnum: number) => void;
+  /** The blade is on, or still lit by a layer after being turned off. */
+  powered: boolean;
   lockup: LockupType | null;
   lockupPos: number;
   swing: number; // degrees per second
@@ -24,6 +29,10 @@ type Ctx = {
   twist: number; // degrees the hilt is rolled about the blade's axis
 };
 export type EffectType = 'clash' | 'blast' | 'stab';
+/** An effect on the bus: the short names for the three the library looks answer to, ProffieOS's EFFECT_ names for the rest. */
+export interface SimEffect { type: string; at: number; pos: number; wavnum: number; seq: number; strength: number }
+/** ProffieOS's clash strength in g for a clash without a swing behind it, and with a hard one. */
+export const CLASH_G = { soft: 5, hard: 16 };
 export type LockupType = 'normal' | 'drag' | 'melt' | 'lb';
 
 interface ColorFn { run(c: Ctx): void; get(led: number): RGB }
@@ -609,6 +618,7 @@ export class BladeSim {
   private readonly ctx: Ctx;
   private readonly rand: () => number;
   private soundWalk = 0.3;
+  private litLastFrame = false;
   readonly leds: Float32Array;
 
   constructor(readonly lookId: string, readonly numLeds: number, seed = 1) {
@@ -616,13 +626,35 @@ export class BladeSim {
     if (!make) throw new Error(`No simulator for look ${lookId}`);
     this.style = make();
     this.rand = mulberry32(seed);
-    this.ctx = { now: 0, n: numLeds, rnd: (n) => (n > 0 ? Math.floor(this.rand() * n) : 0), on: false, args: new Map(), effects: [], lockup: null, lockupPos: -1, swing: 0, sound: 0, battery: 26000, angle: 16384, twist: 0 };
+    this.ctx = { now: 0, n: numLeds, rnd: (n) => (n > 0 ? Math.floor(this.rand() * n) : 0), on: false, args: new Map(), effects: [], doEffect: (type, pos, wavnum) => this.doEffect(type, pos, wavnum), powered: false, lockup: null, lockupPos: -1, swing: 0, sound: 0, battery: 26000, angle: 16384, twist: 0 };
     this.leds = new Float32Array(numLeds * 3);
   }
 
   get isOn(): boolean { return this.ctx.on; }
   setArgs(args: Map<number, string>): void { this.ctx.args = args; }
-  setOn(on: boolean): void { this.ctx.on = on; }
+  setOn(on: boolean): void { if (this.ctx.on === on) return; this.ctx.on = on; this.push(on ? 'EFFECT_IGNITION' : 'EFFECT_RETRACTION', 0, -1); }
+  /** Something the prop or the style raised; the demo room plays its sound. */
+  onEffect: ((e: SimEffect) => void) | null = null;
+  /** The strength in g of the last clash, as ClashImpactF reads it. */
+  clashStrength = CLASH_G.soft;
+  private seq = 0;
+  private push(type: string, pos: number, wavnum: number, strength = 0): void {
+    const c = this.ctx;
+    const e: SimEffect = { type, at: c.now, pos: clamp(pos, 0, 1), wavnum, seq: ++this.seq, strength };
+    c.effects.push(e);
+    this.onEffect?.(e);
+  }
+  /**
+   * Raise an effect the way SaberBase::DoEffect does, with the prop's response to the ones styles use to steer it:
+   * FAST_OFF and OFF turn the blade off, FAST_ON and ON turn it on. Everything else is just put on the bus.
+   */
+  doEffect(type: string, pos = 0.5, wavnum = -1): void {
+    const c = this.ctx;
+    if (type === 'EFFECT_FAST_OFF' || type === 'EFFECT_OFF') { this.push(type, pos, wavnum); if (c.on) this.setOn(false); return; }
+    if (type === 'EFFECT_FAST_ON' || type === 'EFFECT_ON') { this.push(type, pos, wavnum); if (!c.on) this.setOn(true); return; }
+    if (type === 'EFFECT_CLASH' || type === 'EFFECT_BLAST' || type === 'EFFECT_STAB') { this.trigger(type.slice(7).toLowerCase() as EffectType, pos); return; }
+    this.push(type, pos, wavnum);
+  }
   /** Swing speed in degrees per second (a hard swing is 400 to 600). */
   setSwing(degPerSec: number): void { this.ctx.swing = Math.max(0, degPerSec); }
   /** Where the blade points, in degrees: -90 straight down, 0 level, 90 straight up. */
@@ -630,29 +662,43 @@ export class BladeSim {
   /** How far the hilt is rolled about the blade's axis, in degrees. */
   setTwist(degrees: number): void { this.ctx.twist = degrees; }
   setBattery(fraction: number): void { this.ctx.battery = clamp(Math.round(fraction * 32768), 0, 32768); }
-  /** A one-shot effect at `pos` along the blade (0 hilt, 1 tip). */
-  trigger(type: EffectType, pos = 0.5): void { this.pending.push({ type, pos: clamp(pos, 0, 1) }); }
-  setLockup(type: LockupType | null, pos = 0.5): void { this.ctx.lockup = type; this.ctx.lockupPos = type ? clamp(pos, 0, 1) : this.ctx.lockupPos; }
-  private pending: { type: EffectType; pos: number }[] = [];
+  /** A one-shot effect at `pos` along the blade (0 hilt, 1 tip); a clash carries its strength in g. */
+  trigger(type: EffectType, pos = 0.5, strengthG = CLASH_G.soft): void { this.pending.push({ type, pos: clamp(pos, 0, 1), strength: strengthG }); }
+  /** A special-ability or other prop-level effect by its ProffieOS name (EFFECT_USER1, EFFECT_FORCE ...). */
+  raise(effectName: string): void { this.pending.push({ type: effectName, pos: 0, strength: 0 }); }
+  setLockup(type: LockupType | null, pos = 0.5): void {
+    const c = this.ctx; const was = c.lockup;
+    if (was === type) return;
+    c.lockup = type; c.lockupPos = type ? clamp(pos, 0, 1) : c.lockupPos;
+    // As saber_base.h maps them: drag (and melt, which uses drag's sounds) get DRAG_BEGIN/END, the rest LOCKUP_BEGIN/END.
+    const drag = (t: LockupType | null) => t === 'drag' || t === 'melt';
+    if (was) this.push(drag(was) ? 'EFFECT_DRAG_END' : 'EFFECT_LOCKUP_END', c.lockupPos, -1);
+    if (type) this.push(drag(type) ? 'EFFECT_DRAG_BEGIN' : 'EFFECT_LOCKUP_BEGIN', c.lockupPos, -1);
+  }
+  private pending: { type: string; pos: number; strength: number }[] = [];
 
   /** Advance to `nowMs` and compute every LED. Values are linear 0..1, three per LED. */
   frame(nowMs: number): Float32Array {
     const c = this.ctx;
     c.now = nowMs;
-    for (const p of this.pending) { c.effects.push({ type: p.type, at: nowMs, pos: p.pos }); if (p.type === 'clash') c.lockupPos = p.pos; }
+    for (const p of this.pending) { if (p.type === 'clash') { c.lockupPos = p.pos; this.clashStrength = p.strength; } this.push(p.type, p.pos, -1, p.strength); }
     this.pending = [];
-    c.effects = c.effects.filter((e) => nowMs - e.at < 3000);
+    c.effects = c.effects.filter((e) => nowMs - e.at < 7000); // saber_base.h keeps seven seconds of effects
+    c.powered = c.on || this.litLastFrame;
     // Modelled sound level: a hum that wanders, louder with motion and during effects, silent when off.
     this.soundWalk = clamp(this.soundWalk + (this.rand() - 0.5) * 0.25, 0.08, 0.6);
     const loud = c.effects.some((e) => nowMs - e.at < 250) || c.lockup ? 0.35 : 0;
     c.sound = c.on ? clamp(Math.round(32768 * (this.soundWalk * (0.5 + this.rand()) + c.swing / 1500 + loud)), 0, 32768) : 0;
     this.style.run(c);
+    let lit = false;
     for (let i = 0; i < c.n; i++) {
       const v = this.style.get(i);
       this.leds[i * 3] = clamp(v[0], 0, 65535) / 65535;
       this.leds[i * 3 + 1] = clamp(v[1], 0, 65535) / 65535;
       this.leds[i * 3 + 2] = clamp(v[2], 0, 65535) / 65535;
+      if (v[0] + v[1] + v[2] > 300) lit = true;
     }
+    this.litLastFrame = lit;
     return this.leds;
   }
 }

@@ -3,7 +3,7 @@
 // and falls back to a flat bar in its main colour.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BladeSim, canSimulateLook, type LockupType } from '@hiltwright/core';
+import { BladeSim, CLASH_G, canSimulateLook, type LockupType } from '@hiltwright/core';
 import { addPreview, bladeRenderer } from './bladeRender';
 import { BladeBar, Hilt } from './Saber';
 import { MotionPad } from './MotionPad';
@@ -63,12 +63,15 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
         if (bladeRenderer.unavailable) { setBroken(true); return; }
         if (width < 8) return;
         bladeRenderer.draw(el, ctx, { leds: sim.frame(now), width, height, radius, pad: dot ? 0 : Math.min(28, height / 2), dot });
+        // A style can turn the saber off and on again itself (TrDoEffect); the buttons follow what it did.
+        if (sim.isOn !== onRef.current) { onRef.current = sim.isOn; setOn(sim.isOn); }
       },
     });
     return () => { remove(); ro.disconnect(); };
   }, [ok, lookId, n, height, radius, dot]);
 
   useEffect(() => { simRef.current?.setArgs(new Map(args ?? [])); }, [argKey, lookId, ok]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onRef = useRef(on); onRef.current = on;
   useEffect(() => { simRef.current?.setOn(on); }, [on]);
   useEffect(() => { simRef.current?.setLockup(lockup, 0.55); }, [lockup]);
   useEffect(() => { simRef.current?.setSwing(swing); }, [swing]);
@@ -84,7 +87,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
     );
   }
 
-  const hit = (type: 'clash' | 'blast' | 'stab', pos = 0.35 + Math.random() * 0.4) => { if (on) simRef.current?.trigger(type, pos); };
+  const hit = (type: 'clash' | 'blast' | 'stab', pos = 0.35 + Math.random() * 0.4, hard = false) => { if (on) simRef.current?.trigger(type, pos, hard ? CLASH_G.hard : Math.min(CLASH_G.hard, CLASH_G.soft + (swing / 600) * (CLASH_G.hard - CLASH_G.soft))); };
   const hold = (t: LockupType, label: string) => (
     <button type="button" className={`chip ${lockup === t ? 'sel' : ''}`} aria-pressed={lockup === t} disabled={!on} onClick={() => setLockup(lockup === t ? null : t)}>{label}</button>
   );
@@ -118,6 +121,8 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
             {!dot && hold('drag', 'Drag')}
             {!dot && hold('melt', 'Melt')}
             {!dot && hold('lb', 'Lightning')}
+            {!dot && <button type="button" className="chip" disabled={!on} title="A clash as hard as the accelerometer ever reports" onClick={() => hit('clash', undefined, true)}>Hard clash</button>}
+            {!dot && [1, 2].map((k) => <button key={k} type="button" className="chip" title={`Special ability ${k} (EFFECT_USER${k})`} onClick={() => simRef.current?.raise(`EFFECT_USER${k}`)}>Ability {k}</button>)}
           </div>
           {!dot && (
             <div className="row" style={{ gap: 12, alignItems: 'stretch' }}>

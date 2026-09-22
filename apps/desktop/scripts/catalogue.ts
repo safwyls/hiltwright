@@ -68,6 +68,9 @@ function paramKind(decl: string, name: string, def: string | null, docLine: stri
   return 'FUNCTION';
 }
 
+/** Helpers, test types and display/POV styles: real declarations, but nothing a blade style would name. */
+const INTERNAL_NAME = /Finder\d*$|Helper\d$|Selector$|^AddBend$|^SVFWrapper$|^F$|^Style$|POV|Display|ShowColor|GetArgMax|FromFile|FromHumFile|^ByteOrderStyle$|^ChargingStyle$|^Compose$|LARGE_TYPE|^Rgba16$|^MixHelper|^LengthFinder$|^FireConfig$|^TrConcat[23]$|^BulletCountF$|^Blaster|^InOutHelperF$/;
+
 const seenDocs = new Map<string, { kind: string; doc: string; paramDocs: Record<string, string> }>();
 
 for (const file of files) {
@@ -116,7 +119,7 @@ for (const file of files) {
     }
     let kind = docs?.kind ?? 'OTHER';
     if (kind === 'OTHER') kind = file.startsWith('transitions') ? 'TRANSITION' : file.startsWith('functions') ? 'FUNCTION' : /L$|Layer/.test(name) ? 'COLOR' : /F$|Func$/.test(name) ? 'FUNCTION' : 'COLOR';
-    const internal = /SVF$|Base$|Helper$|Impl$|X$|^Layers$|^Sequence$/.test(name) && !docs;
+    const internal = (/SVF$|Base$|Helper$|Impl$|X$|^Layers$|^Sequence$/.test(name) && !docs) || INTERNAL_NAME.test(name);
     // The alias body, when it is plain template text the simulator can substitute into (no arithmetic or decltype).
     const alias = what === 'using' && rhs ? rhs.replace(/\s+/g, '') : '';
     const usable = alias && /^[A-Za-z0-9_:<>,.-]+$/.test(alias) && !/[A-Za-z0-9_]\s*[*+/]\s*[A-Za-z0-9_]/.test(rhs ?? '');
@@ -130,14 +133,14 @@ for (const file of files) {
     let kind = docs?.kind ?? 'OTHER';
     const rhs = am[3] ?? am[1] ?? '';
     if (kind === 'OTHER') kind = kindFromDefault(rhs.trim()) ?? (file.startsWith('transitions') ? 'TRANSITION' : file.startsWith('functions') ? 'FUNCTION' : 'COLOR');
-    out[name] = { name, kind, params: [], doc: docs?.doc ?? (kind === 'COLOR' && /Rgb</.test(rhs) ? rhs.replace(/\s+/g, '').replace(/^Rgb</, 'rgb(').replace(/>$/, ')') : ''), file, variadic: false };
+    out[name] = { name, kind, params: [], doc: docs?.doc ?? (kind === 'COLOR' && /Rgb</.test(rhs) ? rhs.replace(/\s+/g, '').replace(/^Rgb</, 'rgb(').replace(/>$/, ')') : ''), file, variadic: false, ...(INTERNAL_NAME.test(name) ? { internal: true } : {}) };
   }
   for (const cm of flat.matchAll(/^class\s+([A-Z][A-Za-z0-9_]*)\s*(?::[^{]*)?\{/gm)) {
     const name = cm[1];
     if (out[name]) continue;
     const docs = seenDocs.get(name);
     if (!docs) continue; // undocumented plain classes are internals
-    out[name] = { name, kind: docs.kind === 'OTHER' ? (file.startsWith('transitions') ? 'TRANSITION' : 'FUNCTION') : docs.kind, params: [], doc: docs.doc, file, variadic: false };
+    out[name] = { name, kind: docs.kind === 'OTHER' ? (file.startsWith('transitions') ? 'TRANSITION' : 'FUNCTION') : docs.kind, params: [], doc: docs.doc, file, variadic: false, ...(INTERNAL_NAME.test(name) ? { internal: true } : {}) };
   }
 }
 

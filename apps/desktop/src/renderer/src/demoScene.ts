@@ -16,7 +16,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { BladeSim, type EffectType, type LockupType } from '@hiltwright/core';
+import { BladeSim, CLASH_G, type EffectType, type LockupType } from '@hiltwright/core';
 import { Wield, handOnArc } from './wield';
 import { Steer } from './steer';
 import { disposeObject, fitHilt, type HiltFit } from './hiltModel';
@@ -80,7 +80,7 @@ export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, blade
 
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
 /** What the saber did, for whoever makes its sounds. `motion` comes every frame with the blade's turn rate. */
-export type SaberEvent = { kind: 'on' } | { kind: 'off' } | { kind: 'clash' } | { kind: 'blast' } | { kind: 'stab' } | { kind: 'lockup'; type: LockupType | null } | { kind: 'motion'; degPerSec: number; dt: number };
+export type SaberEvent = { kind: 'on' } | { kind: 'off' } | { kind: 'clash' } | { kind: 'blast' } | { kind: 'stab' } | { kind: 'lockup'; type: LockupType | null } | { kind: 'motion'; degPerSec: number; dt: number } | { kind: 'sound'; n: number };
 
 export class DemoScene {
   private readonly renderer: THREE.WebGLRenderer;
@@ -157,6 +157,7 @@ export class DemoScene {
   constructor(private readonly host: HTMLElement, lookId: string, leds = ledsFor(BLADE_LENGTH, 144)) {
     this.leds = leds; this.lookId = lookId; this.staffLookId = lookId;
     this.sim = new BladeSim(lookId, leds, 1 + Math.floor(Math.random() * 1e6));
+    this.listen(this.sim);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.renderer.setClearColor(0x05070a);
@@ -242,6 +243,7 @@ export class DemoScene {
     const on = this.sim.isOn;
     this.sim = new BladeSim(this.lookId, leds, 1 + Math.floor(Math.random() * 1e6));
     this.sim.setArgs(this.args);
+    this.listen(this.sim);
     this.sim.setOn(on);
     if (this.staff) this.buildStaffStrip();
   }
@@ -411,6 +413,7 @@ export class DemoScene {
     this.lookId = lookId; this.args = args;
     this.sim = new BladeSim(lookId, this.leds, 1 + Math.floor(Math.random() * 1e6));
     this.sim.setArgs(args);
+    this.listen(this.sim);
     this.sim.setOn(wasOn);
   }
   setArgs(args: Map<number, string>, blade: 'main' | 'staff' = 'main'): void {
@@ -420,8 +423,23 @@ export class DemoScene {
   /** Every simulator the saber is running: the main blade, and the staff blade when there is one. */
   private sims(): BladeSim[] { return this.staffSim ? [this.sim, this.staffSim] : [this.sim]; }
   get isOn(): boolean { return this.sim.isOn; }
-  setOn(on: boolean): void { if (on === this.sim.isOn) return; for (const sim of this.sims()) sim.setOn(on); if (!on) { for (const sim of this.sims()) sim.setLockup(null); this.onEvent?.({ kind: 'lockup', type: null }); } this.onEvent?.({ kind: on ? 'on' : 'off' }); }
-  trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (!this.sim.isOn) return; for (const sim of this.sims()) sim.trigger(type, pos); this.onEvent?.({ kind: type }); }
+  /**
+   * The main blade's simulator is the saber: whatever turns it on or off, raises an effect or asks for a sound, whether
+   * the panel or the style itself (TrDoEffect), shows up on its bus and is passed on from here.
+   */
+  private listen(sim: BladeSim): void {
+    sim.onEffect = (e) => {
+      if (e.type === 'EFFECT_IGNITION') { this.staffSim?.setOn(true); this.onEvent?.({ kind: 'on' }); }
+      else if (e.type === 'EFFECT_RETRACTION') { this.staffSim?.setOn(false); for (const s of this.sims()) s.setLockup(null); this.onEvent?.({ kind: 'lockup', type: null }); this.onEvent?.({ kind: 'off' }); }
+      else if (e.type === 'clash' || e.type === 'blast' || e.type === 'stab') this.onEvent?.({ kind: e.type });
+      else if (e.type === 'EFFECT_TRANSITION_SOUND') this.onEvent?.({ kind: 'sound', n: e.wavnum });
+    };
+  }
+  setOn(on: boolean): void { this.sim.setOn(on); }
+  /** A clash's strength follows the swing behind it, as the accelerometer would report. */
+  trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45, hard = false): void { if (!this.sim.isOn) return; const g = hard ? CLASH_G.hard : Math.min(CLASH_G.hard, CLASH_G.soft + (this.swing / 600) * (CLASH_G.hard - CLASH_G.soft)); for (const sim of this.sims()) sim.trigger(type, pos, g); }
+  /** A prop-level effect by its ProffieOS name: the special abilities (EFFECT_USER1..4), force, and so on. */
+  raise(effectName: string): void { for (const sim of this.sims()) sim.raise(effectName); }
   setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) { for (const sim of this.sims()) sim.setLockup(type); this.onEvent?.({ kind: 'lockup', type }); } }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
   resetPose(): void {

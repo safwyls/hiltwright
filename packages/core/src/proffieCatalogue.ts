@@ -13,7 +13,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\base.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "AliceBlue": {
   "name": "AliceBlue",
@@ -599,7 +600,8 @@ export default {
   "params": [],
   "doc": "",
   "file": "functions\\bullet_count.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "BlasterModeF": {
   "name": "BlasterModeF",
@@ -607,7 +609,8 @@ export default {
   "params": [],
   "doc": "Returns the current blaster mode as an integer: 0 for MODE_STUN, 1 for MODE_KILL, 2 for MODE_AUTO This function should only be used when BLASTER_SHOTS_UNTIL_EMPTY is defined, indicating that the current prop is a Blaster. Example usage in a style for Blue Stun, Red Kill, and Green Auto: StylePtr<ColorSelect<BlasterModeF, TrInstant, Blue, Red, Green>>()",
   "file": "functions\\blaster_mode.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Blinking": {
   "name": "Blinking",
@@ -851,7 +854,8 @@ export default {
   "params": [],
   "doc": "",
   "file": "functions\\bullet_count.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Bump": {
   "name": "Bump",
@@ -895,7 +899,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\byteorder.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "CYAN": {
   "name": "CYAN",
@@ -993,7 +998,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\style_ptr.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Chartreuse": {
   "name": "Chartreuse",
@@ -1134,7 +1140,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\clamp.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "ClampSVF": {
   "name": "ClampSVF",
@@ -1376,7 +1383,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\layers.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "ContinuousPOV": {
   "name": "ContinuousPOV",
@@ -1391,7 +1399,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\pov.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Coral": {
   "name": "Coral",
@@ -1531,7 +1540,8 @@ export default {
   ],
   "doc": "Returns: COLOR This style requires a little more work than regular styles. First you would need to declare an in-memory display. To do this, we would put this in the CONFIG_STYLES section: InMemoryDisplay<8, 8, 3> my_small_display; Then you need a controller for it: StandardColorDisplayController<8, 8> my_small_display_controller(&my_small_display); Now we need to give this display a name we can use in a style: NAME_INSTANCE(my_small_display, MYDISPLAY); Now we we can use this inside a style template: DisplayStyle<MYDISPLAY> Briefly, the display controller reads SCR files and tells the in-memory display which PQF files to read. The PQF files are rendered into an in-memory frame buffer. DisplayStyle is used to read from that frame buffer. Note that it's totally ok to use this with regular blades, just make the height or the width of the display equal to 1.",
   "file": "styles\\display.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Divide": {
   "name": "Divide",
@@ -1596,7 +1606,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\divide.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "DivideSVF": {
   "name": "DivideSVF",
@@ -1815,7 +1826,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\get_arg_max.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "FireConfig": {
   "name": "FireConfig",
@@ -1842,7 +1854,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\fire.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Flamingo": {
   "name": "Flamingo",
@@ -1891,7 +1904,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\file.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "FromFileStyleBase": {
   "name": "FromFileStyleBase",
@@ -1940,7 +1954,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\file.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Fuchsia": {
   "name": "Fuchsia",
@@ -1977,7 +1992,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\get_arg_max.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "GetArgMaxT": {
   "name": "GetArgMaxT",
@@ -2004,7 +2020,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\get_arg_max.h",
-  "variadic": true
+  "variadic": true,
+  "internal": true
  },
  "GetArgMaxTL": {
   "name": "GetArgMaxTL",
@@ -2025,7 +2042,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\get_arg_max.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "GhostWhite": {
   "name": "GhostWhite",
@@ -2446,7 +2464,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\display.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "InOutFunc": {
   "name": "InOutFunc",
@@ -2596,7 +2615,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\ifon.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "InOutHelperL": {
   "name": "InOutHelperL",
@@ -3254,7 +3274,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\isbetween.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "IsBetweenSVF": {
   "name": "IsBetweenSVF",
@@ -3369,7 +3390,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\islessthan.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "IsLessThanSVF": {
   "name": "IsLessThanSVF",
@@ -3407,7 +3429,8 @@ export default {
   "params": [],
   "doc": "Layers<ColorSelect<IntArg<STYLE_OPTION_ARG,0>,TrInstant,StripesX<Scale<HoldPeakF<Sum<EffectPulseF<EFFECT_IGNITION>,EffectPulseF<EFFECT_ALT_SOUND>>,Int<3000>,Int<3000>>,Int<8000>,Int<3000>>,Scale<HoldPeakF<Sum<EffectPulseF<EFFECT_IGNITION>,EffectPulseF<EFFECT_ALT_SOUND>>,Int<3000>,Int<3000>>,Int<-2600>,Int<-3600>>,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>,Mix<Int<12000>,Black,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>>,Pulsing<RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>,Mix<Int<8000>,Black,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>>,1400>>,StripesX<Scale<HoldPeakF<Sum<EffectPulseF<EFFECT_IGNITION>,EffectPulseF<EFFECT_ALT_SOUND>>,Int<3000>,Int<2000>>,Int<6000>,Int<2000>>,Scale<HoldPeakF<Sum<EffectPulseF<EFFECT_IGNITION>,EffectPulseF<EFFECT_ALT_SOUND>>,Int<3000>,Int<4000>>,Int<-2600>,Int<-3600>>,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>,Mix<Int<12000>,Black,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>>,Pulsing<RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>,Mix<Int<8000>,Black,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>>,1000>>>,TransitionEffectL<TrWaveX<RgbArg<BLAST_COLOR_ARG,Rgb<255,255,255>>,Scale<EffectRandomF<EFFECT_BLAST>,Int<100>,Int<400>>,Int<100>,Scale<EffectPosition<EFFECT_BLAST>,Int<100>,Int<400>>,Scale<EffectPosition<EFFECT_BLAST>,Int<28000>,Int<8000>>>,EFFECT_BLAST>,Mix<IsLessThan<ClashImpactF<>,Int<26000>>,TransitionEffectL<TrConcat<TrInstant,AlphaL<RgbArg<CLASH_COLOR_ARG,Rgb<255,255,255>>,Bump<Scale<BladeAngle<>,Scale<BladeAngle<0,16000>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-12000>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<10000>>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-10000>>>,Scale<ClashImpactF<>,Int<12000>,Int<60000>>>>,TrFadeX<Scale<ClashImpactF<>,Int<200>,Int<400>>>>,EFFECT_CLASH>,TransitionEffectL<TrWaveX<RgbArg<CLASH_COLOR_ARG,Rgb<255,255,255>>,Scale<ClashImpactF<>,Int<100>,Int<400>>,Int<100>,Scale<ClashImpactF<>,Int<100>,Int<400>>,Scale<BladeAngle<>,Scale<BladeAngle<0,16000>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-12000>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<10000>>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-10000>>>>,EFFECT_CLASH>>,LockupTrL<TransitionEffect<AlphaL<AlphaMixL<Bump<Scale<BladeAngle<>,Scale<BladeAngle<0,16000>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-12000>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<10000>>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-10000>>>,Scale<SwingSpeed<100>,Int<14000>,Int<22000>>>,AudioFlicker<RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>,Mix<Int<12000>,Black,RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>>>,BrownNoiseFlicker<RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>,Mix<Int<12000>,Black,RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>>,300>>,Bump<Scale<BladeAngle<>,Scale<BladeAngle<0,16000>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-12000>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<10000>>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-10000>>>,Scale<SwingSpeed<100>,Int<14000>,Int<22000>>>>,AlphaL<AudioFlicker<RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>,Mix<Int<20000>,Black,RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>>>,Bump<Scale<BladeAngle<>,Scale<BladeAngle<0,16000>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-12000>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<10000>>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-10000>>>,Scale<SwingSpeed<100>,Int<14000>,Int<18000>>>>,TrExtend<5000,TrInstant>,TrFade<5000>,EFFECT_LOCKUP_BEGIN>,TrConcat<TrJoin<TrDelay<50>,TrInstant>,Mix<IsLessThan<ClashImpactF<>,Int<26000>>,RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>,AlphaL<RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>,Bump<Scale<BladeAngle<>,Scale<BladeAngle<0,16000>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-12000>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<10000>>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-10000>>>,Scale<ClashImpactF<>,Int<20000>,Int<60000>>>>>,TrFade<300>>,TrConcat<TrInstant,RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>,TrFade<400>>,SaberBase::LOCKUP_NORMAL,Int<1>>,ResponsiveLightningBlockL<Strobe<RgbArg<LB_COLOR_ARG,Rgb<255,255,255>>,AudioFlicker<RgbArg<LB_COLOR_ARG,Rgb<255,255,255>>,Blue>,50,1>,TrConcat<TrExtend<200,TrInstant>,AlphaL<RgbArg<LB_COLOR_ARG,Rgb<255,255,255>>,Bump<Scale<BladeAngle<>,Int<10000>,Int<21000>>,Int<10000>>>,TrFade<200>>,TrConcat<TrInstant,RgbArg<LB_COLOR_ARG,Rgb<255,255,255>>,TrFade<400>>,Int<1>>,LockupTrL<AlphaL<TransitionEffect<RandomPerLEDFlickerL<RgbArg<DRAG_COLOR_ARG,Rgb<255,255,255>>>,BrownNoiseFlickerL<RgbArg<DRAG_COLOR_ARG,Rgb<255,255,255>>,Int<300>>,TrExtend<4000,TrInstant>,TrFade<4000>,EFFECT_DRAG_BEGIN>,SmoothStep<Scale<TwistAngle<>,IntArg<DRAG_SIZE_ARG,28000>,Int<30000>>,Int<3000>>>,TrWipeIn<200>,TrWipe<200>,SaberBase::LOCKUP_DRAG,Int<1>>,LockupTrL<AlphaL<Stripes<2000,4000,Mix<TwistAngle<>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>,RotateColorsX<Int<3000>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>>>,Mix<Sin<Int<50>>,Black,Mix<TwistAngle<>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>,RotateColorsX<Int<3000>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>>>>,Mix<Int<4096>,Black,Mix<TwistAngle<>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>,RotateColorsX<Int<3000>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>>>>>,SmoothStep<Scale<TwistAngle<>,IntArg<MELT_SIZE_ARG,28000>,Int<30000>>,Int<3000>>>,TrConcat<TrExtend<4000,TrWipeIn<200>>,AlphaL<HumpFlicker<Mix<TwistAngle<>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>,RotateColorsX<Int<3000>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>>>,RotateColorsX<Int<3000>,Mix<TwistAngle<>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>,RotateColorsX<Int<3000>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>>>>,100>,SmoothStep<Scale<TwistAngle<>,IntArg<MELT_SIZE_ARG,28000>,Int<30000>>,Int<3000>>>,TrFade<4000>>,TrWipe<200>,SaberBase::LOCKUP_MELT,Int<1>>,InOutTrL<TrWipeX<BendTimePowInvX<IgnitionTime<300>,Mult<IntArg<IGNITION_OPTION2_ARG,10992>,Int<98304>>>>,TrWipeInX<BendTimePowX<RetractionTime<0>,Mult<IntArg<RETRACTION_OPTION2_ARG,10992>,Int<98304>>>>,Black>)",
   "file": "styles\\test_types.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "LavenderBlush": {
   "name": "LavenderBlush",
@@ -3451,7 +3474,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\layers.h",
-  "variadic": true
+  "variadic": true,
+  "internal": true
  },
  "Layers": {
   "name": "Layers",
@@ -3510,7 +3534,8 @@ export default {
   ],
   "doc": "Return value: COLOR Lights up exactly one led, based on the current color change variable. When changed, says what the current color change is so that you know which led is lit up. Use this when you don't know how many LEDs are in your blade. Set the blade length to 144, enter color change mode and change it until no LED turns on, go back one and there you go!",
   "file": "styles\\length_finder.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "LightCyan": {
   "name": "LightCyan",
@@ -3990,7 +4015,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\mix.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Moccasin": {
   "name": "Moccasin",
@@ -4063,7 +4089,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\mod.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "ModSVF": {
   "name": "ModSVF",
@@ -4158,7 +4185,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\mult.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "MultSVF": {
   "name": "MultSVF",
@@ -5632,7 +5660,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\rgb.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "RotateColors": {
   "name": "RotateColors",
@@ -5756,7 +5785,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\int.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "SafetyOrange": {
   "name": "SafetyOrange",
@@ -5903,7 +5933,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\scale.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "ScaleSVF": {
   "name": "ScaleSVF",
@@ -6056,7 +6087,8 @@ export default {
   "params": [],
   "doc": "",
   "file": "styles\\show_color.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "ShowColorAllBladesTemplate": {
   "name": "ShowColorAllBladesTemplate",
@@ -6077,7 +6109,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\show_color.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "ShowColorSingleBlade": {
   "name": "ShowColorSingleBlade",
@@ -6085,7 +6118,8 @@ export default {
   "params": [],
   "doc": "",
   "file": "styles\\show_color.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "ShowColorSingleBladeTemplate": {
   "name": "ShowColorSingleBladeTemplate",
@@ -6106,7 +6140,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\show_color.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "SimpleClash": {
   "name": "SimpleClash",
@@ -6730,7 +6765,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\style_ptr.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "StyleFactoryImpl": {
   "name": "StyleFactoryImpl",
@@ -6898,7 +6934,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\pov.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "Subtract": {
   "name": "Subtract",
@@ -6963,7 +7000,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\subtract.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "SubtractSVF": {
   "name": "SubtractSVF",
@@ -7038,7 +7076,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\sum.h",
-  "variadic": true
+  "variadic": true,
+  "internal": true
  },
  "SumFinder2": {
   "name": "SumFinder2",
@@ -7060,6 +7099,7 @@ export default {
   "doc": "",
   "file": "functions\\sum.h",
   "variadic": false,
+  "internal": true,
   "alias": "typenameSumFinder3<F,V>::SumClass"
  },
  "SumFinder3": {
@@ -7081,7 +7121,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\sum.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "SumSVF": {
   "name": "SumSVF",
@@ -7698,7 +7739,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\concat.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "TrConcat3": {
   "name": "TrConcat3",
@@ -7725,7 +7767,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\concat.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "TrConcat3Selector": {
   "name": "TrConcat3Selector",
@@ -7758,7 +7801,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\concat.h",
-  "variadic": true
+  "variadic": true,
+  "internal": true
  },
  "TrConcatSelector": {
   "name": "TrConcatSelector",
@@ -7773,7 +7817,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\concat.h",
-  "variadic": true
+  "variadic": true,
+  "internal": true
  },
  "TrDelay": {
   "name": "TrDelay",
@@ -8027,7 +8072,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\random.h",
-  "variadic": false
+  "variadic": false,
+  "internal": true
  },
  "TrHelper3": {
   "name": "TrHelper3",
@@ -8042,7 +8088,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\random.h",
-  "variadic": true
+  "variadic": true,
+  "internal": true
  },
  "TrInstant": {
   "name": "TrInstant",

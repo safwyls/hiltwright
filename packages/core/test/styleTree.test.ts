@@ -176,3 +176,70 @@ describe('library-shaped style', () => {
     } finally { unregisterStyleSim('lib'); }
   });
 });
+
+// A style that steers the prop, the way Fett263's Cortosis Clash ability does: a special ability arms it for 3 s, a
+// clash then makes the style turn the saber off (TrDoEffect + EFFECT_FAST_OFF), spark at the emitter while it is
+// off, ask for its own sounds (EFFECT_TRANSITION_SOUND) and re-ignite it (EFFECT_FAST_ON). Written here rather than
+// pasted from the library.
+const CONTROL_LOOP = `Layers<Blue,
+  TransitionPulseL<TrConcat<TrExtend<300,TrDoEffectX<TrInstant,EFFECT_TRANSITION_SOUND,Int<1>>>,TrDoEffect<TrWipeIn<100>,EFFECT_FAST_OFF>,TrDelay<1000>>,Mult<EffectPulseF<EFFECT_CLASH>,HoldPeakF<EffectPulseF<EFFECT_USER1>,Int<3000>,Int<32768>>>>,
+  TransitionEffectL<TrDoEffectX<TrInstant,EFFECT_TRANSITION_SOUND,Int<0>>,EFFECT_USER1>,
+  TransitionEffectL<TrConcat<TrDelay<1000>,TrExtendX<Int<2000>,TrDoEffectAlwaysX<TrInstant,EFFECT_TRANSITION_SOUND,Int<2>>>,TrExtend<500,TrDoEffectAlwaysX<TrWipe<300>,EFFECT_TRANSITION_SOUND,Int<3>>>,TrDoEffectAlways<TrFade<300>,EFFECT_FAST_ON>>,EFFECT_FAST_OFF>,
+  ResponsiveClashL<White>,
+  InOutTrL<TrWipe<300>,TrWipeIn<500>,Black>,
+  TransitionEffectL<TrConcat<TrDelay<1000>,AlphaL<BrownNoiseFlickerL<Blue,Int<300>>,SmoothStep<Int<1000>,Int<-500>>>,TrExtendX<Int<2000>,TrInstant>,AlphaL<RandomFlicker<Black,BrownNoiseFlickerL<Blue,Int<300>>>,SmoothStep<Int<1000>,Int<-500>>>,TrExtend<500,TrWipe<300>>,Mix<SmoothStep<Int<10000>,Int<2000>>,Blue,Black>,TrFade<300>>,EFFECT_FAST_OFF>>`;
+
+describe('a style that steers the prop', () => {
+  const lit = (f: Float32Array) => { let n = 0; for (let i = 0; i < f.length; i += 3) if (f[i] + f[i + 1] + f[i + 2] > 0.05) n++; return n; };
+
+  it('is fully modelled', () => {
+    const { report } = evaluateStyle(parseStyle(CONTROL_LOOP));
+    expect(report.unsupported).toEqual([]);
+  });
+
+  it('turns the saber off on an armed clash, sparks at the emitter, then re-ignites it', () => {
+    registerStyleSim('ctl', evaluateStyle(parseStyle(CONTROL_LOOP)).make);
+    try {
+      const sim = new BladeSim('ctl', 40);
+      const events: string[] = [];
+      sim.onEffect = (e) => { events.push(e.type + (e.wavnum >= 0 ? `#${e.wavnum}` : '')); };
+      sim.frame(0); sim.setOn(true);
+      for (let t = 50; t <= 2000; t += 50) sim.frame(t);
+      expect(sim.isOn).toBe(true); expect(lit(sim.frame(2000))).toBe(40);
+      // An unarmed clash does nothing to the prop.
+      sim.trigger('clash'); for (let t = 2050; t <= 2600; t += 50) sim.frame(t);
+      expect(sim.isOn).toBe(true); expect(events.filter((e) => e.startsWith('EFFECT_FAST'))).toEqual([]);
+      // Arm, then clash within three seconds.
+      sim.raise('EFFECT_USER1'); sim.frame(2650);
+      sim.trigger('clash'); sim.frame(2700);
+      const seen: Record<string, number> = {}; const at = (name: string) => { for (let t = 2750; t <= 9000; t += 50) { sim.frame(t); if (events.includes(name) && seen[name] == null) seen[name] = t; } };
+      at('EFFECT_FAST_ON');
+      expect(events.indexOf('EFFECT_TRANSITION_SOUND#0')).toBeGreaterThanOrEqual(0); // the arming sound
+      expect(events.indexOf('EFFECT_TRANSITION_SOUND#1')).toBeGreaterThan(events.indexOf('EFFECT_TRANSITION_SOUND#0')); // the clash sound
+      const off = events.indexOf('EFFECT_FAST_OFF'); const on = events.indexOf('EFFECT_FAST_ON');
+      expect(off).toBeGreaterThan(events.indexOf('EFFECT_TRANSITION_SOUND#1'));
+      expect(events[off + 1]).toBe('EFFECT_RETRACTION'); // the prop turned it off
+      expect(events.indexOf('EFFECT_TRANSITION_SOUND#2')).toBeGreaterThan(off); // the sparking sound
+      expect(events.indexOf('EFFECT_TRANSITION_SOUND#3')).toBeGreaterThan(events.indexOf('EFFECT_TRANSITION_SOUND#2')); // the partial flame
+      expect(on).toBeGreaterThan(events.indexOf('EFFECT_TRANSITION_SOUND#3'));
+      expect(events[on + 1]).toBe('EFFECT_IGNITION'); // and back on
+      expect(sim.isOn).toBe(true);
+    } finally { unregisterStyleSim('ctl'); }
+  });
+
+  it('shows sparks only at the emitter while shorted out, and the blade back afterwards', () => {
+    registerStyleSim('ctl', evaluateStyle(parseStyle(CONTROL_LOOP)).make);
+    try {
+      const sim = new BladeSim('ctl', 40);
+      sim.frame(0); sim.setOn(true); for (let t = 50; t <= 2000; t += 50) sim.frame(t);
+      sim.raise('EFFECT_USER1'); sim.frame(2050); sim.trigger('clash'); sim.frame(2100);
+      for (let t = 2150; t <= 4000; t += 50) sim.frame(t); // off at ~2400, sparking from ~3500
+      expect(sim.isOn).toBe(false);
+      let sparks = 0; let tipLit = 0;
+      for (let t = 4050; t <= 5000; t += 50) { const f = sim.frame(t); if (f[0] + f[1] + f[2] > 0.05) sparks++; if (f[39 * 3] + f[39 * 3 + 1] + f[39 * 3 + 2] > 0.05) tipLit++; }
+      expect(sparks).toBeGreaterThan(3); expect(tipLit).toBe(0);
+      for (let t = 5050; t <= 8000; t += 50) sim.frame(t);
+      expect(sim.isOn).toBe(true); expect(lit(sim.frame(8000))).toBe(40);
+    } finally { unregisterStyleSim('ctl'); }
+  });
+});
