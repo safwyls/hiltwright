@@ -10,13 +10,15 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { SaberControls } from './Controls';
 import { infoFromRecord, queuedLookIds } from './saberModel';
 import { usePendingLookColours } from './pendingColours';
+import { StyleEditor } from './StyleEditor';
+import { isStyleDoc, registerStyleSim, styleToSim, type LookDef } from '@hiltwright/core';
 
 // three.js is only needed in the demo room, so it loads when that page is first opened.
 const Demo = lazy(() => import('./Demo').then((m) => ({ default: m.Demo })));
 
-type Page = 'armory' | 'presets' | 'looks' | 'demo' | 'fonts' | 'build' | 'diag';
+type Page = 'armory' | 'presets' | 'looks' | 'editor' | 'demo' | 'fonts' | 'build' | 'diag';
 const PAGES: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
-  { id: 'armory', title: 'Armory', icon: 'armory' }, { id: 'presets', title: 'Presets', icon: 'presets' }, { id: 'looks', title: 'Looks', icon: 'looks' }, { id: 'demo', title: 'Demo room', icon: 'play' },
+  { id: 'armory', title: 'Armory', icon: 'armory' }, { id: 'presets', title: 'Presets', icon: 'presets' }, { id: 'looks', title: 'Looks', icon: 'looks' }, { id: 'editor', title: 'Style editor', icon: 'gear' }, { id: 'demo', title: 'Demo room', icon: 'play' },
   { id: 'fonts', title: 'Fonts & SD', icon: 'fonts' }, { id: 'build', title: 'Build & Install', icon: 'build' }, { id: 'diag', title: 'Diagnostics', icon: 'diag' },
 ];
 
@@ -30,12 +32,15 @@ export function App() {
   const board: typeof real = fake && import.meta.env.DEV && lib0 ? { ...real, status: 'connected', portName: 'FAKE', saber: lib0, info: { ...infoFromRecord(lib0), currentPreset: 0, battery: 3.91, volume: 1800 } } : real;
   const [page, setPage] = useState<Page>('armory');
   const [demoLook, setDemoLook] = useState<string | null>(null);
+  const [editingLook, setEditingLook] = useState<LookDef | null>(null);
+  // Looks built in the style editor carry their layers; register a simulator for each so they preview like library looks.
+  useEffect(() => { void window.hiltwright.looks.list().then((ls) => { for (const l of ls) if (isStyleDoc(l.style)) registerStyleSim(l.id, styleToSim(l.style)); }); }, []);
   const { status, info } = board;
   const connected = status === 'connected';
   const configName = info?.version?.config?.replace(/^config\//, '').replace(/\.h$/, '') ?? null;
   // Dev aid: lets main switch pages for screenshots.
   useEffect(() => { (window as unknown as { hiltwrightGoto?: (p: string) => void }).hiltwrightGoto = (p) => { setFake(p.startsWith('fake:')); setPage(p.replace('fake:', '') as Page); }; }, []);
-  // Ctrl+1..7 switch pages.
+  // Ctrl+1..8 switch pages.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (!e.ctrlKey || e.altKey || e.shiftKey) return; const p = PAGES[Number(e.key) - 1]; if (p) { e.preventDefault(); setPage(p.id); } };
     window.addEventListener('keydown', onKey);
@@ -78,7 +83,7 @@ export function App() {
       </header>
 
       <main className="main">
-        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page === 'demo' ? 'Demo room' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} go={setPage} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} /> : page === 'demo' ? <Suspense fallback={<span className="hint">Opening the demo room…</span>}><Demo initialLook={demoLook} board={board} /></Suspense> : page === 'fonts' ? <Fonts board={board} /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}</ErrorBoundary>
+        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page === 'demo' ? 'Demo room' : page === 'editor' ? 'Style editor' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} go={setPage} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} onEdit={(l) => { setEditingLook(l); setPage('editor'); }} onNew={() => { setEditingLook(null); setPage('editor'); }} /> : page === 'editor' ? <StyleEditor key={editingLook?.id ?? 'new'} editing={editingLook} onSaved={() => undefined} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} /> : page === 'demo' ? <Suspense fallback={<span className="hint">Opening the demo room…</span>}><Demo initialLook={demoLook} board={board} /></Suspense> : page === 'fonts' ? <Fonts board={board} /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}</ErrorBoundary>
       </main>
 
     </div>

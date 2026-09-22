@@ -495,8 +495,8 @@ const hitPos = (): IntFn => {
   };
 };
 
-function hwFx(b: ColorFn, inOut: LayerFn = inOutL({ kind: 'wipe', ms: ign }, { kind: 'wipein', ms: ret })): ColorFn {
-  const lbColor = rgbArg(15, rgb8(160, 200, 255));
+/** ResponsiveLightningBlockL<COLOR>: three wandering bumps, one breathing with the sound, gated on and off. */
+function lightningL(lbColor: ColorFn): LayerFn {
   const s1 = slowNoise(2100); const s2 = slowNoise(2200); const s3 = slowNoise(2300); const s4 = slowNoise(2000);
   const b1 = bump(scale(s1, 3000, 16000), scale(brownNoise(10), 7000, 11500));
   const b2 = bump(scale(s2, 26000, 8000), scale(soundCompat(), 8000, 12000));
@@ -506,11 +506,15 @@ function hwFx(b: ColorFn, inOut: LayerFn = inOutL({ kind: 'wipe', ms: ign }, { k
   const b3 = bump(scale(s3, 20000, 30000), b3size);
   // LayerFunctions<A, B, C>: 1 - (1-a)(1-b)(1-c).
   const lbShape: IntFn = { run(c) { b1.run(c); b2.run(c); b3.run(c); }, get(led) { let inv = 32768; for (const f of [b1, b2, b3]) inv = Math.trunc((inv * (32768 - Math.min(32768, f.get(led)))) / 32768); return 32768 - inv; } };
+  return lockupL('lb', alphaL(lbColor, lbShape), { kind: 'instant' }, { kind: 'instant' });
+}
+
+function hwFx(b: ColorFn, inOut: LayerFn = inOutL({ kind: 'wipe', ms: ign }, { kind: 'wipein', ms: ret })): ColorFn {
   return layers(b,
     blastL(rgbArg(9, WHITE)),
     effectL('clash', { kind: 'instant' }, alphaL(rgbArg(10, WHITE), bump(hitPos(), constInt(10000))), { kind: 'fade', ms: 250 }),
     lockupL('normal', alphaL(rgbArg(11, WHITE), bump(hitPos(), scale(swingSpeed(100), 9000, 14000))), { kind: 'instant' }, { kind: 'fade', ms: 300 }),
-    lockupL('lb', alphaL(lbColor, lbShape), { kind: 'instant' }, { kind: 'instant' }),
+    lightningL(rgbArg(15, rgb8(160, 200, 255))),
     lockupL('drag', alphaL(rgbArg(13, rgb8(255, 180, 60)), smoothStep(constInt(32000), constInt(6000))), { kind: 'instant' }, { kind: 'instant' }),
     effectL('stab', { kind: 'wipein', ms: 600 }, alphaL(rgbArg(16, rgb8(255, 120, 0)), smoothStep(constInt(32000), constInt(11000))), { kind: 'wipe', ms: 600 }),
     inOut);
@@ -581,7 +585,18 @@ const SIM_LOOKS: Record<string, () => ColorFn> = {
 };
 
 /** Ids of the looks that can be simulated. Pasted looks cannot: their C++ is not interpreted. */
+/** Ids of the looks that can be simulated. Pasted looks cannot: their C++ is not interpreted. */
 export const SIMULATED_LOOKS: readonly string[] = Object.keys(SIM_LOOKS);
+
+/** Looks built in the style editor register a simulator here, by id, so the app previews them like library looks. */
+const CUSTOM_SIMS = new Map<string, () => ColorFn>();
+export function registerStyleSim(lookId: string, make: () => ColorFn): void { CUSTOM_SIMS.set(lookId, make); }
+export function unregisterStyleSim(lookId: string): void { CUSTOM_SIMS.delete(lookId); }
+export function canSimulateLook(lookId: string): boolean { return lookId in SIM_LOOKS || CUSTOM_SIMS.has(lookId); }
+
+/** The simulator's building blocks, for composing styles outside this file (the style editor). Same maths, same names as the firmware. */
+export const prims = { solid, rgbArg, timeArg, constInt, sinF, pulsingF, brownNoise, slowNoise, saw, humpFlicker, bladeAngle, twistAngle, randomF, sparkleF, randomPerLed, swingSpeed, soundCompat, batteryLevel, scale, bump, smoothStep, mix, gradient, rainbow, stripes, styleFire, opaque, alphaL, layers, blastL, simpleClashL, effectL, lockupL, lightningL, loopL, inOutL, hitPos, dim, rgb8, BLACK, WHITE };
+export type { ColorFn, IntFn, LayerFn, Tr };
 
 /** A deterministic random source, so the same seed and the same calls give the same blade. */
 function mulberry32(seed: number): () => number {
@@ -597,7 +612,7 @@ export class BladeSim {
   readonly leds: Float32Array;
 
   constructor(readonly lookId: string, readonly numLeds: number, seed = 1) {
-    const make = SIM_LOOKS[lookId];
+    const make = SIM_LOOKS[lookId] ?? CUSTOM_SIMS.get(lookId);
     if (!make) throw new Error(`No simulator for look ${lookId}`);
     this.style = make();
     this.rand = mulberry32(seed);

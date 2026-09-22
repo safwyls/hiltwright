@@ -48,7 +48,7 @@ export interface LookDef {
   /** Stable id, letters/digits/underscore. Starter ids begin with `hw_`. */
   id: string;
   name: string;
-  source: 'starter' | 'pasted';
+  source: 'starter' | 'pasted' | 'built';
   /** Attribution shown in the gallery ("Fett263", "you"). */
   by: string;
   /** The `StylePtr<...>()` expression (or any expression yielding a StyleFactory*) placed in the preset slot. */
@@ -72,6 +72,8 @@ export interface LookDef {
   usesFx?: boolean;
   /** Measured flash cost in KB on a V2, when known. */
   kb?: number;
+  /** A look built in the style editor keeps its layers, so it can be edited again and simulated. */
+  style?: unknown;
 }
 
 /** Runtime arguments and compiled default colours found in a piece of style C++. */

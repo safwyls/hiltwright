@@ -151,6 +151,7 @@ export interface HiltwrightApi {
   looks: {
     list(): Promise<LookDef[]>;
     add(look: LookDef): Promise<LookDef[]>;
+    update(id: string, look: LookDef): Promise<LookDef[]>;
     remove(id: string): Promise<LookDef[]>;
   };
   snapshots: {

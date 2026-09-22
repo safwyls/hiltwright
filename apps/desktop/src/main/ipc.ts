@@ -3,7 +3,7 @@
 import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
 import { join, resolve } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { generateConfig, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
+import { generateConfig, isStyleDoc, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { LooksStore, looksPath } from './looksStore';
 import type { LookDef } from '@hiltwright/core';
@@ -90,16 +90,22 @@ export function registerIpc(): void {
     const l = v as LookDef;
     if (!l || typeof l !== 'object' || !/^[A-Za-z_][A-Za-z0-9_]{0,60}$/.test(String(l.id)) || typeof l.code !== 'string') throw new Error('Expected a look');
     return {
-      id: l.id, name: str(l.name, 120), source: 'pasted', by: str(l.by ?? '', 120), code: str(l.code, 200000), header: l.header == null ? null : str(l.header, 20000),
+      id: l.id, name: str(l.name, 120), source: l.source === 'built' ? 'built' : 'pasted', by: str(l.by ?? '', 120), code: str(l.code, 200000), header: l.header == null ? null : str(l.header, 20000),
       roles: Array.isArray(l.roles) ? l.roles.filter((r): r is LookDef['roles'][number] => ['main', 'crystal', 'accent', 'side', 'motor'].includes(String(r))) : ['main'],
       args: Array.isArray(l.args) ? l.args.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n < 100) : [],
       preview: /^#[0-9a-fA-F]{6}$/.test(String(l.preview)) ? l.preview : '#ffffff', description: str(l.description ?? '', 2000),
       ...(l.defaults ? { defaults: hexMap(l.defaults) } : {}),
+      ...(l.preview2 && /^#[0-9a-fA-F]{6}$/.test(String(l.preview2)) ? { preview2: l.preview2 } : {}),
+      // A look built in the style editor: its alias define is what gets compiled, its layers let it be edited again.
+      ...(typeof l.define === 'string' ? { define: str(l.define, 200000) } : {}),
+      ...(l.usesFx ? { usesFx: true } : {}),
+      ...(isStyleDoc(l.style) ? { style: JSON.parse(JSON.stringify(l.style)) as unknown } : {}),
     };
   };
   ipcMain.handle('looks:list', () => looksStore.list());
   ipcMain.handle('looks:add', (_e, l: unknown) => looksStore.add(look(l)));
   ipcMain.handle('looks:remove', (_e, id: unknown) => looksStore.remove(str(id, 80)));
+  ipcMain.handle('looks:update', (_e, id: unknown, l: unknown) => { const v = look(l); if (v.id !== str(id, 80)) throw new Error('Look id mismatch'); return looksStore.add(v); });
 
   ipcMain.handle('snapshots:list', (_e, id: unknown) => snapshots.list(str(id, 40)));
   ipcMain.handle('snapshots:save', (_e, id: unknown, label: unknown, list: unknown) => snapshots.save(str(id, 40), str(label, 120), presets(list)));

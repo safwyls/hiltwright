@@ -16,7 +16,7 @@ const usesMotion = (l: LookDef) => /BladeAngle|TwistAngle|SwingSpeed|SwingAccele
 
 type LookState = 'compiled' | 'queued' | 'new';
 
-export function Looks({ board, onPresets, onBuild, onDemo }: { board: Board; onPresets: () => void; onBuild: () => void; onDemo: (lookId: string) => void }) {
+export function Looks({ board, onPresets, onBuild, onDemo, onEdit, onNew }: { board: Board; onPresets: () => void; onBuild: () => void; onDemo: (lookId: string) => void; onEdit: (look: LookDef) => void; onNew: () => void }) {
   const { status } = board;
   // Looks can be chosen for a remembered saber with nothing plugged in; only the install needs the board.
   const live = status === 'connected' && !!board.info && !!board.saber;
@@ -143,7 +143,8 @@ export function Looks({ board, onPresets, onBuild, onDemo }: { board: Board; onP
             <button type="button" className={`chip ${onlyFirmware ? 'sel' : ''}`} aria-pressed={onlyFirmware} disabled={!saber?.firmware} onClick={() => setOnlyFirmware((v) => !v)}><Icon name="check" />On the saber {compiled.size}</button>
             {(['main', 'crystal', 'accent', 'motor'] as BladeRole[]).map((r) => <button key={r} type="button" className={`chip ${roleFilter === r ? 'sel' : ''}`} aria-pressed={roleFilter === r} onClick={() => setRoleFilter(roleFilter === r ? null : r)}>{ROLE_LABEL[r]}</button>)}
             <button type="button" className={`chip ${onlyMotion ? 'sel' : ''}`} aria-pressed={onlyMotion} title="Looks that respond to tilt, swing or twist" onClick={() => setOnlyMotion((v) => !v)}>Motion</button>
-            <button type="button" className="btn sm" style={{ marginLeft: 'auto' }} onClick={() => setPasting(true)}><span className="b"><span className="i"><Icon name="import" />Paste style code</span></span></button>
+            <button type="button" className="btn sm pri" style={{ marginLeft: 'auto' }} onClick={onNew}><span className="b"><span className="i"><Icon name="plus" />Build a look</span></span></button>
+            <button type="button" className="btn sm" onClick={() => setPasting(true)}><span className="b"><span className="i"><Icon name="import" />Paste style code</span></span></button>
           </div>
           <div className="scroll" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(176px, 1fr))', gap: 10, alignContent: 'start', paddingRight: 4 }}>
             {visible.map((l) => (
@@ -153,7 +154,7 @@ export function Looks({ board, onPresets, onBuild, onDemo }: { board: Board; onP
                 </div>
                 <div className="col" style={{ padding: '2px 14px 12px', gap: 4, width: '100%' }}>
                   <div className="row between" style={{ gap: 8 }}><b className="ellip" style={{ fontWeight: 600, fontSize: 14 }}>{l.name}</b>{stateOf(l.id) === 'compiled' ? <span className="green small nowrap">on the saber</span> : stateOf(l.id) === 'queued' ? <span className="amber small nowrap">queued</span> : null}</div>
-                  <div className="hint ellip">{l.source === 'pasted' ? `${l.by}, ` : ''}{ROLE_LABEL[l.roles[0]]}{l.roles.length > 1 ? ` +${l.roles.length - 1}` : ''}{l.kb != null ? `, ${l.kb.toFixed(1)} KB` : ''}</div>
+                  <div className="hint ellip">{l.source !== 'starter' ? `${l.by}, ` : ''}{ROLE_LABEL[l.roles[0]]}{l.roles.length > 1 ? ` +${l.roles.length - 1}` : ''}{l.kb != null ? `, ${l.kb.toFixed(1)} KB` : ''}</div>
                 </div>
               </button>
             ))}
@@ -200,7 +201,8 @@ export function Looks({ board, onPresets, onBuild, onDemo }: { board: Board; onP
 
             {sel.args.length === 0 && <span className="hint">Nothing in this look can be changed live.</span>}
             {sel.source === 'pasted' && sel.header && <pre className="console" style={{ maxHeight: 110, margin: 0, fontSize: 11, flex: 'none' }}>{sel.header}</pre>}
-            {sel.source === 'pasted' && <button type="button" className="btn sm ghost" onClick={() => void removePasted(sel.id)}><span className="b"><span className="i"><Icon name="trash" />Remove from library</span></span></button>}
+            {sel.source === 'built' && <button type="button" className="btn sm" onClick={() => onEdit(sel)}><span className="b"><span className="i"><Icon name="gear" />Edit the layers</span></span></button>}
+            {(sel.source === 'pasted' || sel.source === 'built') && <button type="button" className="btn sm ghost" onClick={() => void removePasted(sel.id)}><span className="b"><span className="i"><Icon name="trash" />Remove from library</span></span></button>}
           </div>
           <div className="col" style={{ gap: 8, padding: '12px 18px 14px', borderTop: '1px solid var(--line)', background: '#0d131a', flex: 'none' }}>
               {!connected && <span className="hint">Connect a saber once and Hiltwright remembers it. After that, looks can be added with it unplugged.</span>}

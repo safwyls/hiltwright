@@ -3,12 +3,12 @@
 // and falls back to a flat bar in its main colour.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BladeSim, SIMULATED_LOOKS, type LockupType } from '@hiltwright/core';
+import { BladeSim, canSimulateLook, type LockupType } from '@hiltwright/core';
 import { addPreview, bladeRenderer } from './bladeRender';
 import { BladeBar, Hilt } from './Saber';
 import { MotionPad } from './MotionPad';
 
-export const canSimulate = (lookId: string | null | undefined): lookId is string => !!lookId && SIMULATED_LOOKS.includes(lookId);
+export const canSimulate = (lookId: string | null | undefined): lookId is string => !!lookId && canSimulateLook(lookId);
 
 interface Props {
   lookId: string | null | undefined;
