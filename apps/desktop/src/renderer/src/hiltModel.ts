@@ -12,9 +12,17 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 
 export type HiltFormat = 'glb' | 'obj' | 'stl';
-export interface HiltFit { flip: boolean; rollDeg: number; /** Overall length in centimetres; null keeps the guess from the file. */ lengthCm: number | null }
+export interface HiltFit {
+  flip: boolean;
+  rollDeg: number;
+  /** Overall length in centimetres; null keeps the guess from the file. */
+  lengthCm: number | null;
+  /** Sideways shift of the model so the blade sits in its bore, in millimetres of finished hilt, in the hilt's own frame (before the turn). */
+  offsetXmm?: number;
+  offsetZmm?: number;
+}
 export interface StoredHilt { name: string; format: HiltFormat; data: ArrayBuffer; fit: HiltFit }
-export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null };
+export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0 };
 
 export function formatOf(fileName: string): HiltFormat | null {
   const ext = fileName.toLowerCase().split('.').pop();
@@ -49,7 +57,9 @@ export async function parseHilt(format: HiltFormat, data: ArrayBuffer): Promise<
 }
 
 /**
- * Stand `model` up along +Y with the blade end at `emitterY`, centred on the axis, at hilt size.
+ * Stand `model` up along +Y with the blade end at `emitterY`, at hilt size, centred on the axis by its bounding box and
+ * then shifted by the fit's offset, since a hilt's bore is rarely at the centre of its box (a clamp card or a
+ * side-mounted emitter pulls the box off to one side).
  * Returns the group to add to the saber and the length it ended up, in metres.
  */
 export function fitHilt(model: THREE.Object3D, fit: HiltFit, emitterY: number): { group: THREE.Group; length: number } {
@@ -71,7 +81,9 @@ export function fitHilt(model: THREE.Object3D, fit: HiltFit, emitterY: number): 
 
   const group = new THREE.Group();
   group.add(oriented);
-  oriented.position.set(-centre.x, -box.max.y, -centre.z); // blade end at the origin, the rest hanging below it
+  // Blade end at the origin, the rest hanging below it. The offset is in finished millimetres, so it is applied in
+  // model units here (before the scale) as offset / k.
+  oriented.position.set(-centre.x + ((fit.offsetXmm ?? 0) / 1000) / k, -box.max.y, -centre.z + ((fit.offsetZmm ?? 0) / 1000) / k);
   group.scale.setScalar(k);
   group.position.y = emitterY;
   group.rotation.y = (fit.rollDeg * Math.PI) / 180;

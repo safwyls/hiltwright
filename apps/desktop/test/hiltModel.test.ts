@@ -54,6 +54,21 @@ describe('fitting a custom hilt', () => {
     expect(sized.group.rotation.y).toBeCloseTo(Math.PI / 2);
   });
 
+  it('shifts the model sideways by finished millimetres, in the hilt\'s own frame, whatever the file\'s units', () => {
+    for (const [long, thick] of [[280, 36], [0.28, 0.036]]) { // millimetres and metres
+      const plain = boxOf(fitHilt(bar('y', long, thick), DEFAULT_FIT, 0.135).group);
+      const shifted = boxOf(fitHilt(bar('y', long, thick), { ...DEFAULT_FIT, offsetXmm: 8, offsetZmm: -4.5 }, 0.135).group);
+      expect(shifted.min.x - plain.min.x).toBeCloseTo(0.008, 5);
+      expect(shifted.min.z - plain.min.z).toBeCloseTo(-0.0045, 5);
+      expect(shifted.max.y).toBeCloseTo(plain.max.y, 6);
+    }
+    // Turned a quarter, the same shift follows the hilt round: +X in its frame is now -Z in the room.
+    const turned = boxOf(fitHilt(bar('y', 280, 36), { ...DEFAULT_FIT, offsetXmm: 8, rollDeg: 90 }, 0.135).group);
+    const turnedPlain = boxOf(fitHilt(bar('y', 280, 36), { ...DEFAULT_FIT, rollDeg: 90 }, 0.135).group);
+    expect(turned.min.z - turnedPlain.min.z).toBeCloseTo(-0.008, 5);
+    expect(turned.min.x - turnedPlain.min.x).toBeCloseTo(0, 5);
+  });
+
   it('reads STL and OBJ files and knows which formats it takes', async () => {
     expect([formatOf('Graflex.GLB'), formatOf('hilt.gltf'), formatOf('a.obj'), formatOf('b.stl'), formatOf('c.fbx')]).toEqual(['glb', 'glb', 'obj', 'stl', null]);
     const stl = 'solid t\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 280 0 0\nvertex 0 30 0\nendloop\nendfacet\nendsolid t\n';
