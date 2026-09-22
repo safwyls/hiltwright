@@ -15,6 +15,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { BladeSim, type EffectType, type LockupType } from '@hiltwright/core';
 import { Wield, handOnArc } from './wield';
 import { Steer } from './steer';
@@ -161,6 +162,11 @@ export class DemoScene {
     host.appendChild(this.renderer.domElement);
 
     this.scene.background = new THREE.Color(0x05070a);
+    // Something for metal to reflect: a neutral studio room, dim, so chrome reads as chrome rather than black.
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.35;
+    pmrem.dispose();
     this.scene.fog = new THREE.FogExp2(0x05070a, 0.09);
     this.buildRoom();
 
@@ -254,7 +260,8 @@ export class DemoScene {
   }
 
   private buildRoom(): void {
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: 0x10151b, roughness: 0.42, metalness: 0.35 }));
+    // The floor barely picks up the reflection environment: it is there for the metal of the hilt, not to grey the room.
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: 0x10151b, roughness: 0.42, metalness: 0.35, envMapIntensity: 0.08 }));
     floor.rotation.x = -Math.PI / 2;
     this.scene.add(floor);
     const grid = new THREE.GridHelper(28, 56, 0x27465a, 0x16222c);
@@ -321,6 +328,7 @@ export class DemoScene {
     this.bladeMaterial.color.setRGB(next.bladeBrightness, next.bladeBrightness, next.bladeBrightness);
     this.staffMaterial?.color.copy(this.bladeMaterial.color);
     for (const { light, base } of this.roomLamps) light.intensity = base * next.roomLight;
+    this.scene.environmentIntensity = 0.35 * next.roomLight;
     (this.scene.fog as THREE.FogExp2).density = next.haze;
     this.grid.visible = next.grid;
     this.setBlade(next.bladeInches * 0.0254, BLADE_DIAMETERS[next.bladeDiameter] / 2);

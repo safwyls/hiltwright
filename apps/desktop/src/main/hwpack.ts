@@ -127,6 +127,22 @@ export function decodeMesh(buf: Buffer): PackedMesh {
   return { positions, normals, indices, groups };
 }
 
+/**
+ * Named finishes a packer can assign to a material by hand, when the guess from colour is not what the part is.
+ * Chrome is a mirror; brushed aluminium is metal with a matte grain; satin sits between; anodised is dark metal;
+ * paint and plastic are not metal.
+ */
+export const FINISHES: Record<string, { metalness: number; roughness: number; tint?: [number, number, number] }> = {
+  chrome: { metalness: 1, roughness: 0.06, tint: [0.93, 0.94, 0.95] },
+  polished: { metalness: 0.95, roughness: 0.15 },
+  brushed: { metalness: 0.9, roughness: 0.5, tint: [0.86, 0.87, 0.88] },
+  satin: { metalness: 0.9, roughness: 0.35 },
+  anodised: { metalness: 0.75, roughness: 0.42 },
+  brass: { metalness: 0.95, roughness: 0.25, tint: [0.95, 0.8, 0.49] },
+  paint: { metalness: 0.05, roughness: 0.45 },
+  plastic: { metalness: 0, roughness: 0.55 },
+};
+
 /** Metal or paint, from a CAD export that gives only a diffuse colour: neutral greys are metal, colours are finishes. */
 export function guessFinish(name: string, color: [number, number, number]): { metalness: number; roughness: number } {
   const [r, g, b] = color;
@@ -139,7 +155,7 @@ export function guessFinish(name: string, color: [number, number, number]): { me
 }
 
 /** Parse Wavefront OBJ text with its MTL into a packed mesh. Faces are triangulated; vertices are deduplicated per v/vn pair. */
-export function objToMesh(objText: string, mtlText: string): PackedMesh {
+export function objToMesh(objText: string, mtlText: string, finishes: Record<string, string> = {}): PackedMesh {
   const kd = new Map<string, [number, number, number]>();
   let cur = '';
   for (const line of mtlText.split(/\r?\n/)) {
@@ -152,7 +168,12 @@ export function objToMesh(objText: string, mtlText: string): PackedMesh {
   const key = new Map<string, number>();
   const groups: MeshGroup[] = [];
   let mat = 'default'; let groupStart = 0;
-  const closeGroup = () => { if (indices.length > groupStart) { const color = kd.get(mat) ?? [0.6, 0.63, 0.66]; groups.push({ start: groupStart, count: indices.length - groupStart, color, ...guessFinish(mat, color), name: mat }); } groupStart = indices.length; };
+  const finishOf = (name: string, color: [number, number, number]) => {
+    const f = FINISHES[finishes[name]?.toLowerCase() ?? ''];
+    if (!f) return { color, ...guessFinish(name, color) };
+    return { color: f.tint ?? color, metalness: f.metalness, roughness: f.roughness };
+  };
+  const closeGroup = () => { if (indices.length > groupStart) { const color = kd.get(mat) ?? [0.6, 0.63, 0.66]; groups.push({ start: groupStart, count: indices.length - groupStart, ...finishOf(mat, color), name: mat }); } groupStart = indices.length; };
   const vertex = (ref: string): number => {
     let idx = key.get(ref);
     if (idx != null) return idx;

@@ -1,6 +1,7 @@
 // Make .hwpack files. Run with Node 24 (it strips the types itself):
 //
-//   node scripts/hwpack.ts hilt <file.obj> --name "Exar Kun" --creator "Name" --licence "All rights reserved" [--id exar-kun] [--fit '{"rollDeg":90}'] --out ../../packs
+//   node scripts/hwpack.ts hilt <file.obj> --name "Exar Kun" --creator "Name" --licence "All rights reserved" [--id exar-kun] [--fit '{"rollDeg":90}'] [--finish 'Opaque(196,197,196)=chrome;Opaque(75,75,75)=anodised'] --out ../../packs
+//   finishes: chrome, polished, brushed, satin, anodised, brass, paint, plastic
 //   node scripts/hwpack.ts font <folder>   --creator "ProffieOS" --licence "CC BY-SA 4.0" [--copy] --out ../../packs
 //   node scripts/hwpack.ts show <file.hwpack>
 //
@@ -40,9 +41,11 @@ if (mode === 'hilt') {
   const name = opts.name ?? basename(objPath, extname(objPath)).replace(/_Hiltwright$/i, '');
   const id = opts.id ?? slug(name);
   console.log(`reading ${objPath}`);
-  const mesh = objToMesh(readFileSync(objPath, 'utf8'), (() => { try { return readFileSync(mtlPath, 'utf8'); } catch { return ''; } })());
+  const finishes: Record<string, string> = {};
+  for (const pair of (opts.finish ?? '').split(';').filter(Boolean)) { const at = pair.lastIndexOf('='); if (at > 0) finishes[pair.slice(0, at).trim()] = pair.slice(at + 1).trim(); }
+  const mesh = objToMesh(readFileSync(objPath, 'utf8'), (() => { try { return readFileSync(mtlPath, 'utf8'); } catch { return ''; } })(), finishes);
   console.log(`  ${mesh.positions.length / 3} vertices, ${mesh.indices.length / 3} triangles, ${mesh.groups.length} materials`);
-  for (const g of mesh.groups) console.log(`  ${g.name.padEnd(24)} ${g.count / 3} tris  rgb(${g.color.map((c) => Math.round(c * 255)).join(',')})  metal ${g.metalness} rough ${g.roughness}`);
+  for (const g of mesh.groups) console.log(`  ${g.name.padEnd(24)} ${g.count / 3} tris  rgb(${g.color.map((c) => Math.round(c * 255)).join(',')})  metal ${g.metalness} rough ${g.roughness}${finishes[g.name] ? `  (${finishes[g.name]})` : ''}`);
   const manifest: Omit<PackManifest, 'items' | 'packed'> = {
     id, kind: 'hilt', name, creator: need('creator'), licence: need('licence'),
     allow: { copyToCard: false, demoPlayback: true },
