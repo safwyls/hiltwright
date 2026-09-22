@@ -2,7 +2,7 @@
 // driven by the motion of the saber on screen.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupType } from '@hiltwright/core';
+import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, canSimulateLook, hexToColorWord, registerLookSim, type LockupType, type LookDef } from '@hiltwright/core';
 import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
 import { DEFAULT_FIT, formatOf, meshFromPack, parseHilt, type HiltFit, type SideFile, type StoredHilt } from './hiltModel';
@@ -14,7 +14,8 @@ import { lookAtSlot } from '@hiltwright/core';
 import { listHilts, removeHilt, saveHilt } from './hiltStore';
 import type { Object3D } from 'three';
 
-const LOOKS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
+// Hiltwright's own looks; the owner's saved looks (built or pasted) join them once loaded, when they can be simulated.
+const STARTERS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
 const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter' | 'ledsPerMetre' | 'staff' | 'bladeWhenOff'>; label: string; min: number; max: number; step: number; hint: string }[] = [
   { key: 'glow', label: 'Glow', min: 0, max: 3, step: 0.05, hint: 'Strength of the glow around the blade' },
   { key: 'glowSpread', label: 'Glow spread', min: 0, max: 1, step: 0.02, hint: 'How far the glow reaches' },
@@ -34,7 +35,10 @@ const api = () => window.hiltwright;
 export function Demo({ initialLook, board }: { initialLook?: string | null; board: Board }) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<DemoScene | null>(null);
-  const [lookId, setLookId] = useState(() => (initialLook && LOOKS.some((l) => l.id === initialLook) ? initialLook : LOOKS[0].id));
+  const [saved, setSaved] = useState<LookDef[]>([]);
+  const LOOKS = useMemo(() => [...STARTERS, ...saved], [saved]);
+  useEffect(() => { void api().looks.list().then((ls) => setSaved(ls.filter((l) => registerLookSim(l)))); }, []);
+  const [lookId, setLookId] = useState(() => (initialLook && canSimulateLook(initialLook) ? initialLook : STARTERS[0].id));
   const [tried, setTried] = useState<Record<number, string>>({});
   // The staff blade has its own look and colours; the panel shows one blade at a time.
   const [staffLookId, setStaffLookId] = useState(() => { try { return localStorage.getItem('hiltwright.demo.staffLook') || ''; } catch { return ''; } });
@@ -208,7 +212,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     const el = host.current;
     if (!el) return;
     let room: DemoScene;
-    try { room = new DemoScene(el, lookId); } catch (err) { setFailed(String(err)); return; }
+    try { room = new DemoScene(el, canSimulateLook(lookId) ? lookId : STARTERS[0].id); } catch (err) { setFailed(String(err)); return; }
     scene.current = room;
     room.setControlMode(control);
     room.applySettings(look3d);
@@ -274,9 +278,9 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { scene.current?.setLook(lookId, args); setHold(null); }, [lookId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (canSimulateLook(lookId)) { scene.current?.setLook(lookId, args); setHold(null); } }, [lookId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { scene.current?.setArgs(args); }, [args]);
-  useEffect(() => { scene.current?.setLook(staffLook.id, staffArgs, 'staff'); }, [staffLook.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (canSimulateLook(staffLook.id)) scene.current?.setLook(staffLook.id, staffArgs, 'staff'); }, [staffLook.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { scene.current?.setArgs(staffArgs, 'staff'); }, [staffArgs]);
   useEffect(() => { scene.current?.setLockup(hold); }, [hold]);
   useEffect(() => { if (!motion.on && hold) setHold(null); }, [motion.on, hold]);
@@ -306,7 +310,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
               <>
                 <label className="field"><span className="label">{staff ? 'Staff blade look' : 'Look'}</span>
                   <span className="input sans"><span className="ellip">{cur.name}</span><span className="caret"><Icon name="down" /></span>
-                    <select value={curId} aria-label={staff ? 'Staff blade look' : 'Look'} onChange={(e) => setId(e.target.value)}>{LOOKS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></span>
+                    <select value={curId} aria-label={staff ? 'Staff blade look' : 'Look'} onChange={(e) => setId(e.target.value)}><optgroup label="Hiltwright">{STARTERS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>{saved.length > 0 && <optgroup label="Your looks">{saved.map((l) => <option key={l.id} value={l.id}>{l.name}{l.by && l.by !== 'you' ? ` (${l.by})` : ''}</option>)}</optgroup>}</select></span>
                 </label>
                 <span className="hint" style={{ fontSize: 12 }}>{cur.description}</span>
                 {cols.length > 0 && (
@@ -380,7 +384,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       </div>
 
       <div style={{ position: 'absolute', left: 20, bottom: 18, display: 'grid', gridTemplateColumns: 'auto auto', gap: '3px 14px', fontSize: 12, color: 'var(--dim)', pointerEvents: 'none' }}>
-        {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  N', 'hold lockup, drag, lightning'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll or + −', 'zoom'], ['R', 'reset the pose and the view']].map(([k, v]) => (
+        {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high or low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Double-click or Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  B  S', 'clash, blast, stab'], ['L  D  M  N', 'hold lockup, drag, melt, lightning'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll or + −', 'zoom'], ['R', 'reset the pose and the view']].map(([k, v]) => (
           <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11.5 }}>{k}</span><span>{v}</span></div>
         ))}
       </div>

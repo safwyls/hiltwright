@@ -3,7 +3,7 @@
 // "queued" when it is in the build model but not yet installed, and "new" otherwise.
 
 import { useEffect, useMemo, useState } from 'react';
-import { STARTER_LOOKS, analyzeStyleCode, argInfo, formatBuiltin, formatStyleArgs, hexToColorWord, lookSlots, type BladeRole, type LookDef } from '@hiltwright/core';
+import { STARTER_LOOKS, analyzeStyleCode, registerLookSim, argInfo, formatBuiltin, formatStyleArgs, hexToColorWord, lookSlots, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { BladePreview, canSimulate } from './BladePreview';
@@ -40,7 +40,7 @@ export function Looks({ board, onPresets, onBuild, onDemo, onEdit, onNew }: { bo
   const [tried, setTried] = useState<Record<number, string>>({});
   useEffect(() => { setTried({}); }, [selectedId]);
 
-  useEffect(() => { void api().looks.list().then(setPasted); }, []);
+  useEffect(() => { void api().looks.list().then((ls) => { for (const l of ls) registerLookSim(l); setPasted(ls); }); }, []);
   useEffect(() => {
     if (!pasting) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPasting(false); };
@@ -73,6 +73,7 @@ export function Looks({ board, onPresets, onBuild, onDemo, onEdit, onNew }: { bo
     const id = `look_${(lookName || 'pasted').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'pasted'}_${Date.now().toString(36)}`;
     const roles: BladeRole[] = ['main', 'side'];
     const look: LookDef = { id, name: lookName.trim() || 'Pasted look', source: 'pasted', by: lookBy.trim() || 'unknown', code: analysis.expression, header: analysis.header, roles, args: analysis.args, preview: analysis.preview, defaults: analysis.defaults, description: analysis.header ? analysis.header.split('\n').map((l) => l.replace(/^\/\/\s?|\/\*|\*\//g, '').trim()).filter(Boolean).slice(0, 3).join(' · ') : 'Pasted style code.' };
+    registerLookSim(look);
     setPasted(await api().looks.add(look));
     setSelectedId(id);
     setPasting(false); setCode(''); setLookName('');
