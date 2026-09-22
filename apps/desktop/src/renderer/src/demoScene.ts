@@ -76,7 +76,7 @@ export interface SceneSettings {
   /** Show the unlit polycarbonate tube when the saber is off. Off, the blade only exists while it is lit. */
   bladeWhenOff: boolean;
 }
-export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144, staff: false, bladeWhenOff: true };
+export const DEFAULT_SCENE: SceneSettings = { glow: 1.2, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144, staff: false, bladeWhenOff: true };
 
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
 /** What the saber did, for whoever makes its sounds. `motion` comes every frame with the blade's turn rate. */
