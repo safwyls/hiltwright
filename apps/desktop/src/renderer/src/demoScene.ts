@@ -74,6 +74,8 @@ export interface SceneSettings {
 export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144 };
 
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
+/** What the saber did, for whoever makes its sounds. `motion` comes every frame with the blade's turn rate. */
+export type SaberEvent = { kind: 'on' } | { kind: 'off' } | { kind: 'clash' } | { kind: 'blast' } | { kind: 'stab' } | { kind: 'lockup'; type: LockupType | null } | { kind: 'motion'; degPerSec: number; dt: number };
 
 export class DemoScene {
   private readonly renderer: THREE.WebGLRenderer;
@@ -131,6 +133,7 @@ export class DemoScene {
   private customHilt: { model: THREE.Object3D; group: THREE.Group } | null = null;
   private roomLamps: { light: THREE.Light; base: number }[] = [];
   onMotion: ((m: Motion) => void) | null = null;
+  onEvent: ((e: SaberEvent) => void) | null = null;
   private lastReport = 0;
 
   constructor(private readonly host: HTMLElement, lookId: string, leds = ledsFor(BLADE_LENGTH, 144)) {
@@ -332,9 +335,9 @@ export class DemoScene {
   }
   setArgs(args: Map<number, string>): void { this.args = args; this.sim.setArgs(args); }
   get isOn(): boolean { return this.sim.isOn; }
-  setOn(on: boolean): void { this.sim.setOn(on); if (!on) this.sim.setLockup(null); }
-  trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (this.sim.isOn) this.sim.trigger(type, pos); }
-  setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) this.sim.setLockup(type); }
+  setOn(on: boolean): void { if (on === this.sim.isOn) return; this.sim.setOn(on); if (!on) { this.sim.setLockup(null); this.onEvent?.({ kind: 'lockup', type: null }); } this.onEvent?.({ kind: on ? 'on' : 'off' }); }
+  trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (!this.sim.isOn) return; this.sim.trigger(type, pos); this.onEvent?.({ kind: type }); }
+  setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) { this.sim.setLockup(type); this.onEvent?.({ kind: 'lockup', type }); } }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
   resetPose(): void {
     this.handAt.x = HOME_AT.x; this.handAt.y = HOME_AT.y;
@@ -439,6 +442,7 @@ export class DemoScene {
     this.saber.quaternion.setFromUnitVectors(UP, this.dir);
     this.roll.rotation.y = (this.twist * Math.PI) / 180;
     this.sim.setSwing(Math.min(900, this.swing));
+    this.onEvent?.({ kind: 'motion', degPerSec: speed, dt });
     this.sim.setAngle(tilt);
     this.sim.setTwist(this.twist);
 

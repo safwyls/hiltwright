@@ -6,6 +6,10 @@ import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupTyp
 import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
 import { DEFAULT_FIT, formatOf, parseHilt, type HiltFit, type SideFile, type StoredHilt } from './hiltModel';
+import { FontEngine } from './fontEngine';
+import type { Board } from './board';
+import type { FontEntry } from '../../shared/api';
+import { lookAtSlot } from '@hiltwright/core';
 import { listHilts, removeHilt, saveHilt } from './hiltStore';
 import type { Object3D } from 'three';
 
@@ -24,7 +28,9 @@ function loadScene(): SceneSettings {
 
 const HOLDS: { type: LockupType; label: string; key: string }[] = [{ type: 'normal', label: 'Lockup', key: 'l' }, { type: 'drag', label: 'Drag', key: 'd' }, { type: 'lb', label: 'Lightning', key: 'n' }];
 
-export function Demo({ initialLook }: { initialLook?: string | null }) {
+const api = () => window.hiltwright;
+
+export function Demo({ initialLook, board }: { initialLook?: string | null; board: Board }) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<DemoScene | null>(null);
   const [lookId, setLookId] = useState(() => (initialLook && LOOKS.some((l) => l.id === initialLook) ? initialLook : LOOKS[0].id));
@@ -32,6 +38,76 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
   const [hold, setHold] = useState<LockupType | null>(null);
   const [motion, setMotion] = useState<Motion>({ swing: 0, tilt: 0, twist: 0, on: false });
   const [failed, setFailed] = useState<string | null>(null);
+
+  // ---- sound: a font from a card, the saber's card, or the font bank, played as the saber would ----
+  type Source = { kind: 'card' | 'bank'; root: string; label: string };
+  const [sources, setSources] = useState<Source[]>([]);
+  const [source, setSource] = useState<Source | null>(null);
+  const [fonts, setFonts] = useState<FontEntry[]>([]);
+  const [fontName, setFontName] = useState<string>('');
+  const [engine, setEngine] = useState<FontEngine | null>(null);
+  const engineRef = useRef<FontEngine | null>(null);
+  const [loading, setLoading] = useState<{ done: number; total: number; what: string } | null>(null);
+  const [soundNote, setSoundNote] = useState<string | null>(null);
+  const [volume, setVolume] = useState(() => { try { return Number(localStorage.getItem('hiltwright.demo.volume') ?? 0.8); } catch { return 0.8; } });
+  const refreshSources = async () => {
+    const [cards, bank] = await Promise.all([api().sd.locate(), api().sd.fontBank()]);
+    const next: Source[] = cards.filter((c) => c.proffie).map((c) => ({ kind: 'card' as const, root: c.root, label: `Card at ${c.root}` }));
+    if (bank) next.push({ kind: 'bank', root: bank, label: `Font bank (${bank.split(/[\\/]/).pop()})` });
+    setSources(next);
+    setSource((cur) => next.find((n) => n.root === cur?.root) ?? next[0] ?? null);
+  };
+  useEffect(() => { void refreshSources(); }, []);
+  useEffect(() => {
+    if (!source) { setFonts([]); return; }
+    let live = true;
+    void (source.kind === 'bank' ? api().sd.bankFonts() : api().sd.listFonts(source.root)).then((f) => { if (live) setFonts(f); }).catch(() => { if (live) setFonts([]); });
+    return () => { live = false; };
+  }, [source?.root]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pickBank = async () => { const r = await api().sd.pickFontBank(); if (r) await refreshSources(); };
+  const loadFont = async (name: string, from: Source | null = source) => {
+    if (!from || !name) return;
+    setFontName(name); setSoundNote(null);
+    setLoading({ done: 0, total: 0, what: 'reading' });
+    const off = api().sd.onReadFontProgress((p) => setLoading({ done: p.done, total: p.total, what: 'reading' }));
+    try {
+      const sounds = await api().sd.readFont(from.root, name);
+      off();
+      const wasOn = engineRef.current?.isOn ?? false;
+      engineRef.current?.dispose();
+      const eng = await FontEngine.load(sounds, (done, total) => setLoading({ done, total, what: 'decoding' }));
+      eng.setVolume(volume);
+      engineRef.current = eng; setEngine(eng);
+      if (sounds.skipped) setSoundNote(`${sounds.skipped} file${sounds.skipped === 1 ? '' : 's'} left out to stay under the memory cap.`);
+      eng.announce();
+      if (wasOn) eng.ignite();
+    } catch (err) { off(); setSoundNote(`Could not load that font: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
+    finally { setLoading(null); }
+  };
+  useEffect(() => { engineRef.current?.setVolume(volume); try { localStorage.setItem('hiltwright.demo.volume', String(volume)); } catch { /* private mode */ } }, [volume]);
+  useEffect(() => () => { engineRef.current?.dispose(); }, []);
+
+  /** The saber as it is set up: the current preset's main-blade look and its font. */
+  const saber = board.saber ?? board.library[0] ?? null;
+  const info = board.info;
+  const presets = info?.presets ?? saber?.presets ?? [];
+  const [presetIndex, setPresetIndex] = useState<number>(() => board.info?.currentPreset ?? 0);
+  const loadFromSaber = async (i: number) => {
+    setPresetIndex(i);
+    const p = presets[i];
+    if (!p || !saber) return;
+    const mainBlade = (saber.model?.blades.findIndex((b) => b.role === 'main') ?? 0) + 1 || 1;
+    const look = saber.firmware ? lookAtSlot(saber.firmware, i, mainBlade) : null;
+    if (look && LOOKS.some((l) => l.id === look.id)) { setLookId(look.id); setTried({}); }
+    const folder = p.font.split(';')[0];
+    const from = sources.find((sr) => fonts.some((f) => f.name === folder) && sr.root === source?.root) ?? source;
+    // The font may live on a different source than the one selected: try each until one has it.
+    for (const sr of [from, ...sources].filter((x): x is Source => !!x)) {
+      const list = sr.root === source?.root ? fonts : await (sr.kind === 'bank' ? api().sd.bankFonts() : api().sd.listFonts(sr.root)).catch(() => []);
+      if (list.some((f) => f.name === folder)) { setSource(sr); await loadFont(folder, sr); return; }
+    }
+    setSoundNote(`The font "${folder}" is not on any card or in the font bank here. Share the saber's card on Fonts & SD, or point the bank at a folder that has it.`);
+  };
   const [control, setControl] = useState<ControlMode>(() => { try { return localStorage.getItem('hiltwright.demo.control') === 'steer' ? 'steer' : 'hold'; } catch { return 'hold'; } });
   const [look3d, setLook3d] = useState<SceneSettings>(loadScene);
   // Custom hilts: model files the owner loaded, kept in the browser's database, one of them (or none) in use.
@@ -101,6 +177,14 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
     room.setControlMode(control);
     room.applySettings(look3d);
     room.onMotion = setMotion;
+    room.onEvent = (ev) => {
+      const eng = engineRef.current;
+      if (!eng) return;
+      if (ev.kind === 'on') eng.ignite(); else if (ev.kind === 'off') eng.retract();
+      else if (ev.kind === 'clash' || ev.kind === 'blast' || ev.kind === 'stab') eng.effect(ev.kind);
+      else if (ev.kind === 'lockup') { if (ev.type) eng.beginLockup(ev.type === 'normal' ? 'lock' : ev.type); else eng.endLockup(); }
+      else eng.motion(ev.degPerSec, ev.dt);
+    };
     const ro = new ResizeObserver(() => room.resize());
     ro.observe(el);
 
@@ -194,6 +278,35 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
               <button type="button" role="radio" aria-checked={control === 'hold'} className={control === 'hold' ? 'on' : ''} onClick={() => setControl('hold')}>Hold the hilt</button>
               <button type="button" role="radio" aria-checked={control === 'steer'} className={control === 'steer' ? 'on' : ''} onClick={() => setControl('steer')}>Tilt and swing</button>
             </div>
+          </div>
+          <div className="col" style={{ gap: 6, paddingTop: 8, borderTop: '1px solid var(--line)' }}>
+            <div className="row between"><span className="label">Sound</span>{engine && <span className="hint">{engine.hasSmoothSwing ? 'SmoothSwing' : 'no swing sounds'}</span>}</div>
+            {sources.length === 0
+              ? <span className="hint">No fonts to hand. Put a card in a reader, share the saber's card on Fonts &amp; SD, or <button type="button" className="holo" onClick={() => void pickBank()}>choose a folder of fonts</button> on this computer.</span>
+              : (
+                <div className="row" style={{ gap: 6 }}>
+                  <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{source?.label ?? 'Source'}</span><span className="caret"><Icon name="down" /></span>
+                    <select value={source?.root ?? ''} aria-label="Where the fonts are" onChange={(e) => setSource(sources.find((x) => x.root === e.target.value) ?? null)}>{sources.map((x) => <option key={x.root} value={x.root}>{x.label}</option>)}</select></span>
+                  <button type="button" className="chip" title="Choose a folder of fonts on this computer" onClick={() => void pickBank()}><Icon name="import" /></button>
+                  <button type="button" className="chip" title="Look again for cards" onClick={() => void refreshSources()}><Icon name="undo" /></button>
+                </div>
+              )}
+            {source && (
+              <div className="row" style={{ gap: 6 }}>
+                <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{fontName || (fonts.length ? 'Pick a font' : 'No fonts here')}</span><span className="caret"><Icon name="down" /></span>
+                  <select value={fontName} aria-label="Sound font" disabled={!!loading} onChange={(e) => void loadFont(e.target.value)}><option value="">Pick a font</option>{fonts.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}</select></span>
+                <input type="range" min={0} max={1} step={0.05} value={volume} aria-label="Volume" title="Volume" style={{ width: 70 }} onChange={(e) => setVolume(Number(e.target.value))} />
+              </div>
+            )}
+            {loading && <span className="hint">{loading.what === 'reading' ? 'Reading' : 'Decoding'} {loading.done}{loading.total ? ` of ${loading.total}` : ''}{source?.kind === 'card' ? ' (slow over the saber\u2019s USB link)' : ''}…</span>}
+            {soundNote && <span className="hint">{soundNote}</span>}
+            {presets.length > 0 && (
+              <div className="row" style={{ gap: 6 }} title="Set the look and the font from one of the saber's presets">
+                <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{presets[presetIndex]?.name.replace(/\s*\n\s*/g, ' ') ?? 'Preset'}</span><span className="caret"><Icon name="down" /></span>
+                  <select value={presetIndex} aria-label="Saber preset" onChange={(e) => setPresetIndex(Number(e.target.value))}>{presets.map((p, i) => <option key={i} value={i}>{i + 1}. {p.name.replace(/\s*\n\s*/g, ' ')}</option>)}</select></span>
+                <button type="button" className="chip" disabled={!!loading} onClick={() => void loadFromSaber(presetIndex)}><Icon name="play" />As on {saber?.name ?? 'the saber'}</button>
+              </div>
+            )}
           </div>
           <div className="row wrap" style={{ gap: 6 }}>
             <button type="button" className="btn sm pri" onClick={() => { room?.setOn(!motion.on); setHold(null); }}><span className="b"><span className="i">{motion.on ? 'Retract' : 'Ignite'}</span></span></button>

@@ -2,13 +2,14 @@
 
 import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
 import { join, resolve } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { generateConfig, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { LooksStore, looksPath } from './looksStore';
 import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
 import { proffieSerials } from './usb';
-import { checkFontDir, copyFont, listFonts, listTracks, locateCards, readVoicePack, ejectVolume } from './sd';
+import { checkFontDir, copyFont, listFonts, listTracks, locateCards, readVoicePack, ejectVolume, readFontSounds } from './sd';
 import { defaultToolchainRoot, installToolchain, toolchainStatus } from './toolchain';
 import { buildFirmware } from './build';
 import { installBootloaderDriver } from './driver';
@@ -111,6 +112,28 @@ export function registerIpc(): void {
   ipcMain.handle('sd:locate', async () => { const cards = await locateCards(); knownRoots = new Set(cards.map((c) => c.root)); return cards; });
   ipcMain.handle('sd:listFonts', (_e, r: unknown) => listFonts(root(r)));
   ipcMain.handle('sd:eject', (_e, r: unknown) => ejectVolume(root(r)));
+  // The font bank: a folder of fonts on this computer, remembered in a small file beside the library.
+  const bankFile = join(app.getPath('userData'), 'fontbank.json');
+  let bankRoot: string | null = null;
+  try { bankRoot = (JSON.parse(readFileSync(bankFile, 'utf8')) as { root?: string }).root ?? null; } catch { /* none chosen yet */ }
+  if (process.env.HILTWRIGHT_FONT_BANK) bankRoot = process.env.HILTWRIGHT_FONT_BANK; // dev aid
+  // A font's sounds, for playing in the app. The font sits on a known card, or in the font bank the owner chose.
+  ipcMain.handle('sd:readFont', async (e, r: unknown, fontName: unknown) => {
+    const base = String(r);
+    const name = String(fontName);
+    if (!/^[^\\/:*?"<>|]+$/.test(name)) throw new Error('Bad font name');
+    if (!knownRoots.has(base) && base !== bankRoot) throw new Error('Not a known card or font bank');
+    return readFontSounds(join(base, name), (file, done, total) => e.sender.send('sd:readFont:progress', { file, done, total }));
+  });
+  ipcMain.handle('sd:fontBank', () => bankRoot);
+  ipcMain.handle('sd:pickFontBank', async () => {
+    const r = await dialog.showOpenDialog({ title: 'Choose a folder of sound fonts', properties: ['openDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return bankRoot;
+    bankRoot = r.filePaths[0];
+    try { writeFileSync(bankFile, JSON.stringify({ root: bankRoot })); } catch { /* remembered for this run only */ }
+    return bankRoot;
+  });
+  ipcMain.handle('sd:bankFonts', async () => (bankRoot ? listFonts(bankRoot) : []));
   ipcMain.handle('sd:listTracks', (_e, r: unknown) => listTracks(root(r)));
   ipcMain.handle('sd:voicePack', (_e, r: unknown) => readVoicePack(root(r)));
   let pickedFonts = new Set<string>();

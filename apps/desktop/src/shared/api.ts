@@ -52,6 +52,8 @@ export interface CardInfo {
   hasPresetsIni: boolean;
 }
 
+export interface FontSounds { name: string; files: Record<string, ArrayBuffer>; ini: Record<string, string>; smoothsw: Record<string, string>; bytes: number; skipped: number }
+
 export interface FontEntry {
   name: string;
   path: string;
@@ -154,6 +156,13 @@ export interface HiltwrightApi {
     listFonts(root: string): Promise<FontEntry[]>;
     /** Flush and dismount the card's volume, as 'Safely remove' does. Before the saber takes its card back. */
     eject(root: string): Promise<{ ok: boolean; detail: string }>;
+    /** A font's playable sounds, from a known card or the font bank. Slow over the saber's USB link. */
+    readFont(root: string, fontName: string): Promise<FontSounds>;
+    onReadFontProgress(cb: (p: { file: string; done: number; total: number }) => void): () => void;
+    /** The folder of fonts on this computer used when no card is about, or null. */
+    fontBank(): Promise<string | null>;
+    pickFontBank(): Promise<string | null>;
+    bankFonts(): Promise<FontEntry[]>;
     listTracks(root: string): Promise<{ name: string; size: number }[]>;
     /** The Fett263 voice pack in the card's common folder. */
     voicePack(root: string): Promise<VoicePackStatus>;

@@ -87,6 +87,47 @@ export async function ejectVolume(root: string): Promise<{ ok: boolean; detail: 
   return { ok: out === 'ejected', detail: out };
 }
 
+/** The sounds a listen needs. Everything else in a font (tracks, ini files, quotes) stays on the card. */
+const PLAYABLE = /^(hum|humm|out|poweron|in|poweroff|clsh|clash|blst|blaster|stab|force|font|boot|lock|lockup|bgnlock|endlock|drag|bgndrag|enddrag|lb|bgnlb|endlb|swingl|swingh|lswing|hswing|swng|swing)$/i;
+const FONT_BYTES_CAP = 120 * 1024 * 1024;
+
+export interface FontSounds { name: string; files: Record<string, ArrayBuffer>; ini: Record<string, string>; smoothsw: Record<string, string>; bytes: number; skipped: number }
+
+function parseIni(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of text.split(/\r?\n/)) { const m = /^\s*([A-Za-z0-9_]+)\s*=\s*(.+?)\s*$/.exec(line); if (m) out[m[1]] = m[2]; }
+  return out;
+}
+
+/**
+ * Every playable wav in a font folder, flat or one folder per sound, keyed by its path within the font. Reading
+ * over the saber's USB link is slow, so `onFile` reports each one as it lands.
+ */
+export async function readFontSounds(fontDir: string, onFile?: (name: string, done: number, total: number) => void): Promise<FontSounds> {
+  const wanted: { key: string; p: string }[] = [];
+  for (const name of await readdir(fontDir)) {
+    const p = join(fontDir, name);
+    const m = /^([a-z]+)\d*\.wav$/i.exec(name);
+    if (m) { if (PLAYABLE.test(m[1])) wanted.push({ key: name, p }); continue; }
+    if (name.startsWith('.') || !PLAYABLE.test(name) || !(await isDir(p))) continue;
+    try { for (const f of await readdir(p)) if (/\.wav$/i.test(f)) wanted.push({ key: `${name}/${f}`, p: join(p, f) }); } catch { /* unreadable */ }
+  }
+  const files: Record<string, ArrayBuffer> = {};
+  let bytes = 0; let skipped = 0; let done = 0;
+  for (const w of wanted) {
+    try {
+      const s = await stat(w.p);
+      if (bytes + s.size > FONT_BYTES_CAP) { skipped++; continue; }
+      const buf = await readFile(w.p);
+      files[w.key] = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+      bytes += s.size;
+    } catch { skipped++; }
+    onFile?.(w.key, ++done, wanted.length);
+  }
+  const readIni = async (n: string) => { try { return parseIni(await readFile(join(fontDir, n), 'utf8')); } catch { return {}; } };
+  return { name: basename(fontDir), files, ini: await readIni('config.ini'), smoothsw: await readIni('smoothsw.ini'), bytes, skipped };
+}
+
 export async function locateCards(): Promise<CardInfo[]> {
   const out: CardInfo[] = [];
   for (const c of await candidateRoots()) {
