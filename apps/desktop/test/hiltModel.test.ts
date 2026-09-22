@@ -94,6 +94,19 @@ describe('fitting a custom hilt', () => {
     }
   });
 
+  it('tilts the hilt about the blade\'s entry point, so the emitter stays on the blade and the pommel swings', () => {
+    const plain = fitHilt(bar('y', 280, 36), DEFAULT_FIT, 0.135).group;
+    const leaned = fitHilt(bar('y', 280, 36), { ...DEFAULT_FIT, tiltXDeg: 20 }, 0.135).group;
+    // The point where the blade enters (top centre of the bar) is the pivot: it does not move.
+    plain.updateMatrixWorld(true); leaned.updateMatrixWorld(true);
+    const mesh = (g: THREE.Group) => { let found: THREE.Mesh | null = null; g.traverse((o) => { if ((o as THREE.Mesh).isMesh) found = o as THREE.Mesh; }); return found!; };
+    const topCentre = (g: THREE.Group) => { const m = mesh(g); const p = m.geometry.boundingBox ?? (m.geometry.computeBoundingBox(), m.geometry.boundingBox!); return new THREE.Vector3(0, p.max.y, 0).add(m.position).applyMatrix4(m.parent!.matrixWorld); };
+    expect(topCentre(leaned).distanceTo(topCentre(plain))).toBeLessThan(1e-6);
+    const b = boxOf(leaned);
+    expect(b.min.z).toBeLessThan(-0.05); // the pommel end has swung out by about sin(20°) × 28 cm
+    expect(b.max.y - b.min.y).toBeLessThan(0.28); // and the hilt is shorter along the blade, as a leaning rod is
+  });
+
   it('shifts the model sideways by finished millimetres, in the hilt\'s own frame, whatever the file\'s units', () => {
     for (const [long, thick] of [[280, 36], [0.28, 0.036]]) { // millimetres and metres
       const plain = boxOf(fitHilt(bar('y', long, thick), DEFAULT_FIT, 0.135).group);
