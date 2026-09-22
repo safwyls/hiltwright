@@ -15,6 +15,8 @@ import { listHilts, removeHilt, saveHilt } from './hiltStore';
 import type { Object3D } from 'three';
 
 // Hiltwright's own looks; the owner's saved looks (built or pasted) join them once loaded, when they can be simulated.
+/** The hilt the room opens with: a pack that ships inside the app. */
+const BUILT_IN_PACK = 'punk-saber';
 const STARTERS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
 const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter' | 'ledsPerMetre' | 'staff' | 'bladeWhenOff'>; label: string; min: number; max: number; step: number; hint: string; centre?: number }[] = [
   // Each reads as an offset from its default: the defaults are what looks right, and either way from them is a tweak.
@@ -147,7 +149,9 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const [fitOpen, setFitOpen] = useState(false);
   const [hiltLength, setHiltLength] = useState<number | null>(null);
   const loaded = useRef<{ name: string; model: Object3D } | null>(null);
-  const hilt = hilts.find((h) => h.name === hiltName) ?? null;
+  // The built-in hilt is a pack that ships with the app; the procedural hilt only stands in when it is missing.
+  const builtIn = hilts.find((h) => h.packId === BUILT_IN_PACK) ?? null;
+  const hilt = (hiltName ? hilts.find((h) => h.name === hiltName) : null) ?? builtIn;
   // Packs beside the app or in the owner's packs folder. A pack hilt is listed with the pack's fit unless the owner
   // has adjusted it here, in which case their adjustment is kept like any other hilt's.
   const [packs, setPacks] = useState<PackInfo[]>([]);
@@ -157,7 +161,8 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       setPacks(found);
       const packHilts: StoredHilt[] = found.filter((p) => p.kind === 'hilt').map((p) => {
         const kept = stored.find((h) => h.packId === p.id);
-        return kept ?? { name: p.name, format: 'pack', data: new ArrayBuffer(0), fit: { ...DEFAULT_FIT, ...(p.fit ?? {}) }, packId: p.id, creator: p.creator };
+        const entry = kept ?? { name: p.name, format: 'pack', data: new ArrayBuffer(0), fit: { ...DEFAULT_FIT, ...(p.fit ?? {}) }, packId: p.id, creator: p.creator };
+        return p.id === BUILT_IN_PACK ? { ...entry, name: 'Built-in' } : entry;
       });
       setHilts([...stored.filter((h) => !h.packId), ...packHilts]);
     })();
@@ -513,7 +518,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
             <div className="row" style={{ gap: 8 }}>
               <span className="dim" style={{ width: 76, flex: 'none' }}>Model</span>
               <span className="input sans" style={{ height: 28, fontSize: 12 }}><span className="ellip">{hilt?.name ?? 'Built-in'}</span><span className="caret"><Icon name="down" /></span>
-                <select value={hilt?.name ?? ''} aria-label="Hilt model" onChange={(e) => setHiltName(e.target.value)}><option value="">Built-in</option>{hilts.map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}</select></span>
+                <select value={hilt && hilt !== builtIn ? hilt.name : ''} aria-label="Hilt model" onChange={(e) => setHiltName(e.target.value)}><option value="">Built-in</option>{hilts.filter((h) => h !== builtIn).map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}</select></span>
               <label className="chip" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }} title="Load a .glb, .obj or .stl file. For an OBJ, select its .mtl and textures with it."><Icon name="import" />Load
                 <input type="file" multiple accept=".glb,.gltf,.obj,.stl,.mtl,.png,.jpg,.jpeg,.webp,.tga" aria-label="Load a hilt model" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} onChange={(e) => { void loadHiltFiles(e.target.files); e.target.value = ''; }} /></label>
             </div>
@@ -568,7 +573,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
                 <div className="row" style={{ gap: 14, justifyContent: 'flex-end' }}><button type="button" className="holo small" title="Copy the fit as text" onClick={copyFit}>Copy fit</button><button type="button" className="holo small" onClick={forgetHilt}>{hilt.packId ? 'Reset fit' : 'Remove'}</button></div>
               </>
             )}
-            {hilt?.creator && <span className="hint">{hilt.name} by {hilt.creator}{packs.find((p) => p.id === hilt.packId)?.licence ? `, ${packs.find((p) => p.id === hilt.packId)!.licence}` : ''}</span>}
+            {hilt?.creator && <span className="hint">{hilt === builtIn ? 'Punk Saber' : hilt.name} by {hilt.creator}{packs.find((p) => p.id === hilt.packId)?.licence ? `, ${packs.find((p) => p.id === hilt.packId)!.licence}` : ''}</span>}
             {hiltNote && <span className={hiltNote === 'Fit copied.' ? 'hint' : 'red small'}>{hiltNote}</span>}
           </div>
         )}

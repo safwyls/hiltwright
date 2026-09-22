@@ -11,6 +11,8 @@ function packDirs(): string[] {
   const dirs = [join(app.getPath('userData'), 'packs')];
   // Shipped with the app (resources/packs in a build), or the repo's packs folder in development.
   dirs.push(app.isPackaged ? join(process.resourcesPath, 'packs') : join(app.getAppPath(), '..', '..', 'packs'));
+  // Packs that are part of the app itself: the built-in hilt.
+  dirs.push(app.isPackaged ? join(process.resourcesPath, 'builtin') : join(app.getAppPath(), 'resources', 'builtin'));
   if (process.env.HILTWRIGHT_PACKS) dirs.push(process.env.HILTWRIGHT_PACKS);
   return dirs;
 }

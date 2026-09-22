@@ -44,6 +44,12 @@
       "out/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "resources/builtin",
+        "to": "builtin"
+      }
+    ],
     "win": {
       "target": [
         {
