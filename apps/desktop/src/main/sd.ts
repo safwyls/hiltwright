@@ -51,10 +51,21 @@ async function candidateRoots(): Promise<{ root: string; label: string | null; f
   return out;
 }
 
+/**
+ * ProffieOS reads a font's sounds either flat (`hum01.wav` in the font folder) or from one subfolder per effect
+ * (`hum/hum01.wav`, or `hum/001.wav`). Many fonts use the second, so both count.
+ */
+const CORE_SOUND = /^(hum\d*|font\d*|out\d*|poweron\d*|in\d*)\.wav$/i;
+const CORE_FOLDER = /^(hum|font|out|poweron|in)$/i;
 async function looksLikeFont(dir: string): Promise<boolean> {
   try {
     const names = await readdir(dir);
-    return names.some((n) => /^(hum\d*|font\d*|out\d*|poweron\d*)\.wav$/i.test(n));
+    if (names.some((n) => CORE_SOUND.test(n))) return true;
+    for (const n of names) {
+      if (!CORE_FOLDER.test(n)) continue;
+      try { if ((await readdir(join(dir, n))).some((f) => /\.wav$/i.test(f))) return true; } catch { /* not a folder */ }
+    }
+    return false;
   } catch { return false; }
 }
 
@@ -94,11 +105,18 @@ export async function locateCards(): Promise<CardInfo[]> {
   return out;
 }
 
+/** The font's wavs: those in the folder itself, and those one level down in an effect's subfolder. */
 async function readFontFiles(dir: string): Promise<FontFile[]> {
   const files: FontFile[] = [];
+  const entries: { name: string; p: string }[] = [];
   for (const name of await readdir(dir)) {
-    if (!/\.wav$/i.test(name)) continue;
     const p = join(dir, name);
+    if (/\.wav$/i.test(name)) { entries.push({ name, p }); continue; }
+    if (name.startsWith('.') || !(await isDir(p))) continue;
+    // A subfolder's files are named for the folder so the checker sees `hum/001.wav` as a hum: ProffieOS does the same.
+    try { for (const f of await readdir(p)) if (/\.wav$/i.test(f)) entries.push({ name: /^\d+\.wav$/i.test(f) ? `${name}${f}` : f, p: join(p, f) }); } catch { /* unreadable */ }
+  }
+  for (const { name, p } of entries) {
     const s = await stat(p);
     if (!s.isFile()) continue;
     let wav = null;
