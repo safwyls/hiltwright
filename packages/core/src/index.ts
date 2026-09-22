@@ -5,6 +5,7 @@ export * from './looks';
 export * from './lookLibrary';
 export { BladeSim, SIMULATED_LOOKS, canSimulateLook, registerStyleSim, unregisterStyleSim, prims, type EffectType, type LockupType, type ColorFn } from './sim';
 export * from './styleBuilder';
+export * from './styleTree';
 export * from './voicepack';
 export * from './xenopixel';
 export { parsePresetsIni, emitPresetsIni, type PresetsIni } from './presetsIni';

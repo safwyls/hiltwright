@@ -3,7 +3,7 @@
 import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
 import { join, resolve } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { generateConfig, isStyleDoc, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
+import { generateConfig, isStyleDoc, isTreeDoc, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { LooksStore, looksPath } from './looksStore';
 import type { LookDef } from '@hiltwright/core';
@@ -99,7 +99,7 @@ export function registerIpc(): void {
       // A look built in the style editor: its alias define is what gets compiled, its layers let it be edited again.
       ...(typeof l.define === 'string' ? { define: str(l.define, 200000) } : {}),
       ...(l.usesFx ? { usesFx: true } : {}),
-      ...(isStyleDoc(l.style) ? { style: JSON.parse(JSON.stringify(l.style)) as unknown } : {}),
+      ...(isStyleDoc(l.style) || isTreeDoc(l.style) ? { style: JSON.parse(JSON.stringify(l.style)) as unknown } : {}),
     };
   };
   ipcMain.handle('looks:list', () => looksStore.list());

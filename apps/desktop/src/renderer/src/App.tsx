@@ -11,7 +11,7 @@ import { SaberControls } from './Controls';
 import { infoFromRecord, queuedLookIds } from './saberModel';
 import { usePendingLookColours } from './pendingColours';
 import { StyleEditor } from './StyleEditor';
-import { isStyleDoc, registerStyleSim, styleToSim, type LookDef } from '@hiltwright/core';
+import { isStyleDoc, isTreeDoc, registerStyleSim, styleToSim, treeToSim, type LookDef } from '@hiltwright/core';
 
 // three.js is only needed in the demo room, so it loads when that page is first opened.
 const Demo = lazy(() => import('./Demo').then((m) => ({ default: m.Demo })));
@@ -34,7 +34,7 @@ export function App() {
   const [demoLook, setDemoLook] = useState<string | null>(null);
   const [editingLook, setEditingLook] = useState<LookDef | null>(null);
   // Looks built in the style editor carry their layers; register a simulator for each so they preview like library looks.
-  useEffect(() => { void window.hiltwright.looks.list().then((ls) => { for (const l of ls) if (isStyleDoc(l.style)) registerStyleSim(l.id, styleToSim(l.style)); }); }, []);
+  useEffect(() => { void window.hiltwright.looks.list().then((ls) => { for (const l of ls) { if (isStyleDoc(l.style)) registerStyleSim(l.id, styleToSim(l.style)); else if (isTreeDoc(l.style)) registerStyleSim(l.id, treeToSim(l.style)); } }); }, []);
   const { status, info } = board;
   const connected = status === 'connected';
   const configName = info?.version?.config?.replace(/^config\//, '').replace(/\.h$/, '') ?? null;
