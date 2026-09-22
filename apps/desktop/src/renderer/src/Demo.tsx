@@ -446,13 +446,13 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
                   ))}
                   <label className="row" style={{ gap: 8 }} title="How deep the blade sits in the emitter. Raise it when the emitter's shroud or a flare extends past the socket, so the blade starts inside the hilt rather than at its very top.">
                     <span className="dim" style={{ width: 76, flex: 'none' }}>Seat</span>
-                    <input type="range" min={-40} max={80} step={0.5} value={hilt.fit.seatMm ?? 0} aria-label="Seat: how deep the blade sits in the emitter, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ seatMm: Number(e.target.value) })} />
+                    <input type="range" min={-40} max={120} step={0.5} value={hilt.fit.seatMm ?? 0} aria-label="Seat: how deep the blade sits in the emitter, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ seatMm: Number(e.target.value) })} />
                     <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.seatMm ?? 0).toFixed(1)}</span>
                   </label>
                   {look3d.staff && (
                     <label className="row" style={{ gap: 8 }} title="How deep the staff's second blade sits in the pommel">
                       <span className="dim" style={{ width: 76, flex: 'none' }}>Staff seat</span>
-                      <input type="range" min={-40} max={80} step={0.5} value={hilt.fit.staffSeatMm ?? 0} aria-label="Staff seat: how deep the second blade sits in the pommel, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ staffSeatMm: Number(e.target.value) })} />
+                      <input type="range" min={-40} max={120} step={0.5} value={hilt.fit.staffSeatMm ?? 0} aria-label="Staff seat: how deep the second blade sits in the pommel, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ staffSeatMm: Number(e.target.value) })} />
                       <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.staffSeatMm ?? 0).toFixed(1)}</span>
                     </label>
                   )}
