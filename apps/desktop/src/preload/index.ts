@@ -12,6 +12,11 @@ const api: HiltwrightApi = {
     remove: (id) => ipcRenderer.invoke('library:remove', id),
     update: (id, patch) => ipcRenderer.invoke('library:update', id, patch),
   },
+  banks: {
+    list: () => ipcRenderer.invoke('banks:list'),
+    save: (bank) => ipcRenderer.invoke('banks:save', bank),
+    remove: (id) => ipcRenderer.invoke('banks:remove', id),
+  },
   looks: {
     list: () => ipcRenderer.invoke('looks:list'),
     add: (look) => ipcRenderer.invoke('looks:add', look),

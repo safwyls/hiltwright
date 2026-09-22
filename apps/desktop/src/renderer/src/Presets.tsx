@@ -7,6 +7,7 @@ import { LookRows } from './LookRows';
 import { SaberControls } from './Controls';
 import type { Board } from './board';
 import { Icon } from './Icon';
+import { Banks } from './Banks';
 
 function splitFont(font: string): { folder: string; common: boolean } {
   const parts = font.split(';');
@@ -22,20 +23,33 @@ function when(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-export function Presets({ board, onLooks }: { board: Board; onLooks: () => void }) {
+export function Presets({ board, onLooks, onBuild }: { board: Board; onLooks: () => void; onBuild: () => void }) {
   const { info, status, save, busy, snapshots, saber } = board;
   const connected = status === 'connected' && !!info;
+  // Two views: the presets on the connected saber, and banks built here to load onto one. Without a saber, banks it is.
+  const [view, setView] = useState<'saber' | 'banks'>(() => { try { return localStorage.getItem('hiltwright.presets.view') === 'banks' ? 'banks' : 'saber'; } catch { return 'saber'; } });
+  useEffect(() => { try { localStorage.setItem('hiltwright.presets.view', view); } catch { /* private mode */ } }, [view]);
   const current = info && info.currentPreset != null ? info.presets[info.currentPreset] : null;
   const [name, setName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [side, setSide] = useState<'try' | 'history'>('try');
   useEffect(() => { setName(current?.name ?? ''); setConfirmDelete(false); }, [current?.name, info?.currentPreset]);
 
+  const switcher = (
+    <div className="seg" role="tablist" aria-label="Presets view" style={{ alignSelf: 'flex-start', height: 34 }}>
+      <button type="button" role="tab" aria-selected={view === 'saber'} className={view === 'saber' ? 'on' : ''} onClick={() => setView('saber')}><Icon name="usb" />On the saber{connected && info ? ` · ${info.presets.length}` : ''}</button>
+      <button type="button" role="tab" aria-selected={view === 'banks'} className={view === 'banks' ? 'on' : ''} onClick={() => setView('banks')}><Icon name="presets" />Preset banks</button>
+    </div>
+  );
   if (!connected || !info) {
     return (
-      <section className="panel"><div className="pb col" style={{ gap: 6 }}><h3>Connect a saber to edit its presets</h3><span className="dim small">Presets live on the saber itself. Every change is written to it and read back before it shows as saved.</span></div></section>
+      <>
+        <div className="note"><Icon name="info" /><span>No saber is connected, so this is the preset banks: presets built here, loaded onto a saber later. A saber's own presets appear here when it is plugged in.</span></div>
+        <Banks board={board} onLooks={onLooks} onBuild={onBuild} />
+      </>
     );
   }
+  if (view === 'banks') return <>{switcher}<Banks board={board} onLooks={onLooks} onBuild={onBuild} /></>;
 
   const idx = info.currentPreset ?? 0;
   const fontFolders = [...new Set([...info.fonts.filter((f) => f !== 'common'), ...(current ? [splitFont(current.font).folder] : [])])];
@@ -45,6 +59,7 @@ export function Presets({ board, onLooks }: { board: Board; onLooks: () => void 
 
   return (
     <>
+      {switcher}
       <div className="work" style={{ gridTemplateColumns: 'minmax(220px,280px) minmax(0,1fr) minmax(260px,320px)' }}>
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }} aria-label="Preset list">
           <div className="ph"><h2>Presets · {info.presets.length}</h2>

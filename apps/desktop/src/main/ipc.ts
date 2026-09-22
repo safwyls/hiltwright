@@ -3,9 +3,10 @@
 import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
 import { join, resolve } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { generateConfig, isStyleDoc, isTreeDoc, validateModel, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
+import { generateConfig, isBank, isStyleDoc, isTreeDoc, validateModel, type PresetBank, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { LooksStore, looksPath } from './looksStore';
+import { BanksStore, banksPath } from './banksStore';
 import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
 import { proffieSerials } from './usb';
@@ -102,6 +103,12 @@ export function registerIpc(): void {
       ...(isStyleDoc(l.style) || isTreeDoc(l.style) ? { style: JSON.parse(JSON.stringify(l.style)) as unknown } : {}),
     };
   };
+  // Preset banks: checked for shape, then kept as given (names and font paths are the owner's own text).
+  const banksStore = new BanksStore(banksPath(userData));
+  const bank = (v: unknown): PresetBank => { if (!isBank(v) || !/^bank_[a-z0-9]{1,40}$/.test(v.id)) throw new Error('Expected a preset bank'); return { id: v.id, name: str(v.name, 120), updated: str(v.updated ?? new Date().toISOString(), 40), presets: v.presets.slice(0, 200).map((p) => ({ name: str(p.name, 120), font: str(p.font, 200), track: str(p.track, 300), looks: Object.fromEntries(Object.entries(p.looks).filter(([r, id]) => ['main', 'crystal', 'accent', 'side', 'motor'].includes(r) && typeof id === 'string').map(([r, id]) => [r, str(id as string, 80)])), ...(p.lookArgs ? { lookArgs: Object.fromEntries(Object.entries(p.lookArgs).filter(([r, a]) => ['main', 'crystal', 'accent', 'side', 'motor'].includes(r) && typeof a === 'string').map(([r, a]) => [r, str(a as string, 2000)])) } : {}) })) }; };
+  ipcMain.handle('banks:list', () => banksStore.list());
+  ipcMain.handle('banks:save', (_e, b: unknown) => banksStore.save(bank(b)));
+  ipcMain.handle('banks:remove', (_e, id: unknown) => banksStore.remove(str(id, 80)));
   ipcMain.handle('looks:list', () => looksStore.list());
   ipcMain.handle('looks:add', (_e, l: unknown) => looksStore.add(look(l)));
   ipcMain.handle('looks:remove', (_e, id: unknown) => looksStore.remove(str(id, 80)));

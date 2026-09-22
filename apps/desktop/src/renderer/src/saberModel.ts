@@ -47,12 +47,14 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
     buttons: saved?.buttons ?? ((info.version?.buttons === 1 || info.version?.buttons === 3 ? info.version.buttons : 2) as 1 | 2 | 3),
     prop: overrides.prop ?? saved?.prop ?? 'fett263',
     blades,
-    presets: info.presets.map((p, i) => {
+    // Presets loaded from a bank stay as loaded until they have been installed; otherwise the saber's own are the truth.
+    presets: saved?.presetsFrom ? saved.presets.map((p) => ({ ...p, ...(p.looks ? { looks: blades.map((_b, k) => p.looks?.[k] ?? null) } : {}), ...(p.lookArgs ? { lookArgs: blades.map((_b, k) => p.lookArgs?.[k] ?? null) } : {}) })) : info.presets.map((p, i) => {
       const looks = byName.get(p.name) ?? saved?.presets[i]?.looks ?? [];
       const lookArgs = argsByName.get(p.name) ?? saved?.presets[i]?.lookArgs ?? [];
       return { font: p.font, track: p.track, name: p.name, ...(looks.some(Boolean) ? { looks: blades.map((_b, k) => looks[k] ?? null) } : {}), ...(lookArgs.some(Boolean) ? { lookArgs: blades.map((_b, k) => lookArgs[k] ?? null) } : {}) };
     }),
     looks: saved?.looks ?? [],
+    ...(saved?.presetsFrom ? { presetsFrom: saved.presetsFrom } : {}),
     ...((overrides.variants ?? saved?.bladeId?.variants ?? []).length ? { bladeId: { variants: overrides.variants ?? saved!.bladeId!.variants } } : {}),
     generator: `hiltwright ${window.hiltwright.appVersion}`,
   };

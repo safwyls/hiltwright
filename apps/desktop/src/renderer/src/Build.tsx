@@ -149,7 +149,8 @@ export function Build({ board }: { board: Board }) {
       await board.connect(false);
       setStep('done');
       setNote({ tone: 'green', text: `Installed. Backup of the previous firmware: ${bak.file}` });
-      if (model && result.manifest) await board.updateSaber({ model, firmware: { ...result.manifest, os: result.os, at: new Date().toISOString() } });
+      // Once installed, the bank's presets are the saber's own; the next draft reads them back from the saber.
+      if (model && result.manifest) { const { presetsFrom: _loaded, ...settled } = model; await board.updateSaber({ model: settled, firmware: { ...result.manifest, os: result.os, at: new Date().toISOString() } }); }
     } catch (err) {
       setStep('failed');
       setNote({ tone: 'red', text: String(err) });
@@ -166,6 +167,13 @@ export function Build({ board }: { board: Board }) {
       // A board already sitting in its bootloader (after an earlier failed attempt, or a manual BOOT+RESET) needs no reboot.
       const already = (await api().flash.usb()).bootloaderPresent;
       if (!already) {
+        // Presets loaded from a bank are compiled into this firmware; the saber only adopts compiled presets when it has
+        // no presets.ini of its own, so that file goes before the reboot, with a snapshot kept first.
+        if (model?.presetsFrom && board.info) {
+          try { await api().snapshots.save(saber.id, `Before bank "${model.presetsFrom.name}"`, board.info.presets); } catch { /* the snapshot is a courtesy */ }
+          await board.send('del presets.ini', { idleMs: 400 });
+          await board.send('del presets.tmp', { idleMs: 400 });
+        }
         const touched = await board.rebootToBootloader();
         if (!touched) { setStep('failed'); setNote({ tone: 'red', text: 'Could not reboot the saber into bootloader mode. Hold BOOT, tap RESET, release BOOT, then press Install again.' }); return; }
       }
@@ -356,7 +364,10 @@ export function Build({ board }: { board: Board }) {
         </div>
 
         <div className={`stepc ${wiringOk ? 'done' : nowStep === 1 ? 'now' : ''} ${preview?.errors.length ? 'bad' : ''}`}>
-          <div className="head"><span className="nbox">{wiringOk ? <Icon name="check" /> : 1}</span><b>Wiring</b><span className="what">{blades.length} blade{blades.length === 1 ? '' : 's'}, {info.presets.length} presets{queuedLooks.length ? `, ${queuedLooks.length} new look${queuedLooks.length === 1 ? '' : 's'}` : ''}</span></div>
+          <div className="head"><span className="nbox">{wiringOk ? <Icon name="check" /> : 1}</span><b>Wiring</b><span className="what">{blades.length} blade{blades.length === 1 ? '' : 's'}, {model?.presetsFrom ? `${model.presets.length} presets from bank "${model.presetsFrom.name}"` : `${info.presets.length} presets`}{queuedLooks.length ? `, ${queuedLooks.length} new look${queuedLooks.length === 1 ? '' : 's'}` : ''}</span></div>
+          {model?.presetsFrom && (
+            <div className="note amber"><Icon name="info" /><span>Bank "{model.presetsFrom.name}" is loaded: its {model.presets.length} preset{model.presets.length === 1 ? '' : 's'} will replace the {info.presets.length} on the saber when this firmware goes on. A snapshot of the saber's presets is kept first; colours chosen in the bank are written after the install. <button type="button" className="holo" onClick={() => { if (saber?.model) { const { presetsFrom: _drop, ...rest } = saber.model; void board.updateSaber({ model: rest }); } }}>Keep the saber's own presets instead</button>.</span></div>
+          )}
           <label className="row" style={{ gap: 10 }}>
             <span className="small dim" style={{ flex: 'none' }}>Buttons</span>
             <span className="input sans" style={{ height: 30 }}><span className="ellip">{PROPS.find((p) => p.value === prop)?.label}</span><span className="caret"><Icon name="down" /></span><select value={prop} disabled={busy} aria-label="Button behaviour" onChange={(e) => setProp(e.target.value as Prop)}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></span>

@@ -1,7 +1,7 @@
 // The typed contract between renderer and main, exposed by the preload script as window.hiltwright.
 // Only data crosses this boundary: no handles, no callbacks except the event subscriptions listed here.
 
-import type { FirmwareManifest, FontReport, LookDef, PresetRecord, SaberConfigModel, VoicePackStatus } from '@hiltwright/core';
+import type { FirmwareManifest, FontReport, LookDef, PresetBank, PresetRecord, SaberConfigModel, VoicePackStatus } from '@hiltwright/core';
 
 /** What the app can learn about a board without touching its SD card. */
 export interface SaberIdentity {
@@ -146,6 +146,12 @@ export interface HiltwrightApi {
     remove(id: string): Promise<void>;
     /** Store the build model and/or firmware manifest for a saber. `null` clears a field. */
     update(id: string, patch: SaberPatch): Promise<SaberRecord>;
+  };
+  /** Preset banks built without a saber, in userData/banks.json. */
+  banks: {
+    list(): Promise<PresetBank[]>;
+    save(bank: PresetBank): Promise<PresetBank[]>;
+    remove(id: string): Promise<PresetBank[]>;
   };
   /** Pasted looks, shared across sabers, in userData/looks.json. */
   looks: {
