@@ -28,6 +28,7 @@ const api: HiltwrightApi = {
   sd: {
     locate: () => ipcRenderer.invoke('sd:locate'),
     listFonts: (root) => ipcRenderer.invoke('sd:listFonts', root),
+    eject: (root) => ipcRenderer.invoke('sd:eject', root),
     listTracks: (root) => ipcRenderer.invoke('sd:listTracks', root),
     voicePack: (root) => ipcRenderer.invoke('sd:voicePack', root),
     pickFont: () => ipcRenderer.invoke('sd:pickFont'),

@@ -152,6 +152,8 @@ export interface HiltwrightApi {
     /** Removable volumes, flagged when they look like a ProffieOS card. */
     locate(): Promise<CardInfo[]>;
     listFonts(root: string): Promise<FontEntry[]>;
+    /** Flush and dismount the card's volume, as 'Safely remove' does. Before the saber takes its card back. */
+    eject(root: string): Promise<{ ok: boolean; detail: string }>;
     listTracks(root: string): Promise<{ name: string; size: number }[]>;
     /** The Fett263 voice pack in the card's common folder. */
     voicePack(root: string): Promise<VoicePackStatus>;

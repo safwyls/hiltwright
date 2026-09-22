@@ -25,6 +25,40 @@ export function Fonts({ board }: { board: Board }) {
   const [message, setMessage] = useState<{ tone: '' | 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [voice, setVoice] = useState<VoicePackStatus | null>(null);
+  // The saber's own card over USB. Hiltwright firmware carries a mass-storage interface, but ProffieOS only hands
+  // the card over when asked ('sd 1'): the blade goes off, idle sounds stop, the card is released and Windows
+  // mounts it as a drive. 'sd 0' takes it back. While the host has it, the saber cannot play from it.
+  const live = board.status === 'connected' && !!board.info;
+  const [usb, setUsb] = useState<'idle' | 'mounting' | 'mounted' | 'ejecting' | 'unsupported'>('idle');
+  const [usbNote, setUsbNote] = useState<string | null>(null);
+  const [usbRoot, setUsbRoot] = useState<string | null>(null);
+  useEffect(() => { if (!live) { setUsb('idle'); setUsbRoot(null); } }, [live]);
+  const mountUsb = async () => {
+    setUsb('mounting'); setUsbNote(null);
+    const before = new Set((await api().sd.locate()).map((c) => c.root));
+    let r;
+    try { r = await board.send('sd 1', { idleMs: 700 }); } catch (err) { setUsb('idle'); setUsbNote(String(err)); return; }
+    if (r.lines.some((l) => /^Whut\? :/.test(l))) { setUsb('unsupported'); setUsbNote('This firmware cannot share its card over USB. Hiltwright firmware can: build and install it, or put the card in a reader.'); return; }
+    if (!r.lines.some((l) => /SD Access ON/.test(l))) { setUsb('idle'); setUsbNote(`The saber answered "${r.lines.join(' ').trim() || 'nothing'}" instead of turning card access on.`); return; }
+    // The card is released once audio goes quiet, then Windows takes a moment to mount it.
+    for (let i = 0; i < 40; i++) {
+      await new Promise((res) => setTimeout(res, 500));
+      const now = (await api().sd.locate()).find((c) => !before.has(c.root));
+      if (now) { setUsbRoot(now.root); setUsb('mounted'); await scan(); return; }
+    }
+    setUsb('idle'); setUsbNote('The saber said yes but no drive appeared in 20 seconds. If the blade was on or a sound was playing, wait for it to go quiet and try again.');
+    try { await board.send('sd 0', { idleMs: 500 }); } catch { /* best effort */ }
+  };
+  const ejectUsb = async () => {
+    setUsb('ejecting'); setUsbNote(null);
+    if (usbRoot) {
+      const e = await api().sd.eject(usbRoot);
+      if (!e.ok) { setUsb('mounted'); setUsbNote(e.detail); return; }
+    }
+    try { await board.send('sd 0', { idleMs: 700 }); } catch { /* the saber may have dropped serial briefly */ }
+    setUsbRoot(null); setUsb('idle');
+    await scan();
+  };
 
   const scan = useCallback(async () => {
     setBusy(true);
@@ -49,6 +83,7 @@ export function Fonts({ board }: { board: Board }) {
   }, []);
 
   useEffect(() => { void scan(); }, [scan]);
+  const usbBusy = usb === 'mounting' || usb === 'ejecting';
 
   const pick = async () => {
     const entry = await api().sd.pickFont();
@@ -82,11 +117,16 @@ export function Fonts({ board }: { board: Board }) {
             <div className="dim small">
               {card ? `${mb(card.freeBytes)} free of ${mb(card.totalBytes)} · ${fonts.length} fonts · ${tracks.length} tracks · presets.ini ${card.hasPresetsIni ? 'present' : 'not present'} · voice pack ${voice?.ini || voice?.menuSounds ? `version ${voice.version ?? 1}${voice.menuSounds ? '' : ', menu sounds missing'}` : 'not found'}`
                 : cards.length ? `${cards.length} removable volume${cards.length > 1 ? 's' : ''} seen, none with fonts on it. Put the saber's card in a reader.`
-                : 'Put the saber\'s SD card in a card reader. This saber\'s firmware does not expose the card over USB.'}
+                : live ? 'Put the card in a reader, or let the saber share it over USB: it stops playing while it does.' : 'Put the saber\'s SD card in a card reader, or plug the saber in and share its card over USB.'}
             </div>
           </div>
+          {usb === 'mounted'
+            ? <button type="button" className="btn sm warn" disabled={busy || usbBusy} onClick={() => void ejectUsb()}><span className="b"><span className="i"><Icon name="eject" />Give the card back</span></span></button>
+            : <button type="button" className="btn sm pri" disabled={!live || busy || usbBusy || usb === 'unsupported'} title={live ? 'The saber releases its card and it appears as a drive. The blade goes off and sound stops until you give it back.' : 'Plug the saber in first'} onClick={() => void mountUsb()}><span className="b"><span className="i"><Icon name="usb" />{usb === 'mounting' ? 'Waiting for the drive…' : usb === 'ejecting' ? 'Giving it back…' : 'Share the saber\u2019s card'}</span></span></button>}
           <button type="button" className="btn sm" disabled={busy} onClick={() => void scan()}><span className="b"><span className="i"><Icon name="undo" />Look again</span></span></button>
         </div>
+        {usb === 'mounted' && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>The saber has handed its card to this computer{usbRoot ? ` (${usbRoot})` : ''}. It cannot play until you give the card back; do that here rather than unplugging, so nothing is left half written. Copying is slow this way, a big font can take minutes.</span></div></div>}
+        {usbNote && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="info" /><span>{usbNote}</span></div></div>}
         {message && <div style={{ padding: '0 18px 16px' }}><div className={`note ${message.tone}`}><Icon name={message.tone === 'green' ? 'check' : message.tone === 'red' ? 'x' : 'warn'} /><span>{message.text}</span></div></div>}
       </section>
 

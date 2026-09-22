@@ -58,6 +58,24 @@ async function looksLikeFont(dir: string): Promise<boolean> {
   } catch { return false; }
 }
 
+/**
+ * Ask the OS to eject the volume at `root`: flushes any writes Windows is still holding and dismounts it, the same
+ * as "Safely remove". Done before the saber is told to take its card back, otherwise a half-written font is lost.
+ */
+export async function ejectVolume(root: string): Promise<{ ok: boolean; detail: string }> {
+  if (process.platform === 'win32') {
+    const letter = root.replace(/[\\/]+$/, '');
+    if (!/^[A-Za-z]:$/.test(letter)) return { ok: false, detail: `Not a drive letter: ${root}` };
+    const script = `$sh = New-Object -ComObject Shell.Application; $v = $sh.NameSpace(17).ParseName('${letter}'); if ($v -eq $null) { 'gone' } else { $v.InvokeVerb('Eject'); Start-Sleep -Milliseconds 1500; if (Test-Path '${letter}\\') { 'still-there' } else { 'ejected' } }`;
+    const out = await new Promise<string>((resolve) => execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 15000, windowsHide: true }, (err, stdout) => resolve(err ? `error ${String(err)}` : String(stdout).trim())));
+    if (out === 'ejected' || out === 'gone') return { ok: true, detail: out };
+    return { ok: false, detail: out === 'still-there' ? 'Windows did not release the drive. Close any window or program that has files on it open, then try again.' : out };
+  }
+  const cmd = process.platform === 'darwin' ? ['diskutil', ['eject', root]] as const : ['udisksctl', ['unmount', '-b', root]] as const;
+  const out = await new Promise<string>((resolve) => execFile(cmd[0], [...cmd[1]], { timeout: 15000 }, (err, stdout, stderr) => resolve(err ? `error ${String(stderr || err)}` : 'ejected')));
+  return { ok: out === 'ejected', detail: out };
+}
+
 export async function locateCards(): Promise<CardInfo[]> {
   const out: CardInfo[] = [];
   for (const c of await candidateRoots()) {
