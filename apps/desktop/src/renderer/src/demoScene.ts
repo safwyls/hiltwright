@@ -533,12 +533,13 @@ export class DemoScene {
     this.sim.setAngle(tilt);
     this.sim.setTwist(this.twist);
 
-    const lit = this.paintBlade(this.sim.frame(now), this.ledData, this.ledTexture, this.tipMaterial, this.lights);
-    const staffLit = this.staffSim && this.staffData && this.staffTexture ? this.paintBlade(this.staffSim.frame(now), this.staffData, this.staffTexture, this.staffTipMaterial, this.staffLights) : false;
-    // An unlit tube is shown or not by choice; a lit one always. Hidden only once the retraction has fully run out.
-    const show = this.settings.bladeWhenOff || this.sim.isOn;
-    this.tube.visible = this.tipMesh.visible = show || lit;
-    if (this.staff) { const [t, p] = this.staff.children as THREE.Mesh[]; t.visible = p.visible = show || staffLit; }
+    const extent = this.paintBlade(this.sim.frame(now), this.ledData, this.ledTexture, this.tipMaterial, this.lights);
+    this.shapeBlade(this.tube, this.tipMesh, this.ledTexture, HILT_LENGTH / 2, extent);
+    if (this.staffSim && this.staffData && this.staffTexture && this.staff) {
+      const staffExtent = this.paintBlade(this.staffSim.frame(now), this.staffData, this.staffTexture, this.staffTipMaterial, this.staffLights);
+      const [t, p] = this.staff.children as THREE.Mesh[];
+      this.shapeBlade(t, p, this.staffTexture, 0, staffExtent);
+    }
 
     this.distance += (this.distanceTarget - this.distance) * Math.min(1, dt * 12);
     const cy = Math.cos(this.orbit.pitch); const dist = this.distance;
@@ -570,10 +571,26 @@ export class DemoScene {
   }
 
   /** LED values to what an eye sees: diffuser smear in linear light, channel saturation, gamma. As in the 2D preview. */
-  /** Whether any LED is lit on the strip painted last: the blade is hidden only once a retraction has finished. */
-  private paintBlade(leds: Float32Array, out: Uint8Array<ArrayBuffer>, texture: THREE.DataTexture, tipMaterial: THREE.MeshBasicMaterial, lights: THREE.PointLight[]): boolean {
+  /**
+   * With the tube shown only while lit, it is a blade of light: it reaches exactly as far as the light does, so an
+   * ignition wipe grows it out of the emitter and a retraction draws it back in. Otherwise the polycarbonate tube
+   * stays at full length whatever the LEDs do.
+   */
+  private shapeBlade(tube: THREE.Mesh, tip: THREE.Mesh, texture: THREE.DataTexture, base: number, extent: number): void {
+    const physical = this.settings.bladeWhenOff;
+    const e = physical ? 1 : extent;
+    tube.visible = tip.visible = e > 0;
+    tube.scale.y = Math.max(1e-4, e);
+    tube.position.y = base + (this.bladeLength * e) / 2;
+    tip.position.y = base + this.bladeLength * e;
+    // The strip texture covers the tube; a shortened tube shows only the lit part of it.
+    texture.repeat.y = e;
+  }
+
+  /** Returns how far along the blade the light reaches (0 dark to 1 the tip), so the tube can extend and shrink with it. */
+  private paintBlade(leds: Float32Array, out: Uint8Array<ArrayBuffer>, texture: THREE.DataTexture, tipMaterial: THREE.MeshBasicMaterial, lights: THREE.PointLight[]): number {
     const n = this.leds;
-    let anyLit = false;
+    let lastLit = -1;
     const W = [0.07, 0.24, 0.38, 0.24, 0.07];
     const sums = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
     for (let i = 0; i < n; i++) {
@@ -583,7 +600,7 @@ export class DemoScene {
       const third = sums[Math.min(2, Math.floor((i * 3) / n))];
       third[0] += r; third[1] += g; third[2] += b;
       const peak = Math.max(r, g, b);
-      if (peak > 0.003) anyLit = true;
+      if (peak > 0.003) lastLit = i;
       const tone = (v: number) => Math.pow(1 - Math.exp(-(v * 1.6 + peak * 0.03) * 2.4), 1 / 2.2);
       const lit = [tone(r), tone(g), tone(b)];
       const dark = 1 - Math.max(lit[0], lit[1], lit[2]);
@@ -594,7 +611,9 @@ export class DemoScene {
       out[i * 4 + 3] = 255;
     }
     texture.needsUpdate = true;
-    const last = (n - 1) * 4;
+    const extent = (lastLit + 1) / n;
+    // The tip takes the colour of the last lit LED, which during a wipe is not the strip's end.
+    const last = Math.max(0, lastLit) * 4;
     const boost = this.settings.bladeBrightness;
     tipMaterial.color.setRGB((out[last] / 255) * boost, (out[last + 1] / 255) * boost, (out[last + 2] / 255) * boost, THREE.SRGBColorSpace);
     const per = n / 3;
@@ -604,7 +623,7 @@ export class DemoScene {
       lamp.intensity = level * 7 * this.settings.bladeLight;
       if (level > 0.001) lamp.color.setRGB(r / level, g / level, b / level);
     });
-    return anyLit;
+    return extent;
   }
 
   dispose(): void {
