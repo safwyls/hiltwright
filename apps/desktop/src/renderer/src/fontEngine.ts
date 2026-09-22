@@ -52,6 +52,14 @@ class Voice {
   playThenLoop(once: AudioBuffer, loop: AudioBuffer): void {
     this.play(once, { onEnd: () => { if (this.src === null) this.play(loop, { loop: true }); } });
   }
+  /** Silent now; a linear rise to full starting `after` seconds from now and taking `seconds`. */
+  fadeInAt(after: number, seconds: number): void {
+    const t = this.ctx.currentTime + after;
+    this.gain.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.gain.gain.setValueAtTime(0, this.ctx.currentTime);
+    this.gain.gain.setValueAtTime(0, t);
+    this.gain.gain.linearRampToValueAtTime(1, t + Math.max(0.01, seconds));
+  }
   setVolume(v: number, ramp = 0.02): void { const t = this.ctx.currentTime; this.gain.gain.cancelScheduledValues(t); this.gain.gain.setTargetAtTime(Math.max(0, v), t, ramp); }
   get volume(): number { return this.gain.gain.value; }
   get playing(): boolean { return this.src !== null; }
@@ -71,10 +79,13 @@ export class FontEngine {
   private on = false;
   private humStart = 0;
   private humStartMs = 0;
+  private humFadeDoneAt = 0;
   // SmoothSwing V2 state
   private sw = { on: false, state: 'off' as 'off' | 'on' | 'out', A: { mid: 0, width: 0, sep: 180 }, B: { mid: 0, width: 0, sep: 180 }, aIsLow: true, lastPick: -1e9 };
   private cfg = { sensitivity: 450, ducking: 75, sharpness: 1.75, threshold: 20, t1: 45, t2: 160, sepL2H: 180, sepH2L: 180, maxVol: 3, accentThreshold: 0 };
+  /** From config.ini: ProffieOSHumDelay is ms after ignition; humstart is ms before the END of the ignition sound. */
   private humDelayMs = -1;
+  private humStartBeforeEndMs = 0;
   readonly name: string;
   readonly monophonic: boolean;
   readonly hasSmoothSwing: boolean;
@@ -88,7 +99,8 @@ export class FontEngine {
     this.hasSmoothSwing = !!(this.groups.swingl || this.groups.lswing);
     const s = font.smoothsw;
     this.cfg = { sensitivity: num(s, 'SwingSensitivity', 450), ducking: num(s, 'MaximumHumDucking', 75), sharpness: num(s, 'SwingSharpness', 1.75), threshold: num(s, 'SwingStrengthThreshold', 20), t1: num(s, 'Transition1Degrees', 45), t2: num(s, 'Transition2Degrees', 160), sepL2H: num(s, 'Low2HighSeparationDegrees', 180), sepH2L: num(s, 'High2LowSeparationDegrees', 180), maxVol: num(s, 'MaxSwingVolume', 3), accentThreshold: num(s, 'AccentSwingSpeedThreshold', 0) };
-    this.humDelayMs = num(font.ini, 'ProffieOSHumDelay', num(font.ini, 'humstart', -1));
+    this.humDelayMs = num(font.ini, 'ProffieOSHumDelay', -1);
+    this.humStartBeforeEndMs = num(font.ini, 'humstart', 0);
     this.hum = new Voice(this.ctx, this.master); this.lock = new Voice(this.ctx, this.master);
     this.swingA = new Voice(this.ctx, this.master, 0); this.swingB = new Voice(this.ctx, this.master, 0);
     for (let i = 0; i < 6; i++) this.fx.push(new Voice(this.ctx, this.master));
@@ -135,10 +147,20 @@ export class FontEngine {
     const out = this.pick('out'); const hum = this.pick('hum');
     if (out) this.freeFx().play(out);
     if (hum) {
-      // The hum starts under the ignition sound: after humstart ms when the font says so, otherwise a little in.
-      const delay = this.humDelayMs >= 0 ? this.humDelayMs : out ? Math.min(out.duration * 1000 * 0.35, 900) : 0;
-      this.humStartMs = performance.now() + delay; this.humStart = 0;
-      setTimeout(() => { if (this.on) { this.hum.setVolume(1, 0.05); this.hum.play(hum, { loop: true }); } }, delay);
+      // As the firmware does (hybrid_font.h SB_On): the hum starts at once, silent, and fades in over 0.2 s from
+      // `hum_start_`, which is ignition, or ignition + ProffieOSHumDelay, or `humstart` ms before the ignition
+      // sound ends. With a `humm` file the fade lasts the whole ignition sound instead.
+      const outMs = out ? out.duration * 1000 : 0;
+      let delay = 0;
+      if (this.groups.humm && out) delay = 0;
+      else if (this.humDelayMs >= 0) delay = this.humDelayMs;
+      else if (this.humStartBeforeEndMs > 0 && out) { const d = outMs - this.humStartBeforeEndMs; if (d > 0 && d < 30000) delay = d; }
+      const fade = this.groups.humm && out ? out.duration : 0.2;
+      this.humStartMs = performance.now();
+      this.hum.setVolume(0, 0.001);
+      this.hum.play(hum, { loop: true });
+      this.hum.fadeInAt(delay / 1000, fade);
+      this.humFadeDoneAt = performance.now() + delay + fade * 1000;
     }
     this.sw.on = true; this.sw.state = 'off';
     this.pickRandomSwing(true);
@@ -236,7 +258,7 @@ export class FontEngine {
         this.pickRandomSwing();
         sw.state = 'off';
     }
-    this.hum.setVolume(humVolume);
+    if (performance.now() >= this.humFadeDoneAt) this.hum.setVolume(humVolume);
   }
 
   dispose(): void { this.hum.stop(); this.lock.stop(); this.swingA.stop(); this.swingB.stop(); for (const v of this.fx) v.stop(); void this.ctx.close(); }
