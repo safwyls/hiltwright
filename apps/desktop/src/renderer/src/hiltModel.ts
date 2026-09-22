@@ -12,7 +12,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 
-export type HiltFormat = 'glb' | 'obj' | 'stl';
+export type HiltFormat = 'glb' | 'obj' | 'stl' | 'pack';
 export interface HiltFit {
   flip: boolean;
   rollDeg: number;
@@ -42,7 +42,8 @@ export interface HiltFit {
 }
 /** A file that came with the model: an OBJ's .mtl, and any textures the .mtl names. */
 export interface SideFile { name: string; data: ArrayBuffer }
-export interface StoredHilt { name: string; format: HiltFormat; data: ArrayBuffer; fit: HiltFit; sideFiles?: SideFile[] }
+/** A hilt the owner loaded, or one from a pack (format 'pack': `data` is empty, the mesh comes from the pack by `packId`). */
+export interface StoredHilt { name: string; format: HiltFormat; data: ArrayBuffer; fit: HiltFit; sideFiles?: SideFile[]; packId?: string; creator?: string }
 export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0, seatMm: 0, tiltXDeg: 0, tiltZDeg: 0, axis: 'auto' };
 
 export function formatOf(fileName: string): HiltFormat | null {
@@ -57,6 +58,18 @@ export function guessLength(longest: number): number {
     if (m >= 0.15 && m <= 0.5) return m;
   }
   return 0.28;
+}
+
+/** A packed mesh (see main/hwpack.ts) as an object: one geometry, one material per group. */
+export function meshFromPack(m: { positions: Float32Array; normals: Float32Array; indices: Uint32Array; groups: { start: number; count: number; color: [number, number, number]; metalness: number; roughness: number; name: string }[] }): THREE.Object3D {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(m.positions, 3));
+  const hasNormals = m.normals.some((v) => v !== 0);
+  if (hasNormals) g.setAttribute('normal', new THREE.BufferAttribute(m.normals, 3));
+  g.setIndex(new THREE.BufferAttribute(m.indices, 1));
+  if (!hasNormals) g.computeVertexNormals();
+  const materials = m.groups.map((grp, i) => { g.addGroup(grp.start, grp.count, i); const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(...grp.color), metalness: grp.metalness, roughness: grp.roughness }); mat.name = grp.name; return mat; });
+  return new THREE.Mesh(g, materials);
 }
 
 const steel = () => new THREE.MeshStandardMaterial({ color: 0x9aa7b4, roughness: 0.35, metalness: 0.85 });

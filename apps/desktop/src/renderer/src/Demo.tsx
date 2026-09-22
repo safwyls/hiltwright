@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupType } from '@hiltwright/core';
 import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
-import { DEFAULT_FIT, formatOf, parseHilt, type HiltFit, type SideFile, type StoredHilt } from './hiltModel';
+import { DEFAULT_FIT, formatOf, meshFromPack, parseHilt, type HiltFit, type SideFile, type StoredHilt } from './hiltModel';
+import type { PackInfo } from '../../shared/api';
 import { FontEngine } from './fontEngine';
 import type { Board } from './board';
 import type { FontEntry } from '../../shared/api';
@@ -40,7 +41,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const [failed, setFailed] = useState<string | null>(null);
 
   // ---- sound: a font from a card, the saber's card, or the font bank, played as the saber would ----
-  type Source = { kind: 'card' | 'bank'; root: string; label: string };
+  type Source = { kind: 'card' | 'bank' | 'pack'; root: string; label: string };
   const [sources, setSources] = useState<Source[]>([]);
   const [source, setSource] = useState<Source | null>(null);
   const [fonts, setFonts] = useState<FontEntry[]>([]);
@@ -51,9 +52,10 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const [soundNote, setSoundNote] = useState<string | null>(null);
   const [volume, setVolume] = useState(() => { try { return Number(localStorage.getItem('hiltwright.demo.volume') ?? 0.8); } catch { return 0.8; } });
   const refreshSources = async () => {
-    const [cards, bank] = await Promise.all([api().sd.locate(), api().sd.fontBank()]);
+    const [cards, bank, found] = await Promise.all([api().sd.locate(), api().sd.fontBank(), api().packs.list().catch(() => [] as PackInfo[])]);
     const next: Source[] = cards.filter((c) => c.proffie).map((c) => ({ kind: 'card' as const, root: c.root, label: `Card at ${c.root}` }));
     if (bank) next.push({ kind: 'bank', root: bank, label: `Font bank (${bank.split(/[\\/]/).pop()})` });
+    if (found.some((p) => p.kind === 'font' && p.allow.demoPlayback)) next.push({ kind: 'pack', root: 'packs', label: 'Hiltwright fonts' });
     setSources(next);
     setSource((cur) => next.find((n) => n.root === cur?.root) ?? next[0] ?? null);
   };
@@ -61,7 +63,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   useEffect(() => {
     if (!source) { setFonts([]); return; }
     let live = true;
-    void (source.kind === 'bank' ? api().sd.bankFonts() : api().sd.listFonts(source.root)).then((f) => { if (live) setFonts(f); }).catch(() => { if (live) setFonts([]); });
+    void (source.kind === 'pack' ? api().packs.list().then((ps) => ps.filter((p) => p.kind === 'font' && p.allow.demoPlayback).map((p) => ({ name: p.name, path: p.id, report: { files: p.sounds, bytes: 0, type: 'unknown' as const, effects: {}, issues: [] } }))) : source.kind === 'bank' ? api().sd.bankFonts() : api().sd.listFonts(source.root)).then((f) => { if (live) setFonts(f); }).catch(() => { if (live) setFonts([]); });
     return () => { live = false; };
   }, [source?.root]); // eslint-disable-line react-hooks/exhaustive-deps
   const pickBank = async () => { const r = await api().sd.pickFontBank(); if (r) await refreshSources(); };
@@ -71,7 +73,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     setLoading({ done: 0, total: 0, what: 'reading' });
     const off = api().sd.onReadFontProgress((p) => setLoading({ done: p.done, total: p.total, what: 'reading' }));
     try {
-      const sounds = await api().sd.readFont(from.root, name);
+      const sounds = from.kind === 'pack' ? await api().packs.font(fonts.find((f) => f.name === name)?.path ?? name) : await api().sd.readFont(from.root, name);
       off();
       const wasOn = engineRef.current?.isOn ?? false;
       engineRef.current?.dispose();
@@ -103,7 +105,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     const from = sources.find((sr) => fonts.some((f) => f.name === folder) && sr.root === source?.root) ?? source;
     // The font may live on a different source than the one selected: try each until one has it.
     for (const sr of [from, ...sources].filter((x): x is Source => !!x)) {
-      const list = sr.root === source?.root ? fonts : await (sr.kind === 'bank' ? api().sd.bankFonts() : api().sd.listFonts(sr.root)).catch(() => []);
+      const list = sr.root === source?.root ? fonts : sr.kind === 'pack' ? (await api().packs.list().catch(() => [] as PackInfo[])).filter((p) => p.kind === 'font').map((p) => ({ name: p.name, path: p.id })) : await (sr.kind === 'bank' ? api().sd.bankFonts() : api().sd.listFonts(sr.root)).catch(() => []);
       if (list.some((f) => f.name === folder)) { setSource(sr); await loadFont(folder, sr); return; }
     }
     setSoundNote(`The font "${folder}" is not on any card or in the font bank here. Share the saber's card on Fonts & SD, or point the bank at a folder that has it.`);
@@ -117,7 +119,20 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const [hiltLength, setHiltLength] = useState<number | null>(null);
   const loaded = useRef<{ name: string; model: Object3D } | null>(null);
   const hilt = hilts.find((h) => h.name === hiltName) ?? null;
-  useEffect(() => { void listHilts().then(setHilts).catch(() => setHilts([])); }, []);
+  // Packs beside the app or in the owner's packs folder. A pack hilt is listed with the pack's fit unless the owner
+  // has adjusted it here, in which case their adjustment is kept like any other hilt's.
+  const [packs, setPacks] = useState<PackInfo[]>([]);
+  useEffect(() => {
+    void (async () => {
+      const [stored, found] = await Promise.all([listHilts().catch(() => [] as StoredHilt[]), api().packs.list().catch(() => [] as PackInfo[])]);
+      setPacks(found);
+      const packHilts: StoredHilt[] = found.filter((p) => p.kind === 'hilt').map((p) => {
+        const kept = stored.find((h) => h.packId === p.id);
+        return kept ?? { name: p.name, format: 'pack', data: new ArrayBuffer(0), fit: { ...DEFAULT_FIT, ...(p.fit ?? {}) }, packId: p.id, creator: p.creator };
+      });
+      setHilts([...stored.filter((h) => !h.packId), ...packHilts]);
+    })();
+  }, []);
   useEffect(() => { try { localStorage.setItem('hiltwright.demo.hilt', hiltName); } catch { /* private mode */ } }, [hiltName]);
   useEffect(() => {
     const room = scene.current;
@@ -127,7 +142,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     void (async () => {
       try {
         // Parsing is the slow part: only when the file changes, not for every nudge of a slider.
-        if (loaded.current?.name !== hilt.name) loaded.current = { name: hilt.name, model: await parseHilt(hilt.format, hilt.data.slice(0), hilt.sideFiles ?? []) };
+        if (loaded.current?.name !== hilt.name) loaded.current = { name: hilt.name, model: hilt.packId ? meshFromPack(await api().packs.mesh(hilt.packId)) : await parseHilt(hilt.format, hilt.data.slice(0), hilt.sideFiles ?? []) };
         if (live) { setHiltLength(room.setHilt(loaded.current.model, hilt.fit)); setHiltNote(null); }
       } catch (err) { if (live) { room.setHilt(null, DEFAULT_FIT); setHiltNote(`That model could not be read: ${String(err).replace(/^Error: /, '')}`); } }
     })();
@@ -156,7 +171,14 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     setHilts((all) => all.map((h) => (h.name === hilt.name ? next : h)));
     void saveHilt(next).catch(() => undefined);
   };
-  const forgetHilt = () => { if (!hilt) return; void removeHilt(hilt.name).catch(() => undefined); setHilts((all) => all.filter((h) => h.name !== hilt.name)); setHiltName(''); };
+  /** A loaded hilt is removed; a pack hilt goes back to the pack's own fit. */
+  const forgetHilt = () => {
+    if (!hilt) return;
+    if (hilt.packId) { const p = packs.find((x) => x.id === hilt.packId); const reset = { ...hilt, fit: { ...DEFAULT_FIT, ...(p?.fit ?? {}) } }; setHilts((all) => all.map((h) => (h.name === hilt.name ? reset : h))); void removeHilt(hilt.name).catch(() => undefined); return; }
+    void removeHilt(hilt.name).catch(() => undefined); setHilts((all) => all.filter((h) => h.name !== hilt.name)); setHiltName('');
+  };
+  /** The fit as text, for sending to whoever makes the pack. */
+  const copyFit = () => { if (!hilt) return; const f = Object.fromEntries(Object.entries(hilt.fit).filter(([k, v]) => v !== (DEFAULT_FIT as unknown as Record<string, unknown>)[k] && v != null)); void navigator.clipboard.writeText(JSON.stringify({ hilt: hilt.packId ?? hilt.name, fit: f })); setHiltNote('Fit copied.'); };
 
   const [sceneOpen, setSceneOpen] = useState(() => { try { return localStorage.getItem('hiltwright.demo.sceneOpen') !== '0'; } catch { return true; } });
   useEffect(() => { scene.current?.applySettings(look3d); try { localStorage.setItem('hiltwright.demo.scene', JSON.stringify(look3d)); } catch { /* private mode */ } }, [look3d]);
@@ -406,13 +428,12 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
                       {([['auto', 'Auto'], ['origin', 'File axis'], ['box', 'Box centre']] as ['auto' | 'origin' | 'box', string][]).map(([v, label]) => <button key={v} type="button" role="radio" aria-checked={(hilt.fit.axis ?? 'auto') === v} className={(hilt.fit.axis ?? 'auto') === v ? 'on' : ''} style={{ height: 26, padding: '0 9px', fontSize: 12 }} onClick={() => setFit({ axis: v })}>{label}</button>)}
                     </div>
                   </div>
-                  <div className="row between">
-                    <label className="row" style={{ gap: 10 }}><button type="button" className={`tog ${hilt.fit.flip ? 'on' : ''}`} role="switch" aria-checked={hilt.fit.flip} aria-label="Blade comes out of the other end" onClick={() => setFit({ flip: !hilt.fit.flip })}><i /></button><span className="dim">Blade at the other end</span></label>
-                    <button type="button" className="holo small" onClick={forgetHilt}>Remove</button>
-                  </div>
+                  <label className="row" style={{ gap: 10 }}><button type="button" className={`tog ${hilt.fit.flip ? 'on' : ''}`} role="switch" aria-checked={hilt.fit.flip} aria-label="Blade comes out of the other end" onClick={() => setFit({ flip: !hilt.fit.flip })}><i /></button><span className="dim">Blade at the other end</span></label>
+                  <div className="row" style={{ gap: 14, justifyContent: 'flex-end' }}><button type="button" className="holo small" title="Copy the fit as text" onClick={copyFit}>Copy fit</button><button type="button" className="holo small" onClick={forgetHilt}>{hilt.packId ? 'Reset fit' : 'Remove'}</button></div>
                 </>
               )}
-              {hiltNote && <span className="red small">{hiltNote}</span>}
+              {hilt?.creator && <span className="hint">{hilt.name} by {hilt.creator}{packs.find((p) => p.id === hilt.packId)?.licence ? `, ${packs.find((p) => p.id === hilt.packId)!.licence}` : ''}</span>}
+              {hiltNote && <span className={hiltNote === 'Fit copied.' ? 'hint' : 'red small'}>{hiltNote}</span>}
             </div>
             <label className="row" style={{ gap: 10, paddingTop: 2 }}>
               <button type="button" className={`tog ${look3d.grid ? 'on' : ''}`} role="switch" aria-checked={look3d.grid} aria-label="Floor grid" onClick={() => setLook3d((v) => ({ ...v, grid: !v.grid }))}><i /></button>

@@ -11,6 +11,7 @@ import { Snapshots } from './snapshots';
 import { proffieSerials } from './usb';
 import { checkFontDir, copyFont, listFonts, listTracks, locateCards, readVoicePack, ejectVolume, readFontSounds } from './sd';
 import { defaultToolchainRoot, installToolchain, toolchainStatus } from './toolchain';
+import { listPacks, packFont, packMesh, userPacksDir } from './packs';
 import { buildFirmware } from './build';
 import { installBootloaderDriver } from './driver';
 import { importXenoFont, scanXenoCard, type XenoFontInfo } from './importer';
@@ -126,6 +127,11 @@ export function registerIpc(): void {
     return readFontSounds(join(base, name), (file, done, total) => e.sender.send('sd:readFont:progress', { file, done, total }));
   });
   ipcMain.handle('sd:fontBank', () => bankRoot);
+  // Packs: encrypted hilts and fonts. Payloads are decrypted here and handed over in memory, never as files.
+  ipcMain.handle('packs:list', () => listPacks());
+  ipcMain.handle('packs:dir', () => userPacksDir());
+  ipcMain.handle('packs:mesh', (_e, id: unknown) => packMesh(str(id, 200)));
+  ipcMain.handle('packs:font', (_e, id: unknown) => packFont(str(id, 200)));
   ipcMain.handle('sd:pickFontBank', async () => {
     const r = await dialog.showOpenDialog({ title: 'Choose a folder of sound fonts', properties: ['openDirectory'] });
     if (r.canceled || !r.filePaths[0]) return bankRoot;

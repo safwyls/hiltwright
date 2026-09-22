@@ -52,6 +52,18 @@ export interface CardInfo {
   hasPresetsIni: boolean;
 }
 
+export interface PackInfo {
+  id: string; kind: 'hilt' | 'font'; name: string; creator: string; licence: string;
+  allow: { copyToCard: boolean; demoPlayback: boolean };
+  fit?: { flip?: boolean; rollDeg?: number; lengthCm?: number | null; offsetXmm?: number; offsetZmm?: number; seatMm?: number; tiltXDeg?: number; tiltZDeg?: number; axis?: 'auto' | 'origin' | 'box' };
+  file: string; sounds: number; packed: string;
+}
+export interface PackMesh {
+  positions: Float32Array; normals: Float32Array; indices: Uint32Array;
+  groups: { start: number; count: number; color: [number, number, number]; metalness: number; roughness: number; name: string }[];
+  fit?: PackInfo['fit']; name: string; creator: string;
+}
+
 export interface FontSounds { name: string; files: Record<string, ArrayBuffer>; ini: Record<string, string>; smoothsw: Record<string, string>; bytes: number; skipped: number }
 
 export interface FontEntry {
@@ -169,6 +181,13 @@ export interface HiltwrightApi {
     /** Ask the user for a font folder on this computer and check it without copying. */
     pickFont(): Promise<FontEntry | null>;
     copyFont(src: string, root: string, replace: boolean): Promise<FontEntry>;
+  };
+  packs: {
+    list(): Promise<PackInfo[]>;
+    /** The folder the owner can drop .hwpack files into. */
+    dir(): Promise<string>;
+    mesh(id: string): Promise<PackMesh>;
+    font(id: string): Promise<FontSounds>;
   };
   /** Bring fonts over from another board's SD card. The source is only read. */
   importer: {

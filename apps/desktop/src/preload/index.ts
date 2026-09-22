@@ -39,6 +39,12 @@ const api: HiltwrightApi = {
     pickFont: () => ipcRenderer.invoke('sd:pickFont'),
     copyFont: (src, root, replace) => ipcRenderer.invoke('sd:copyFont', src, root, replace),
   },
+  packs: {
+    list: () => ipcRenderer.invoke('packs:list'),
+    dir: () => ipcRenderer.invoke('packs:dir'),
+    mesh: (id) => ipcRenderer.invoke('packs:mesh', id),
+    font: (id) => ipcRenderer.invoke('packs:font', id),
+  },
   importer: {
     pickXeno: () => ipcRenderer.invoke('import:pickXeno'),
     xenoFont: (src, root, folder, replace) => ipcRenderer.invoke('import:xenoFont', src, root, folder, replace),
