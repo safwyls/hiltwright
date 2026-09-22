@@ -45,6 +45,16 @@ describe('wielding a saber by the hilt', () => {
     expect(highest).toBeLessThan(startTilt + 15); // without rising overhead
   });
 
+  it('takes a different blade length and keeps the tip at it', () => {
+    const w = new Wield([0.1, 1.3, 0], OPTS);
+    run(w, 1);
+    w.setLength(0.6);
+    w.handTarget = [0.6, 1.0, 0]; run(w, 2);
+    // dir is unit and the tip sits exactly 0.6 from the hand: turnRate settled means the rod length held through the swing
+    expect(Math.hypot(...w.dir)).toBeCloseTo(1, 6);
+    expect(w.turnRate).toBeLessThan(3);
+  });
+
   it('keeps the blade its length and never blows up, even with a wild hand and long frames', () => {
     const w = new Wield([0, 1, 0], OPTS);
     for (let i = 0; i < 600; i++) {

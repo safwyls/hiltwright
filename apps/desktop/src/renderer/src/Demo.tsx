@@ -3,17 +3,17 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupType } from '@hiltwright/core';
-import { DEFAULT_SCENE, DemoScene, type ControlMode, type Motion, type SceneSettings } from './demoScene';
+import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
 import { DEFAULT_FIT, formatOf, parseHilt, type HiltFit, type SideFile, type StoredHilt } from './hiltModel';
 import { listHilts, removeHilt, saveHilt } from './hiltStore';
 import type { Object3D } from 'three';
 
 const LOOKS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
-const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid'>; label: string; min: number; max: number; step: number; hint: string }[] = [
+const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter'>; label: string; min: number; max: number; step: number; hint: string }[] = [
   { key: 'glow', label: 'Glow', min: 0, max: 3, step: 0.05, hint: 'Strength of the glow around the blade' },
   { key: 'glowSpread', label: 'Glow spread', min: 0, max: 1, step: 0.02, hint: 'How far the glow reaches' },
-  { key: 'bladeBrightness', label: 'Blade', min: 0.7, max: 2.5, step: 0.05, hint: 'Higher is hotter and paler; lower keeps more colour in the core' },
+  { key: 'bladeBrightness', label: 'Blade heat', min: 0.7, max: 2.5, step: 0.05, hint: 'Higher is hotter and paler; lower keeps more colour in the core' },
   { key: 'bladeLight', label: 'Blade light', min: 0, max: 3, step: 0.05, hint: 'How strongly the blade lights the floor and the hilt' },
   { key: 'roomLight', label: 'Room light', min: 0, max: 2.5, step: 0.05, hint: 'The room\u2019s own lamps. At zero only the blade lights the scene' },
   { key: 'haze', label: 'Haze', min: 0, max: 0.3, step: 0.005, hint: 'How quickly the room fades with distance' },
@@ -232,6 +232,17 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
               </label>
             ))}
             <div className="col" style={{ gap: 6, paddingTop: 6, marginTop: 2, borderTop: '1px solid var(--line)' }}>
+              <label className="row" style={{ gap: 8 }} title="Blade length, in inches">
+                <span className="dim" style={{ width: 76, flex: 'none' }}>Blade</span>
+                <input type="range" min={20} max={40} step={1} value={look3d.bladeInches} aria-label="Blade length in inches" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setLook3d((v) => ({ ...v, bladeInches: Number(e.target.value) }))} />
+                <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{look3d.bladeInches}"</span>
+              </label>
+              <div className="row" style={{ gap: 8 }}>
+                <span className="dim" style={{ width: 76, flex: 'none' }}>Diameter</span>
+                <div className="seg" role="radiogroup" aria-label="Blade diameter" style={{ height: 28 }}>
+                  {(Object.keys(BLADE_DIAMETERS) as BladeDiameter[]).map((d) => <button key={d} type="button" role="radio" aria-checked={look3d.bladeDiameter === d} className={look3d.bladeDiameter === d ? 'on' : ''} style={{ height: 26, padding: '0 10px', fontSize: 12 }} onClick={() => setLook3d((v) => ({ ...v, bladeDiameter: d }))}>{d}"</button>)}
+                </div>
+              </div>
               <div className="row" style={{ gap: 8 }}>
                 <span className="dim" style={{ width: 76, flex: 'none' }}>Hilt</span>
                 <span className="input sans" style={{ height: 28, fontSize: 12 }}><span className="ellip">{hilt?.name ?? 'Built-in'}</span><span className="caret"><Icon name="down" /></span>

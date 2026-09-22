@@ -20,8 +20,10 @@ import { Wield, handOnArc } from './wield';
 import { Steer } from './steer';
 import { disposeObject, fitHilt, type HiltFit } from './hiltModel';
 
-const BLADE_LENGTH = 0.92; // metres: a 36 inch blade
-const BLADE_RADIUS = 0.0127; // a one inch tube
+const BLADE_LENGTH = 0.92; // metres: a 36 inch blade, the default
+const BLADE_RADIUS = 0.0127; // a one inch tube, the default
+export const BLADE_DIAMETERS = { '1': 0.0254, '7/8': 0.022225 } as const;
+export type BladeDiameter = keyof typeof BLADE_DIAMETERS;
 const HILT_LENGTH = 0.27;
 const HOME_AT = { x: 0.3, y: 1.3 }; // where the hand starts, across and up
 const REACH = { x: 0.8, low: 0.7, high: 1.8, push: 0.32 }; // how far the hand can go, and how far forward it reaches mid-sweep
@@ -60,8 +62,11 @@ export interface SceneSettings {
   /** Haze in the air: how quickly things fade with distance. */
   haze: number;
   grid: boolean;
+  /** The blade itself: length in inches and tube diameter. */
+  bladeInches: number;
+  bladeDiameter: BladeDiameter;
 }
-export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true };
+export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1' };
 
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
 
@@ -108,6 +113,10 @@ export class DemoScene {
   private distanceTarget = VIEW_HOLD.distance;
   private settings: SceneSettings = { ...DEFAULT_SCENE };
   private bladeMaterial!: THREE.MeshBasicMaterial;
+  private tube!: THREE.Mesh;
+  private tipMesh!: THREE.Mesh;
+  private bladeLength = BLADE_LENGTH;
+  private bladeRadius = BLADE_RADIUS;
   private grid!: THREE.GridHelper;
   private builtInHilt!: THREE.Group;
   private customHilt: { model: THREE.Object3D; group: THREE.Group } | null = null;
@@ -142,6 +151,7 @@ export class DemoScene {
     tube.position.y = HILT_LENGTH / 2 + BLADE_LENGTH / 2;
     const tip = new THREE.Mesh(new THREE.SphereGeometry(BLADE_RADIUS, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), this.tipMaterial);
     tip.position.y = HILT_LENGTH / 2 + BLADE_LENGTH;
+    this.tube = tube; this.tipMesh = tip;
     this.glowing.add(tube); this.glowing.add(tip);
     this.builtInHilt = this.buildHilt();
     this.roll.add(tube, tip, this.builtInHilt);
@@ -152,7 +162,7 @@ export class DemoScene {
     // The blade lights the room: three lamps along it, coloured by that stretch of LEDs.
     for (let i = 0; i < 3; i++) {
       const lamp = new THREE.PointLight(0xffffff, 0, 7, 2);
-      lamp.position.y = HILT_LENGTH / 2 + BLADE_LENGTH * (0.18 + i * 0.32);
+      lamp.position.y = HILT_LENGTH / 2 + this.bladeLength * (0.18 + i * 0.32);
       this.roll.add(lamp);
       this.lights.push(lamp);
     }
@@ -249,6 +259,21 @@ export class DemoScene {
     for (const { light, base } of this.roomLamps) light.intensity = base * next.roomLight;
     (this.scene.fog as THREE.FogExp2).density = next.haze;
     this.grid.visible = next.grid;
+    this.setBlade(next.bladeInches * 0.0254, BLADE_DIAMETERS[next.bladeDiameter] / 2);
+  }
+
+  /** A different blade in the emitter: the tube, its tip, the lamps along it and the weight in the hand all follow. */
+  private setBlade(length: number, radius: number): void {
+    if (length === this.bladeLength && radius === this.bladeRadius) return;
+    this.bladeLength = length; this.bladeRadius = radius;
+    this.tube.geometry.dispose();
+    this.tube.geometry = new THREE.CylinderGeometry(radius, radius, length, 20, 1, true);
+    this.tube.position.y = HILT_LENGTH / 2 + length / 2;
+    this.tipMesh.geometry.dispose();
+    this.tipMesh.geometry = new THREE.SphereGeometry(radius, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    this.tipMesh.position.y = HILT_LENGTH / 2 + length;
+    this.lights.forEach((lamp, i) => { lamp.position.y = HILT_LENGTH / 2 + length * (0.18 + i * 0.32); });
+    this.wield.setLength(length);
   }
 
   /**
@@ -345,7 +370,7 @@ export class DemoScene {
     const r = this.renderer.domElement.getBoundingClientRect();
     const toScreen = (v: THREE.Vector3) => { const p = v.clone().project(this.camera); return new THREE.Vector2(((p.x + 1) / 2) * r.width, ((1 - p.y) / 2) * r.height); };
     const a = toScreen(this.hand.clone().addScaledVector(this.dir, HILT_LENGTH / 2));
-    const b = toScreen(this.hand.clone().addScaledVector(this.dir, HILT_LENGTH / 2 + BLADE_LENGTH));
+    const b = toScreen(this.hand.clone().addScaledVector(this.dir, HILT_LENGTH / 2 + this.bladeLength));
     const p = new THREE.Vector2(clientX - r.left, clientY - r.top);
     const ab = b.clone().sub(a);
     const t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / Math.max(1, ab.lengthSq())));

@@ -45,7 +45,10 @@ export class Wield {
   /** Degrees per second the blade turned during the last step. */
   turnRate = 0;
 
-  constructor(start: Vec, private readonly o: WieldOptions) {
+  /** The blade can be swapped for a longer or shorter one; the tip is re-seated at the new length. */
+  setLength(length: number): void { this.o = { ...this.o, length }; this.tip = add(this.hand, this.dir, length); }
+
+  constructor(start: Vec, private o: WieldOptions) {
     this.hand = [...start]; this.handTarget = [...start];
     this.dir = unit(sub(start, o.chest), [0, 1, 0]);
     this.tip = add(this.hand, this.dir, o.length);
