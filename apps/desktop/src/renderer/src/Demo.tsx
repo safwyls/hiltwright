@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupType } from '@hiltwright/core';
 import { DEFAULT_SCENE, DemoScene, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
-import { DEFAULT_FIT, formatOf, parseHilt, type HiltFit, type StoredHilt } from './hiltModel';
+import { DEFAULT_FIT, formatOf, parseHilt, type HiltFit, type SideFile, type StoredHilt } from './hiltModel';
 import { listHilts, removeHilt, saveHilt } from './hiltStore';
 import type { Object3D } from 'three';
 
@@ -51,23 +51,28 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
     void (async () => {
       try {
         // Parsing is the slow part: only when the file changes, not for every nudge of a slider.
-        if (loaded.current?.name !== hilt.name) loaded.current = { name: hilt.name, model: await parseHilt(hilt.format, hilt.data.slice(0)) };
+        if (loaded.current?.name !== hilt.name) loaded.current = { name: hilt.name, model: await parseHilt(hilt.format, hilt.data.slice(0), hilt.sideFiles ?? []) };
         if (live) { setHiltLength(room.setHilt(loaded.current.model, hilt.fit)); setHiltNote(null); }
       } catch (err) { if (live) { room.setHilt(null, DEFAULT_FIT); setHiltNote(`That model could not be read: ${String(err).replace(/^Error: /, '')}`); } }
     })();
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hilt?.name, hilt?.fit.flip, hilt?.fit.rollDeg, hilt?.fit.lengthCm, hilt?.fit.offsetXmm, hilt?.fit.offsetZmm, hilts.length]);
-  const loadHiltFile = async (file: File | undefined) => {
-    if (!file) return;
-    const format = formatOf(file.name);
-    if (!format) { setHiltNote('Use a .glb, .obj or .stl file. A .gltf only works when it is a single self-contained file.'); return; }
-    const entry: StoredHilt = { name: file.name.replace(/\.[^.]+$/, ''), format, data: await file.arrayBuffer(), fit: { ...DEFAULT_FIT } };
-    try { await parseHilt(format, entry.data.slice(0)); } catch (err) { setHiltNote(`That model could not be read: ${String(err).replace(/^Error: /, '')}`); return; }
+  /** One model file, plus for an OBJ its .mtl and any textures, chosen together in the file picker. */
+  const loadHiltFiles = async (files: FileList | null) => {
+    const all = Array.from(files ?? []);
+    const file = all.find((f) => formatOf(f.name));
+    if (!file) { if (all.length) setHiltNote('Use a .glb, .obj or .stl file. For an OBJ with colours, select its .mtl (and any texture images) along with it.'); return; }
+    const format = formatOf(file.name)!;
+    const sideFiles: SideFile[] = await Promise.all(all.filter((f) => f !== file).map(async (f) => ({ name: f.name, data: await f.arrayBuffer() })));
+    const entry: StoredHilt = { name: file.name.replace(/\.[^.]+$/, ''), format, data: await file.arrayBuffer(), fit: { ...DEFAULT_FIT }, ...(sideFiles.length ? { sideFiles } : {}) };
+    try { await parseHilt(format, entry.data.slice(0), sideFiles); } catch (err) { setHiltNote(`That model could not be read: ${String(err).replace(/^Error: /, '')}`); return; }
+    if (format === 'obj' && !sideFiles.some((f) => /\.mtl$/i.test(f.name))) setHiltNote('Loaded without colours. To keep them, pick the .obj and its .mtl together (Ctrl+click both in the file dialog).');
     await saveHilt(entry).catch(() => undefined);
     loaded.current = null;
     setHilts((all) => [...all.filter((h) => h.name !== entry.name), entry]);
-    setHiltName(entry.name); setHiltNote(null);
+    setHiltName(entry.name);
+    if (format !== 'obj' || sideFiles.some((f) => /\.mtl$/i.test(f.name))) setHiltNote(null);
   };
   const setFit = (patch: Partial<HiltFit>) => {
     if (!hilt) return;
@@ -231,8 +236,8 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
                 <span className="dim" style={{ width: 76, flex: 'none' }}>Hilt</span>
                 <span className="input sans" style={{ height: 28, fontSize: 12 }}><span className="ellip">{hilt?.name ?? 'Built-in'}</span><span className="caret"><Icon name="down" /></span>
                   <select value={hilt?.name ?? ''} aria-label="Hilt model" onChange={(e) => setHiltName(e.target.value)}><option value="">Built-in</option>{hilts.map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}</select></span>
-                <label className="chip" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }} title="Load a .glb, .obj or .stl file"><Icon name="import" />Load
-                  <input type="file" accept=".glb,.gltf,.obj,.stl" aria-label="Load a hilt model" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} onChange={(e) => { void loadHiltFile(e.target.files?.[0]); e.target.value = ''; }} /></label>
+                <label className="chip" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }} title="Load a .glb, .obj or .stl file. For an OBJ, select its .mtl and textures with it."><Icon name="import" />Load
+                  <input type="file" multiple accept=".glb,.gltf,.obj,.stl,.mtl,.png,.jpg,.jpeg,.webp,.tga" aria-label="Load a hilt model" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} onChange={(e) => { void loadHiltFiles(e.target.files); e.target.value = ''; }} /></label>
               </div>
               {hilt && (
                 <>

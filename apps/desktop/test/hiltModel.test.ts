@@ -69,6 +69,25 @@ describe('fitting a custom hilt', () => {
     expect(turned.min.x - turnedPlain.min.x).toBeCloseTo(0, 5);
   });
 
+  it('an OBJ with its .mtl gets its colours, as metal or not by their specular, and steel without one', async () => {
+    const enc = (t: string) => new TextEncoder().encode(t).buffer as ArrayBuffer;
+    const obj = 'mtllib hilt.mtl\nv 0 0 0\nv 0 280 0\nv 30 0 0\nv 30 280 0\nusemtl Brass\nf 1 2 3\nusemtl Rubber\nf 2 4 3\n';
+    const mtl = 'newmtl Brass\nKd 0.8 0.6 0.2\nKs 0.9 0.9 0.9\nNs 600\nnewmtl Rubber\nKd 0.05 0.05 0.05\nKs 0.02 0.02 0.02\nNs 10\n';
+    const withMtl = await parseHilt('obj', enc(obj), [{ name: 'hilt.mtl', data: enc(mtl) }]);
+    const mats: THREE.MeshStandardMaterial[] = [];
+    withMtl.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) mats.push(...(Array.isArray(m.material) ? m.material : [m.material]) as THREE.MeshStandardMaterial[]); });
+    const brass = mats.find((m) => m.name === 'Brass')!; const rubber = mats.find((m) => m.name === 'Rubber')!;
+    expect(brass.isMeshStandardMaterial).toBe(true);
+    expect(brass.color.g).toBeGreaterThan(brass.color.b); // its Kd came through
+    expect(brass.metalness).toBeGreaterThan(0.8);
+    expect(rubber.metalness).toBeLessThan(0.2);
+    expect(rubber.roughness).toBeGreaterThan(brass.roughness);
+
+    const plain = await parseHilt('obj', enc(obj));
+    const m0 = (plain.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[];
+    expect((Array.isArray(m0) ? m0[0] : m0).metalness).toBeCloseTo(0.85);
+  });
+
   it('reads STL and OBJ files and knows which formats it takes', async () => {
     expect([formatOf('Graflex.GLB'), formatOf('hilt.gltf'), formatOf('a.obj'), formatOf('b.stl'), formatOf('c.fbx')]).toEqual(['glb', 'glb', 'obj', 'stl', null]);
     const stl = 'solid t\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 280 0 0\nvertex 0 30 0\nendloop\nendfacet\nendsolid t\n';

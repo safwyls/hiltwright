@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 
 export type HiltFormat = 'glb' | 'obj' | 'stl';
 export interface HiltFit {
@@ -21,7 +22,9 @@ export interface HiltFit {
   offsetXmm?: number;
   offsetZmm?: number;
 }
-export interface StoredHilt { name: string; format: HiltFormat; data: ArrayBuffer; fit: HiltFit }
+/** A file that came with the model: an OBJ's .mtl, and any textures the .mtl names. */
+export interface SideFile { name: string; data: ArrayBuffer }
+export interface StoredHilt { name: string; format: HiltFormat; data: ArrayBuffer; fit: HiltFit; sideFiles?: SideFile[] }
 export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0 };
 
 export function formatOf(fileName: string): HiltFormat | null {
@@ -39,8 +42,26 @@ export function guessLength(longest: number): number {
 }
 
 const steel = () => new THREE.MeshStandardMaterial({ color: 0x9aa7b4, roughness: 0.35, metalness: 0.85 });
+const baseName = (path: string) => path.replace(/\\/g, '/').split('/').pop()!.toLowerCase();
 
-export async function parseHilt(format: HiltFormat, data: ArrayBuffer): Promise<THREE.Object3D> {
+/**
+ * An .mtl describes a Phong material (diffuse, specular colour, shininess), which is what Fusion and most CAD tools
+ * write. Turned into the metal/roughness material the room lights with: a bright specular colour means metal, and
+ * the shininess sets the roughness. A guess, but a fair one for a hilt.
+ */
+function fromPhong(m: THREE.MeshPhongMaterial): THREE.MeshStandardMaterial {
+  const spec = m.specular; const specLevel = Math.max(spec.r, spec.g, spec.b);
+  const out = new THREE.MeshStandardMaterial({
+    color: m.color, map: m.map, normalMap: m.normalMap, alphaMap: m.alphaMap, emissive: m.emissive, emissiveMap: m.emissiveMap,
+    transparent: m.transparent, opacity: m.opacity, side: m.side,
+    metalness: specLevel > 0.5 ? 0.9 : specLevel > 0.2 ? 0.5 : 0.1,
+    roughness: Math.max(0.08, Math.min(0.95, 1 - Math.sqrt(Math.max(0, m.shininess) / 1000))),
+  });
+  out.name = m.name;
+  return out;
+}
+
+export async function parseHilt(format: HiltFormat, data: ArrayBuffer, sideFiles: SideFile[] = []): Promise<THREE.Object3D> {
   if (format === 'glb') {
     const gltf = await new GLTFLoader().parseAsync(data, '');
     return gltf.scene;
@@ -50,9 +71,35 @@ export async function parseHilt(format: HiltFormat, data: ArrayBuffer): Promise<
     geometry.computeVertexNormals();
     return new THREE.Mesh(geometry, steel());
   }
-  const obj = new OBJLoader().parse(new TextDecoder().decode(data));
-  // OBJ materials live in a separate .mtl file that is not here: give it the plain steel finish.
-  obj.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.material = steel(); });
+  const text = new TextDecoder().decode(data);
+  // An OBJ's materials live in a separate .mtl, which may name texture images: both come as side files. Anything the
+  // .mtl asks for by name is served from those, as blob URLs; anything missing is left out rather than fetched.
+  const wanted = /^\s*mtllib\s+(.+?)\s*$/m.exec(text)?.[1];
+  const mtl = sideFiles.find((f) => wanted && baseName(f.name) === baseName(wanted)) ?? sideFiles.find((f) => baseName(f.name).endsWith('.mtl'));
+  const loader = new OBJLoader();
+  const urls: string[] = [];
+  if (mtl) {
+    const byName = new Map(sideFiles.map((f) => [baseName(f.name), f]));
+    const manager = new THREE.LoadingManager();
+    manager.setURLModifier((url) => {
+      const f = byName.get(baseName(url));
+      if (!f) return url;
+      const u = URL.createObjectURL(new Blob([f.data])); urls.push(u); return u;
+    });
+    const materials = new MTLLoader(manager).parse(new TextDecoder().decode(mtl.data), '');
+    materials.preload();
+    loader.setMaterials(materials);
+  }
+  const obj = loader.parse(text);
+  obj.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    const converted = mats.map((x) => (mtl && (x as THREE.MeshPhongMaterial).isMeshPhongMaterial && x.name ? fromPhong(x as THREE.MeshPhongMaterial) : steel()));
+    m.material = Array.isArray(m.material) ? converted : converted[0];
+  });
+  // The blob URLs are only needed while the textures load; give them a moment, then let them go.
+  if (urls.length) setTimeout(() => urls.forEach((u) => URL.revokeObjectURL(u)), 10000);
   return obj;
 }
 
