@@ -24,6 +24,10 @@ const BLADE_LENGTH = 0.92; // metres: a 36 inch blade, the default
 const BLADE_RADIUS = 0.0127; // a one inch tube, the default
 export const BLADE_DIAMETERS = { '1': 0.0254, '7/8': 0.022225 } as const;
 export type BladeDiameter = keyof typeof BLADE_DIAMETERS;
+/** LED strips come in a few densities; 144 per metre is the usual saber strip. */
+export const STRIP_DENSITIES = [60, 100, 120, 144] as const;
+/** How many LEDs a blade of `metres` holds: the strip is cut to the blade, never crammed. */
+export const ledsFor = (metres: number, perMetre: number): number => Math.max(1, Math.round(metres * perMetre));
 const HILT_LENGTH = 0.27;
 const HOME_AT = { x: 0.3, y: 1.3 }; // where the hand starts, across and up
 const REACH = { x: 0.8, low: 0.7, high: 1.8, push: 0.32 }; // how far the hand can go, and how far forward it reaches mid-sweep
@@ -65,8 +69,9 @@ export interface SceneSettings {
   /** The blade itself: length in inches and tube diameter. */
   bladeInches: number;
   bladeDiameter: BladeDiameter;
+  ledsPerMetre: number;
 }
-export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1' };
+export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144 };
 
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
 
@@ -81,13 +86,17 @@ export class DemoScene {
   private readonly camera = new THREE.PerspectiveCamera(42, 1, 0.05, 60);
   private readonly saber = new THREE.Group();
   private readonly roll = new THREE.Group();
-  private readonly ledData: Uint8Array<ArrayBuffer>;
-  private readonly ledTexture: THREE.DataTexture;
+  private ledData: Uint8Array<ArrayBuffer>;
+  private ledTexture: THREE.DataTexture;
+  private lookId: string;
+  private args = new Map<number, string>();
   private readonly tipMaterial = new THREE.MeshBasicMaterial({ toneMapped: false });
   private readonly lights: THREE.PointLight[] = [];
   private readonly raycaster = new THREE.Raycaster();
   private sim: BladeSim;
-  private readonly leds: number;
+  private leds: number;
+  /** The number of LEDs in a blade is a property of the blade; the page reads it back to show. */
+  get ledCount(): number { return this.leds; }
   private raf = 0;
   private lastFrame = 0;
   private disposed = false;
@@ -124,8 +133,8 @@ export class DemoScene {
   onMotion: ((m: Motion) => void) | null = null;
   private lastReport = 0;
 
-  constructor(private readonly host: HTMLElement, lookId: string, leds = 132) {
-    this.leds = leds;
+  constructor(private readonly host: HTMLElement, lookId: string, leds = ledsFor(BLADE_LENGTH, 144)) {
+    this.leds = leds; this.lookId = lookId;
     this.sim = new BladeSim(lookId, leds, 1 + Math.floor(Math.random() * 1e6));
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -139,11 +148,7 @@ export class DemoScene {
 
     // The blade: a tube whose colour along its length is the LED strip, one texel per LED.
     this.ledData = new Uint8Array(new ArrayBuffer(leds * 4));
-    this.ledTexture = new THREE.DataTexture(this.ledData, 1, leds, THREE.RGBAFormat);
-    this.ledTexture.colorSpace = THREE.SRGBColorSpace;
-    this.ledTexture.magFilter = THREE.LinearFilter;
-    this.ledTexture.minFilter = THREE.LinearFilter;
-    this.ledTexture.needsUpdate = true;
+    this.ledTexture = DemoScene.stripTexture(this.ledData, leds);
     // Brighter than white on purpose: the bloom pass turns the excess into the glow around the blade.
     const bladeMaterial = new THREE.MeshBasicMaterial({ map: this.ledTexture, color: new THREE.Color(BOOST, BOOST, BOOST), toneMapped: false });
     this.bladeMaterial = bladeMaterial;
@@ -188,6 +193,30 @@ export class DemoScene {
 
     this.resize();
     this.raf = requestAnimationFrame(this.frame);
+  }
+
+  private static stripTexture(data: Uint8Array<ArrayBuffer>, leds: number): THREE.DataTexture {
+    const t = new THREE.DataTexture(data, 1, leds, THREE.RGBAFormat);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearFilter;
+    t.needsUpdate = true;
+    return t;
+  }
+
+  /** A blade with a different number of LEDs: a new strip texture and a fresh simulator, same look and state. */
+  private setLedCount(leds: number): void {
+    if (leds === this.leds) return;
+    this.leds = leds;
+    this.ledTexture.dispose();
+    this.ledData = new Uint8Array(new ArrayBuffer(leds * 4));
+    this.ledTexture = DemoScene.stripTexture(this.ledData, leds);
+    this.bladeMaterial.map = this.ledTexture;
+    this.bladeMaterial.needsUpdate = true;
+    const on = this.sim.isOn;
+    this.sim = new BladeSim(this.lookId, leds, 1 + Math.floor(Math.random() * 1e6));
+    this.sim.setArgs(this.args);
+    this.sim.setOn(on);
   }
 
   private buildRoom(): void {
@@ -260,6 +289,7 @@ export class DemoScene {
     (this.scene.fog as THREE.FogExp2).density = next.haze;
     this.grid.visible = next.grid;
     this.setBlade(next.bladeInches * 0.0254, BLADE_DIAMETERS[next.bladeDiameter] / 2);
+    this.setLedCount(ledsFor(next.bladeInches * 0.0254, next.ledsPerMetre));
   }
 
   /** A different blade in the emitter: the tube, its tip, the lamps along it and the weight in the hand all follow. */
@@ -295,11 +325,12 @@ export class DemoScene {
 
   setLook(lookId: string, args: Map<number, string>): void {
     const wasOn = this.sim.isOn;
+    this.lookId = lookId; this.args = args;
     this.sim = new BladeSim(lookId, this.leds, 1 + Math.floor(Math.random() * 1e6));
     this.sim.setArgs(args);
     this.sim.setOn(wasOn);
   }
-  setArgs(args: Map<number, string>): void { this.sim.setArgs(args); }
+  setArgs(args: Map<number, string>): void { this.args = args; this.sim.setArgs(args); }
   get isOn(): boolean { return this.sim.isOn; }
   setOn(on: boolean): void { this.sim.setOn(on); if (!on) this.sim.setLockup(null); }
   trigger(type: EffectType, pos = 0.35 + Math.random() * 0.45): void { if (this.sim.isOn) this.sim.trigger(type, pos); }

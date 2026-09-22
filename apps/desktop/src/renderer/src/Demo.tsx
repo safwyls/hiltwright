@@ -3,14 +3,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SIMULATED_LOOKS, STARTER_LOOKS, argInfo, hexToColorWord, type LockupType } from '@hiltwright/core';
-import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
+import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
 import { DEFAULT_FIT, formatOf, parseHilt, type HiltFit, type SideFile, type StoredHilt } from './hiltModel';
 import { listHilts, removeHilt, saveHilt } from './hiltStore';
 import type { Object3D } from 'three';
 
 const LOOKS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
-const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter'>; label: string; min: number; max: number; step: number; hint: string }[] = [
+const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter' | 'ledsPerMetre'>; label: string; min: number; max: number; step: number; hint: string }[] = [
   { key: 'glow', label: 'Glow', min: 0, max: 3, step: 0.05, hint: 'Strength of the glow around the blade' },
   { key: 'glowSpread', label: 'Glow spread', min: 0, max: 1, step: 0.02, hint: 'How far the glow reaches' },
   { key: 'bladeBrightness', label: 'Blade heat', min: 0.7, max: 2.5, step: 0.05, hint: 'Higher is hotter and paler; lower keeps more colour in the core' },
@@ -237,6 +237,12 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
                 <input type="range" min={20} max={40} step={1} value={look3d.bladeInches} aria-label="Blade length in inches" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setLook3d((v) => ({ ...v, bladeInches: Number(e.target.value) }))} />
                 <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{look3d.bladeInches}"</span>
               </label>
+              <div className="row" style={{ gap: 8 }} title="How densely the strip inside is populated. The count follows from the length: a shorter blade has fewer LEDs, and every look runs on that many.">
+                <span className="dim" style={{ width: 76, flex: 'none' }}>Strip</span>
+                <span className="input sans" style={{ height: 28, fontSize: 12, width: 92, flex: 'none' }}><span className="ellip">{look3d.ledsPerMetre}/m</span><span className="caret"><Icon name="down" /></span>
+                  <select value={look3d.ledsPerMetre} aria-label="LEDs per metre of strip" onChange={(e) => setLook3d((v) => ({ ...v, ledsPerMetre: Number(e.target.value) }))}>{STRIP_DENSITIES.map((d) => <option key={d} value={d}>{d} per metre</option>)}</select></span>
+                <span className="mono mute" style={{ flex: 1, textAlign: 'right' }}>{ledsFor(look3d.bladeInches * 0.0254, look3d.ledsPerMetre)} LEDs</span>
+              </div>
               <div className="row" style={{ gap: 8 }}>
                 <span className="dim" style={{ width: 76, flex: 'none' }}>Diameter</span>
                 <div className="seg" role="radiogroup" aria-label="Blade diameter" style={{ height: 28 }}>
