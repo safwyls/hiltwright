@@ -16,9 +16,10 @@ import type { Object3D } from 'three';
 
 // Hiltwright's own looks; the owner's saved looks (built or pasted) join them once loaded, when they can be simulated.
 const STARTERS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
-const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter' | 'ledsPerMetre' | 'staff' | 'bladeWhenOff'>; label: string; min: number; max: number; step: number; hint: string }[] = [
+const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter' | 'ledsPerMetre' | 'staff' | 'bladeWhenOff'>; label: string; min: number; max: number; step: number; hint: string; centre?: number }[] = [
   { key: 'glow', label: 'Glow', min: 0, max: 3, step: 0.05, hint: 'Strength of the glow around the blade' },
-  { key: 'glowSpread', label: 'Glow spread', min: 0, max: 1, step: 0.02, hint: 'How far the glow reaches' },
+  // Shown as an offset from the default, since the default reach is what looks right and either way from it is a tweak.
+  { key: 'glowSpread', label: 'Glow spread', min: 0, max: 1, step: 0.02, hint: 'How far the glow reaches, either side of the usual', centre: 0.5 },
   { key: 'bladeBrightness', label: 'Blade heat', min: 0.7, max: 2.5, step: 0.05, hint: 'Higher is hotter and paler; lower keeps more colour in the core' },
   { key: 'bladeLight', label: 'Blade light', min: 0, max: 3, step: 0.05, hint: 'How strongly the blade lights the floor and the hilt' },
   { key: 'roomLight', label: 'Room light', min: 0, max: 2.5, step: 0.05, hint: 'The room\u2019s own lamps. At zero only the blade lights the scene' },
@@ -475,7 +476,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
               <label key={sl.key} className="row" style={{ gap: 8 }} title={sl.hint}>
                 <span className="dim" style={{ width: 76, flex: 'none' }}>{sl.label}</span>
                 <input type="range" min={sl.min} max={sl.max} step={sl.step} value={look3d[sl.key]} aria-label={sl.hint} style={{ flex: 1, minWidth: 0 }} onChange={(e) => setLook3d((v) => ({ ...v, [sl.key]: Number(e.target.value) }))} />
-                <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{look3d[sl.key].toFixed(look3d[sl.key] < 1 && sl.max <= 1 ? 2 : 1)}</span>
+                <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{sl.centre != null ? (Math.abs(look3d[sl.key] - sl.centre) < sl.step / 2 ? '0' : `${look3d[sl.key] > sl.centre ? '+' : '−'}${Math.abs(look3d[sl.key] - sl.centre).toFixed(2)}`) : look3d[sl.key].toFixed(look3d[sl.key] < 1 && sl.max <= 1 ? 2 : 1)}</span>
               </label>
             ))}
             <label className="row" style={{ gap: 10 }}>
