@@ -4,6 +4,7 @@
 //   finishes: chrome, polished, brushed, satin, anodised, brass, paint, plastic
 //   node scripts/hwpack.ts font <folder>   --creator "ProffieOS" --licence "CC BY-SA 4.0" [--copy] --out ../../packs
 //   node scripts/hwpack.ts show <file.hwpack>
+//   node scripts/hwpack.ts credit <file.hwpack> --creator "Name" [--licence "..."]   (rewrites the plain manifest in place)
 //
 // A hilt takes the .mtl beside the .obj. --copy allows copying a font to a card; without it the app only plays it.
 
@@ -22,6 +23,20 @@ function parseIni(text: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of text.split(/\r?\n/)) { const m = /^\s*([A-Za-z0-9_]+)\s*=\s*(.+?)\s*$/.exec(line); if (m) out[m[1]] = m[2]; }
   return out;
+}
+
+if (mode === 'credit') {
+  // The manifest is plain JSON ahead of the encrypted items, so a credit can change without rebuilding the pack.
+  const file = readFileSync(target);
+  const { manifest } = readManifest(file);
+  const len = file.readUInt32LE(5);
+  if (opts.creator) manifest.creator = opts.creator;
+  if (opts.licence) manifest.licence = opts.licence;
+  const json = Buffer.from(JSON.stringify(manifest), 'utf8');
+  const head = Buffer.alloc(9); file.copy(head, 0, 0, 5); head.writeUInt32LE(json.length, 5);
+  writeFileSync(target, Buffer.concat([head, json, file.subarray(9 + len)]));
+  console.log(`${target}: ${manifest.name} by ${manifest.creator}, ${manifest.licence}`);
+  process.exit(0);
 }
 
 if (mode === 'show') {

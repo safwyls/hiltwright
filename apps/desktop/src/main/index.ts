@@ -55,6 +55,9 @@ function createWindow(): void {
     backgroundColor: '#0a0e13',
     title: 'Hiltwright',
     autoHideMenuBar: true,
+    // The app's header row is the title bar: draggable, with the caption buttons overlaid in the header's colours.
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#0d131a', symbolColor: '#c9d3de', height: 52 },
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       sandbox: true,

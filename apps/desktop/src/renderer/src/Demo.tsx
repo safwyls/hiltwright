@@ -61,7 +61,9 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const [propKey, setPropKey] = useState<string>(() => saberProp ?? 'fett263');
   const prop = propBehaviour(propKey);
   useEffect(() => { scene.current?.setProp(prop); }, [prop]);
-  const [motion, setMotion] = useState<Motion>({ swing: 0, tilt: 0, twist: 0, on: false });
+  const [motion, setMotion] = useState<Motion>({ swing: 0, tilt: 0, turn: 0, twist: 0, on: false });
+  const [lightOpen, setLightOpen] = useState<boolean>(() => { try { return localStorage.getItem('hiltwright.demo.lightOpen') === '1'; } catch { return false; } });
+  useEffect(() => { try { localStorage.setItem('hiltwright.demo.lightOpen', lightOpen ? '1' : '0'); } catch { /* private mode */ } }, [lightOpen]);
   const [failed, setFailed] = useState<string | null>(null);
 
   // ---- sound: a font from a card, the saber's card, or the font bank, played as the saber would ----
@@ -435,6 +437,17 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
                 </div>
                 <span className="hint" style={{ fontSize: 11.5 }}>{control === 'hold' ? 'Drag to move the hand; the blade follows it, high or low.' : 'Drag left and right to swing level with the floor, up and down to tilt.'}</span>
               </div>
+              <div className="col" style={{ gap: 6, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+                <div className="row between"><span className="label">Point the blade</span><button type="button" className="holo small" onClick={() => room?.resetPose()}>Reset</button></div>
+                {([['Tilt', 'tilt', -89, 89, 'Up or down: what the saber reads from gravity'], ['Turn', 'turn', -180, 180, 'Left or right about the vertical'], ['Twist', 'twist', -180, 180, 'Rolled about its own axis']] as const).map(([label, key, min, max, hint]) => (
+                  <label key={key} className="row" style={{ gap: 8 }} title={hint}>
+                    <span className="dim" style={{ width: 44, flex: 'none', fontSize: 12 }}>{label}</span>
+                    <input type="range" min={min} max={max} step={1} value={motion[key]} aria-label={`${label}: ${hint}`} style={{ flex: 1, minWidth: 0 }} onChange={(e) => { if (!room) return; if (control !== 'steer') { setControl('steer'); room.setControlMode('steer'); } room.setPose({ [key]: Number(e.target.value) }); }} />
+                    <span className="mono mute" style={{ width: 40, textAlign: 'right', fontSize: 11 }}>{motion[key]}°</span>
+                  </label>
+                ))}
+                <span className="hint" style={{ fontSize: 11.5 }}>For seeing what a look does with direction. Uses tilt-and-swing control, where the hand stays put; the mouse takes over again as soon as you drag.</span>
+              </div>
             </>
           )}
         </div>
@@ -463,10 +476,11 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       </section>
 
       <div className="mono" style={{ position: 'absolute', right: 20, top: 20, fontSize: 11.5, color: 'var(--dim)', textAlign: 'right', lineHeight: 1.7, pointerEvents: 'none' }} aria-live="off">
+        <div className="mute">what the saber's sensors would read</div>
         <div>swing <span style={{ color: 'var(--text)' }}>{motion.swing}°/s</span></div>
         <div>tilt <span style={{ color: 'var(--text)' }}>{motion.tilt > 0 ? 'up ' : motion.tilt < 0 ? 'down ' : ''}{Math.abs(motion.tilt)}°</span></div>
+        <div>turn <span style={{ color: 'var(--text)' }}>{motion.turn}°</span></div>
         <div>twist <span style={{ color: 'var(--text)' }}>{motion.twist}°</span></div>
-        <div className="mute">what the saber's sensors would read</div>
       </div>
 
       <section className="panel" style={{ position: 'absolute', right: 20, bottom: 18, width: 280, maxHeight: 'calc(100% - 130px)', display: 'flex', flexDirection: 'column', background: 'rgba(12,17,23,.9)' }} aria-label="Scene">
@@ -476,18 +490,20 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
         </div>
         {sceneOpen && (
           <div className="col scroll" style={{ gap: 7, padding: '0 12px 12px', fontSize: 12, minHeight: 0 }}>
-            <span className="label">Light</span>
-            {SLIDERS.map((sl) => (
+            <button type="button" className="row between" aria-expanded={lightOpen} onClick={() => setLightOpen((o) => !o)}><span className="label">Light</span><span style={{ display: 'flex', width: 14, height: 14, color: 'var(--mute)' }}><Icon name={lightOpen ? 'down' : 'chev'} /></span></button>
+            {lightOpen && SLIDERS.map((sl) => (
               <label key={sl.key} className="row" style={{ gap: 8 }} title={sl.hint}>
                 <span className="dim" style={{ width: 76, flex: 'none' }}>{sl.label}</span>
                 <input type="range" min={sl.min} max={sl.max} step={sl.step} value={look3d[sl.key]} aria-label={sl.hint} style={{ flex: 1, minWidth: 0 }} onChange={(e) => setLook3d((v) => ({ ...v, [sl.key]: Number(e.target.value) }))} />
                 <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{sl.centre != null ? (Math.abs(look3d[sl.key] - sl.centre) < sl.step / 2 ? '0' : `${look3d[sl.key] > sl.centre ? '+' : '−'}${Math.abs(look3d[sl.key] - sl.centre).toFixed(sl.step < 0.01 ? 3 : 2).replace(/\.?0+$/, '')}`) : look3d[sl.key].toFixed(look3d[sl.key] < 1 && sl.max <= 1 ? 2 : 1)}</span>
               </label>
             ))}
-            <label className="row" style={{ gap: 10 }}>
-              <button type="button" className={`tog ${look3d.grid ? 'on' : ''}`} role="switch" aria-checked={look3d.grid} aria-label="Floor grid" onClick={() => setLook3d((v) => ({ ...v, grid: !v.grid }))}><i /></button>
-              <span className="dim">Floor grid</span>
-            </label>
+            {lightOpen && (
+              <label className="row" style={{ gap: 10 }}>
+                <button type="button" className={`tog ${look3d.grid ? 'on' : ''}`} role="switch" aria-checked={look3d.grid} aria-label="Floor grid" onClick={() => setLook3d((v) => ({ ...v, grid: !v.grid }))}><i /></button>
+                <span className="dim">Floor grid</span>
+              </label>
+            )}
             <span className="label" style={{ paddingTop: 8, marginTop: 2, borderTop: '1px solid var(--line)' }}>Blade</span>
             <label className="row" style={{ gap: 8 }} title="Blade length, in inches">
               <span className="dim" style={{ width: 76, flex: 'none' }}>Length</span>

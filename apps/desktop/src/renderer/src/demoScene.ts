@@ -78,7 +78,7 @@ export interface SceneSettings {
 }
 export const DEFAULT_SCENE: SceneSettings = { glow: 1.2, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144, staff: false, bladeWhenOff: true };
 
-export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
+export interface Motion { swing: number; tilt: number; turn: number; twist: number; on: boolean }
 /** What the saber did, for whoever makes its sounds. `motion` comes every frame with the blade's turn rate. */
 export type SaberEvent = { kind: 'on' } | { kind: 'off' } | { kind: 'clash' } | { kind: 'blast' } | { kind: 'stab' } | { kind: 'lockup'; type: LockupType | null } | { kind: 'motion'; degPerSec: number; dt: number } | { kind: 'sound'; n: number };
 
@@ -449,7 +449,32 @@ export class DemoScene {
   private prop: PropBehaviour = PROPS.fett263;
   setLockup(type: LockupType | null): void { if (this.sim.isOn || type === null) { for (const sim of this.sims()) sim.setLockup(type); this.onEvent?.({ kind: 'lockup', type }); } }
   addTwist(degrees: number): void { this.twistTarget = Math.max(-180, Math.min(180, this.twistTarget + degrees)); }
+  /** Where the blade points, in degrees: turn about the vertical (0 straight into the room), tilt up or down, twist about its own axis. */
+  get pose(): { turn: number; tilt: number; twist: number } {
+    const d = this.dir;
+    return { turn: (Math.atan2(d.x, -d.z) * 180) / Math.PI, tilt: (Math.asin(Math.max(-1, Math.min(1, d.y))) * 180) / Math.PI, twist: this.twist };
+  }
+  /**
+   * Point the blade somewhere by numbers rather than by the mouse. Steering aims the blade directly; holding the hilt
+   * moves the hand to where the blade would point that way, and the blade follows with its usual weight.
+   */
+  private poseAim: { turn: number; tilt: number } | null = null;
+  setPose(p: { turn?: number; tilt?: number; twist?: number }): void {
+    if (p.twist != null) this.twistTarget = Math.max(-180, Math.min(180, p.twist));
+    if (p.turn == null && p.tilt == null) return;
+    // Two sliders moved in quick succession must not read each other's lag: the aim is kept until a drag takes over.
+    const cur = this.poseAim ?? this.pose;
+    const turn = p.turn ?? cur.turn; const tilt = Math.max(-89, Math.min(89, p.tilt ?? cur.tilt));
+    this.poseAim = { turn, tilt };
+    if (this.mode === 'steer') { this.steer.aimAt(turn, tilt); return; }
+    const d = Steer.direction(turn, tilt);
+    const chest = WIELD.chest; const t = this.wield.handTarget;
+    const reach = Math.hypot(t[0] - chest[0], t[1] - chest[1], t[2] - chest[2]);
+    this.wield.handTarget = [chest[0] + d[0] * reach, chest[1] + d[1] * reach, chest[2] + d[2] * reach];
+    this.handAt.x = this.wield.handTarget[0]; this.handAt.y = this.wield.handTarget[1];
+  }
   resetPose(): void {
+    this.poseAim = null;
     this.handAt.x = HOME_AT.x; this.handAt.y = HOME_AT.y;
     this.wield.handTarget = [...HOME];
     this.steer.aimAt(STEER_START.yaw + Math.round((this.steer.yaw - STEER_START.yaw) / 360) * 360, STEER_START.pitch); // the short way round
@@ -489,6 +514,7 @@ export class DemoScene {
 
   /** Take hold of the hilt. The hand does not jump to the cursor: it keeps its place and moves as the cursor moves. */
   grab(clientX: number, clientY: number): void {
+    this.poseAim = null;
     this.lastDrag = { x: clientX, y: clientY };
     if (this.mode === 'steer') return;
     const at = this.handPlaceAt(clientX, clientY);
@@ -573,7 +599,7 @@ export class DemoScene {
     this.renderGlow();
     this.composer.render();
 
-    if (this.onMotion && now - this.lastReport > 120) { this.lastReport = now; this.onMotion({ swing: Math.round(this.swing / 10) * 10, tilt: Math.round(tilt), twist: Math.round(this.twist), on: this.sim.isOn }); }
+    if (this.onMotion && now - this.lastReport > 120) { this.lastReport = now; this.onMotion({ swing: Math.round(this.swing / 10) * 10, tilt: Math.round(tilt), turn: Math.round(this.pose.turn), twist: Math.round(this.twist), on: this.sim.isOn }); }
   };
 
   /** The blade alone, on black, blurred: everything else in the room is blacked out for this pass and then put back. */
