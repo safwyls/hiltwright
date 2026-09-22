@@ -65,6 +65,8 @@ export function registerIpc(): void {
     });
   });
   ipcMain.handle('library:rename', (_e, id: unknown, name: unknown) => library.rename(str(id, 40), str(name, 80)));
+  ipcMain.handle('library:plan', (_e, name: unknown, model: unknown) => { const errors = validateModel(model as SaberConfigModel).filter((e) => !/preset/i.test(e)); if (errors.length) throw new Error(errors[0]); return library.plan(str(name, 80), model as SaberConfigModel); });
+  ipcMain.handle('library:adopt', (_e, plannedId: unknown, targetId: unknown) => library.adopt(str(plannedId, 40), str(targetId, 40)));
   ipcMain.handle('library:remove', (_e, id: unknown) => library.remove(str(id, 40)));
   const hexMap = (v: unknown): Record<number, string> => {
     const out: Record<number, string> = {};

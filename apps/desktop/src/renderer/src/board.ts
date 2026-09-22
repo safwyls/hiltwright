@@ -5,6 +5,7 @@ import {
   BoardClient, deleteCurrentPreset, diffPreset, duplicateCurrentPreset, editCurrentPreset, formatBuiltin, isEmptyPatch, isPresetBlockEnd, listPresets, parseBuiltin,
   moveCurrentPreset, parseBattery, parseInteger, parseList, parsePresetBlocks, parseScanId, parseVersion, presetCommands, selectPreset, wasRejected,
   type ListResult, type PresetPatch, type PresetRecord, type Response, type VersionInfo,
+  type SaberConfigModel,
 } from '@hiltwright/core';
 import type { SaberIdentity, SaberPatch, SaberRecord, SnapshotMeta } from '../../shared/api';
 import { PROFFIE_FILTER, WebSerialTransport, describePort, grantedProffiePorts } from './serial';
@@ -377,6 +378,21 @@ export function useBoard() {
   }, []);
 
   /** Store the build model and/or firmware manifest on the current saber's record. */
+  /** A saber set up ahead of its hilt. */
+  const planSaber = useCallback(async (name: string, model: SaberConfigModel): Promise<SaberRecord> => {
+    const rec = await api().library.plan(name, model);
+    await refreshLibrary();
+    return rec;
+  }, [refreshLibrary]);
+  /** The connected saber takes over a plan. */
+  const adoptPlan = useCallback(async (plannedId: string): Promise<SaberRecord | null> => {
+    const s = saberRef.current;
+    if (!s) return null;
+    const rec = await api().library.adopt(plannedId, s.id);
+    saberRef.current = rec; setSaber(rec);
+    await refreshLibrary();
+    return rec;
+  }, [refreshLibrary]);
   const updateSaber = useCallback(async (patch: SaberPatch, id?: string) => {
     const target = id ?? saberRef.current?.id;
     if (!target) return;
@@ -454,7 +470,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, updateSaber, currentPresetNow, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
+  return { status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, restoreSnapshot, renameSaber, updateSaber, planSaber, adoptPlan, currentPresetNow, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
 }
 
 export type Board = ReturnType<typeof useBoard>;

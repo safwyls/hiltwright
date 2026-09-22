@@ -3,7 +3,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import type { PresetRecord } from '@hiltwright/core';
+import type { PresetRecord, SaberConfigModel } from '@hiltwright/core';
 import type { SaberIdentity, SaberPatch, SaberRecord } from '../shared/api';
 
 interface LibraryFile { version: 1; sabers: SaberRecord[] }
@@ -37,8 +37,38 @@ export class Library {
 
   /** A board is the same saber when the USB serial matches; failing that, when config, install stamp and blade layout all match. */
   static matches(a: SaberIdentity, b: SaberIdentity): boolean {
+    // A planned saber has no identity at all; it is only ever matched by the owner adopting it.
+    if (!a.usbSerial && !a.configName && !a.pixelBlades.length) return false;
+    if (!b.usbSerial && !b.configName && !b.pixelBlades.length) return false;
     if (a.usbSerial && b.usbSerial) return a.usbSerial === b.usbSerial;
     return a.configName === b.configName && a.installed === b.installed && a.pixelBlades.join(',') === b.pixelBlades.join(',');
+  }
+
+  /** A saber set up before its hilt: no identity, no presets read, just a name and a build model. */
+  async plan(name: string, model: SaberConfigModel): Promise<SaberRecord> {
+    const lib = await this.load();
+    const now = new Date().toISOString();
+    const rec: SaberRecord = {
+      id: randomBytes(6).toString('hex'), name, planned: true,
+      identity: { usbSerial: null, configName: null, version: null, prop: null, buttons: null, installed: null, pixelBlades: [], bladeConfig: null },
+      firstSeen: now, lastSeen: now, presets: [], fonts: [], tracks: [], model,
+    };
+    lib.sabers.push(rec);
+    await this.persist();
+    return rec;
+  }
+
+  /** The real saber takes the plan's model (wiring, prop, presets, looks); the plan itself goes. */
+  async adopt(plannedId: string, targetId: string): Promise<SaberRecord> {
+    const lib = await this.load();
+    const plan = lib.sabers.find((s) => s.id === plannedId && s.planned);
+    const target = lib.sabers.find((s) => s.id === targetId && !s.planned);
+    if (!plan || !target) throw new Error('No such plan or saber');
+    if (plan.model) target.model = { ...plan.model, name: target.model?.name ?? plan.model.name };
+    if (!/^(hiltwright_)?saber/i.test(plan.name) && target.name === defaultName(target.identity)) target.name = plan.name;
+    lib.sabers = lib.sabers.filter((s) => s.id !== plannedId);
+    await this.persist();
+    return target;
   }
 
   async upsert(input: { identity: SaberIdentity; presets: PresetRecord[]; fonts: string[]; tracks: string[]; name?: string }): Promise<SaberRecord> {

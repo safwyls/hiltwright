@@ -8,7 +8,7 @@ import { Build } from './Build';
 import { Looks } from './Looks';
 import { ErrorBoundary } from './ErrorBoundary';
 import { SaberControls } from './Controls';
-import { infoFromRecord, queuedLookIds } from './saberModel';
+import { guessBlades, infoFromRecord, queuedLookIds } from './saberModel';
 import { usePendingLookColours } from './pendingColours';
 import { StyleEditor } from './StyleEditor';
 import { registerLookSim, type LookDef } from '@hiltwright/core';
@@ -83,7 +83,7 @@ export function App() {
       </header>
 
       <main className="main">
-        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page === 'demo' ? 'Demo room' : page === 'editor' ? 'Style editor' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} go={setPage} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} onBuild={() => setPage('build')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} onEdit={(l) => { setEditingLook(l); setPage('editor'); }} onNew={() => { setEditingLook(null); setPage('editor'); }} /> : page === 'editor' ? <StyleEditor key={editingLook?.id ?? 'new'} editing={editingLook} onSaved={() => undefined} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} /> : page === 'demo' ? <Suspense fallback={<span className="hint">Opening the demo room…</span>}><Demo initialLook={demoLook} board={board} /></Suspense> : page === 'fonts' ? <Fonts board={board} /> : page === 'build' ? <Build board={board} /> : <Diagnostics board={board} />}</ErrorBoundary>
+        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page === 'demo' ? 'Demo room' : page === 'editor' ? 'Style editor' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} go={setPage} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} onBuild={() => setPage('build')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} onEdit={(l) => { setEditingLook(l); setPage('editor'); }} onNew={() => { setEditingLook(null); setPage('editor'); }} /> : page === 'editor' ? <StyleEditor key={editingLook?.id ?? 'new'} editing={editingLook} onSaved={() => undefined} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} /> : page === 'demo' ? <Suspense fallback={<span className="hint">Opening the demo room…</span>}><Demo initialLook={demoLook} board={board} /></Suspense> : page === 'fonts' ? <Fonts board={board} /> : page === 'build' ? <Build board={board} go={setPage} /> : <Diagnostics board={board} />}</ErrorBoundary>
       </main>
 
     </div>
@@ -93,10 +93,24 @@ export function App() {
 function Library({ board, go }: { board: ReturnType<typeof useBoard>; go: (p: Page) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [planning, setPlanning] = useState(false);
+  const [planName, setPlanName] = useState('');
   const others = board.library.filter((s) => s.id !== board.saber?.id);
+  /** Set a remembered (or planned) saber up on Build & Install. */
+  const prepare = (id: string) => { try { localStorage.setItem('hiltwright.build.saber', id); } catch { /* private mode */ } go('build'); };
+  const plan = async () => {
+    const name = planName.trim() || `Saber ${board.library.length + 1}`;
+    const rec = await board.planSaber(name, { name: `hiltwright_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`, board: 'V2', buttons: 2, prop: 'fett263', blades: guessBlades([132]), presets: [], looks: [], generator: `hiltwright ${window.hiltwright.appVersion}` });
+    setPlanning(false); setPlanName('');
+    prepare(rec.id);
+  };
   return (
     <section className="panel" aria-label="Your sabers">
-      <div className="ph"><h2>Remembered sabers</h2><span className="hint">{board.saber ? 'kept on this computer' : 'Looks and builds can be prepared for the most recent one while it is unplugged.'}</span></div>
+      <div className="ph"><h2>Remembered sabers</h2>
+        {planning
+          ? <form className="row" style={{ gap: 6 }} onSubmit={(e) => { e.preventDefault(); void plan(); }}><span className="input sans" style={{ height: 30, width: 200 }}><input type="text" value={planName} autoFocus placeholder="Name the saber" aria-label="Name for the planned saber" onChange={(e) => setPlanName(e.target.value)} /></span><button type="submit" className="btn sm pri"><span className="b"><span className="i">Plan it</span></span></button><button type="button" className="chip" onClick={() => setPlanning(false)}><Icon name="x" /></button></form>
+          : <button type="button" className="chip" title="Set a saber up before it is ever plugged in: wiring, presets and looks, ready to install" onClick={() => setPlanning(true)}><Icon name="plus" />Plan a saber</button>}
+      </div>
       <div className="list">
         {board.saber && (
           <div className="li" style={{ gap: 14, minHeight: 48 }}>
@@ -116,9 +130,11 @@ function Library({ board, go }: { board: ReturnType<typeof useBoard>; go: (p: Pa
         )}
         {others.map((s) => (
           <div key={s.id} className="li" style={{ gap: 14, minHeight: 48 }}>
-            <span style={{ color: 'var(--mute)', display: 'flex', width: 18 }}><Icon name="blade" /></span>
-            <span className="col grow" style={{ gap: 0 }}><b style={{ fontWeight: 600 }}>{s.name}</b><span className="hint">{s.identity.configName ?? '?'} · {s.presets.length} presets · last seen {new Date(s.lastSeen).toLocaleString()}</span></span>
-            {s.id === board.library[0]?.id && !board.saber
+            <span style={{ color: 'var(--mute)', display: 'flex', width: 18 }}><Icon name={s.planned ? 'gear' : 'blade'} /></span>
+            <span className="col grow" style={{ gap: 0 }}><b style={{ fontWeight: 600 }}>{s.name}</b><span className="hint">{s.planned ? `planned ahead · ${s.model?.presets.length ?? 0} presets${s.model?.presetsFrom ? ` from bank "${s.model.presetsFrom.name}"` : ''} · not seen yet` : `${s.identity.configName ?? '?'} · ${s.presets.length} presets · last seen $${new Date(s.lastSeen).toLocaleString()}`}</span></span>
+            {s.planned
+              ? <><button type="button" className="btn sm" onClick={() => prepare(s.id)}><span className="b"><span className="i"><Icon name="build" />Set it up</span></span></button><button type="button" className="btn sm ghost" onClick={() => void window.hiltwright.library.remove(s.id).then(() => board.refreshLibrary())}><span className="b"><span className="i"><Icon name="trash" />Drop the plan</span></span></button></>
+              : s.id === board.library[0]?.id && !board.saber
               ? <><button type="button" className="btn sm" onClick={() => go('looks')}><span className="b"><span className="i"><Icon name="looks" />Choose looks</span></span></button><button type="button" className="btn sm" onClick={() => go('build')}><span className="b"><span className="i"><Icon name="build" />Prepare a build</span></span></button></>
               : <span className="chip"><span className="dot" />Not plugged in</span>}
           </div>

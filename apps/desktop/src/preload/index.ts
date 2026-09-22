@@ -11,6 +11,8 @@ const api: HiltwrightApi = {
     rename: (id, name) => ipcRenderer.invoke('library:rename', id, name),
     remove: (id) => ipcRenderer.invoke('library:remove', id),
     update: (id, patch) => ipcRenderer.invoke('library:update', id, patch),
+    plan: (name, model) => ipcRenderer.invoke('library:plan', name, model),
+    adopt: (plannedId, targetId) => ipcRenderer.invoke('library:adopt', plannedId, targetId),
   },
   banks: {
     list: () => ipcRenderer.invoke('banks:list'),

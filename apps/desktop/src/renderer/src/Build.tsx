@@ -20,14 +20,17 @@ type Step = 'idle' | 'building' | 'built' | 'backup' | 'bootloader' | 'driver' |
 const DRIVER_HELP = 'https://pod.hubbe.net/proffieboard-setup.html';
 const fmtGB = (b: number) => `${(b / 1073741824).toFixed(1)} GB`;
 
-export function Build({ board }: { board: Board }) {
+export function Build({ board, go }: { board: Board; go?: (page: 'presets' | 'looks' | 'armory') => void }) {
   const { status } = board;
   // Frozen at connect time: the install deliberately drops the port, and the page must keep working through that.
   const [snap, setSnap] = useState<{ info: NonNullable<Board['info']>; saber: NonNullable<Board['saber']> } | null>(null);
   useEffect(() => { if (board.status === 'connected' && board.info && board.saber) setSnap({ info: board.info, saber: board.saber }); }, [board.status, board.info, board.saber]);
   // With nothing plugged in, the most recently seen saber can still be prepared: wiring, looks and a build need no
   // board. Installing does.
-  const remembered = !snap ? board.library[0] ?? null : null;
+  // Which remembered saber to prepare while nothing is plugged in: the last chosen, else the most recent.
+  const [offlineId, setOfflineId] = useState<string>(() => { try { return localStorage.getItem('hiltwright.build.saber') ?? ''; } catch { return ''; } });
+  useEffect(() => { try { localStorage.setItem('hiltwright.build.saber', offlineId); } catch { /* private mode */ } }, [offlineId]);
+  const remembered = !snap ? board.library.find((s) => s.id === offlineId) ?? board.library[0] ?? null : null;
   const offline = !!remembered;
   const saber = snap?.saber ?? (remembered ? board.library.find((s) => s.id === remembered.id) ?? remembered : null);
   // Memoised: a fresh object every render would re-run every effect that depends on it.
@@ -91,6 +94,9 @@ export function Build({ board }: { board: Board }) {
   const logBox = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   useEffect(() => { const el = logBox.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [log, tab]);
+  // Another remembered saber chosen while offline: start from its own wiring and prop.
+  const offlineSaberId = offline ? saber?.id : null;
+  useEffect(() => { if (!offlineSaberId || !saber) return; setBlades(saber.model?.blades ?? guessBlades(info?.pixelBlades.length ? info.pixelBlades : [132])); setProp(saber.model?.prop ?? 'fett263'); setVariants(saber.model?.bladeId?.variants ?? []); setConfirmedWiring(!!saber.firmware); setResult(null); setStep('idle'); }, [offlineSaberId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (info && !blades.length) { setBlades(saber?.model?.blades ?? guessBlades(info.pixelBlades.length ? info.pixelBlades : [132])); if (saber?.model) { setProp(saber.model.prop); setVariants(saber.model.bladeId?.variants ?? []); /* a saved model only counts as confirmed wiring once it has actually been installed */ setConfirmedWiring(!!saber.firmware); } }
   }, [info, saber, blades.length]);
@@ -304,6 +310,13 @@ export function Build({ board }: { board: Board }) {
     );
   }
 
+  const plans = board.library.filter((s) => s.planned);
+  const adopt = async (plannedId: string) => {
+    const rec = await board.adoptPlan(plannedId);
+    if (!rec?.model) return;
+    setSnap((s) => (s ? { ...s, saber: rec } : s));
+    setBlades(rec.model.blades); setProp(rec.model.prop); setVariants(rec.model.bladeId?.variants ?? []); setConfirmedWiring(false); setResult(null); setStep('idle');
+  };
   const wiringOk = confirmedWiring && !preview?.errors.length;
   const built = !!result?.ok && step !== 'building';
   const nowStep = !wiringOk ? 1 : !tool?.ready ? 2 : !built ? 3 : step === 'done' ? 0 : 4;
@@ -321,7 +334,21 @@ export function Build({ board }: { board: Board }) {
 
         {tab === 'wiring' && (
           <div className="pb col scroll" style={{ gap: 12 }}>
-            {!confirmedWiring && <div className="note amber"><Icon name="warn" /><span>The saber reported {info.pixelBlades.length} pixel blade{info.pixelBlades.length === 1 ? '' : 's'} ({info.pixelBlades.join(', ')} px), but old firmware cannot say which pins they use. Check every pin against your installer's diagram: wrong power pins can damage hardware.</span></div>}
+            {offline && board.library.length > 1 && (
+              <label className="row" style={{ gap: 10 }}>
+                <span className="small dim" style={{ flex: 'none' }}>Preparing</span>
+                <span className="input sans" style={{ height: 30, width: 280 }}><span className="ellip">{saber.name}{saber.planned ? ' (planned)' : ''}</span><span className="caret"><Icon name="down" /></span>
+                  <select value={saber.id} aria-label="Saber to prepare" onChange={(e) => setOfflineId(e.target.value)}>{board.library.map((s) => <option key={s.id} value={s.id}>{s.name}{s.planned ? ' (planned, not seen yet)' : ''}</option>)}</select></span>
+                <span className="hint">Nothing is plugged in; this is set up ahead and installed when the saber appears.</span>
+              </label>
+            )}
+            {saber.planned && (
+              <div className="note"><Icon name="info" /><span>{saber.name} is a plan: a saber set up before its hilt was ever connected. Choose its wiring here, load a bank of presets onto it on Presets, pick looks, and build. When the hilt is plugged in, Hiltwright offers to make it this saber and the install goes straight on.{!model?.presets.length && <> It has no presets yet: <button type="button" className="holo" onClick={() => go?.('presets')}>load a bank onto it</button>.</>}</span></div>
+            )}
+            {!offline && plans.length > 0 && !saber.firmware && !saber.planned && (
+              <div className="note amber"><Icon name="info" /><span>Is this a saber you planned ahead? {plans.map((p) => <button key={p.id} type="button" className="holo" style={{ marginRight: 10 }} onClick={() => void adopt(p.id)}>It is "{p.name}"</button>)}The plan's wiring, presets and looks move onto this saber.</span></div>
+            )}
+            {!confirmedWiring && !saber.planned && <div className="note amber"><Icon name="warn" /><span>The saber reported {info.pixelBlades.length} pixel blade{info.pixelBlades.length === 1 ? '' : 's'} ({info.pixelBlades.join(', ')} px), but old firmware cannot say which pins they use. Check every pin against your installer's diagram: wrong power pins can damage hardware.</span></div>}
             <HardwareEditor blades={blades} board={model?.board ?? 'V2'} detected={info.pixelBlades} locked={busy} onChange={(b) => { setBlades(b); setConfirmedWiring(false); setResult(null); setStep('idle'); }}
               swap={{
                 variants,
@@ -366,7 +393,9 @@ export function Build({ board }: { board: Board }) {
         <div className={`stepc ${wiringOk ? 'done' : nowStep === 1 ? 'now' : ''} ${preview?.errors.length ? 'bad' : ''}`}>
           <div className="head"><span className="nbox">{wiringOk ? <Icon name="check" /> : 1}</span><b>Wiring</b><span className="what">{blades.length} blade{blades.length === 1 ? '' : 's'}, {model?.presetsFrom ? `${model.presets.length} presets from bank "${model.presetsFrom.name}"` : `${info.presets.length} presets`}{queuedLooks.length ? `, ${queuedLooks.length} new look${queuedLooks.length === 1 ? '' : 's'}` : ''}</span></div>
           {model?.presetsFrom && (
-            <div className="note amber"><Icon name="info" /><span>Bank "{model.presetsFrom.name}" is loaded: its {model.presets.length} preset{model.presets.length === 1 ? '' : 's'} will replace the {info.presets.length} on the saber when this firmware goes on. A snapshot of the saber's presets is kept first; colours chosen in the bank are written after the install. <button type="button" className="holo" onClick={() => { if (saber?.model) { const { presetsFrom: _drop, ...rest } = saber.model; void board.updateSaber({ model: rest }); } }}>Keep the saber's own presets instead</button>.</span></div>
+            saber.planned
+              ? <div className="note"><Icon name="info" /><span>Bank "{model.presetsFrom.name}" gives this plan its {model.presets.length} preset{model.presets.length === 1 ? '' : 's'}. Change them on Presets; colours chosen there are written after the install.</span></div>
+              : <div className="note amber"><Icon name="info" /><span>Bank "{model.presetsFrom.name}" is loaded: its {model.presets.length} preset{model.presets.length === 1 ? '' : 's'} will replace the {info.presets.length} on the saber when this firmware goes on. A snapshot of the saber's presets is kept first; colours chosen in the bank are written after the install. <button type="button" className="holo" onClick={() => { if (saber?.model) { const { presetsFrom: _drop, ...rest } = saber.model; void board.updateSaber({ model: rest }); } }}>Keep the saber's own presets instead</button>.</span></div>
           )}
           <label className="row" style={{ gap: 10 }}>
             <span className="small dim" style={{ flex: 'none' }}>Buttons</span>

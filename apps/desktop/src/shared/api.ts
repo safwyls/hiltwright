@@ -32,6 +32,8 @@ export interface SaberRecord {
   model?: SaberConfigModel;
   /** What the last successful install compiled in. Absent on vendor firmware. */
   firmware?: FirmwareManifest;
+  /** Set up before the hilt was ever connected: wiring, presets and looks chosen ahead. Adopted by the real saber when it appears. */
+  planned?: boolean;
 }
 
 export interface SaberPatch { model?: SaberConfigModel | null; firmware?: FirmwareManifest | null }
@@ -146,6 +148,10 @@ export interface HiltwrightApi {
     remove(id: string): Promise<void>;
     /** Store the build model and/or firmware manifest for a saber. `null` clears a field. */
     update(id: string, patch: SaberPatch): Promise<SaberRecord>;
+    /** A saber set up ahead of its hilt: a record with no identity and the given build model. */
+    plan(name: string, model: SaberConfigModel): Promise<SaberRecord>;
+    /** The connected saber takes over a plan's model, and the plan is dropped. */
+    adopt(plannedId: string, targetId: string): Promise<SaberRecord>;
   };
   /** Preset banks built without a saber, in userData/banks.json. */
   banks: {

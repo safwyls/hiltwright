@@ -228,3 +228,42 @@ export function Banks({ board, onLooks, onBuild }: { board: Board; onLooks: () =
     </div>
   );
 }
+
+/** On the Looks page: put the chosen look, with its tried colours, into a bank preset for one kind of blade. */
+export function BankAssign({ look, args }: { look: LookDef; args: ReadonlyMap<number, string> }) {
+  const [banks, setBanks] = useState<PresetBank[]>([]);
+  const [bankId, setBankId] = useState<string>(() => { try { return localStorage.getItem('hiltwright.banks.current') ?? ''; } catch { return ''; } });
+  const [presetIx, setPresetIx] = useState(0);
+  const [role, setRole] = useState<BladeRole>(look.roles[0] ?? 'main');
+  const [note, setNote] = useState<string | null>(null);
+  useEffect(() => { void api().banks.list().then((bs) => { setBanks(bs); if (!bs.some((b) => b.id === bankId)) setBankId(bs[0]?.id ?? ''); }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!look.roles.includes(role)) setRole(look.roles[0] ?? 'main'); }, [look.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bank = banks.find((b) => b.id === bankId) ?? null;
+  const preset = bank?.presets[Math.min(presetIx, (bank?.presets.length ?? 1) - 1)] ?? null;
+  const apply = async () => {
+    if (!bank || !preset) return;
+    const next = structuredClone(bank);
+    const p = next.presets[Math.min(presetIx, next.presets.length - 1)];
+    p.looks[role] = look.id;
+    const words = formatStyleArgs(new Map(args));
+    if (words) p.lookArgs = { ...(p.lookArgs ?? {}), [role]: words }; else if (p.lookArgs) delete p.lookArgs[role];
+    next.updated = new Date().toISOString();
+    setBanks(await api().banks.save(next));
+    setNote(`"${look.name}" is the ${ROLE_META[role].label.toLowerCase()} look in "${p.name}" of bank "${next.name}"${args.size ? ', with the colours you chose' : ''}. Load the bank onto a saber from Presets when it is ready.`);
+  };
+  if (!banks.length) return <span className="hint">No preset banks yet. Make one on Presets to put looks into presets before a saber is connected.</span>;
+  return (
+    <div className="col" style={{ gap: 8 }}>
+      <div className="row" style={{ gap: 8, alignItems: 'end' }}>
+        <label className="field grow"><span className="label">Bank</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{bank?.name ?? 'Pick a bank'}</span><span className="caret"><Icon name="down" /></span>
+          <select value={bankId} aria-label="Bank" onChange={(e) => { setBankId(e.target.value); setPresetIx(0); }}>{banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></span></label>
+        <label className="field grow"><span className="label">Preset</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{preset ? preset.name || 'Unnamed' : 'No presets'}</span><span className="caret"><Icon name="down" /></span>
+          <select value={presetIx} aria-label="Preset in the bank" onChange={(e) => setPresetIx(Number(e.target.value))}>{(bank?.presets ?? []).map((p, i) => <option key={i} value={i}>{i + 1}. {p.name || 'Unnamed'}</option>)}</select></span></label>
+        <label className="field" style={{ width: 150 }}><span className="label">Blade</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{ROLE_META[role].label}</span><span className="caret"><Icon name="down" /></span>
+          <select value={role} aria-label="Kind of blade" onChange={(e) => setRole(e.target.value as BladeRole)}>{ROLES.filter((r) => look.roles.includes(r)).map((r) => <option key={r} value={r}>{ROLE_META[r].label}</option>)}</select></span></label>
+      </div>
+      <button type="button" className="btn pri full" disabled={!preset} onClick={() => void apply()}><span className="b"><span className="i"><Icon name="presets" />Use it in {preset ? `"${preset.name || 'Unnamed'}"` : 'the bank'}</span></span></button>
+      {note && <div className="note green"><Icon name="check" /><span>{note}</span></div>}
+    </div>
+  );
+}
