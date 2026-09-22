@@ -73,8 +73,10 @@ export interface SceneSettings {
   ledsPerMetre: number;
   /** A second blade out of the pommel, as on a staff. It shows the same LEDs as the first: a staff preset drives both blades alike. */
   staff: boolean;
+  /** Show the unlit polycarbonate tube when the saber is off. Off, the blade only exists while it is lit. */
+  bladeWhenOff: boolean;
 }
-export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144, staff: false };
+export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144, staff: false, bladeWhenOff: true };
 
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
 /** What the saber did, for whoever makes its sounds. `motion` comes every frame with the blade's turn rate. */
@@ -531,8 +533,12 @@ export class DemoScene {
     this.sim.setAngle(tilt);
     this.sim.setTwist(this.twist);
 
-    this.paintBlade(this.sim.frame(now), this.ledData, this.ledTexture, this.tipMaterial, this.lights);
-    if (this.staffSim && this.staffData && this.staffTexture) this.paintBlade(this.staffSim.frame(now), this.staffData, this.staffTexture, this.staffTipMaterial, this.staffLights);
+    const lit = this.paintBlade(this.sim.frame(now), this.ledData, this.ledTexture, this.tipMaterial, this.lights);
+    const staffLit = this.staffSim && this.staffData && this.staffTexture ? this.paintBlade(this.staffSim.frame(now), this.staffData, this.staffTexture, this.staffTipMaterial, this.staffLights) : false;
+    // An unlit tube is shown or not by choice; a lit one always. Hidden only once the retraction has fully run out.
+    const show = this.settings.bladeWhenOff || this.sim.isOn;
+    this.tube.visible = this.tipMesh.visible = show || lit;
+    if (this.staff) { const [t, p] = this.staff.children as THREE.Mesh[]; t.visible = p.visible = show || staffLit; }
 
     this.distance += (this.distanceTarget - this.distance) * Math.min(1, dt * 12);
     const cy = Math.cos(this.orbit.pitch); const dist = this.distance;
@@ -564,8 +570,10 @@ export class DemoScene {
   }
 
   /** LED values to what an eye sees: diffuser smear in linear light, channel saturation, gamma. As in the 2D preview. */
-  private paintBlade(leds: Float32Array, out: Uint8Array<ArrayBuffer>, texture: THREE.DataTexture, tipMaterial: THREE.MeshBasicMaterial, lights: THREE.PointLight[]): void {
+  /** Whether any LED is lit on the strip painted last: the blade is hidden only once a retraction has finished. */
+  private paintBlade(leds: Float32Array, out: Uint8Array<ArrayBuffer>, texture: THREE.DataTexture, tipMaterial: THREE.MeshBasicMaterial, lights: THREE.PointLight[]): boolean {
     const n = this.leds;
+    let anyLit = false;
     const W = [0.07, 0.24, 0.38, 0.24, 0.07];
     const sums = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
     for (let i = 0; i < n; i++) {
@@ -575,6 +583,7 @@ export class DemoScene {
       const third = sums[Math.min(2, Math.floor((i * 3) / n))];
       third[0] += r; third[1] += g; third[2] += b;
       const peak = Math.max(r, g, b);
+      if (peak > 0.003) anyLit = true;
       const tone = (v: number) => Math.pow(1 - Math.exp(-(v * 1.6 + peak * 0.03) * 2.4), 1 / 2.2);
       const lit = [tone(r), tone(g), tone(b)];
       const dark = 1 - Math.max(lit[0], lit[1], lit[2]);
@@ -595,6 +604,7 @@ export class DemoScene {
       lamp.intensity = level * 7 * this.settings.bladeLight;
       if (level > 0.001) lamp.color.setRGB(r / level, g / level, b / level);
     });
+    return anyLit;
   }
 
   dispose(): void {

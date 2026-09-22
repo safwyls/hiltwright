@@ -15,7 +15,7 @@ import { listHilts, removeHilt, saveHilt } from './hiltStore';
 import type { Object3D } from 'three';
 
 const LOOKS = STARTER_LOOKS.filter((l) => SIMULATED_LOOKS.includes(l.id) && (l.roles.includes('main') || l.roles.includes('side')));
-const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter' | 'ledsPerMetre' | 'staff'>; label: string; min: number; max: number; step: number; hint: string }[] = [
+const SLIDERS: { key: Exclude<keyof SceneSettings, 'grid' | 'bladeInches' | 'bladeDiameter' | 'ledsPerMetre' | 'staff' | 'bladeWhenOff'>; label: string; min: number; max: number; step: number; hint: string }[] = [
   { key: 'glow', label: 'Glow', min: 0, max: 3, step: 0.05, hint: 'Strength of the glow around the blade' },
   { key: 'glowSpread', label: 'Glow spread', min: 0, max: 1, step: 0.02, hint: 'How far the glow reaches' },
   { key: 'bladeBrightness', label: 'Blade heat', min: 0.7, max: 2.5, step: 0.05, hint: 'Higher is hotter and paler; lower keeps more colour in the core' },
@@ -416,6 +416,10 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
                   {(Object.keys(BLADE_DIAMETERS) as BladeDiameter[]).map((d) => <button key={d} type="button" role="radio" aria-checked={look3d.bladeDiameter === d} className={look3d.bladeDiameter === d ? 'on' : ''} style={{ height: 26, padding: '0 10px', fontSize: 12 }} onClick={() => setLook3d((v) => ({ ...v, bladeDiameter: d }))}>{d}"</button>)}
                 </div>
               </div>
+              <label className="row" style={{ gap: 10 }} title="Show the unlit blade tube while the saber is off. Off, the blade only exists while it is lit.">
+                <button type="button" className={`tog ${look3d.bladeWhenOff ? 'on' : ''}`} role="switch" aria-checked={look3d.bladeWhenOff} aria-label="Show the blade when off" onClick={() => setLook3d((v) => ({ ...v, bladeWhenOff: !v.bladeWhenOff }))}><i /></button>
+                <span className="dim">Blade shown when off</span>
+              </label>
               <label className="row" style={{ gap: 10 }} title="A second blade out of the pommel, as on a staff hilt. It shows the same LEDs as the first.">
                 <button type="button" className={`tog ${look3d.staff ? 'on' : ''}`} role="switch" aria-checked={look3d.staff} aria-label="Second blade, staff" onClick={() => setLook3d((v) => ({ ...v, staff: !v.staff }))}><i /></button>
                 <span className="dim">Second blade (staff)</span>
