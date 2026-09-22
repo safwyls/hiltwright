@@ -85,6 +85,15 @@ describe('fitting a custom hilt', () => {
     expect((box.min.z + box.max.z) / 2).toBeCloseTo(0, 5);
   });
 
+  it('seats the blade deeper in the hilt by finished millimetres, whatever the file\'s units', () => {
+    for (const [long, thick] of [[280, 36], [0.28, 0.036]]) {
+      const plain = boxOf(fitHilt(bar('y', long, thick), DEFAULT_FIT, 0.135).group);
+      const seated = boxOf(fitHilt(bar('y', long, thick), { ...DEFAULT_FIT, seatMm: 25 }, 0.135).group);
+      expect(seated.max.y - plain.max.y).toBeCloseTo(0.025, 5); // the hilt rises: its top is now 25 mm past where the blade starts
+      expect(seated.min.x).toBeCloseTo(plain.min.x, 6);
+    }
+  });
+
   it('shifts the model sideways by finished millimetres, in the hilt\'s own frame, whatever the file\'s units', () => {
     for (const [long, thick] of [[280, 36], [0.28, 0.036]]) { // millimetres and metres
       const plain = boxOf(fitHilt(bar('y', long, thick), DEFAULT_FIT, 0.135).group);

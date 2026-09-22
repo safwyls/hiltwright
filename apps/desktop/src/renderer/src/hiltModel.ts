@@ -22,6 +22,11 @@ export interface HiltFit {
   offsetXmm?: number;
   offsetZmm?: number;
   /**
+   * How much deeper the blade sits in the hilt than the model's top, in millimetres. An emitter with a long shroud,
+   * a curved one, or a flared one that extends past the socket needs the blade to start below the model's highest point.
+   */
+  seatMm?: number;
+  /**
    * Where the blade's axis is in the file. 'origin': the model was drawn around the bore, so the file's own axis is
    * the blade's. 'box': the middle of the model's bounding box. 'auto' (the default) uses the origin when it runs
    * through the model, and the box otherwise (a file modelled off in space).
@@ -31,7 +36,7 @@ export interface HiltFit {
 /** A file that came with the model: an OBJ's .mtl, and any textures the .mtl names. */
 export interface SideFile { name: string; data: ArrayBuffer }
 export interface StoredHilt { name: string; format: HiltFormat; data: ArrayBuffer; fit: HiltFit; sideFiles?: SideFile[] }
-export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0, axis: 'auto' };
+export const DEFAULT_FIT: HiltFit = { flip: false, rollDeg: 0, lengthCm: null, offsetXmm: 0, offsetZmm: 0, seatMm: 0, axis: 'auto' };
 
 export function formatOf(fileName: string): HiltFormat | null {
   const ext = fileName.toLowerCase().split('.').pop();
@@ -142,7 +147,8 @@ export function fitHilt(model: THREE.Object3D, fit: HiltFit, emitterY: number): 
   group.add(oriented);
   // Blade end at the origin, the rest hanging below it. The offset is in finished millimetres, so it is applied in
   // model units here (before the scale) as offset / k.
-  oriented.position.set(-centre.x + ((fit.offsetXmm ?? 0) / 1000) / k, -box.max.y, -centre.z + ((fit.offsetZmm ?? 0) / 1000) / k);
+  // Seating raises the hilt along the blade, so the blade starts that far below the model's top.
+  oriented.position.set(-centre.x + ((fit.offsetXmm ?? 0) / 1000) / k, -box.max.y + ((fit.seatMm ?? 0) / 1000) / k, -centre.z + ((fit.offsetZmm ?? 0) / 1000) / k);
   group.scale.setScalar(k);
   group.position.y = emitterY;
   group.rotation.y = (fit.rollDeg * Math.PI) / 180;

@@ -57,7 +57,7 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
     })();
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hilt?.name, hilt?.fit.flip, hilt?.fit.rollDeg, hilt?.fit.lengthCm, hilt?.fit.offsetXmm, hilt?.fit.offsetZmm, hilt?.fit.axis, hilts.length]);
+  }, [hilt?.name, hilt?.fit.flip, hilt?.fit.rollDeg, hilt?.fit.lengthCm, hilt?.fit.offsetXmm, hilt?.fit.offsetZmm, hilt?.fit.seatMm, hilt?.fit.axis, hilts.length]);
   /** One model file, plus for an OBJ its .mtl and any textures, chosen together in the file picker. */
   const loadHiltFiles = async (files: FileList | null) => {
     const all = Array.from(files ?? []);
@@ -275,6 +275,11 @@ export function Demo({ initialLook }: { initialLook?: string | null }) {
                       <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit[key] ?? 0).toFixed(1)}</span>
                     </label>
                   ))}
+                  <label className="row" style={{ gap: 8 }} title="How deep the blade sits in the emitter. Raise it when the emitter's shroud or a flare extends past the socket, so the blade starts inside the hilt rather than at its very top.">
+                    <span className="dim" style={{ width: 76, flex: 'none' }}>Seat</span>
+                    <input type="range" min={-40} max={80} step={0.5} value={hilt.fit.seatMm ?? 0} aria-label="Seat: how deep the blade sits in the emitter, in millimetres" style={{ flex: 1, minWidth: 0 }} onChange={(e) => setFit({ seatMm: Number(e.target.value) })} />
+                    <span className="mono mute" style={{ width: 34, textAlign: 'right' }}>{(hilt.fit.seatMm ?? 0).toFixed(1)}</span>
+                  </label>
                   <div className="row" style={{ gap: 8 }} title="Where the blade's axis is in the file. Drawn around the bore: the file's own axis. Box centre: the middle of the model. Auto picks the first when the file's axis runs through the model.">
                     <span className="dim" style={{ width: 76, flex: 'none' }}>Axis</span>
                     <div className="seg" role="radiogroup" aria-label="Blade axis in the file" style={{ height: 28 }}>
