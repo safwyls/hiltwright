@@ -1,26 +1,43 @@
+// The shell, and the flow through it. One saber at a time is being worked on (the plugged-in one, or the one chosen
+// in the Armory); the steps down the left take it from wiring to an installed board. Looks are made and tried in
+// the Workshop, off to the side, and picked from the Presets step.
+
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { lookAtSlot, parseBuiltin } from '@hiltwright/core';
+import { registerLookSim, type LookDef } from '@hiltwright/core';
 import { useBoard } from './board';
 import { Icon, Mark } from './Icon';
 import { Presets } from './Presets';
 import { Fonts } from './Fonts';
 import { Build } from './Build';
 import { Looks } from './Looks';
+import { Wiring } from './Wiring';
 import { ErrorBoundary } from './ErrorBoundary';
 import { SaberControls } from './Controls';
 import { guessBlades, infoFromRecord, queuedLookIds } from './saberModel';
 import { usePendingLookColours } from './pendingColours';
 import { StyleEditor } from './StyleEditor';
-import { registerLookSim, type LookDef } from '@hiltwright/core';
-
+import { flowStatus, nextStep, useWorkspace, type Workspace } from './workspace';
 // three.js is only needed in the demo room, so it loads when that page is first opened.
 const Demo = lazy(() => import('./Demo').then((m) => ({ default: m.Demo })));
 
-type Page = 'armory' | 'presets' | 'looks' | 'editor' | 'demo' | 'fonts' | 'build' | 'diag';
-const PAGES: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name'] }[] = [
-  { id: 'armory', title: 'Armory', icon: 'armory' }, { id: 'presets', title: 'Presets', icon: 'presets' }, { id: 'looks', title: 'Looks', icon: 'looks' }, { id: 'editor', title: 'Style editor', icon: 'gear' }, { id: 'demo', title: 'Demo room', icon: 'play' },
-  { id: 'fonts', title: 'Fonts & SD', icon: 'fonts' }, { id: 'build', title: 'Build & Install', icon: 'build' }, { id: 'diag', title: 'Diagnostics', icon: 'diag' },
+type Page = 'armory' | 'wiring' | 'presets' | 'fonts' | 'build' | 'looks' | 'editor' | 'demo' | 'diag';
+const NAV: { section: string; pages: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name']; step?: number }[] }[] = [
+  { section: 'Saber', pages: [
+    { id: 'armory', title: 'Armory', icon: 'armory' },
+    { id: 'wiring', title: 'Wiring', icon: 'blade', step: 1 },
+    { id: 'presets', title: 'Presets', icon: 'presets', step: 2 },
+    { id: 'fonts', title: 'Fonts & SD', icon: 'fonts', step: 3 },
+    { id: 'build', title: 'Build & Install', icon: 'build', step: 4 },
+  ] },
+  { section: 'Workshop', pages: [
+    { id: 'looks', title: 'Looks', icon: 'looks' },
+    { id: 'editor', title: 'Style editor', icon: 'gear' },
+    { id: 'demo', title: 'Demo room', icon: 'play' },
+  ] },
+  { section: 'Tools', pages: [{ id: 'diag', title: 'Diagnostics', icon: 'diag' }] },
 ];
+const PAGES = NAV.flatMap((g) => g.pages);
+const TITLE: Record<Page, string> = { armory: 'Armory', wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts & SD', build: 'Build & Install', looks: 'Looks', editor: 'Style editor', demo: 'Demo room', diag: 'Diagnostics' };
 
 export function App() {
   const real = useBoard();
@@ -30,6 +47,7 @@ export function App() {
   const [fake, setFake] = useState(false);
   const lib0 = real.library[0];
   const board: typeof real = fake && import.meta.env.DEV && lib0 ? { ...real, status: 'connected', portName: 'FAKE', saber: lib0, info: { ...infoFromRecord(lib0), currentPreset: 0, battery: 3.91, volume: 1800 } } : real;
+  const ws = useWorkspace(board);
   const [page, setPage] = useState<Page>('armory');
   const [demoLook, setDemoLook] = useState<string | null>(null);
   const [editingLook, setEditingLook] = useState<LookDef | null>(null);
@@ -40,37 +58,43 @@ export function App() {
   const configName = info?.version?.config?.replace(/^config\//, '').replace(/\.h$/, '') ?? null;
   // Dev aid: lets main switch pages for screenshots.
   useEffect(() => { (window as unknown as { hiltwrightGoto?: (p: string) => void }).hiltwrightGoto = (p) => { setFake(p.startsWith('fake:')); setPage(p.replace('fake:', '') as Page); }; }, []);
-  // Ctrl+1..8 switch pages.
+  // Ctrl+1..9 switch pages, in the order shown.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (!e.ctrlKey || e.altKey || e.shiftKey) return; const p = PAGES[Number(e.key) - 1]; if (p) { e.preventDefault(); setPage(p.id); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  const known = board.saber ?? board.library[0] ?? null;
-  const queued = queuedLookIds(known?.model ?? undefined, known?.firmware).length;
+  const queued = queuedLookIds(ws.model ?? undefined, ws.saber?.firmware).length;
+  const go = (p: Page) => setPage(p);
 
   return (
     <div className="app">
       <aside className="side" aria-label="Primary">
         <div className="brand"><Mark /><span>HILTWRIGHT</span></div>
         <nav className="nav" aria-label="Sections">
-          {PAGES.map((p, i) => (
-            <a key={p.id} href="#" className={page === p.id ? 'on' : ''} aria-current={page === p.id ? 'page' : undefined} title={`Ctrl+${i + 1}`} onClick={(e) => { e.preventDefault(); setPage(p.id); }}>
-              <Icon name={p.icon} /><span>{p.title}</span>
-              {p.id === 'presets' && <span className="tier">live</span>}
-              {p.id === 'build' && (queued > 0 ? <span className="badge" title="Looks waiting for a build">{queued} queued</span> : null)}
-            </a>
+          {NAV.map((g) => (
+            <div key={g.section} className="col" style={{ gap: 2 }}>
+              <span className="sec">{g.section}</span>
+              {g.pages.map((p) => (
+                <a key={p.id} href="#" className={page === p.id ? 'on' : ''} aria-current={page === p.id ? 'page' : undefined} title={`Ctrl+${PAGES.indexOf(p) + 1}`} onClick={(e) => { e.preventDefault(); setPage(p.id); }}>
+                  {p.step ? <span className="stepn">{p.step}</span> : <Icon name={p.icon} />}<span>{p.title}</span>
+                  {p.id === 'presets' && ws.live && !ws.model?.presetsFrom && <span className="tier">live</span>}
+                  {p.id === 'build' && (queued > 0 ? <span className="badge" title="Looks waiting for a build">{queued} queued</span> : null)}
+                </a>
+              ))}
+            </div>
           ))}
         </nav>
+        {ws.saber && <div className="col" style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', gap: 2 }}><span className="sec" style={{ padding: 0 }}>Working on</span><b className="ellip" style={{ fontWeight: 600, fontSize: 13 }}>{ws.saber.name}</b><span className="hint">{ws.live ? 'plugged in' : ws.saber.planned ? 'planned, not seen yet' : 'not plugged in'}</span></div>}
         <div className="mono mute" style={{ marginTop: 'auto', padding: '14px 20px', borderTop: '1px solid var(--line)', fontSize: 11 }}>Hiltwright {window.hiltwright?.appVersion ?? '?'} alpha</div>
       </aside>
 
       <header className="top">
         <div className="row" style={{ gap: 0, minWidth: 0 }}>
-          <h1>{PAGES.find((p) => p.id === page)?.title}</h1>
+          <h1>{TITLE[page]}</h1>
           <div className="ident">
-            <b className="ellip">{known?.name ?? configName ?? 'No saber yet'}</b>
-            <span className="hint ellip">{info?.version ? `ProffieOS ${info.version.version}, ${info.version.prop ?? 'unknown prop'}, ${info.presets.length} presets` : known ? 'not plugged in' : 'plug one in over a data cable'}</span>
+            <b className="ellip">{ws.saber?.name ?? configName ?? 'No saber yet'}</b>
+            <span className="hint ellip">{info?.version ? `ProffieOS ${info.version.version}, ${info.version.prop ?? 'unknown prop'}, ${info.presets.length} presets` : ws.saber ? (ws.saber.planned ? 'planned ahead' : 'not plugged in') : 'plug one in, or plan one in the Armory'}</span>
           </div>
         </div>
         <div className="row" style={{ gap: 12 }}>
@@ -83,65 +107,19 @@ export function App() {
       </header>
 
       <main className="main">
-        <ErrorBoundary key={page} what={`the ${page === 'diag' ? 'Diagnostics' : page === 'build' ? 'Build & Install' : page === 'fonts' ? 'Fonts & SD' : page === 'demo' ? 'Demo room' : page === 'editor' ? 'Style editor' : page[0].toUpperCase() + page.slice(1)} page`}>{page === 'armory' ? <Armory board={board} configName={configName} onPresets={() => setPage('presets')} go={setPage} /> : page === 'presets' ? <Presets board={board} onLooks={() => setPage('looks')} onBuild={() => setPage('build')} /> : page === 'looks' ? <Looks board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} onEdit={(l) => { setEditingLook(l); setPage('editor'); }} onNew={() => { setEditingLook(null); setPage('editor'); }} /> : page === 'editor' ? <StyleEditor key={editingLook?.id ?? 'new'} editing={editingLook} onSaved={() => undefined} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} /> : page === 'demo' ? <Suspense fallback={<span className="hint">Opening the demo room…</span>}><Demo initialLook={demoLook} board={board} /></Suspense> : page === 'fonts' ? <Fonts board={board} /> : page === 'build' ? <Build board={board} go={setPage} /> : <Diagnostics board={board} />}</ErrorBoundary>
+        <ErrorBoundary key={page} what={`the ${TITLE[page]} page`}>
+          {page === 'armory' ? <Armory board={board} ws={ws} go={go} />
+            : page === 'wiring' ? <Wiring ws={ws} board={board} go={go} />
+            : page === 'presets' ? <Presets ws={ws} board={board} go={go} />
+            : page === 'fonts' ? <Fonts board={board} />
+            : page === 'build' ? <Build ws={ws} board={board} go={go} />
+            : page === 'looks' ? <Looks ws={ws} board={board} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} onEdit={(l) => { setEditingLook(l); setPage('editor'); }} onNew={() => { setEditingLook(null); setPage('editor'); }} />
+            : page === 'editor' ? <StyleEditor key={editingLook?.id ?? 'new'} editing={editingLook} onSaved={() => undefined} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} />
+            : page === 'demo' ? <Suspense fallback={<span className="hint">Opening the demo room…</span>}><Demo initialLook={demoLook} board={board} /></Suspense>
+            : <Diagnostics board={board} />}
+        </ErrorBoundary>
       </main>
-
     </div>
-  );
-}
-
-function Library({ board, go }: { board: ReturnType<typeof useBoard>; go: (p: Page) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [planning, setPlanning] = useState(false);
-  const [planName, setPlanName] = useState('');
-  const others = board.library.filter((s) => s.id !== board.saber?.id);
-  /** Set a remembered (or planned) saber up on Build & Install. */
-  const prepare = (id: string) => { try { localStorage.setItem('hiltwright.build.saber', id); } catch { /* private mode */ } go('build'); };
-  const plan = async () => {
-    const name = planName.trim() || `Saber ${board.library.length + 1}`;
-    const rec = await board.planSaber(name, { name: `hiltwright_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`, board: 'V2', buttons: 2, prop: 'fett263', blades: guessBlades([132]), presets: [], looks: [], generator: `hiltwright ${window.hiltwright.appVersion}` });
-    setPlanning(false); setPlanName('');
-    prepare(rec.id);
-  };
-  return (
-    <section className="panel" aria-label="Your sabers">
-      <div className="ph"><h2>Remembered sabers</h2>
-        {planning
-          ? <form className="row" style={{ gap: 6 }} onSubmit={(e) => { e.preventDefault(); void plan(); }}><span className="input sans" style={{ height: 30, width: 200 }}><input type="text" value={planName} autoFocus placeholder="Name the saber" aria-label="Name for the planned saber" onChange={(e) => setPlanName(e.target.value)} /></span><button type="submit" className="btn sm pri"><span className="b"><span className="i">Plan it</span></span></button><button type="button" className="chip" onClick={() => setPlanning(false)}><Icon name="x" /></button></form>
-          : <button type="button" className="chip" title="Set a saber up before it is ever plugged in: wiring, presets and looks, ready to install" onClick={() => setPlanning(true)}><Icon name="plus" />Plan a saber</button>}
-      </div>
-      <div className="list">
-        {board.saber && (
-          <div className="li" style={{ gap: 14, minHeight: 48 }}>
-            <span style={{ color: 'var(--holo)', display: 'flex', width: 18 }}><Icon name="usb" /></span>
-            {editing
-              ? <form className="row grow" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); void board.renameSaber(draft); setEditing(false); }}>
-                  <span className="input sans grow" style={{ height: 32 }}><input type="text" value={draft} autoFocus onChange={(e) => setDraft(e.target.value)} aria-label="Saber name" /></span>
-                  <button type="submit" className="btn sm pri"><span className="b"><span className="i">Save</span></span></button>
-                  <button type="button" className="btn sm ghost" onClick={() => setEditing(false)}><span className="b"><span className="i">Cancel</span></span></button>
-                </form>
-              : <>
-                  <span className="col grow" style={{ gap: 0 }} title={`${board.saber.identity.configName ?? '?'}, USB serial ${board.saber.identity.usbSerial ?? 'unknown'}`}><b className="ellip" style={{ fontWeight: 600 }}>{board.saber.name}</b><span className="hint ellip">{board.saber.identity.pixelBlades.length ? `${board.saber.identity.pixelBlades.join(' + ')} px` : 'blades unknown'}, first seen {new Date(board.saber.firstSeen).toLocaleDateString()}</span></span>
-                  <span className="green small nowrap">plugged in</span>
-                  <button type="button" className="btn sm ghost" onClick={() => { setDraft(board.saber!.name); setEditing(true); }}><span className="b"><span className="i">Rename</span></span></button>
-                </>}
-          </div>
-        )}
-        {others.map((s) => (
-          <div key={s.id} className="li" style={{ gap: 14, minHeight: 48 }}>
-            <span style={{ color: 'var(--mute)', display: 'flex', width: 18 }}><Icon name={s.planned ? 'gear' : 'blade'} /></span>
-            <span className="col grow" style={{ gap: 0 }}><b style={{ fontWeight: 600 }}>{s.name}</b><span className="hint">{s.planned ? `planned ahead · ${s.model?.presets.length ?? 0} presets${s.model?.presetsFrom ? ` from bank "${s.model.presetsFrom.name}"` : ''} · not seen yet` : `${s.identity.configName ?? '?'} · ${s.presets.length} presets · last seen $${new Date(s.lastSeen).toLocaleString()}`}</span></span>
-            {s.planned
-              ? <><button type="button" className="btn sm" onClick={() => prepare(s.id)}><span className="b"><span className="i"><Icon name="build" />Set it up</span></span></button><button type="button" className="btn sm ghost" onClick={() => void window.hiltwright.library.remove(s.id).then(() => board.refreshLibrary())}><span className="b"><span className="i"><Icon name="trash" />Drop the plan</span></span></button></>
-              : s.id === board.library[0]?.id && !board.saber
-              ? <><button type="button" className="btn sm" onClick={() => go('looks')}><span className="b"><span className="i"><Icon name="looks" />Choose looks</span></span></button><button type="button" className="btn sm" onClick={() => go('build')}><span className="b"><span className="i"><Icon name="build" />Prepare a build</span></span></button></>
-              : <span className="chip"><span className="dot" />Not plugged in</span>}
-          </div>
-        ))}
-        {board.library.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>No sabers remembered yet. Plug one in and it will be added.</div>}
-      </div>
-    </section>
   );
 }
 
@@ -156,74 +134,102 @@ function StatusChip({ status, port }: { status: ReturnType<typeof useBoard>['sta
   }
 }
 
-function Armory({ board, configName, onPresets, go }: { board: ReturnType<typeof useBoard>; configName: string | null; onPresets: () => void; go: (p: Page) => void }) {
-  const { status, info, error } = board;
-  if (status !== 'connected' || !info) {
-    return (
-      <>
-        <section className="panel">
-          <div className="row" style={{ padding: '18px', gap: 18 }}>
-            <span style={{ color: 'var(--holo)', display: 'flex', width: 28, height: 28 }}><Icon name="usb" /></span>
-            <div className="col grow" style={{ gap: 4 }}>
-              <h3>{status === 'connecting' ? 'Opening the port…' : status === 'reading' ? 'Reading the saber…' : status === 'error' ? 'Something went wrong' : 'Plug in a saber'}</h3>
-              <div className="dim small">{error ?? (status === 'no-port' ? 'No Proffieboard is granted to this app yet. Plug one in over a data cable and press Connect.' : 'Looking for a Proffieboard on USB. The first read takes about a second.')}</div>
+/** The Armory: the sabers this computer knows, which one is being worked on, and how far along it is. */
+function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Workspace; go: (p: Page) => void }) {
+  const { status, error } = board;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [planning, setPlanning] = useState(false);
+  const [planName, setPlanName] = useState('');
+  const plan = async () => {
+    const name = planName.trim() || `Saber ${board.library.length + 1}`;
+    const rec = await board.planSaber(name, { name: `hiltwright_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`, board: 'V2', buttons: 2, prop: 'fett263', blades: guessBlades([132]), presets: [], looks: [], generator: `hiltwright ${window.hiltwright.appVersion}` });
+    setPlanning(false); setPlanName('');
+    ws.choose(rec.id); go('wiring');
+  };
+  const steps = flowStatus(ws);
+  const next = nextStep(ws);
+  const stepPage: Record<string, Page> = { wiring: 'wiring', presets: 'presets', fonts: 'fonts', build: 'build' };
+  const stepTitle: Record<string, string> = { wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts & SD', build: 'Build & Install' };
+  const cur = ws.saber;
+  const plans = ws.plans;
+  const adoptable = ws.live && cur && !cur.firmware && !cur.planned && plans.length > 0;
+
+  return (
+    <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) 420px' }}>
+      <div className="col" style={{ gap: 16, minHeight: 0 }}>
+        <section className="panel" aria-label="Connection">
+          <div className="row" style={{ padding: '16px 18px', gap: 18 }}>
+            <span style={{ color: ws.live ? 'var(--holo)' : 'var(--mute)', display: 'flex', width: 28, height: 28 }}><Icon name="usb" /></span>
+            <div className="col grow" style={{ gap: 3 }}>
+              <h3>{ws.live ? `${cur?.name ?? 'A saber'} is plugged in` : status === 'connecting' ? 'Opening the port…' : status === 'reading' ? 'Reading the saber…' : status === 'error' ? 'Something went wrong' : 'Nothing plugged in'}</h3>
+              <div className="dim small">{ws.live && board.info?.version ? `ProffieOS ${board.info.version.version}, ${board.info.version.prop ?? 'unknown prop'}, ${board.info.version.buttons ?? '?'} buttons. Installed ${board.info.version.installed ?? '?'}.` : error ?? (status === 'no-port' ? 'No Proffieboard is granted to this app yet. Plug one in over a data cable and press Connect. Or set a saber up ahead and install when it arrives.' : 'Plug a saber in over a data cable and press Connect, or work on a remembered one below.')}</div>
             </div>
-            {(status === 'no-port' || status === 'error' || status === 'idle') && <button type="button" className="btn pri" onClick={() => void board.connect(true)}><span className="b"><span className="i"><Icon name="usb" />Connect</span></span></button>}
+            {!ws.live && (status === 'no-port' || status === 'error' || status === 'idle') && <button type="button" className="btn pri" onClick={() => void board.connect(true)}><span className="b"><span className="i"><Icon name="usb" />Connect</span></span></button>}
+            {ws.live && <button type="button" className="btn sm ghost" onClick={() => void board.identify()}><span className="b"><span className="i"><Icon name="undo" />Read again</span></span></button>}
+          </div>
+          {ws.live && board.info && board.info.rejected.length > 0 && <div className="note amber" style={{ margin: '0 18px 16px' }}><Icon name="warn" /><span>This firmware does not know {board.info.rejected.join(', ')}. Hiltwright adapts to what the board supports.</span></div>}
+          {adoptable && (
+            <div className="note amber" style={{ margin: '0 18px 16px' }}><Icon name="info" /><span>Is this a saber you set up ahead? {plans.map((p) => <button key={p.id} type="button" className="holo" style={{ marginRight: 10 }} onClick={() => void board.adoptPlan(p.id)}>It is "{p.name}"</button>)}Its wiring, presets and looks move onto this saber, ready to install.</span></div>
+          )}
+        </section>
+
+        <section className="panel" aria-label="Your sabers" style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="ph"><h2>Your sabers</h2>
+            {planning
+              ? <form className="row" style={{ gap: 6 }} onSubmit={(e) => { e.preventDefault(); void plan(); }}><span className="input sans" style={{ height: 30, width: 200 }}><input type="text" value={planName} autoFocus placeholder="Name the saber" aria-label="Name for the new saber" onChange={(e) => setPlanName(e.target.value)} /></span><button type="submit" className="btn sm pri"><span className="b"><span className="i">Start</span></span></button><button type="button" className="chip" onClick={() => setPlanning(false)}><Icon name="x" /></button></form>
+              : <button type="button" className="btn sm pri" title="Set a saber up before it is plugged in: wiring, presets and looks, ready to install when it arrives" onClick={() => setPlanning(true)}><span className="b"><span className="i"><Icon name="plus" />New saber</span></span></button>}
+          </div>
+          <div className="list" style={{ overflow: 'auto' }}>
+            {board.library.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>No sabers yet. Plug one in and it is remembered, or start a new one to set up ahead.</div>}
+            {board.library.map((s) => {
+              const isCur = s.id === cur?.id; const plugged = ws.live && isCur;
+              return (
+                <div key={s.id} className={`li ${isCur ? 'on' : ''}`} style={{ gap: 14, minHeight: 50 }}>
+                  <span style={{ color: plugged ? 'var(--holo)' : 'var(--mute)', display: 'flex', width: 18 }}><Icon name={plugged ? 'usb' : s.planned ? 'gear' : 'blade'} /></span>
+                  {editing && isCur
+                    ? <form className="row grow" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); void board.renameSaber(draft); setEditing(false); }}>
+                        <span className="input sans grow" style={{ height: 32 }}><input type="text" value={draft} autoFocus onChange={(e) => setDraft(e.target.value)} aria-label="Saber name" /></span>
+                        <button type="submit" className="btn sm pri"><span className="b"><span className="i">Save</span></span></button>
+                        <button type="button" className="btn sm ghost" onClick={() => setEditing(false)}><span className="b"><span className="i">Cancel</span></span></button>
+                      </form>
+                    : <>
+                        <span className="col grow" style={{ gap: 0 }} title={s.identity.configName ? `${s.identity.configName}, USB serial ${s.identity.usbSerial ?? 'unknown'}` : undefined}>
+                          <b className="ellip" style={{ fontWeight: 600 }}>{s.name}</b>
+                          <span className="hint ellip">{plugged ? 'plugged in' : s.planned ? `set up ahead · ${s.model?.presets.length ?? 0} presets · not seen yet` : `${s.identity.configName ?? '?'} · ${s.presets.length} presets · last seen ${new Date(s.lastSeen).toLocaleDateString()}`}</span>
+                        </span>
+                        {isCur ? <span className="chip live"><span className="dot" />Working on it</span> : <button type="button" className="btn sm" disabled={ws.live} title={ws.live ? 'Unplug the connected saber to work on another' : undefined} onClick={() => ws.choose(s.id)}><span className="b"><span className="i">Work on it</span></span></button>}
+                        {isCur && plugged && <button type="button" className="chip" onClick={() => { setDraft(s.name); setEditing(true); }}>Rename</button>}
+                        {s.planned && !isCur && <button type="button" className="chip" title="Drop this plan" aria-label={`Drop the plan ${s.name}`} onClick={() => void window.hiltwright.library.remove(s.id).then(() => board.refreshLibrary())}><Icon name="trash" /></button>}
+                      </>}
+                </div>
+              );
+            })}
           </div>
         </section>
-        <Library board={board} go={go} />
-      </>
-    );
-  }
-  const v = info.version;
-  const manifest = board.saber?.firmware ?? null;
-  return (
-    <>
-      <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px' }}>
-      <div className="col" style={{ gap: 16, minHeight: 0, order: 2 }}>
-      <section className="panel" aria-label="Connected saber">
-        <div className="row" style={{ padding: '16px 18px', gap: 18 }}>
-          <span style={{ color: 'var(--holo)', display: 'flex', width: 28, height: 28 }}><Icon name="usb" /></span>
-          <div className="col grow" style={{ gap: 2 }}>
-            <h3>{board.saber?.name ?? configName ?? 'Unnamed saber'} is connected</h3>
-            <div className="dim small">
-              ProffieOS {v?.version ?? '?'}, {v?.prop ?? 'unknown prop'}, {v?.buttons ?? '?'} buttons. Installed {v?.installed ?? '?'}.
-            </div>
-          </div>
-        </div>
-        <div className="row wrap" style={{ padding: '0 18px 16px', gap: 8 }}>
-          <button type="button" className="btn sm pri" onClick={onPresets}><span className="b"><span className="i"><Icon name="presets" />Edit presets</span></span></button>
-          <button type="button" className="btn sm" onClick={() => go('looks')}><span className="b"><span className="i"><Icon name="looks" />Choose looks</span></span></button>
-          <button type="button" className="btn sm" onClick={() => go('build')}><span className="b"><span className="i"><Icon name="build" />Build &amp; install</span></span></button>
-          <button type="button" className="btn sm ghost" onClick={() => void board.identify()}><span className="b"><span className="i"><Icon name="undo" />Read again</span></span></button>
-        </div>
-        {info.rejected.length > 0 && (
-          <div className="note amber" style={{ margin: '0 18px 16px' }}><Icon name="warn" /><span>This firmware does not know {info.rejected.join(', ')}. Hiltwright adapts to what the board supports.</span></div>
+      </div>
+
+      <aside className="rail" aria-label="Progress">
+        {!cur ? (
+          <div className="stepc now"><div className="head"><b>Start here</b></div><span className="small dim">Plug a saber in, or press New saber to set one up ahead. Then the steps down the left take it from wiring to an installed board.</span></div>
+        ) : (
+          <>
+            <div className="row between" style={{ minHeight: 24 }}><b style={{ fontWeight: 600 }} className="ellip">{cur.name}</b><span className="hint">{ws.live ? 'plugged in' : cur.planned ? 'set up ahead' : 'unplugged'}</span></div>
+            {steps.map((st, i) => {
+              const done = (st.step === 'wiring' && (!!ws.model?.wiringConfirmedAt || !!cur.firmware)) || (st.step === 'presets' && !!ws.model?.presets.length) || (st.step === 'build' && !!cur.firmware && !queuedLookIds(ws.model ?? undefined, cur.firmware).length && !ws.model?.presetsFrom);
+              const now = st.step === next;
+              return (
+                <button key={st.step} type="button" className={`stepc ${done ? 'done' : now ? 'now' : ''}`} style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => go(stepPage[st.step])}>
+                  <div className="head"><span className="nbox">{done ? <Icon name="check" /> : i + 1}</span><b>{stepTitle[st.step]}</b><span className="what">{st.label}</span></div>
+                </button>
+              );
+            })}
+            <button type="button" className="btn pri full" onClick={() => go(stepPage[next])}><span className="b"><span className="i"><Icon name="chev" />Continue with {stepTitle[next]}</span></span></button>
+            <span className="hint">Looks are chosen on the Presets step; make and try new ones in the Workshop.</span>
+          </>
         )}
-      </section>
-
-      <Library board={board} go={go} />
-      </div>
-
-      <section className="panel fill" aria-label="Presets on the saber" style={{ order: 1 }}>
-        <div className="ph"><h2>Presets · {info.presets.length}</h2><span className="hint">preset {info.currentPreset != null ? info.currentPreset + 1 : '?'} is selected on the saber</span></div>
-        <div className="scroll"><table>
-          <thead><tr><th>#</th><th>Name</th><th>Font</th><th>Track</th><th>Looks</th></tr></thead>
-          <tbody>
-            {info.presets.map((p, i) => (
-              <tr key={i} className={i === info.currentPreset ? 'on' : ''}>
-                <td className="mono mute">{i + 1}</td>
-                <td className="nowrap" style={{ fontWeight: 600 }}>{p.name.replace(/\s*\n\s*/g, ' ')}</td>
-                <td className="small nowrap">{p.font.split(';')[0]}</td>
-                <td className="small nowrap" title={p.track}>{p.track ? p.track.split('/').pop() : <span className="mute">none</span>}</td>
-                <td className="small dim nowrap">{p.styles.map((st) => { const b = parseBuiltin(st); const look = b && manifest ? lookAtSlot(manifest, b.preset, b.blade) : null; return look ? look.name.replace(/^Hiltwright /, '') : b ? `${b.preset + 1}.${b.blade}` : st; }).join(', ')}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table></div>
-      </section>
-      </div>
-    </>
+      </aside>
+    </div>
   );
 }
 

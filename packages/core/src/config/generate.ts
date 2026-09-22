@@ -44,7 +44,9 @@ export interface SaberConfigModel {
    */
   presets: { font: string; track: string; name: string; looks?: (string | null)[]; lookArgs?: (string | null)[] }[];
   /** Set when the presets came from a bank rather than the saber: the draft keeps them, and the install replaces the saber's own. */
-  presetsFrom?: { bank: string; name: string; at: string };
+  presetsFrom?: { bank?: string; name: string; at: string };
+  /** When the owner confirmed the wiring against the installer's notes; the build waits for it once per wiring change. */
+  wiringConfirmedAt?: string;
   /** Looks beyond the starters that presets may reference (pasted library styles). */
   looks?: LookDef[];
   /** Swappable main blades told apart by their ID resistor. Absent or empty: one blade, no Blade ID. */

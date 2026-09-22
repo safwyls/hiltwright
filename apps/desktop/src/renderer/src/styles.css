@@ -293,3 +293,7 @@ button:disabled .kbd{opacity:.5}
 .chip.deck{flex:1;min-width:0;height:28px;padding:0 5px 0 8px;justify-content:space-between;font-family:'Exo 2',sans-serif;font-size:12px;letter-spacing:0;text-transform:none;color:var(--text)}
 .chip.deck:disabled{color:var(--mute)}
 .chip.deck .kbd{margin-left:4px;min-width:14px}
+/* Step numbers down the sidebar: the saber's path from wiring to install. */
+.nav .stepn{width:18px;height:18px;flex:none;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line2);border-radius:50%;font-family:var(--mono);font-size:10px;color:var(--mute)}
+.nav a.on .stepn{border-color:var(--holo);color:var(--holo)}
+button.stepc:hover{border-color:var(--holo)}

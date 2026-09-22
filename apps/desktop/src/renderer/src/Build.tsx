@@ -1,47 +1,34 @@
-// Build & Install: adopt the connected saber onto Hiltwright firmware.
-// Wiring form (the one thing old firmware cannot tell us) → generated config → build → backup → bootloader → write → verify.
+// Build & Install: the last step. The wiring (Wiring page) and presets (Presets page) live in the saber's model;
+// this page shows the config they make, builds it, and installs: backup → bootloader → write → verify.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { parseId, voicePackFromSerial, voicePackVerdict, type BladeVariant, type ModelBlade, type Prop, type SaberConfigModel, type VoicePackStatus } from '@hiltwright/core';
-import { draftModel, guessBlades, infoFromRecord, queuedLookIds } from './saberModel';
-import { HardwareEditor } from './Hardware';
+import { voicePackFromSerial, voicePackVerdict, type VoicePackStatus } from '@hiltwright/core';
+import { queuedLookIds } from './saberModel';
+import { PROPS } from './Wiring';
+import type { Workspace } from './workspace';
 import type { BackupInfo, BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { readTransfer } from './transfer';
 
 const api = () => window.hiltwright;
-const PROPS: { value: Prop; label: string }[] = [
-  { value: 'fett263', label: 'Fett263 · edit mode, gestures' }, { value: 'sa22c', label: 'SA22C' }, { value: 'bc', label: 'BC' }, { value: 'default', label: 'ProffieOS default' },
-];
 
-type Tab = 'wiring' | 'config' | 'log' | 'backups';
+type Tab = 'config' | 'log' | 'backups';
 type Step = 'idle' | 'building' | 'built' | 'backup' | 'bootloader' | 'driver' | 'writing' | 'verifying' | 'done' | 'failed';
 const DRIVER_HELP = 'https://pod.hubbe.net/proffieboard-setup.html';
 const fmtGB = (b: number) => `${(b / 1073741824).toFixed(1)} GB`;
 
-export function Build({ board, go }: { board: Board; go?: (page: 'presets' | 'looks' | 'armory') => void }) {
+export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'presets' | 'looks' | 'armory' | 'wiring' | 'fonts') => void }) {
   const { status } = board;
   // Frozen at connect time: the install deliberately drops the port, and the page must keep working through that.
   const [snap, setSnap] = useState<{ info: NonNullable<Board['info']>; saber: NonNullable<Board['saber']> } | null>(null);
   useEffect(() => { if (board.status === 'connected' && board.info && board.saber) setSnap({ info: board.info, saber: board.saber }); }, [board.status, board.info, board.saber]);
-  // With nothing plugged in, the most recently seen saber can still be prepared: wiring, looks and a build need no
-  // board. Installing does.
-  // Which remembered saber to prepare while nothing is plugged in: the last chosen, else the most recent.
-  const [offlineId, setOfflineId] = useState<string>(() => { try { return localStorage.getItem('hiltwright.build.saber') ?? ''; } catch { return ''; } });
-  useEffect(() => { try { localStorage.setItem('hiltwright.build.saber', offlineId); } catch { /* private mode */ } }, [offlineId]);
-  const remembered = !snap ? board.library.find((s) => s.id === offlineId) ?? board.library[0] ?? null : null;
-  const offline = !!remembered;
-  const saber = snap?.saber ?? (remembered ? board.library.find((s) => s.id === remembered.id) ?? remembered : null);
-  // Memoised: a fresh object every render would re-run every effect that depends on it.
-  const offlineInfo = useMemo<NonNullable<Board['info']> | null>(() => (remembered ? infoFromRecord(remembered) : null), [remembered]);
-  const info = snap?.info ?? offlineInfo;
+  const offline = !snap;
+  const saber = snap ? board.library.find((s) => s.id === snap.saber.id) ?? snap.saber : ws.saber;
+  const info = snap?.info ?? ws.info;
+  const model = ws.model;
   const [tool, setTool] = useState<ToolchainStatus | null>(null);
   const [installing, setInstalling] = useState(false);
-  const [blades, setBlades] = useState<ModelBlade[]>([]);
-  const [prop, setProp] = useState<Prop>('fett263');
-  const [variants, setVariants] = useState<BladeVariant[]>([]);
-  const [confirmedWiring, setConfirmedWiring] = useState(!!saber?.model && !!saber?.firmware);
   const [preview, setPreview] = useState<{ text: string; hash: string; warnings: string[]; errors: string[] } | null>(null);
   const [log, setLog] = useState<JobEvent[]>([]);
   const [result, setResult] = useState<BuildResult | null>(null);
@@ -49,7 +36,7 @@ export function Build({ board, go }: { board: Board; go?: (page: 'presets' | 'lo
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [armed, setArmed] = useState(false);
   const [withBackup, setWithBackup] = useState(true);
-  const [tab, setTab] = useState<Tab>('wiring');
+  const [tab, setTab] = useState<Tab>('config');
   // The Fett263 prop needs a voice pack on the card. The saber can tell us over serial: no card reader needed.
   const [voice, setVoice] = useState<VoicePackStatus | null>(null);
   useEffect(() => {
@@ -94,32 +81,17 @@ export function Build({ board, go }: { board: Board; go?: (page: 'presets' | 'lo
   const logBox = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   useEffect(() => { const el = logBox.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [log, tab]);
-  // Another remembered saber chosen while offline: start from its own wiring and prop.
-  const offlineSaberId = offline ? saber?.id : null;
-  useEffect(() => { if (!offlineSaberId || !saber) return; setBlades(saber.model?.blades ?? guessBlades(info?.pixelBlades.length ? info.pixelBlades : [132])); setProp(saber.model?.prop ?? 'fett263'); setVariants(saber.model?.bladeId?.variants ?? []); setConfirmedWiring(!!saber.firmware); setResult(null); setStep('idle'); }, [offlineSaberId]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (info && !blades.length) { setBlades(saber?.model?.blades ?? guessBlades(info.pixelBlades.length ? info.pixelBlades : [132])); if (saber?.model) { setProp(saber.model.prop); setVariants(saber.model.bladeId?.variants ?? []); /* a saved model only counts as confirmed wiring once it has actually been installed */ setConfirmedWiring(!!saber.firmware); } }
-  }, [info, saber, blades.length]);
   // Work in progress is watched in the log; nobody should have to go and find it.
   useEffect(() => { if (step === 'building' || step === 'bootloader') setTab('log'); }, [step]);
   useEffect(() => {
     if (step === 'building' || step === 'writing' || step === 'backup') { const t = setInterval(() => setElapsed((e) => e + 1), 1000); return () => clearInterval(t); }
   }, [step]);
 
-  const model = useMemo<SaberConfigModel | null>(() => (info && saber && blades.length ? draftModel(info, saber, { blades, prop, variants }) : null), [info, saber, blades, prop, variants]);
   const queuedLooks = queuedLookIds(model ?? undefined, saber?.firmware);
-
   useEffect(() => { if (model) void api().build.preview(model).then(setPreview); }, [model]);
-
-  // Blade measurements are work the owner did with hardware in hand: keep them as soon as they exist, not only after
-  // a build. Compared by value, so storing them does not loop back through the saber record.
-  useEffect(() => {
-    if (!model || !saber || !blades.length) return;
-    const saved = JSON.stringify(saber.model?.bladeId?.variants ?? []);
-    if (JSON.stringify(variants) !== saved && (variants.length || saber.model)) void board.updateSaber({ model }, saber.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variants]);
-
+  const prop = model?.prop ?? 'fett263';
+  const confirmedWiring = !!model?.wiringConfirmedAt || !!saber?.firmware;
+  const setConfirmedWiring = (v: boolean) => { if (model) void ws.saveModel(v ? { ...model, wiringConfirmedAt: new Date().toISOString() } : (({ wiringConfirmedAt: _x, ...rest }) => rest)(model)); };
 
   const [installError, setInstallError] = useState<string | null>(null);
   const [installStarted, setInstallStarted] = useState<number | null>(null);
@@ -310,13 +282,6 @@ export function Build({ board, go }: { board: Board; go?: (page: 'presets' | 'lo
     );
   }
 
-  const plans = board.library.filter((s) => s.planned);
-  const adopt = async (plannedId: string) => {
-    const rec = await board.adoptPlan(plannedId);
-    if (!rec?.model) return;
-    setSnap((s) => (s ? { ...s, saber: rec } : s));
-    setBlades(rec.model.blades); setProp(rec.model.prop); setVariants(rec.model.bladeId?.variants ?? []); setConfirmedWiring(false); setResult(null); setStep('idle');
-  };
   const wiringOk = confirmedWiring && !preview?.errors.length;
   const built = !!result?.ok && step !== 'building';
   const nowStep = !wiringOk ? 1 : !tool?.ready ? 2 : !built ? 3 : step === 'done' ? 0 : 4;
@@ -327,39 +292,11 @@ export function Build({ board, go }: { board: Board; go?: (page: 'presets' | 'lo
     <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) 360px' }}>
       <section className="panel fill" aria-label="Build workspace">
         <div className="tabs" role="tablist">
-          {([['wiring', 'Wiring', 'blade'], ['config', 'Config', 'build'], ['log', 'Log', 'diag'], ['backups', 'Backups', 'shield']] as [Tab, string, Parameters<typeof Icon>[0]['name']][]).map(([id, label, icon]) => (
-            <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}><Icon name={icon} />{label}{id === 'backups' && <span className="count">{backups.length}</span>}{id === 'wiring' && !wiringOk && <span className="count" style={{ color: 'var(--amber)' }}>check</span>}</button>
+          {([['config', 'Config', 'build'], ['log', 'Log', 'diag'], ['backups', 'Backups', 'shield']] as [Tab, string, Parameters<typeof Icon>[0]['name']][]).map(([id, label, icon]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}><Icon name={icon} />{label}{id === 'backups' && <span className="count">{backups.length}</span>}</button>
           ))}
         </div>
 
-        {tab === 'wiring' && (
-          <div className="pb col scroll" style={{ gap: 12 }}>
-            {offline && board.library.length > 1 && (
-              <label className="row" style={{ gap: 10 }}>
-                <span className="small dim" style={{ flex: 'none' }}>Preparing</span>
-                <span className="input sans" style={{ height: 30, width: 280 }}><span className="ellip">{saber.name}{saber.planned ? ' (planned)' : ''}</span><span className="caret"><Icon name="down" /></span>
-                  <select value={saber.id} aria-label="Saber to prepare" onChange={(e) => setOfflineId(e.target.value)}>{board.library.map((s) => <option key={s.id} value={s.id}>{s.name}{s.planned ? ' (planned, not seen yet)' : ''}</option>)}</select></span>
-                <span className="hint">Nothing is plugged in; this is set up ahead and installed when the saber appears.</span>
-              </label>
-            )}
-            {saber.planned && (
-              <div className="note"><Icon name="info" /><span>{saber.name} is a plan: a saber set up before its hilt was ever connected. Choose its wiring here, load a bank of presets onto it on Presets, pick looks, and build. When the hilt is plugged in, Hiltwright offers to make it this saber and the install goes straight on.{!model?.presets.length && <> It has no presets yet: <button type="button" className="holo" onClick={() => go?.('presets')}>load a bank onto it</button>.</>}</span></div>
-            )}
-            {!offline && plans.length > 0 && !saber.firmware && !saber.planned && (
-              <div className="note amber"><Icon name="info" /><span>Is this a saber you planned ahead? {plans.map((p) => <button key={p.id} type="button" className="holo" style={{ marginRight: 10 }} onClick={() => void adopt(p.id)}>It is "{p.name}"</button>)}The plan's wiring, presets and looks move onto this saber.</span></div>
-            )}
-            {!confirmedWiring && !saber.planned && <div className="note amber"><Icon name="warn" /><span>The saber reported {info.pixelBlades.length} pixel blade{info.pixelBlades.length === 1 ? '' : 's'} ({info.pixelBlades.join(', ')} px), but old firmware cannot say which pins they use. Check every pin against your installer's diagram: wrong power pins can damage hardware.</span></div>}
-            <HardwareEditor blades={blades} board={model?.board ?? 'V2'} detected={info.pixelBlades} locked={busy} onChange={(b) => { setBlades(b); setConfirmedWiring(false); setResult(null); setStep('idle'); }}
-              swap={{
-                variants,
-                onVariants: (v) => { setVariants(v); setResult(null); setStep('idle'); },
-                // Readings only count when they come from firmware built with Blade ID scanning on: that firmware powers
-                // the blade while it measures, and a reading taken any other way will not match later.
-                measureBlocked: board.status !== 'connected' ? 'Connect the saber to measure a blade.' : !saber.firmware?.bladeId ? 'Turn this on, then build and install once. After that the saber can measure each blade, and a second install teaches it all of them.' : null,
-                measure: async () => { const r = await board.send('scanid', { idleMs: 1500 }); return parseId([...r.lines, ...r.events]); },
-              }} />
-          </div>
-        )}
         {tab === 'config' && <pre className="console grow scroll" style={{ margin: 0, border: 0 }}>{preview?.text ?? 'The config appears once the wiring is described.'}</pre>}
         {tab === 'log' && (
           <div ref={logBox} className="console grow scroll" style={{ border: 0 }} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40; }}>
@@ -391,22 +328,17 @@ export function Build({ board, go }: { board: Board; go?: (page: 'presets' | 'lo
         </div>
 
         <div className={`stepc ${wiringOk ? 'done' : nowStep === 1 ? 'now' : ''} ${preview?.errors.length ? 'bad' : ''}`}>
-          <div className="head"><span className="nbox">{wiringOk ? <Icon name="check" /> : 1}</span><b>Wiring</b><span className="what">{blades.length} blade{blades.length === 1 ? '' : 's'}, {model?.presetsFrom ? `${model.presets.length} presets from bank "${model.presetsFrom.name}"` : `${info.presets.length} presets`}{queuedLooks.length ? `, ${queuedLooks.length} new look${queuedLooks.length === 1 ? '' : 's'}` : ''}</span></div>
-          {model?.presetsFrom && (
-            saber.planned
-              ? <div className="note"><Icon name="info" /><span>Bank "{model.presetsFrom.name}" gives this plan its {model.presets.length} preset{model.presets.length === 1 ? '' : 's'}. Change them on Presets; colours chosen there are written after the install.</span></div>
-              : <div className="note amber"><Icon name="info" /><span>Bank "{model.presetsFrom.name}" is loaded: its {model.presets.length} preset{model.presets.length === 1 ? '' : 's'} will replace the {info.presets.length} on the saber when this firmware goes on. A snapshot of the saber's presets is kept first; colours chosen in the bank are written after the install. <button type="button" className="holo" onClick={() => { if (saber?.model) { const { presetsFrom: _drop, ...rest } = saber.model; void board.updateSaber({ model: rest }); } }}>Keep the saber's own presets instead</button>.</span></div>
-          )}
-          <label className="row" style={{ gap: 10 }}>
-            <span className="small dim" style={{ flex: 'none' }}>Buttons</span>
-            <span className="input sans" style={{ height: 30 }}><span className="ellip">{PROPS.find((p) => p.value === prop)?.label}</span><span className="caret"><Icon name="down" /></span><select value={prop} disabled={busy} aria-label="Button behaviour" onChange={(e) => setProp(e.target.value as Prop)}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></span>
-          </label>
-          {preview?.errors.length ? <div className="note red"><Icon name="x" /><span>{preview.errors.join(' ')}</span></div> : null}
-          <label className="row" style={{ gap: 10, fontSize: 12.5, color: 'var(--dim)', alignItems: 'flex-start' }}>
-            <button type="button" className={`tog ${confirmedWiring ? 'on' : ''}`} role="switch" aria-checked={confirmedWiring} disabled={busy} onClick={() => setConfirmedWiring(!confirmedWiring)}><i /></button>
-            I checked every data pin and power pin against the installer's wiring
-          </label>
-          {tab !== 'wiring' && !wiringOk && <button type="button" className="holo small" onClick={() => setTab('wiring')}>Open the wiring</button>}
+          <div className="head"><span className="nbox">{wiringOk ? <Icon name="check" /> : 1}</span><b>Set up</b><span className="what">{model?.blades.length ?? 0} blade{model?.blades.length === 1 ? '' : 's'}, {model?.presets.length ?? 0} preset{model?.presets.length === 1 ? '' : 's'}{model?.presetsFrom ? ' (staged)' : ''}{queuedLooks.length ? `, ${queuedLooks.length} new look${queuedLooks.length === 1 ? '' : 's'}` : ''}</span></div>
+          <div className="row wrap" style={{ gap: 6 }}>
+            <button type="button" className="chip" onClick={() => go('wiring')}><Icon name="blade" />Wiring{confirmedWiring ? '' : ' · confirm'}</button>
+            <button type="button" className="chip" onClick={() => go('presets')}><Icon name="presets" />Presets</button>
+            <button type="button" className="chip" onClick={() => go('looks')}><Icon name="looks" />Looks</button>
+            <button type="button" className="chip" onClick={() => go('fonts')}><Icon name="fonts" />Fonts</button>
+          </div>
+          <span className="hint">{PROPS.find((p) => p.value === prop)?.label}{saber?.planned ? ' · planned ahead, not connected yet' : ''}</span>
+          {!confirmedWiring && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>Confirm the wiring on the Wiring page before building.</span></div>}
+          {model?.presetsFrom && !saber?.planned && info && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="info" /><span>The staged presets replace the {info.presets.length} on the saber when this goes on; a snapshot is kept first.</span></div>}
+          {preview?.errors.map((e) => <div key={e} className="note red" style={{ padding: '8px 10px' }}><Icon name="x" /><span>{e}</span></div>)}
         </div>
 
         {toolStep(nowStep === 2)}
@@ -453,7 +385,7 @@ export function Build({ board, go }: { board: Board; go?: (page: 'presets' | 'lo
                 <button type="button" className={`tog ${confirmedWiring ? 'on' : ''}`} role="switch" aria-checked={confirmedWiring} disabled={busy} onClick={() => setConfirmedWiring(true)}><i /></button>
                 I checked every data pin and power pin against the installer's wiring
               </label>
-              {tab !== 'wiring' && <button type="button" className="btn sm full" onClick={() => setTab('wiring')}><span className="b"><span className="i"><Icon name="blade" />Look at the wiring</span></span></button>}
+              <button type="button" className="btn sm full" onClick={() => go('wiring')}><span className="b"><span className="i"><Icon name="blade" />Look at the wiring</span></span></button>
             </div>
           ) : step === 'bootloader' || step === 'backup' || step === 'writing' || step === 'verifying' ? null : !armed ? (
             <button type="button" className={`btn full ${nowStep === 4 ? 'warn' : ''}`} disabled={busy || step !== 'built' || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>

@@ -7,8 +7,8 @@ import { STARTER_LOOKS, analyzeStyleCode, registerLookSim, argInfo, formatBuilti
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { BladePreview, canSimulate } from './BladePreview';
-import { draftModel, infoFromRecord, queuedLookIds, withLookInSlot } from './saberModel';
-import { BankAssign } from './Banks';
+import { queuedLookIds, withLookInSlot } from './saberModel';
+import type { Workspace } from './workspace';
 
 const api = () => window.hiltwright;
 const ROLE_LABEL: Record<BladeRole, string> = { main: 'main blade', side: 'side blade', crystal: 'crystal', accent: 'accent', motor: 'motor' };
@@ -17,13 +17,11 @@ const usesMotion = (l: LookDef) => /BladeAngle|TwistAngle|SwingSpeed|SwingAccele
 
 type LookState = 'compiled' | 'queued' | 'new';
 
-export function Looks({ board, onPresets, onBuild, onDemo, onEdit, onNew }: { board: Board; onPresets: () => void; onBuild: () => void; onDemo: (lookId: string) => void; onEdit: (look: LookDef) => void; onNew: () => void }) {
-  const { status } = board;
-  // Looks can be chosen for a remembered saber with nothing plugged in; only the install needs the board.
-  const live = status === 'connected' && !!board.info && !!board.saber;
-  const saber = live ? board.saber : board.library[0] ?? null;
-  const info = useMemo(() => (live ? board.info : saber ? infoFromRecord(saber) : null), [live, board.info, saber]);
-  const connected = !!info && !!saber;
+export function Looks({ ws, board, onPresets, onBuild, onDemo, onEdit, onNew }: { ws: Workspace; board: Board; onPresets: () => void; onBuild: () => void; onDemo: (lookId: string) => void; onEdit: (look: LookDef) => void; onNew: () => void }) {
+  // Looks go into the working saber's presets: written to it when it is plugged in and already carries the look,
+  // otherwise queued in its model for the next build. Nothing plugged in is fine.
+  const { saber, info, live, model } = ws;
+  const connected = !!info && !!saber && !!model;
   const [pasted, setPasted] = useState<LookDef[]>([]);
   const [selectedId, setSelectedId] = useState<string>(STARTER_LOOKS[0].id);
   const [q, setQ] = useState('');
@@ -51,7 +49,6 @@ export function Looks({ board, onPresets, onBuild, onDemo, onEdit, onNew }: { bo
   useEffect(() => { if (info?.currentPreset != null) setTargetPreset(info.currentPreset); }, [info?.currentPreset]);
 
   const looks = useMemo(() => [...STARTER_LOOKS, ...pasted], [pasted]);
-  const model = connected ? draftModel(info, saber) : null;
   const queued = new Set(queuedLookIds(model ?? undefined, saber?.firmware));
   const compiled = new Set((saber?.firmware?.looks ?? []).map((l) => l.id));
   const stateOf = (id: string): LookState => (compiled.has(id) ? 'compiled' : queued.has(id) ? 'queued' : 'new');
@@ -85,7 +82,7 @@ export function Looks({ board, onPresets, onBuild, onDemo, onEdit, onNew }: { bo
     if (selectedId === id) setSelectedId(STARTER_LOOKS[0].id);
   };
 
-  const presetName = (i: number) => info?.presets[i]?.name.replace(/\s*\n\s*/g, ' ') ?? `preset ${i + 1}`;
+  const presetName = (i: number) => (model?.presets[i]?.name ?? info?.presets[i]?.name)?.replace(/\s*\n\s*/g, ' ') ?? `preset ${i + 1}`;
   const colourCount = Object.keys(tried).length;
   const withColours = colourCount ? ` with the ${colourCount === 1 ? 'setting' : `${colourCount} settings`} you chose` : '';
 
@@ -93,16 +90,14 @@ export function Looks({ board, onPresets, onBuild, onDemo, onEdit, onNew }: { bo
   const addToSaber = async () => {
     if (!model || !saber || !fittingBlade) return;
     const next = withLookInSlot(model, sel, targetPreset, fittingBlade.n, formatStyleArgs(triedArgs) || null);
-    await board.updateSaber({ model: next }, saber.id);
+    await ws.saveModel(next);
     setNote({ tone: 'green', text: `"${sel.name}" goes into ${presetName(targetPreset)}, blade ${fittingBlade.n}${withColours}, with the next Build & Install.${colourCount ? ' The colours are written to the saber right after the install.' : ''}` });
   };
 
   /** A look already on the saber: point the preset's blade at it now, with the chosen colours. */
   const [applying, setApplying] = useState(false);
-  // A look can go onto the connected saber's preset, or into a bank preset built ahead of a saber.
-  const [target, setTarget] = useState<'saber' | 'bank'>('saber');
   const useInPreset = async () => {
-    if (!saber?.firmware || !fittingBlade) return;
+    if (!saber?.firmware || !fittingBlade || !live) return;
     const slots = lookSlots(saber.firmware, sel.id);
     const slot = slots.find((sl) => sl.blade === fittingBlade.n) ?? slots[0];
     if (!slot) return;
@@ -209,28 +204,22 @@ export function Looks({ board, onPresets, onBuild, onDemo, onEdit, onNew }: { bo
             {(sel.source === 'pasted' || sel.source === 'built') && <button type="button" className="btn sm ghost" onClick={() => void removePasted(sel.id)}><span className="b"><span className="i"><Icon name="trash" />Remove from library</span></span></button>}
           </div>
           <div className="col" style={{ gap: 8, padding: '12px 18px 14px', borderTop: '1px solid var(--line)', background: '#0d131a', flex: 'none' }}>
+              {!connected && <span className="hint">No saber yet: start one in the Armory, and looks can be put into its presets before it is ever plugged in.</span>}
               {connected && model && (
-                <div className="seg" role="tablist" aria-label="Where to put the look" style={{ alignSelf: 'flex-start', height: 28 }}>
-                  <button type="button" role="tab" aria-selected={target === 'saber'} className={target === 'saber' ? 'on' : ''} style={{ height: 26, fontSize: 12, padding: '0 10px' }} onClick={() => setTarget('saber')}>This saber</button>
-                  <button type="button" role="tab" aria-selected={target === 'bank'} className={target === 'bank' ? 'on' : ''} style={{ height: 26, fontSize: 12, padding: '0 10px' }} onClick={() => setTarget('bank')}>A preset bank</button>
-                </div>
-              )}
-              {(target === 'bank' || !connected || !model) && <BankAssign look={sel} args={triedArgs} />}
-              {target === 'saber' && connected && model && (
                 <div className="row" style={{ gap: 8, alignItems: 'end' }}>
                   <label className="field grow"><span className="label">Preset</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{presetName(targetPreset)}</span><span className="caret"><Icon name="down" /></span>
-                    <select value={targetPreset} aria-label="Preset to put the look in" onChange={(e) => setTargetPreset(Number(e.target.value))}>{info!.presets.map((_p, i) => <option key={i} value={i}>{i + 1}. {presetName(i)}</option>)}</select></span></label>
+                    <select value={targetPreset} aria-label="Preset to put the look in" onChange={(e) => setTargetPreset(Number(e.target.value))}>{model!.presets.map((_p, i) => <option key={i} value={i}>{i + 1}. {presetName(i)}</option>)}</select></span></label>
                   <label className="field" style={{ width: 140 }}><span className="label">Blade</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{fittingBlade ? `${fittingBlade.n}. ${ROLE_LABEL[fittingBlade.role]}` : 'none'}</span><span className="caret"><Icon name="down" /></span>
                     <select value={fittingBlade?.n ?? 1} aria-label="Blade slot" onChange={(e) => setTargetBlade(Number(e.target.value))}>{bladesForLook.map((b) => <option key={b.n} value={b.n}>{b.n}. {ROLE_LABEL[b.role]}{b.fits ? '' : ' (unusual)'}</option>)}</select></span></label>
                 </div>
               )}
-              {target === 'saber' && connected && model && selState === 'compiled' && (
+              {connected && model && live && selState === 'compiled' && (
                 <>
                   <button type="button" className="btn pri full" disabled={!live || !fittingBlade || applying || board.busy} onClick={() => void useInPreset()}><span className="b"><span className="i"><Icon name="presets" />{applying ? 'Writing to the saber…' : `Use it in ${presetName(targetPreset)}`}</span></span></button>
                   <span className="hint">{live ? `This look is already on ${saber!.name}, so it is written to the preset now${colourCount ? ', in the colours you chose above' : ''}. No rebuild.` : `This look is already on ${saber!.name}. Plug the saber in to put it on a preset.`} <button type="button" className="holo" onClick={onPresets}>Open Presets</button></span>
                 </>
               )}
-              {target === 'saber' && connected && model && selState !== 'compiled' && (
+              {connected && model && (!live || selState !== 'compiled') && (
                 <>
                   <button type="button" className="btn pri full" disabled={!fittingBlade} onClick={() => void addToSaber()}><span className="b"><span className="i"><Icon name="plus" />{selState === 'queued' ? `Also use it in ${presetName(targetPreset)}` : `Add to ${presetName(targetPreset)}`}</span></span></button>
                   {selState === 'queued'
