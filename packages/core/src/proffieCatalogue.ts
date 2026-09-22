@@ -63,7 +63,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\alpha.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "AlphaL<Mix<MIX,COLORS...>,MIX>"
  },
  "AltF": {
   "name": "AltF",
@@ -100,7 +101,8 @@ export default {
   ],
   "doc": "returns INTEGER, 0-32768 depending on input reading. Notes: * May cause slowdowns * may not update every run() call * pin modes other than INPUT may not be supported, * Only analog-capable pins will work.",
   "file": "functions\\readpin.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<AnalogReadPinSVF<pin,pin_mode>>"
  },
  "AnalogReadPinSVF": {
   "name": "AnalogReadPinSVF",
@@ -157,9 +159,10 @@ export default {
     "doc": "COLOR"
    }
   ],
-  "doc": "Or: AudioFlickerL<B> Mixes between A and B based on audio. Quiet audio means more A, loud audio means more B. Based on a single sample instead of an average to make it flicker.",
+  "doc": "Mixes between A and B based on audio. Quiet audio means more A, loud audio means more B. Based on a single sample instead of an average to make it flicker.",
   "file": "styles\\audio_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<A,AudioFlickerL<B>>"
  },
  "AudioFlickerL": {
   "name": "AudioFlickerL",
@@ -169,12 +172,13 @@ export default {
     "name": "B",
     "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    }
   ],
-  "doc": "",
+  "doc": "Mixes between A and B based on audio. Quiet audio means more A, loud audio means more B. Based on a single sample instead of an average to make it flicker.",
   "file": "styles\\audio_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<B,NoisySoundLevelCompat>"
  },
  "Azure": {
   "name": "Azure",
@@ -227,7 +231,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\base.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "BendTimePowX<Int<MILLIS>,Int<BEND_VALUE>>"
  },
  "BendTimePowInv": {
   "name": "BendTimePowInv",
@@ -248,7 +253,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\base.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "BendTimePowInvX<Int<MILLIS>,Int<BEND_VALUE>>"
  },
  "BendTimePowInvX": {
   "name": "BendTimePowInvX",
@@ -270,7 +276,8 @@ export default {
   "doc": "",
   "file": "transitions\\base.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "ReverseTimeX<BendTimePowX<ReverseTimeX<MILLIS>,BEND_FUNCTION>>"
  },
  "BendTimePowX": {
   "name": "BendTimePowX",
@@ -329,7 +336,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\blade_angle.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "BladeAngleX<Int<MIN>,Int<MAX>>"
  },
  "BladeAngleX": {
   "name": "BladeAngleX",
@@ -350,7 +358,8 @@ export default {
   ],
   "doc": "Returns: 0-32768 based on angle of blade MIN and MAX specifies the range of angles which are used. For MIN and MAX 0 means down and 32768 means up and 16384 means pointing towards the horizon. So if MIN=16484 and MAX=32768, BladeAngle will return zero when you point the blade towards the horizon and 32768 when you point it straight up. Any angle below the horizon will also return zero. returned value: FUNCTION, same for all LEDs.",
   "file": "functions\\blade_angle.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<BladeAngleXSVF<MIN,MAX>>"
  },
  "BladeAngleXSVF": {
   "name": "BladeAngleXSVF",
@@ -423,9 +432,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "Or: BlastL<BLAST, FADEOUT_MS, WAVE_SIZE, WAVE_MS> Normally shows BASE, but creates a blast effect using the color BLAST when a blast is requested. The effect is basically two humps moving out from the blast location. The size of the humps can be changed with WAVE_SIZE, note that smaller values makes the humps bigger. WAVE_MS determines how fast the waves travel. Smaller values makes the waves travel slower. Finally FADEOUT_MS determines how fast the humps fade back to the base color.",
+  "doc": "Normally shows BASE, but creates a blast effect using the color BLAST when a blast is requested. The effect is basically two humps moving out from the blast location. The size of the humps can be changed with WAVE_SIZE, note that smaller values makes the humps bigger. WAVE_MS determines how fast the waves travel. Smaller values makes the waves travel slower. Finally FADEOUT_MS determines how fast the humps fade back to the base color.",
   "file": "styles\\blast.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<BASE,BlastL<BLAST,FADEOUT_MS,WAVE_SIZE,WAVE_MS,EFFECT>>"
  },
  "BlastF": {
   "name": "BlastF",
@@ -489,9 +499,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "Or: BlastFadeoutL<BLAST, FADEOUT_MS> Normally shows BASE, but swiches to BLAST when a blast is requested and then fades back to BASE. FADEOUT_MS specifies out many milliseconds the fade takes.",
+  "doc": "Normally shows BASE, but swiches to BLAST when a blast is requested and then fades back to BASE. FADEOUT_MS specifies out many milliseconds the fade takes.",
   "file": "styles\\blast.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<BASE,BlastFadeoutL<BLAST,FADEOUT_MS,EFFECT>>"
  },
  "BlastFadeoutF": {
   "name": "BlastFadeoutF",
@@ -520,15 +531,15 @@ export default {
   "params": [
    {
     "name": "BLAST",
-    "kind": "FUNCTION",
+    "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    },
    {
     "name": "FADEOUT_MS",
     "kind": "INTEGER",
     "default": "250",
-    "doc": ""
+    "doc": "a number (defaults to 250)"
    },
    {
     "name": "EFFECT",
@@ -537,9 +548,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "",
+  "doc": "Normally shows BASE, but swiches to BLAST when a blast is requested and then fades back to BASE. FADEOUT_MS specifies out many milliseconds the fade takes.",
   "file": "styles\\blast.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<BLAST,BlastFadeoutF<FADEOUT_MS,EFFECT>>"
  },
  "BlastL": {
   "name": "BlastL",
@@ -547,27 +559,27 @@ export default {
   "params": [
    {
     "name": "BLAST",
-    "kind": "FUNCTION",
+    "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    },
    {
     "name": "FADEOUT_MS",
     "kind": "INTEGER",
     "default": "200",
-    "doc": ""
+    "doc": "a number (defaults to 150)"
    },
    {
     "name": "WAVE_SIZE",
     "kind": "INTEGER",
     "default": "100",
-    "doc": ""
+    "doc": "a number (defaults to 100)"
    },
    {
     "name": "WAVE_MS",
     "kind": "INTEGER",
     "default": "400",
-    "doc": ""
+    "doc": "a number (defaults to 400)"
    },
    {
     "name": "EFFECT",
@@ -576,9 +588,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "",
+  "doc": "Normally shows BASE, but creates a blast effect using the color BLAST when a blast is requested. The effect is basically two humps moving out from the blast location. The size of the humps can be changed with WAVE_SIZE, note that smaller values makes the humps bigger. WAVE_MS determines how fast the waves travel. Smaller values makes the waves travel slower. Finally FADEOUT_MS determines how fast the humps fade back to the base color.",
   "file": "styles\\blast.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<BLAST,BlastF<FADEOUT_MS,WAVE_SIZE,WAVE_MS,EFFECT>>"
  },
  "BlasterChargeF": {
   "name": "BlasterChargeF",
@@ -627,7 +640,8 @@ export default {
   ],
   "doc": "Switches between A and B. A full cycle from A to B and back again takes BLINK_MILLIS milliseconds. If BLINK_PROMILLE is 500, we select A for the first half and B for the second half. If BLINK_PROMILLE is smaller, we get less A and more B. If BLINK_PROMILLE is 0, we get all B. If BLINK_PROMILLE is 1000 we get all A.",
   "file": "styles\\blinking.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "BlinkingX<COLOR1,COLOR2,Int<BLINK_MILLIS>,Int<BLINK_PROMILLE>>"
  },
  "BlinkingF": {
   "name": "BlinkingF",
@@ -648,7 +662,8 @@ export default {
   ],
   "doc": "Switches between 0 and 32768 A full cycle from 0 to 328768 and back again takes BLINK_MILLIS milliseconds. If BLINK_PROMILLE is 500, we select A for the first half and B for the second half. If BLINK_PROMILLE is smaller, we get less A and more B. If BLINK_PROMILLE is 0, we get all 0. If BLINK_PROMILLE is 1000 we get all 32768.",
   "file": "functions\\blinking.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<BlinkingFSVF<BLINK_MILLIS,BLINK_PROMILLE>>"
  },
  "BlinkingFSVF": {
   "name": "BlinkingFSVF",
@@ -697,7 +712,8 @@ export default {
   ],
   "doc": "Switches between A and B. A full cycle from A to B and back again takes BLINK_MILLIS milliseconds. If BLINK_PROMILLE is 500, we select A for the first half and B for the second half. If BLINK_PROMILLE is smaller, we get less A and more B. If BLINK_PROMILLE is 0, we get all B. If BLINK_PROMILLE is 1000 we get all A.",
   "file": "styles\\blinking.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<COLOR2,BlinkingF<BLINK_MILLIS,BLINK_PROMILLE>>"
  },
  "BlinkingX": {
   "name": "BlinkingX",
@@ -730,7 +746,8 @@ export default {
   ],
   "doc": "Switches between A and B. A full cycle from A to B and back again takes BLINK_MILLIS milliseconds. If BLINK_PROMILLE is 500, we select A for the first half and B for the second half. If BLINK_PROMILLE is smaller, we get less A and more B. If BLINK_PROMILLE is 0, we get all B. If BLINK_PROMILLE is 1000 we get all A.",
   "file": "styles\\blinking.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<COLOR1,BlinkingL<COLOR2,BLINK_MILLIS,BLINK_PROMILLE>>"
  },
  "Blue": {
   "name": "Blue",
@@ -794,7 +811,7 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "Or: BrownNoiseFlickerL<B, grade> grade: int Randomly selects between A and B, but keeps nearby pixels looking similar.",
+  "doc": "grade: int Randomly selects between A and B, but keeps nearby pixels looking similar.",
   "file": "styles\\brown_noise_flicker.h",
   "variadic": false
  },
@@ -806,7 +823,7 @@ export default {
     "name": "B",
     "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    },
    {
     "name": "GRADE",
@@ -815,9 +832,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "",
+  "doc": "grade: int Randomly selects between A and B, but keeps nearby pixels looking similar.",
   "file": "styles\\brown_noise_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<B,BrownNoiseF<GRADE>>"
  },
  "BrutalPink": {
   "name": "BrutalPink",
@@ -937,7 +955,8 @@ export default {
   ],
   "doc": "Changes F by no more than SPEED values per second.",
   "file": "functions\\change_slowly.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<ChangeSlowlySVF<F,SPEED>>"
  },
  "ChangeSlowlySVF": {
   "name": "ChangeSlowlySVF",
@@ -1058,7 +1077,8 @@ export default {
   ],
   "doc": "Or:    ClampFX<F, MINCLASS, MAXCLASS> Clamps value between MIN and MAX",
   "file": "functions\\clamp.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "ClampFX<F,Int<MIN>,Int<MAX>>"
  },
  "ClampFX": {
   "name": "ClampFX",
@@ -1086,7 +1106,8 @@ export default {
   "doc": "",
   "file": "functions\\clamp.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "typenameClampFinder<F,MIN,MAX>::ClampClass"
  },
  "ClampFinder": {
   "name": "ClampFinder",
@@ -1162,7 +1183,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\clash_impact.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "ClashImpactFX<Int<MIN>,Int<MAX>>"
  },
  "ClashImpactFX": {
   "name": "ClashImpactFX",
@@ -1183,7 +1205,8 @@ export default {
   ],
   "doc": "returned value: INTEGER Returns 0-32768 based on impact strength of clash",
   "file": "functions\\clash_impact.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<ClashImpactFXSVF<MIN,MAX>>"
  },
  "ClashImpactFXSVF": {
   "name": "ClashImpactFXSVF",
@@ -1226,7 +1249,8 @@ export default {
   ],
   "doc": "COLOR1, COLOR2, ...:  COLOR Return value: COLOR Decides what color to return based on the current variation. The returned color will be current_variation % N (where N is the number of colors arguments). When the variation changes, the transition will be used to change from the old color to the new color.",
   "file": "styles\\colorchange.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "ColorSelect<Variation,TRANSITION,COLORS...>"
  },
  "ColorCycle": {
   "name": "ColorCycle",
@@ -1528,7 +1552,8 @@ export default {
   ],
   "doc": "Divide F by V If V = 0, returns 0 Please note that Divide<> isn't an exact inverse of Mult<> because mult uses fixed-point mathematics (it divides the result by 32768) while Divide<> doesn't, it just returns F / V",
   "file": "functions\\divide.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "typenameDivideFinder<F,V>::DivideClass"
  },
  "DivideBase": {
   "name": "DivideBase",
@@ -1628,7 +1653,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\legacy_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SimpleClash<Lockup<Blast<color,WHITE>,AudioFlicker<color,lockup_flicker_color>>,clash_color>"
  },
  "EffectIncrementF": {
   "name": "EffectIncrementF",
@@ -1655,15 +1681,17 @@ export default {
   ],
   "doc": "Increases by value I (up to MAX) each time EFFECT is triggered If current value + I = MAX, it returns 0. If adding I exceeds MAX, the function returns 0 + any remainder in excesss of MAX",
   "file": "functions\\effect_increment.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "IncrementModuloF<EffectPulseF<EFFECT>,MAX,I>"
  },
  "EffectPosition": {
   "name": "EffectPosition",
   "kind": "FUNCTION",
   "params": [],
-  "doc": "Or: EffectPosition<EFFECT> EffectPosition returns the position of a particular effect. 0 = base, 32768 = tip. For now, this location is random, but may be set explicitly in the future. When used as EffectPosition<> inside a TransitionEffectL whose EFFECT is already specified, then it will automatically use the right effect.",
+  "doc": "EffectPosition returns the position of a particular effect. 0 = base, 32768 = tip. For now, this location is random, but may be set explicitly in the future. When used as EffectPosition<> inside a TransitionEffectL whose EFFECT is already specified, then it will automatically use the right effect.",
   "file": "functions\\effect_position.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<EffectPositionSVF<T>>"
  },
  "EffectPositionSVF": {
   "name": "EffectPositionSVF",
@@ -1687,7 +1715,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\effect_increment.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<EffectPulseSVF<EFFECT>>"
  },
  "EffectPulseSVF": {
   "name": "EffectPulseSVF",
@@ -2070,7 +2099,8 @@ export default {
   ],
   "doc": "Works like Stripes, but with no gradient between color segments.. * Note * Regular Stripes is recommended for very slow speeds. Without a 1 pixel gradient smoothing the changing pixel color, the animation can seem a little \"choppy\". At faster speeds, this is not apparent.",
   "file": "styles\\stripes.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "HardStripesX<Int<WIDTH>,Int<SPEED>,COLORS...>"
  },
  "HardStripesBase": {
   "name": "HardStripesBase",
@@ -2179,7 +2209,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\rotate_color.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "HueX<Int<HUE>>"
  },
  "HueX": {
   "name": "HueX",
@@ -2195,7 +2226,8 @@ export default {
   "doc": "",
   "file": "styles\\rotate_color.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "RotateColorsX<HUE,Red>"
  },
  "HumpFlicker": {
   "name": "HumpFlicker",
@@ -2220,9 +2252,10 @@ export default {
     "doc": "a number"
    }
   ],
-  "doc": "Or: HumpFlickerL<B, HUMP_WIDTH> Makes a random \"hump\" which is about 2xHUMP_WIDTH leds wide.",
+  "doc": "Makes a random \"hump\" which is about 2xHUMP_WIDTH leds wide.",
   "file": "styles\\hump_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<A,HumpFlickerL<B,HUMP_WIDTH>>"
  },
  "HumpFlickerF": {
   "name": "HumpFlickerF",
@@ -2237,7 +2270,8 @@ export default {
   ],
   "doc": "Creates hump shapes that randomize over the blade. The returned INTEGER is the size of the humps. Large values can give the blade a shimmering look, while small values look more like speckles.",
   "file": "functions\\bump.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "HumpFlickerFX<Int<HUMP_WIDTH>>"
  },
  "HumpFlickerFX": {
   "name": "HumpFlickerFX",
@@ -2262,18 +2296,19 @@ export default {
     "name": "B",
     "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    },
    {
     "name": "HUMP_WIDTH",
     "kind": "INTEGER",
     "default": null,
-    "doc": ""
+    "doc": "a number"
    }
   ],
-  "doc": "",
+  "doc": "Makes a random \"hump\" which is about 2xHUMP_WIDTH leds wide.",
   "file": "styles\\hump_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<B,HumpFlickerF<HUMP_WIDTH>>"
  },
  "Ifon": {
   "name": "Ifon",
@@ -2315,7 +2350,8 @@ export default {
   ],
   "doc": "This class renders BASE as normal, but delays ignition by the specified number of milliseconds. Intended for kylo-style quillions.",
   "file": "styles\\ignition_delay.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "IgnitionDelayX<Int<delay_millis>,BASE>"
  },
  "IgnitionDelayBase": {
   "name": "IgnitionDelayBase",
@@ -2368,7 +2404,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\edit_mode.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Scale<IsLessThan<IntArg<IGNITION_TIME_ARG,DEFAULT_VALUE>,Int<1>>,IntArg<IGNITION_TIME_ARG,DEFAULT_VALUE>,WavLen<EFFECT_IGNITION>>"
  },
  "ImperialYellow": {
   "name": "ImperialYellow",
@@ -2430,7 +2467,8 @@ export default {
   ],
   "doc": "0 when off, 32768 when on, takes OUT_MILLIS to go from 0 to 32768 takes IN_MILLIS to go from 32768 to 0.",
   "file": "functions\\ifon.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "InOutFuncX<Int<OUT_MILLIS>,Int<IN_MILLIS>>"
  },
  "InOutFuncSVF": {
   "name": "InOutFuncSVF",
@@ -2479,7 +2517,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\ifon.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "InOutFuncX<Int<OUT_MILLIS>,Scale<Trigger<EFFECT_BLAST,Int<0>,Int<EXPLODE_MILLIS>,Int<0>>,Int<IN_MILLIS>,Int<EXPLODE_MILLIS>>>"
  },
  "InOutFuncX": {
   "name": "InOutFuncX",
@@ -2501,7 +2540,8 @@ export default {
   "doc": "",
   "file": "functions\\ifon.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "SingleValueAdapter<InOutFuncSVF<OUT_MILLIS,IN_MILLIS>>"
  },
  "InOutHelper": {
   "name": "InOutHelper",
@@ -2534,7 +2574,8 @@ export default {
   ],
   "doc": "This class does a basic extend/retract. Basically it fades between BASE and OFF_COLOR (which defaults to black). It starts by just displaying OFF_COLOR, and when you turn the saber on it starts mixing in BASE at the base of the saber. After OUT_MILLIS milliseconds, it will be displaying the BASE color on the entire blade.",
   "file": "styles\\inout_helper.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "InOutHelperX<T,InOutFunc<OUT_MILLIS,IN_MILLIS>,OFF_COLOR>"
  },
  "InOutHelperF": {
   "name": "InOutHelperF",
@@ -2582,7 +2623,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\inout_helper.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<OFF_COLOR,InOutHelperF<EXTENSION,ALLOW_DISABLE>>"
  },
  "InOutHelperTD": {
   "name": "InOutHelperTD",
@@ -2621,7 +2663,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\inout_helper.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "InOutHelperX<T,InOutFuncTD<OUT_MILLIS,IN_MILLIS,EXPLODE_MILLIS>,OFF_COLOR>"
  },
  "InOutHelperX": {
   "name": "InOutHelperX",
@@ -2654,7 +2697,8 @@ export default {
   ],
   "doc": "This class does a basic extend/retract. Basically it fades between BASE and OFF_COLOR (which defaults to black). The amount of extension is determined by EXTENSION. If EXTENSION returns 32768, the blade is fully extended. If it returns zero, it is not extended.",
   "file": "styles\\inout_helper.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<T,InOutHelperL<EXTENSION,OFF_COLOR,ALLOW_DISABLE>>"
  },
  "InOutSparkTip": {
   "name": "InOutSparkTip",
@@ -2699,7 +2743,8 @@ export default {
   ],
   "doc": "Similar to InOutHelper, but makes the tip a different color during extension.",
   "file": "styles\\inout_sparktip.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "InOutSparkTipX<T,InOutFunc<OUT_MILLIS,IN_MILLIS>,SPARK_COLOR,OFF_COLOR,ALLOW_DISABLE>"
  },
  "InOutSparkTipX": {
   "name": "InOutSparkTipX",
@@ -2778,7 +2823,8 @@ export default {
   ],
   "doc": "Similar to InOutHelper<>, but uses configuratble transitions to go to and from the BASE to the OFF_COLOR.",
   "file": "styles\\inout_helper.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<ON,InOutTrL<OutTr,InTr,OFF,ALLOW_DISABLE>>"
  },
  "InOutTrL": {
   "name": "InOutTrL",
@@ -2809,7 +2855,7 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "",
+  "doc": "Similar to InOutHelper<>, but uses configuratble transitions to go to and from the BASE to the OFF_COLOR.",
   "file": "styles\\inout_helper.h",
   "variadic": false
  },
@@ -2850,7 +2896,8 @@ export default {
   ],
   "doc": "Increases by value I (up to MAX) each time F >= V Detection resets once F drops below V * HYST_PERCENT if greater than MAX returns 0",
   "file": "functions\\increment.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "IncrementModuloF<ThresholdPulseF<F,V,HYST_PERCENT>,MAX,I>"
  },
  "IncrementModuloF": {
   "name": "IncrementModuloF",
@@ -2877,7 +2924,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\increment.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<IncrementModuloFSVF<PULSE,MAX,INCREMENT>>"
  },
  "IncrementModuloFSVF": {
   "name": "IncrementModuloFSVF",
@@ -2938,7 +2986,8 @@ export default {
   ],
   "doc": "Starts at zero, increments by I each time the PULSE occurs. If it reaches MAX it stays there. Resets back to zero when RESET_PULSE occurs.",
   "file": "functions\\effect_increment.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<IncrementWithResetSVF<PULSE,RESET_PULSE,MAX,I>>"
  },
  "IncrementWithResetSVF": {
   "name": "IncrementWithResetSVF",
@@ -2987,7 +3036,8 @@ export default {
   ],
   "doc": "Returns N",
   "file": "functions\\int.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<IntSVF<N>>"
  },
  "IntArg": {
   "name": "IntArg",
@@ -3008,7 +3058,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\int_arg.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<IntArgSVF<ARG,DEFAULT_VALUE>>"
  },
  "IntArgSVF": {
   "name": "IntArgSVF",
@@ -3119,7 +3170,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\scale.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Scale<F,Int<32768>,Int<0>>"
  },
  "IsBetween": {
   "name": "IsBetween",
@@ -3146,7 +3198,8 @@ export default {
   ],
   "doc": "Returns 0 or 32768 based F > BOTTOM and < TOP",
   "file": "functions\\isbetween.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "typenameIsBetweenFinder<F,BOTTOM,TOP>::IsBetweenClass"
  },
  "IsBetweenBase": {
   "name": "IsBetweenBase",
@@ -3250,7 +3303,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\islessthan.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "IsLessThan<V,F>"
  },
  "IsLessThan": {
   "name": "IsLessThan",
@@ -3271,7 +3325,8 @@ export default {
   ],
   "doc": "Returns 0 or 32768 based on V If F < V returns 32768, if F >= V returns 0",
   "file": "functions\\islessthan.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "typenameIsLessThanFinder<F,V>::IsLessThanClass"
  },
  "IsLessThanBase": {
   "name": "IsLessThanBase",
@@ -3417,7 +3472,8 @@ export default {
   ],
   "doc": "This style works like layers in gimp or photoshop. In most cases, the layers are expected to be normally transparent effects that turn opaque when then want to paint an effect over the base color. If the base color is opqaque, the final result of this style will also be opaque. If the base color is transparent, the final result may also be transparent, depending on what the layers paint on top of the base color.",
   "file": "styles\\layers.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "typenameLayerSelector<BASE,LAYERS...>::type"
  },
  "Lemon": {
   "name": "Lemon",
@@ -3570,7 +3626,8 @@ export default {
   ],
   "doc": "Similar to SimpleClash, but lights up a portion of the blade. The fraction of the blade is defined by CLASH_WIDTH_PERCENT The location of the clash is random within the middle half of the blade. Localized clashes should work well with stabs with no modifications.",
   "file": "styles\\clash.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<T,LocalizedClashL<CLASH_COLOR,CLASH_MILLIS,CLASH_WIDTH_PERCENT,EFFECT>>"
  },
  "LocalizedClashL": {
   "name": "LocalizedClashL",
@@ -3640,9 +3697,10 @@ export default {
     "doc": "FUNCTION (defaults to SmoothStep<Int<28671>, Int<4096>>)"
    }
   ],
-  "doc": "Or: LockupL<LOCKUP, DRAG_COLOR, LOCKUP_SHAPE, DRAG_SHAPE, LB_SHAPE> Shows LOCKUP if the lockup state is true, otherwise BASE. Also handles Drag, Melt and Lightning Block lockup types unless those are handled elsewhere in the same style.",
+  "doc": "Shows LOCKUP if the lockup state is true, otherwise BASE. Also handles Drag, Melt and Lightning Block lockup types unless those are handled elsewhere in the same style.",
   "file": "styles\\lockup.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<BASE,LockupL<LOCKUP,DRAG_COLOR,LOCKUP_SHAPE,DRAG_SHAPE>>"
  },
  "LockupL": {
   "name": "LockupL",
@@ -3650,36 +3708,36 @@ export default {
   "params": [
    {
     "name": "LOCKUP",
-    "kind": "FUNCTION",
+    "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    },
    {
     "name": "DRAG_COLOR",
     "kind": "COLOR",
     "default": "LOCKUP",
-    "doc": ""
+    "doc": "COLOR (defaults to the LOCKUP color)"
    },
    {
     "name": "LOCKUP_SHAPE",
     "kind": "FUNCTION",
     "default": "Int<32768>",
-    "doc": ""
+    "doc": "FUNCTION (defaults to Int<32768>)"
    },
    {
     "name": "DRAG_SHAPE",
     "kind": "FUNCTION",
     "default": "SmoothStep<Int<28671>, Int<4096>>",
-    "doc": ""
+    "doc": "FUNCTION (defaults to SmoothStep<Int<28671>, Int<4096>>)"
    },
    {
     "name": "LB_SHAPE",
     "kind": "FUNCTION",
     "default": "LayerFunctions<Bump<Scale<SlowNoise<Int<2000>>,Int<3000>,Int<16000>>, Scale<BrownNoiseF<Int<10>>,Int<14000>,Int<8000>>>, Bump<Scale<SlowNoise<Int<2300>>,Int<26000>,Int<8000>>, Scale<NoisySoundLevel,Int<5000>,Int<10000>>>, Bump<Scale<SlowNoise<Int<2300>>,Int<20000>,Int<30000>>, Scale<IsLessThan<SlowNoise<Int<1500>>,Int<8000>>,Scale<NoisySoundLevel,Int<5000>,Int<0>>,Int<0>>>>",
-    "doc": ""
+    "doc": "FUNCTION (defaults to a suitable function)"
    }
   ],
-  "doc": "",
+  "doc": "Shows LOCKUP if the lockup state is true, otherwise BASE. Also handles Drag, Melt and Lightning Block lockup types unless those are handled elsewhere in the same style.",
   "file": "styles\\lockup.h",
   "variadic": false
  },
@@ -3696,7 +3754,8 @@ export default {
   ],
   "doc": "Returns 32768 once for each time the given lockup occurs.",
   "file": "functions\\effect_increment.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<LockupPulseSVF<LOCKUP_TYPE>>"
  },
  "LockupPulseSVF": {
   "name": "LockupPulseSVF",
@@ -3755,9 +3814,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "Or: LockupTrL<COLOR, BeginTr, EndTr, LOCKUP_TYPE, CONDITION> BeginTr, EndTr: TRANSITION Return type: LAYER This layer creates a complete lockup effect. When lockup is initiated, BeginTr is used to transition from transparent to COLOR. When lockup ends, EndTr is used to transition from COLOR to transparent again. If you wish to for your lockup to have a shape, you can have COLOR be partially transparent to make the base layer show through. If CONDITION equals 0, Lockup effect ignored",
+  "doc": "BeginTr, EndTr: TRANSITION Return type: LAYER This layer creates a complete lockup effect. When lockup is initiated, BeginTr is used to transition from transparent to COLOR. When lockup ends, EndTr is used to transition from COLOR to transparent again. If you wish to for your lockup to have a shape, you can have COLOR be partially transparent to make the base layer show through. If CONDITION equals 0, Lockup effect ignored",
   "file": "styles\\lockup.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<BASE,LockupTrL<COLOR,BeginTr,EndTr,LOCKUP_TYPE,CONDITION>>"
  },
  "LockupTrL": {
   "name": "LockupTrL",
@@ -3767,7 +3827,7 @@ export default {
     "name": "COLOR",
     "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR or LAYER"
    },
    {
     "name": "BeginTr",
@@ -3785,7 +3845,7 @@ export default {
     "name": "LOCKUP_TYPE",
     "kind": "LOCKUP_TYPE",
     "default": null,
-    "doc": ""
+    "doc": "a SaberBase::LockupType"
    },
    {
     "name": "CONDITION",
@@ -3794,7 +3854,7 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "",
+  "doc": "BeginTr, EndTr: TRANSITION Return type: LAYER This layer creates a complete lockup effect. When lockup is initiated, BeginTr is used to transition from transparent to COLOR. When lockup ends, EndTr is used to transition from COLOR to transparent again. If you wish to for your lockup to have a shape, you can have COLOR be partially transparent to make the base layer show through. If CONDITION equals 0, Lockup effect ignored",
   "file": "styles\\lockup.h",
   "variadic": false
  },
@@ -3914,7 +3974,8 @@ export default {
   "doc": "",
   "file": "styles\\mix.h",
   "variadic": true,
-  "internal": true
+  "internal": true,
+  "alias": "MixHelper2<TypeList<COLORS...>>"
  },
  "MixHelper2": {
   "name": "MixHelper2",
@@ -3980,7 +4041,8 @@ export default {
   ],
   "doc": "When F is greater than MAX, F wraps to 0 When F is less than 0, F wraps to MAX returns Integer",
   "file": "functions\\mod.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "typenameModFinder<F,MAX>::ModClass"
  },
  "ModFinder": {
   "name": "ModFinder",
@@ -4052,7 +4114,8 @@ export default {
   ],
   "doc": "Fixed point multiplication of values F * V, fixed point 16.15 arithmetic (32768 = 1.0) (2*2 would not result in 4), (16384 * 16384 = 8192, representation of 0.5*0.5=0.25) most blade functions use this method of fixed point calculations",
   "file": "functions\\mult.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "typenameMultFinder<F,V>::MultClass"
  },
  "MultBase": {
   "name": "MultBase",
@@ -4162,7 +4225,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\transition_effect.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<T,MultiTransitionEffectL<TrConcat<TRANSITION1,EFFECT_COLOR,TRANSITION2>,EFFECT,N>>"
  },
  "MultiTransitionEffectL": {
   "name": "MultiTransitionEffectL",
@@ -4246,9 +4310,10 @@ export default {
     "doc": "a number (defaults to 200)"
    }
   ],
-  "doc": "Or: OnSparX<BASE, SPARK_COLOR, MILLI_CLASS> Or: OnSparL<SPARK_COLOR, MILLI_CLASS> When you turn the saber on, it starts with SPARK_COLOR, and then fades to BASE over a peariod of MILLIS millseconds.",
+  "doc": "When you turn the saber on, it starts with SPARK_COLOR, and then fades to BASE over a peariod of MILLIS millseconds.",
   "file": "styles\\on_spark.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "OnSparkX<T,SPARK_COLOR,Int<MILLIS>>"
  },
  "OnSparkF": {
   "name": "OnSparkF",
@@ -4263,7 +4328,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\on_spark.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<OnSparkFSVF<MILLIS>>"
  },
  "OnSparkFSVF": {
   "name": "OnSparkFSVF",
@@ -4300,7 +4366,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\on_spark.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<SPARK_COLOR,OnSparkF<MILLIS>>"
  },
  "OnSparkX": {
   "name": "OnSparkX",
@@ -4328,7 +4395,8 @@ export default {
   "doc": "",
   "file": "styles\\on_spark.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "Layers<T,OnSparkL<SPARK_COLOR,MILLIS>>"
  },
  "Orange": {
   "name": "Orange",
@@ -4377,9 +4445,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "Or: OriginalBlastL<BLAST> Normally shows BASE, but creates a blast effect using the color BLAST when a blast is requested. This was the original blast effect, but it is slow and not very configurable.",
+  "doc": "Normally shows BASE, but creates a blast effect using the color BLAST when a blast is requested. This was the original blast effect, but it is slow and not very configurable.",
   "file": "styles\\blast.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<BASE,OriginalBlastL<BLAST,EFFECT>>"
  },
  "OriginalBlastF": {
   "name": "OriginalBlastF",
@@ -4402,9 +4471,9 @@ export default {
   "params": [
    {
     "name": "BLAST",
-    "kind": "FUNCTION",
+    "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    },
    {
     "name": "EFFECT",
@@ -4413,9 +4482,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "",
+  "doc": "Normally shows BASE, but creates a blast effect using the color BLAST when a blast is requested. This was the original blast effect, but it is slow and not very configurable.",
   "file": "styles\\blast.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<BLAST,OriginalBlastF<EFFECT>>"
  },
  "OverdueBlue": {
   "name": "OverdueBlue",
@@ -4465,7 +4535,7 @@ export default {
     "name": "COLOR",
     "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR - color values to pixelate"
    },
    {
     "name": "N",
@@ -4474,9 +4544,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "",
+  "doc": "Returns: COLOR",
   "file": "styles\\pixelate.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "PixelateX<COLOR,Int<N>>"
  },
  "PixelateX": {
   "name": "PixelateX",
@@ -4540,7 +4611,8 @@ export default {
   ],
   "doc": "Goes back and forth between COLOR1 and COLOR2. A full transition from COLOR1 to COLOR2 and back again takes PULSE_MILLIS milliseconds.",
   "file": "styles\\pulsing.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "PulsingX<COLOR1,COLOR2,Int<PULSE_MILLIS>>"
  },
  "PulsingF": {
   "name": "PulsingF",
@@ -4555,7 +4627,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\sin.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<PulsingFSVF<PULSE_MILLIS>>"
  },
  "PulsingFSVF": {
   "name": "PulsingFSVF",
@@ -4592,7 +4665,8 @@ export default {
   ],
   "doc": "Goes back and forth between COLOR1 and COLOR2. A full transition from COLOR1 to COLOR2 and back again takes PULSE_MILLIS milliseconds.",
   "file": "styles\\pulsing.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<COLOR2,PulsingF<PULSE_MILLIS>>"
  },
  "PulsingX": {
   "name": "PulsingX",
@@ -4619,7 +4693,8 @@ export default {
   ],
   "doc": "Goes back and forth between COLOR1 and COLOR2. A full transition from COLOR1 to COLOR2 and back again takes PULSE_MILLIS milliseconds.",
   "file": "styles\\pulsing.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<COLOR1,PulsingL<COLOR2,PULSE_MILLIS>>"
  },
  "RED": {
   "name": "RED",
@@ -4670,7 +4745,8 @@ export default {
   ],
   "doc": "Each LED is randomly chosen as COLOR1 or COLOR2, then stays that color for 1000/MILLIHZ seconds.",
   "file": "styles\\random_blink.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "RandomBlinkX<Int<MILLIHZ>,COLOR1,COLOR2>"
  },
  "RandomBlinkF": {
   "name": "RandomBlinkF",
@@ -4706,7 +4782,8 @@ export default {
   ],
   "doc": "Each LED is randomly chosen as COLOR1 or COLOR2, then stays that color for 1000/MILLIHZ seconds.",
   "file": "styles\\random_blink.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<COLOR1,RandomBlinkF<MILLIHZ>>"
  },
  "RandomBlinkX": {
   "name": "RandomBlinkX",
@@ -4733,7 +4810,8 @@ export default {
   ],
   "doc": "Each LED is randomly chosen as COLOR1 or COLOR2, then stays that color for 1000/MILLIHZ seconds.",
   "file": "styles\\random_blink.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<COLOR2,RandomBlinkL<MILLIHZ,COLOR1>>"
  },
  "RandomF": {
   "name": "RandomF",
@@ -4760,9 +4838,10 @@ export default {
     "doc": "COLOR"
    }
   ],
-  "doc": "Or: RandomL<B> Mixes randomly between A and B. mix is even over entire blade.",
+  "doc": "Mixes randomly between A and B. mix is even over entire blade.",
   "file": "styles\\random_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<A,RandomL<B>>"
  },
  "RandomL": {
   "name": "RandomL",
@@ -4772,12 +4851,13 @@ export default {
     "name": "B",
     "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    }
   ],
-  "doc": "",
+  "doc": "Mixes randomly between A and B. mix is even over entire blade.",
   "file": "styles\\random_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<B,RandomF>"
  },
  "RandomPerLEDF": {
   "name": "RandomPerLEDF",
@@ -4804,9 +4884,10 @@ export default {
     "doc": "COLOR"
    }
   ],
-  "doc": "Or: RandomPerLEDFlickerL<B> Mixes randomly between A and B. mix is chosen individually for every LED.",
+  "doc": "Mixes randomly between A and B. mix is chosen individually for every LED.",
   "file": "styles\\random_per_led_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<A,RandomPerLEDFlickerL<B>>"
  },
  "RandomPerLEDFlickerL": {
   "name": "RandomPerLEDFlickerL",
@@ -4816,12 +4897,13 @@ export default {
     "name": "B",
     "kind": "COLOR",
     "default": null,
-    "doc": ""
+    "doc": "COLOR"
    }
   ],
-  "doc": "",
+  "doc": "Mixes randomly between A and B. mix is chosen individually for every LED.",
   "file": "styles\\random_per_led_flicker.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<B,RandomPerLEDF>"
  },
  "RareBlue": {
   "name": "RareBlue",
@@ -4850,7 +4932,8 @@ export default {
   ],
   "doc": "returns INTEGER, 0 if pin is low and 32768 if pin is high",
   "file": "functions\\readpin.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<ReadPinSVF<pin,pin_mode>>"
  },
  "ReadPinSVF": {
   "name": "ReadPinSVF",
@@ -4946,7 +5029,8 @@ export default {
   ],
   "doc": "Implements Blast effect that will move based on angle of the blade instead of random location Blast will impact and Fade in position.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "MultiTransitionEffectL<TrConcat<TrInstant,AlphaL<COLOR,Bump<Scale<BladeAngle<>,TOP,BOTTOM>,SIZE>>,TrFadeX<FADE>>,EFFECT>"
  },
  "ResponsiveBlastL": {
   "name": "ResponsiveBlastL",
@@ -4997,7 +5081,8 @@ export default {
   ],
   "doc": "Implements Blast effect that will move based on angle of the blade instead of random location Blast will impact and disperse along the blade from original position.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<MultiTransitionEffectL<TrWaveX<COLOR,FADE,SIZE,SPEED,Scale<BladeAngle<>,TOP,BOTTOM>>,EFFECT>,Bump<Scale<BladeAngle<>,TOP,BOTTOM>,Int<24000>>>"
  },
  "ResponsiveBlastWaveL": {
   "name": "ResponsiveBlastWaveL",
@@ -5048,7 +5133,8 @@ export default {
   ],
   "doc": "Implements Blast effect that will move based on angle of the blade instead of random location Blast will impact and split up and down the length of the blade from original position.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "MultiTransitionEffectL<TrWaveX<COLOR,FADE,SIZE,SPEED,Scale<BladeAngle<>,TOP,BOTTOM>>,EFFECT>"
  },
  "ResponsiveClashL": {
   "name": "ResponsiveClashL",
@@ -5093,7 +5179,8 @@ export default {
   ],
   "doc": "Implements LocalizedClash effect that mimics ResponsiveLockup location and size.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TransitionEffectL<TrConcat<TR1,AlphaL<COLOR,Bump<Scale<BladeAngle<>,TOP,BOTTOM>,SIZE>>,TR2>,EFFECT_CLASH>"
  },
  "ResponsiveDragL": {
   "name": "ResponsiveDragL",
@@ -5144,7 +5231,8 @@ export default {
   ],
   "doc": "Implements Drag that will increase or decrease in size based on turning hilt.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "LockupTrL<AlphaL<COLOR,SmoothStep<LOCATION,Scale<TwistAngle<>,SIZE1,SIZE2>>>,TR1,TR2,SaberBase::LOCKUP_DRAG,CONDITION>"
  },
  "ResponsiveLightningBlockL": {
   "name": "ResponsiveLightningBlockL",
@@ -5177,7 +5265,8 @@ export default {
   ],
   "doc": "Implements hybrid Force Lightning Block with animation, intensity responds to turning the hilt and location/focus will respond to blade angle.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "LockupTrL<AlphaL<COLOR,LayerFunctions<Bump<Scale<SlowNoise<Scale<BladeAngle<24000,32768>,Int<2100>,Int<1000>>>,Scale<BladeAngle<24000,32768>,Int<3000>,Int<10000>>,Int<16000>>,Scale<BrownNoiseF<Int<10>>,Scale<TwistAngle<>,Int<4000>,Int<10000>>,Scale<TwistAngle<>,Int<9000>,Int<14000>>>>,Bump<Scale<SlowNoise<Int<2200>>,Scale<BladeAngle<24000,32768>,Int<26000>,Int<18000>>,Int<8000>>,Scale<NoisySoundLevel,Scale<TwistAngle<>,Int<6000>,Int<10000>>,Scale<TwistAngle<>,Int<10000>,Int<14000>>>>,Bump<Scale<SlowNoise<Int<2300>>,Scale<BladeAngle<24000,32768>,Int<20000>,Int<16000>>,Scale<BladeAngle<24000,32768>,Int<30000>,Int<24000>>>,Scale<IsLessThan<SlowNoise<Int<2000>>,Int<12000>>,Scale<NoisySoundLevel,Scale<TwistAngle<>,Int<9000>,Int<5000>>,Int<0>>,Int<0>>>>>,TR1,TR2,SaberBase::LOCKUP_LIGHTNING_BLOCK,CONDITION>"
  },
  "ResponsiveLockupL": {
   "name": "ResponsiveLockupL",
@@ -5228,7 +5317,8 @@ export default {
   ],
   "doc": "Implements LocalizedLockup that will move based on the angle of the blade.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "LockupTrL<AlphaL<COLOR,Bump<Scale<BladeAngle<>,TOP,BOTTOM>,SIZE>>,TR1,TR2,SaberBase::LOCKUP_NORMAL,CONDITION>"
  },
  "ResponsiveMeltL": {
   "name": "ResponsiveMeltL",
@@ -5279,7 +5369,8 @@ export default {
   ],
   "doc": "Implements Melt effect for cutting through object, size will change to mimic metal heating and intensity will increase or decrease based on turning hilt.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "LockupTrL<AlphaL<COLOR,SmoothStep<LOCATION,Scale<TwistAngle<>,SIZE1,SIZE2>>>,TR1,TR2,SaberBase::LOCKUP_MELT,CONDITION>"
  },
  "ResponsiveStabL": {
   "name": "ResponsiveStabL",
@@ -5324,7 +5415,8 @@ export default {
   ],
   "doc": "Stab effect Implements Stab effect that will change in size based on angle of the blade.",
   "file": "styles\\responsive_styles.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TransitionEffectL<TrConcat<TR1,AlphaL<COLOR,SmoothStep<LOCATION,Scale<BladeAngle<>,SIZE1,SIZE2>>>,TR2>,EFFECT_STAB>"
  },
  "RetractionDelay": {
   "name": "RetractionDelay",
@@ -5345,7 +5437,8 @@ export default {
   ],
   "doc": "This class renders BASE as normal, but delays retraction by the specified number of milliseconds.",
   "file": "styles\\retraction_delay.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "RetractionDelayX<Int<millis>,BASE>"
  },
  "RetractionDelayBase": {
   "name": "RetractionDelayBase",
@@ -5398,7 +5491,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\edit_mode.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Scale<IsLessThan<IntArg<RETRACTION_TIME_ARG,DEFAULT_VALUE>,Int<1>>,IntArg<RETRACTION_TIME_ARG,DEFAULT_VALUE>,WavLen<EFFECT_RETRACTION>>"
  },
  "ReverseTime": {
   "name": "ReverseTime",
@@ -5413,7 +5507,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\base.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "ReverseTimeX<Int<MILLIS>>"
  },
  "ReverseTimeX": {
   "name": "ReverseTimeX",
@@ -5558,7 +5653,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\rotate_color.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "RotateColorsX<Int<rotation>,COLOR>"
  },
  "RotateColorsX": {
   "name": "RotateColorsX",
@@ -5695,7 +5791,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\sin.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<SawSVF<RPM,LOWclass,HIGHclass>>"
  },
  "SawSVF": {
   "name": "SawSVF",
@@ -5750,7 +5847,8 @@ export default {
   ],
   "doc": "Changes values in range 0 - 32768 to A-B",
   "file": "functions\\scale.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "typenameScaleFinder<F,A,B>::ScaleClass"
  },
  "ScaleBase": {
   "name": "ScaleBase",
@@ -5888,7 +5986,8 @@ export default {
   ],
   "doc": "millis_per_bit: millseconds spent on each bit bits: number of bits before we loop around to the beginning 0b0000000000000000: 16-bit binary numbers containing the actual sequence. Shows COLOR1 if the current bit in the sequence is 1, COLOR2 otherwise. The number of 16-bit binary numbers should be at least |bits| / 16, rounded up. Note that if not all bits are used within the 16-bit number. Example, a red SOS pattern: Sequence<RED, BLACK, 100, 37, 0b0001010100011100, 0b0111000111000101, 0b0100000000000000>",
   "file": "styles\\sequence.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "Layers<COLOR2,SequenceL<COLOR1,millis_per_bit,bits,sequence...>>"
  },
  "SequenceF": {
   "name": "SequenceF",
@@ -5948,7 +6047,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\sequence.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "AlphaL<COLOR2,SequenceF<millis_per_bit,bits,sequence...>>"
  },
  "ShowColorAllBlades": {
   "name": "ShowColorAllBlades",
@@ -6043,9 +6143,10 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "Or: SimpleClashL<CLASH_COLOR, CLASH_MILLIS> Turns the blade to CLASH_COLOR for CLASH_MILLIS millseconds when a clash occurs.",
+  "doc": "Turns the blade to CLASH_COLOR for CLASH_MILLIS millseconds when a clash occurs.",
   "file": "styles\\clash.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<T,SimpleClashL<CLASH_COLOR,CLASH_MILLIS,EFFECT,STAB_SHAPE>>"
  },
  "SimpleClashL": {
   "name": "SimpleClashL",
@@ -6055,13 +6156,13 @@ export default {
     "name": "CLASH_COLOR",
     "kind": "COLOR",
     "default": "Rgb<255,255,255>",
-    "doc": ""
+    "doc": "COLOR (defaults to white)"
    },
    {
     "name": "CLASH_MILLIS",
     "kind": "INTEGER",
     "default": "40",
-    "doc": ""
+    "doc": "a number (defaults to 40)"
    },
    {
     "name": "EFFECT",
@@ -6076,7 +6177,7 @@ export default {
     "doc": ""
    }
   ],
-  "doc": "",
+  "doc": "Turns the blade to CLASH_COLOR for CLASH_MILLIS millseconds when a clash occurs.",
   "file": "styles\\clash.h",
   "variadic": false
  },
@@ -6105,7 +6206,8 @@ export default {
   ],
   "doc": "pulses between LOW - HIGH RPM times per minute",
   "file": "functions\\sin.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<SinSVF<RPM,LOWclass,HIGHclass>>"
  },
  "SinSVF": {
   "name": "SinSVF",
@@ -6258,9 +6360,10 @@ export default {
     "doc": "a number"
    }
   ],
-  "doc": "Or: SparkleL<SPARKLE_COLOR, SPARK_CHANCE_PROMILLE, SPARK_INTENSITY> Generally displays BASE, but creates little sparkles of SPARKLE_COLOR SPARK_CHANCE_PROMILLE decides how often a spark is generated, defaults to 300 (30%) SPARK_INTENSITY specifies how intens the spark is, defaults to 1024",
+  "doc": "Generally displays BASE, but creates little sparkles of SPARKLE_COLOR SPARK_CHANCE_PROMILLE decides how often a spark is generated, defaults to 300 (30%) SPARK_INTENSITY specifies how intens the spark is, defaults to 1024",
   "file": "styles\\sparkle.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<BASE,SparkleL<SPARKLE_COLOR,SPARK_CHANCE_PROMILLE,SPARK_INTENSITY>>"
  },
  "SparkleF": {
   "name": "SparkleF",
@@ -6291,24 +6394,25 @@ export default {
     "name": "SPARKLE_COLOR",
     "kind": "COLOR",
     "default": "Rgb<255,255,255>",
-    "doc": ""
+    "doc": "COLOR (defaults to white)"
    },
    {
     "name": "SPARK_CHANCE_PROMILLE",
     "kind": "INTEGER",
     "default": "300",
-    "doc": ""
+    "doc": "a number"
    },
    {
     "name": "SPARK_INTENSITY",
     "kind": "INTEGER",
     "default": "1024",
-    "doc": ""
+    "doc": "a number"
    }
   ],
-  "doc": "",
+  "doc": "Generally displays BASE, but creates little sparkles of SPARKLE_COLOR SPARK_CHANCE_PROMILLE decides how often a spark is generated, defaults to 300 (30%) SPARK_INTENSITY specifies how intens the spark is, defaults to 1024",
   "file": "styles\\sparkle.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<SPARKLE_COLOR,SparkleF<SPARK_CHANCE_PROMILLE,SPARK_INTENSITY>>"
  },
  "SpringGreen": {
   "name": "SpringGreen",
@@ -6375,7 +6479,8 @@ export default {
   ],
   "doc": "",
   "file": "styles\\fire.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "StyleFire<COLOR1,COLOR2,DELAY,SPEED,FireConfig<BASE,RAND,COOLING>,FireConfig<BASE,RAND,COOLING>,FireConfig<BASE,RAND,COOLING>,FireConfig<BASE,RAND,COOLING>>"
  },
  "SteelBlue": {
   "name": "SteelBlue",
@@ -6410,7 +6515,8 @@ export default {
   ],
   "doc": "Works like Rainbow, but with any colors you like. WIDTH determines width of stripes SPEED determines movement speed If you have a ring of LEDs and you want the stripes to line up, you'll need to set WIDTH using the following formula: WIDTH = 50000 * NUM_LEDS_IN_RING / (NUM_COLORS * REPETITIONS * 341)",
   "file": "styles\\stripes.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "StripesX<Int<WIDTH>,Int<SPEED>,COLORS...>"
  },
  "StripesBase": {
   "name": "StripesBase",
@@ -6502,7 +6608,8 @@ export default {
   ],
   "doc": "Stroboscope-like effect, turns the color to STROBE_COLOR for STROBE_MILLIS STROBE_FREQUENCY times per second.",
   "file": "styles\\strobe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "StrobeX<T,STROBE_COLOR,Int<STROBE_FREQUENCY>,Int<STROBE_MILLIS>>"
  },
  "StrobeF": {
   "name": "StrobeF",
@@ -6523,7 +6630,8 @@ export default {
   ],
   "doc": "Stroboscope-like effect, turns the color to STROBE_COLOR for STROBE_MILLIS STROBE_FREQUENCY times per second.",
   "file": "functions\\strobe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<StrobeSVF<STROBE_FREQUENCY,STROBE_MILLIS>>"
  },
  "StrobeL": {
   "name": "StrobeL",
@@ -6550,7 +6658,8 @@ export default {
   ],
   "doc": "Stroboscope-like effect, turns the color to STROBE_COLOR for STROBE_MILLIS STROBE_FREQUENCY times per second.",
   "file": "styles\\strobe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "AlphaL<STROBE_COLOR,StrobeF<STROBE_FREQUENCY,STROBE_MILLIS>>"
  },
  "StrobeSVF": {
   "name": "StrobeSVF",
@@ -6605,7 +6714,8 @@ export default {
   ],
   "doc": "Stroboscope-like effect, turns the color to STROBE_COLOR for STROBE_MILLIS STROBE_FREQUENCY times per second.",
   "file": "styles\\strobe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<T,StrobeL<STROBE_COLOR,STROBE_FREQUENCY,STROBE_MILLIS>>"
  },
  "Style": {
   "name": "Style",
@@ -6809,7 +6919,8 @@ export default {
   ],
   "doc": "Subtracts B from A (A - B)",
   "file": "functions\\subtract.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "typenameSubtractFinder<F,V>::SubtractClass"
  },
  "SubtractBase": {
   "name": "SubtractBase",
@@ -6889,7 +7000,8 @@ export default {
   ],
   "doc": "Adds A + B...",
   "file": "functions\\sum.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "typenameSumFinder<VALUES...>::SumClass"
  },
  "SumBase": {
   "name": "SumBase",
@@ -6947,7 +7059,8 @@ export default {
   ],
   "doc": "",
   "file": "functions\\sum.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "typenameSumFinder3<F,V>::SumClass"
  },
  "SumFinder3": {
   "name": "SumFinder3",
@@ -7013,7 +7126,8 @@ export default {
   ],
   "doc": "returned value: FUNCTION Returns 0-32768 based on swing acceleration",
   "file": "functions\\swing_speed.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SwingAccelerationX<Int<MAX>>"
  },
  "SwingAccelerationSVF": {
   "name": "SwingAccelerationSVF",
@@ -7045,7 +7159,8 @@ export default {
   "doc": "",
   "file": "functions\\swing_speed.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "SingleValueAdapter<SwingAccelerationSVF<MAX>>"
  },
  "SwingSpeed": {
   "name": "SwingSpeed",
@@ -7060,7 +7175,8 @@ export default {
   ],
   "doc": "returned value: FUNCTION Returns 0-32768 based on swing speed",
   "file": "functions\\swing_speed.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SwingSpeedX<Int<MAX>>"
  },
  "SwingSpeedSVF": {
   "name": "SwingSpeedSVF",
@@ -7092,7 +7208,8 @@ export default {
   "doc": "",
   "file": "functions\\swing_speed.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "SingleValueAdapter<SwingSpeedSVF<MAX>>"
  },
  "SyncAltToVarianceF": {
   "name": "SyncAltToVarianceF",
@@ -7135,7 +7252,8 @@ export default {
   ],
   "doc": "Returns 32768 once when F > THRESHOLD, then waits until F < THRESHOLD * HYST_PERCENT / 100 before going back to the initial state (waiting for F > THRESHOLD).",
   "file": "functions\\increment.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<ThresholdPulseFSVF<F,THRESHOLD,HYST_PERCENT>>"
  },
  "ThresholdPulseFSVF": {
   "name": "ThresholdPulseFSVF",
@@ -7169,9 +7287,10 @@ export default {
   "name": "TimeSinceEffect",
   "kind": "FUNCTION",
   "params": [],
-  "doc": "Or: TimeSinceEffect<EFFECT> TimeSinceEffect returns the number of milliseconds since a particular effect occured. When used as TimeSinceEffect<> inside a TransitionEffectL whose EFFECT is already specified, then it will automatically use the right effect.",
+  "doc": "TimeSinceEffect returns the number of milliseconds since a particular effect occured. When used as TimeSinceEffect<> inside a TransitionEffectL whose EFFECT is already specified, then it will automatically use the right effect.",
   "file": "functions\\time_since_effect.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<TimeSinceEffectSVF<T>>"
  },
  "TimeSinceEffectSVF": {
   "name": "TimeSinceEffectSVF",
@@ -7215,7 +7334,8 @@ export default {
   ],
   "doc": "Blinks A-B N times in MILLIS, based on WIDTH (0 ~ 32768) If WIDTH = 16384 A and B appear equally, lower decreases length of A, higher increases length of A",
   "file": "transitions\\blink.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrBlinkX<Int<MILLIS>,N,Int<WIDTH>>"
  },
  "TrBlinkX": {
   "name": "TrBlinkX",
@@ -7263,7 +7383,8 @@ export default {
   ],
   "doc": "Similar to TrFade, but transitions back and forth between the two colors several times. (As specified by N). If N is 0, it's equal to TrFade. If N is 1 it transitions A-B-A-B, if N is 2, it is A-B-A-B-A-B, and so on.",
   "file": "transitions\\boing.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrBoingX<Int<MILLIS>,N>"
  },
  "TrBoingX": {
   "name": "TrBoingX",
@@ -7305,7 +7426,8 @@ export default {
   ],
   "doc": "In the beginning entire blade is color A, then color B starts at the POSTION and extends up and down the blade in the specified number of milliseconds.",
   "file": "transitions\\center_wipe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrCenterWipeX<Int<MILLIS>,Int<POSITION>>"
  },
  "TrCenterWipeIn": {
   "name": "TrCenterWipeIn",
@@ -7326,7 +7448,8 @@ export default {
   ],
   "doc": "In the beginning entire blade is color A, then color B starts at the ends and moves toward POSITION in the specified number of milliseconds.",
   "file": "transitions\\center_wipe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrCenterWipeInX<Int<MILLIS>,Int<POSITION>>"
  },
  "TrCenterWipeInSpark": {
   "name": "TrCenterWipeInSpark",
@@ -7353,7 +7476,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\center_wipe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrJoin<TrCenterWipeInX<Int<MILLIS>,Int<POSITION>>,TrJoin<TrWaveX<COLOR,Int<MILLIS>,Int<200>,Sum<Int<MILLIS>,Int<MILLIS>>,Int<0>>,TrWaveX<COLOR,Int<MILLIS>,Int<200>,Sum<Int<MILLIS>,Int<MILLIS>>,Int<32768>>>>"
  },
  "TrCenterWipeInSparkX": {
   "name": "TrCenterWipeInSparkX",
@@ -7381,7 +7505,8 @@ export default {
   "doc": "",
   "file": "transitions\\center_wipe.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "TrJoin<TrCenterWipeInX<MILLIS,POSITION>,TrJoin<TrWaveX<COLOR,MILLIS,Int<200>,Sum<MILLIS,MILLIS>,Int<0>>,TrWaveX<COLOR,MILLIS,Int<200>,Sum<MILLIS,MILLIS>,Int<32768>>>>"
  },
  "TrCenterWipeInX": {
   "name": "TrCenterWipeInX",
@@ -7429,7 +7554,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\center_wipe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrJoin<TrCenterWipeX<Int<MILLIS>,Int<POSITION>>,TrWaveX<COLOR,Sum<Int<MILLIS>,Int<MILLIS>,Int<MILLIS>,Int<MILLIS>>,Int<200>,Sum<Int<MILLIS>,Int<MILLIS>>,Int<POSITION>>>"
  },
  "TrCenterWipeSparkX": {
   "name": "TrCenterWipeSparkX",
@@ -7457,7 +7583,8 @@ export default {
   "doc": "",
   "file": "transitions\\center_wipe.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "TrJoin<TrCenterWipeX<MILLIS,POSITION>,TrWaveX<COLOR,Sum<MILLIS,MILLIS,MILLIS,MILLIS>,Int<200>,Sum<MILLIS,MILLIS>,POSITION>>"
  },
  "TrCenterWipeX": {
   "name": "TrCenterWipeX",
@@ -7505,7 +7632,8 @@ export default {
   ],
   "doc": "Tron-like transition.",
   "file": "transitions\\colorcycle.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrColorCycleX<Int<MILLIS>,start_rpm,end_rpm>"
  },
  "TrColorCycleX": {
   "name": "TrColorCycleX",
@@ -7541,14 +7669,15 @@ export default {
   "params": [
    {
     "name": "REST",
-    "kind": "FUNCTION",
+    "kind": "TRANSITION",
     "default": null,
     "doc": ""
    }
   ],
   "doc": "Concatenates any number of transitions. If an intermediate color is provided, we first transition to that color, then we transition away from it in the next transition. If no intermediate color is provided, the first and second transition will both transition from the same input colors. If for instance both the first and second transitions are TrFades, then there will be a jump in the middle as the transition will go back and start from the beginning. Using TimeReverseX on the second transition will avoid this, as the second transition will then run backwards.",
   "file": "transitions\\concat.h",
-  "variadic": true
+  "variadic": true,
+  "alias": "typenameTrConcatSelector<REST...>::type"
  },
  "TrConcat2": {
   "name": "TrConcat2",
@@ -7622,7 +7751,7 @@ export default {
    },
    {
     "name": "REST",
-    "kind": "FUNCTION",
+    "kind": "TRANSITION",
     "default": null,
     "doc": ""
    }
@@ -7637,7 +7766,7 @@ export default {
   "params": [
    {
     "name": "REST",
-    "kind": "FUNCTION",
+    "kind": "TRANSITION",
     "default": null,
     "doc": ""
    }
@@ -7659,7 +7788,8 @@ export default {
   ],
   "doc": "Waits for the specified number of milliseconds, then transitions to second color. Meant to be used with TrConcat",
   "file": "transitions\\delay.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrDelayX<Int<MILLIS>>"
  },
  "TrDelayX": {
   "name": "TrDelayX",
@@ -7707,7 +7837,8 @@ export default {
   ],
   "doc": "Runs the specified TRANSITION and triggers EFFECT (unless the blade is off) Can specify WAV file to use for EFFECT with WAVNUM LOCATION = -1 is random",
   "file": "transitions\\doeffect.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrDoEffectX<TRANSITION,EFFECT,Int<WAVNUM>,Int<LOCATION>>"
  },
  "TrDoEffectAlways": {
   "name": "TrDoEffectAlways",
@@ -7740,7 +7871,8 @@ export default {
   ],
   "doc": "",
   "file": "transitions\\doeffect.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrDoEffectAlwaysX<TRANSITION,EFFECT,Int<WAVNUM>,Int<LOCATION>>"
  },
  "TrDoEffectAlwaysX": {
   "name": "TrDoEffectAlwaysX",
@@ -7827,7 +7959,8 @@ export default {
   ],
   "doc": "Runs the specified transition, then holds the last value for some additional time specified by MILLIS_FUNCTION.",
   "file": "transitions\\extend.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrExtendX<Int<MILLIS>,TRANSITION>"
  },
  "TrExtendX": {
   "name": "TrExtendX",
@@ -7863,7 +7996,8 @@ export default {
   ],
   "doc": "Linear fading between two colors in specified number of milliseconds.",
   "file": "transitions\\fade.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrFadeX<Int<MILLIS>>"
  },
  "TrFadeX": {
   "name": "TrFadeX",
@@ -7924,7 +8058,7 @@ export default {
   "params": [
    {
     "name": "REST",
-    "kind": "FUNCTION",
+    "kind": "TRANSITION",
     "default": null,
     "doc": ""
    }
@@ -7939,7 +8073,7 @@ export default {
   "params": [
    {
     "name": "REST",
-    "kind": "FUNCTION",
+    "kind": "TRANSITION",
     "default": null,
     "doc": ""
    }
@@ -7982,7 +8116,8 @@ export default {
   ],
   "doc": "Return Value: TRANSITION Runs the specified transition N times.",
   "file": "transitions\\loop.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrLoopNX<Int<N>,TRANSITION>"
  },
  "TrLoopNX": {
   "name": "TrLoopNX",
@@ -8096,7 +8231,8 @@ export default {
   ],
   "doc": "Similar to TrFade, but uses a cubic fading function so fading starts slow, speeds up in the middle, then slows down at the end.",
   "file": "transitions\\fade.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrSmoothFadeX<Int<MILLIS>>"
  },
  "TrSmoothFadeX": {
   "name": "TrSmoothFadeX",
@@ -8198,7 +8334,8 @@ export default {
   ],
   "doc": "Similar to saber ignition. In the beginning entire blade is color A, then color B starts at the base and extends up to the tip of the blade in the specified number of milliseconds.",
   "file": "transitions\\wipe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrWipeX<Int<MILLIS>>"
  },
  "TrWipeIn": {
   "name": "TrWipeIn",
@@ -8213,7 +8350,8 @@ export default {
   ],
   "doc": "Like TrWipe, but from tip to base.",
   "file": "transitions\\wipe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrWipeInX<Int<MILLIS>>"
  },
  "TrWipeInSparkTip": {
   "name": "TrWipeInSparkTip",
@@ -8240,7 +8378,8 @@ export default {
   ],
   "doc": "Like TrWipeSparkTip, but from tip to base.",
   "file": "transitions\\wipe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrJoin<TrWipeIn<MILLIS>,TrSparkX<SPARK_COLOR,Int<SIZE>,Int<MILLIS>,Int<32768>>>"
  },
  "TrWipeInSparkTipX": {
   "name": "TrWipeInSparkTipX",
@@ -8268,7 +8407,8 @@ export default {
   "doc": "",
   "file": "transitions\\wipe.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "TrJoin<TrWipeInX<MILLIS>,TrSparkX<SPARK_COLOR,SIZE,MILLIS,Int<32768>>>"
  },
  "TrWipeInX": {
   "name": "TrWipeInX",
@@ -8310,7 +8450,8 @@ export default {
   ],
   "doc": "Same as TrWipe, but adds a \"spark\" tip to the leading edge of the wipe color.",
   "file": "transitions\\wipe.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "TrJoin<TrWipe<MILLIS>,TrSparkX<SPARK_COLOR,Int<SIZE>,Int<MILLIS>,Int<0>>>"
  },
  "TrWipeSparkTipX": {
   "name": "TrWipeSparkTipX",
@@ -8338,7 +8479,8 @@ export default {
   "doc": "",
   "file": "transitions\\wipe.h",
   "variadic": false,
-  "internal": true
+  "internal": true,
+  "alias": "TrJoin<TrWipeX<MILLIS>,TrSparkX<SPARK_COLOR,SIZE,MILLIS,Int<0>>>"
  },
  "TrWipeX": {
   "name": "TrWipeX",
@@ -8406,9 +8548,10 @@ export default {
     "doc": "effect type"
    }
   ],
-  "doc": "Or: TransitionEffectL<EFFECT_COLOR, TRANSITION1, TRANSITION2, EFFECT> When the specified EFFECT happens (clash/blast/etc.) transition from COLOR to EFFECT_COLOR using TRANSITION1. Then transition back using TRANSITION2.",
+  "doc": "When the specified EFFECT happens (clash/blast/etc.) transition from COLOR to EFFECT_COLOR using TRANSITION1. Then transition back using TRANSITION2.",
   "file": "styles\\transition_effect.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<T,TransitionEffectL<TrConcat<TRANSITION1,EFFECT_COLOR,TRANSITION2>,EFFECT>>"
  },
  "TransitionEffectL": {
   "name": "TransitionEffectL",
@@ -8424,10 +8567,10 @@ export default {
     "name": "EFFECT",
     "kind": "EFFECT",
     "default": null,
-    "doc": ""
+    "doc": "effect type"
    }
   ],
-  "doc": "",
+  "doc": "When the specified EFFECT happens (clash/blast/etc.) transition from COLOR to EFFECT_COLOR using TRANSITION1. Then transition back using TRANSITION2.",
   "file": "styles\\transition_effect.h",
   "variadic": false
  },
@@ -8464,9 +8607,10 @@ export default {
     "doc": "TRANSITION"
    }
   ],
-  "doc": "Or: TransitionLoopL<TRANSITION> Continuously transitions COLOR to COLOR Makes more sense if TRANSITION is a TrConcat, as this will transition to/from the intermediate steps in a loop.",
+  "doc": "Continuously transitions COLOR to COLOR Makes more sense if TRANSITION is a TrConcat, as this will transition to/from the intermediate steps in a loop.",
   "file": "styles\\transition_loop.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "Layers<T,TransitionLoopL<TRANSITION>>"
  },
  "TransitionLoopL": {
   "name": "TransitionLoopL",
@@ -8476,10 +8620,10 @@ export default {
     "name": "TRANSITION",
     "kind": "TRANSITION",
     "default": null,
-    "doc": ""
+    "doc": "TRANSITION"
    }
   ],
-  "doc": "",
+  "doc": "Continuously transitions COLOR to COLOR Makes more sense if TRANSITION is a TrConcat, as this will transition to/from the intermediate steps in a loop.",
   "file": "styles\\transition_loop.h",
   "variadic": false
  },
@@ -8568,7 +8712,8 @@ export default {
   ],
   "doc": "Normally returns 0, but when EFFECT occurs, it ramps up to 32768, stays there for SUSTAIN_MILLIS, then fades down to zero again. If delay is specified, the whole thing is delayed that much before it starts.",
   "file": "functions\\trigger.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<TriggerSVF<EFFECT,FADE_IN_MILLIS,SUSTAIN_MILLIS,FADE_OUT_MILLIS,DELAY_MILLIS>>"
  },
  "TriggerSVF": {
   "name": "TriggerSVF",
@@ -8623,7 +8768,8 @@ export default {
   ],
   "doc": "returned value: FUNCTION, same for all leds Returns 0-32768 based on acceleration of twist in one direction",
   "file": "functions\\twist_angle.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<TwistAccelerationSVF<Int<MAX>>>"
  },
  "TwistAccelerationSVF": {
   "name": "TwistAccelerationSVF",
@@ -8660,7 +8806,8 @@ export default {
   ],
   "doc": "returned value: FUNCTION, same for all leds Returns 0-32768 based on angle of twist",
   "file": "functions\\twist_angle.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<TwistAngleSVF<N,OFFSET>>"
  },
  "TwistAngleSVF": {
   "name": "TwistAngleSVF",
@@ -8744,9 +8891,10 @@ export default {
   "name": "WavLen",
   "kind": "FUNCTION",
   "params": [],
-  "doc": "Or: WavLen<EFFECT> WavLen (length of wav file) takes the duration of a wav file sound and can be used to replace time integer arguments in a blade style. Example: TrFadeX<WavLen<EFFECT_RETRACTION>> When used as WavLen<> inside a TransitionEffectL whose EFFECT is already specified, then it will automatically use the right effect. Example: TransitionEffectL<TrConcat<TrWipex<WavLen<>>,White,TrWipeX<WavLen<>>>,EFFECT_BLAST>",
+  "doc": "WavLen (length of wav file) takes the duration of a wav file sound and can be used to replace time integer arguments in a blade style. Example: TrFadeX<WavLen<EFFECT_RETRACTION>> When used as WavLen<> inside a TransitionEffectL whose EFFECT is already specified, then it will automatically use the right effect. Example: TransitionEffectL<TrConcat<TrWipex<WavLen<>>,White,TrWipeX<WavLen<>>>,EFFECT_BLAST>",
   "file": "functions\\wavlen.h",
-  "variadic": false
+  "variadic": false,
+  "alias": "SingleValueAdapter<WavLenSVF<T>>"
  },
  "WavLenSVF": {
   "name": "WavLenSVF",
@@ -8761,7 +8909,7 @@ export default {
   "name": "WavNum",
   "kind": "FUNCTION",
   "params": [],
-  "doc": "Or: WavNum<EFFECT> Returns which file was actually played. First file returns 0. Even if the file is called 'clash1.wav'.",
+  "doc": "Returns which file was actually played. First file returns 0. Even if the file is called 'clash1.wav'.",
   "file": "functions\\wavnum.h",
   "variadic": false
  },

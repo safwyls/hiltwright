@@ -27,7 +27,7 @@ function loadScene(): SceneSettings {
   try { const raw = localStorage.getItem('hiltwright.demo.scene'); return raw ? { ...DEFAULT_SCENE, ...(JSON.parse(raw) as Partial<SceneSettings>) } : { ...DEFAULT_SCENE }; } catch { return { ...DEFAULT_SCENE }; }
 }
 
-const HOLDS: { type: LockupType; label: string; key: string }[] = [{ type: 'normal', label: 'Lockup', key: 'l' }, { type: 'drag', label: 'Drag', key: 'd' }, { type: 'lb', label: 'Lightning', key: 'n' }];
+const HOLDS: { type: LockupType; label: string; key: string }[] = [{ type: 'normal', label: 'Lockup', key: 'l' }, { type: 'drag', label: 'Drag', key: 'd' }, { type: 'melt', label: 'Melt', key: 'm' }, { type: 'lb', label: 'Lightning', key: 'n' }];
 
 const api = () => window.hiltwright;
 
@@ -218,7 +218,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
       if (!eng) return;
       if (ev.kind === 'on') eng.ignite(); else if (ev.kind === 'off') eng.retract();
       else if (ev.kind === 'clash' || ev.kind === 'blast' || ev.kind === 'stab') eng.effect(ev.kind);
-      else if (ev.kind === 'lockup') { if (ev.type) eng.beginLockup(ev.type === 'normal' ? 'lock' : ev.type); else eng.endLockup(); }
+      else if (ev.kind === 'lockup') { if (ev.type) eng.beginLockup(ev.type === 'normal' ? 'lock' : ev.type === 'melt' ? 'drag' : ev.type); else eng.endLockup(); }
       else eng.motion(ev.degPerSec, ev.dt);
     };
     const ro = new ResizeObserver(() => room.resize());

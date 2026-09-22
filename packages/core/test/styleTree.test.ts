@@ -75,7 +75,7 @@ describe('style tree', () => {
     expect(frames.every((f) => f.every((v) => Number.isFinite(v) && v >= 0 && v <= 1))).toBe(true);
     expect(frames.some((f) => f.some((v) => v > 0))).toBe(true);
     // Only templates that are genuinely cosmetic or unmodelled are allowed through unsupported.
-    for (const u of report.unsupported) expect(['RotateColorsX', 'FireConfig', 'IgnitionTime', 'RetractionTime']).toContain(u);
+    expect(report.unsupported).toEqual([]);
   });
 
   it('builds sensible new nodes from the catalogue', () => {
@@ -85,5 +85,94 @@ describe('style tree', () => {
     expect(printStyle(newNode('TrFade'))).toBe('TrFade<300>');
     expect(defaultFor('TRANSITION').name).toBe('TrInstant');
     const c = cloneNode(n); c.args[0].name = 'Blue'; expect(n.args[0].name).not.toBe('Blue');
+  });
+});
+
+// Constructs the big library styles lean on: layers inside Mix, TransitionEffect with a layer base, TrWaveX/TrExtend/
+// TrJoin/TrDelay, AlphaMixL, Strobe, RotateColorsX, melt kept apart from drag, and edit-mode IntArgs. Built here
+// rather than pasted from a library, so the test carries no one else's style.
+const LIBRARY_SHAPED = `StylePtr<Layers<
+  AudioFlicker<Stripes<22000,-1400,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>,Mix<Int<10000>,Black,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>>>,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>>,
+  TransitionEffectL<TrWaveX<RgbArg<BLAST_COLOR_ARG,White>,Scale<EffectRandomF<EFFECT_BLAST>,Int<100>,Int<400>>,Int<100>,Int<400>,Scale<EffectPosition<EFFECT_BLAST>,Int<28000>,Int<8000>>>,EFFECT_BLAST>,
+  Mix<IsLessThan<ClashImpactF<>,Int<26000>>,
+      TransitionEffectL<TrConcat<TrInstant,AlphaL<RgbArg<CLASH_COLOR_ARG,White>,Bump<Scale<BladeAngle<>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<-12000>>,Sum<IntArg<LOCKUP_POSITION_ARG,16000>,Int<10000>>>,Int<20000>>>,TrFadeX<Int<300>>>,EFFECT_CLASH>,
+      TransitionEffectL<TrWaveX<RgbArg<CLASH_COLOR_ARG,White>,Int<200>,Int<100>,Int<300>,Int<16384>>,EFFECT_CLASH>>,
+  LockupTrL<TransitionEffect<AlphaL<AlphaMixL<Bump<Int<16384>,Int<20000>>,AudioFlicker<RgbArg<LOCKUP_COLOR_ARG,White>,Blue>,BrownNoiseFlicker<RgbArg<LOCKUP_COLOR_ARG,White>,Blue,300>>,Bump<Int<16384>,Int<20000>>>,RgbArg<LOCKUP_COLOR_ARG,White>,TrExtend<5000,TrInstant>,TrFade<5000>,EFFECT_LOCKUP_BEGIN>,
+            TrConcat<TrJoin<TrDelay<50>,TrInstant>,RgbArg<LOCKUP_COLOR_ARG,White>,TrFade<300>>,TrConcat<TrInstant,RgbArg<LOCKUP_COLOR_ARG,White>,TrFade<400>>,SaberBase::LOCKUP_NORMAL,Int<1>>,
+  ResponsiveLightningBlockL<Strobe<RgbArg<LB_COLOR_ARG,White>,AudioFlicker<RgbArg<LB_COLOR_ARG,White>,Blue>,50,1>,TrConcat<TrExtend<200,TrInstant>,AlphaL<White,Bump<Int<16384>,Int<10000>>>,TrFade<200>>,TrConcat<TrInstant,White,TrFade<400>>,Int<1>>,
+  LockupTrL<AlphaL<TransitionEffect<RandomPerLEDFlickerL<RgbArg<DRAG_COLOR_ARG,White>>,BrownNoiseFlickerL<RgbArg<DRAG_COLOR_ARG,White>,Int<300>>,TrExtend<4000,TrInstant>,TrFade<4000>,EFFECT_DRAG_BEGIN>,SmoothStep<Scale<TwistAngle<>,IntArg<DRAG_SIZE_ARG,28000>,Int<30000>>,Int<3000>>>,TrWipeIn<200>,TrWipe<200>,SaberBase::LOCKUP_DRAG,Int<1>>,
+  LockupTrL<AlphaL<Mix<TwistAngle<>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>,RotateColorsX<Int<3000>,RgbArg<STAB_COLOR_ARG,Rgb<255,68,0>>>>,SmoothStep<Scale<TwistAngle<>,IntArg<MELT_SIZE_ARG,28000>,Int<30000>>,Int<3000>>>,TrWipeIn<200>,TrWipe<200>,SaberBase::LOCKUP_MELT,Int<1>>,
+  InOutTrL<TrWipeX<BendTimePowInvX<IgnitionTime<300>,Mult<IntArg<IGNITION_OPTION2_ARG,10992>,Int<98304>>>>,TrWipeInX<BendTimePowX<RetractionTime<0>,Mult<IntArg<RETRACTION_OPTION2_ARG,10992>,Int<98304>>>>,Black>>>(),`;
+
+describe('library-shaped style', () => {
+  const led = (f: Float32Array, i: number) => [f[i * 3], f[i * 3 + 1], f[i * 3 + 2]];
+  /** LEDs showing anything: the wipes are spatial, so this is monotonic where total brightness (stripes, flicker) is not. */
+  const lit = (f: Float32Array) => { let n = 0; for (let i = 0; i < f.length; i += 3) if (f[i] + f[i + 1] + f[i + 2] > 0.05) n++; return n; };
+  const start = (ignite = false) => {
+    const { make, report } = evaluateStyle(parseStyle(LIBRARY_SHAPED));
+    registerStyleSim('lib', make);
+    const sim = new BladeSim('lib', 40);
+    sim.frame(0); sim.setOn(true);
+    if (ignite) for (let t = 0; t <= 1500; t += 50) sim.frame(t);
+    return { sim, report };
+  };
+
+  it('parses, prints and round-trips with the trailing comma dropped', () => {
+    const tree = parseStyle(LIBRARY_SHAPED);
+    expect(parseStyle(printStyle(tree))).toEqual(tree);
+    expect(printStyle(tree)).not.toMatch(/StylePtr|\(\)/);
+  });
+
+  it('models every template in it', () => {
+    const { report } = start();
+    expect(report.unsupported).toEqual([]);
+    unregisterStyleSim('lib');
+  });
+
+  it('wipes in, idles blue, then retracts', () => {
+    const { sim } = start();
+    try {
+      const s = [0, 100, 200, 300, 600].map((t) => lit(sim.frame(t)));
+      expect(s[0]).toBeLessThan(s[1]); expect(s[1]).toBeLessThan(s[2]); expect(s[2]).toBeLessThan(s[3]); expect(s[4]).toBe(40);
+      const idle = led(sim.frame(1500), 20);
+      expect(idle[2]).toBeGreaterThan(0.2); expect(idle[0]).toBeLessThan(0.05);
+      sim.setOn(false);
+      const r = [3000, 3300, 3600, 4100].map((t) => lit(sim.frame(t))); // RetractionTime<0> falls back to the sound length, 1 s
+      expect(r[0]).toBeGreaterThan(r[1]); expect(r[1]).toBeGreaterThan(r[2]); expect(r[3]).toBe(0);
+    } finally { unregisterStyleSim('lib'); }
+  });
+
+  it('answers clash, blast, lockup, drag, melt and lightning block distinctly', () => {
+    const { sim } = start(true);
+    try {
+      sim.trigger('clash', 0.5); const c = sim.frame(1520);
+      expect(led(c, 20)[0]).toBeGreaterThan(0.9); // white at the clash point, blue elsewhere
+      expect(led(c, 39)[0]).toBeLessThan(0.3);
+      sim.trigger('blast', 0.5); const b = sim.frame(1720);
+      expect([...b].some((v, i) => i % 3 === 0 && v > 0.5)).toBe(true);
+      sim.setLockup('normal'); sim.frame(2100); const l = sim.frame(2200);
+      expect(led(l, 20)[0]).toBeGreaterThan(0.9);
+      sim.setLockup(null); sim.frame(2900);
+      sim.setLockup('drag'); sim.frame(3000); const d = sim.frame(3250);
+      expect(led(d, 39)[1]).toBeGreaterThan(0.4); expect(led(d, 39)[2]).toBeGreaterThan(0.9); // white sparks at the tip
+      sim.setLockup(null); sim.frame(3600);
+      sim.setLockup('melt'); sim.frame(3700); const m = sim.frame(3950);
+      expect(led(m, 39)[0]).toBeGreaterThan(0.9); expect(led(m, 39)[2]).toBeLessThan(0.1); // orange at the tip, not white
+      sim.setLockup(null); sim.frame(4300);
+      sim.setLockup('lb'); const lb = sim.frame(4700);
+      expect([...lb].some((v, i) => i % 3 === 0 && v > 0.8)).toBe(true);
+    } finally { unregisterStyleSim('lib'); }
+  });
+
+  it('reads the edit-mode arguments a preset can change', () => {
+    const { make, report } = evaluateStyle(parseStyle(LIBRARY_SHAPED));
+    expect(report.unsupported).toEqual([]);
+    registerStyleSim('lib', make);
+    try {
+      const sim = new BladeSim('lib', 40);
+      sim.setArgs(new Map([[1, '65535,0,0']])); sim.frame(0); sim.setOn(true); for (let t = 0; t <= 2000; t += 50) sim.frame(t);
+      const p = led(sim.frame(2100), 20);
+      expect(p[0]).toBeGreaterThan(0.2); expect(p[2]).toBeLessThan(0.05); // base colour followed the argument
+    } finally { unregisterStyleSim('lib'); }
   });
 });

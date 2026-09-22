@@ -24,7 +24,7 @@ type Ctx = {
   twist: number; // degrees the hilt is rolled about the blade's axis
 };
 export type EffectType = 'clash' | 'blast' | 'stab';
-export type LockupType = 'normal' | 'drag' | 'lb';
+export type LockupType = 'normal' | 'drag' | 'melt' | 'lb';
 
 interface ColorFn { run(c: Ctx): void; get(led: number): RGB }
 interface IntFn { run(c: Ctx): void; get(led: number): number } // 0..32768

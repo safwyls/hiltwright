@@ -116,6 +116,7 @@ export function BladePreview({ lookId, args, fallbackColor = '#3d7bff', leds = 1
             {!dot && <button type="button" className="chip" disabled={!on} onClick={() => hit('stab')}>Stab</button>}
             {!dot && hold('normal', 'Lockup')}
             {!dot && hold('drag', 'Drag')}
+            {!dot && hold('melt', 'Melt')}
             {!dot && hold('lb', 'Lightning')}
           </div>
           {!dot && (

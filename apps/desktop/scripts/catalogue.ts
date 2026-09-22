@@ -10,7 +10,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 export interface Param { name: string; kind: string; default: string | null; doc: string }
-export interface Entry { name: string; kind: string; params: Param[]; doc: string; file: string; variadic: boolean; internal?: boolean }
+export interface Entry { name: string; kind: string; params: Param[]; doc: string; file: string; variadic: boolean; internal?: boolean; alias?: string }
 
 const root = process.argv[2];
 if (!root) { console.error('usage: catalogue.ts <ProffieOS dir>'); process.exit(2); }
@@ -81,7 +81,7 @@ for (const file of files) {
     const paramDocs: Record<string, string> = {}; const free: string[] = []; let kind = 'OTHER';
     for (let j = i + 1; j < lines.length && lines[j].startsWith('//'); j++) {
       const l = lines[j].replace(/^\/\/ ?/, '');
-      const alias = /^or: ([A-Za-z_][A-Za-z0-9_]*)/.exec(l); if (alias) { names.push(alias[1]); continue; }
+      const alias = /^or: ([A-Za-z_][A-Za-z0-9_]*)/i.exec(l); if (alias) { names.push(alias[1]); continue; }
       const r = /^return value: (.*)$/.exec(l); if (r) { kind = kindOfReturn(r[1]); continue; }
       const p = /^([A-Z][A-Z0-9_ ,&]*?):\s+(.*)$/.exec(l);
       if (p) { for (const pn of p[1].split(/[,&]/).map((x) => x.trim()).filter(Boolean)) paramDocs[pn] = p[2]; continue; }
@@ -91,10 +91,10 @@ for (const file of files) {
   }
   // 2. Every declaration: template<PARAMS> using NAME = ...;  and  template<PARAMS> class NAME
   const flat = text.replace(/\r?\n/g, '\n');
-  const declRe = /template\s*<([^;{]*?)>\s*(using|class|struct)\s+([A-Za-z_][A-Za-z0-9_]*)\b/g;
+  const declRe = /template\s*<([^;{]*?)>\s*(using|class|struct)\s+([A-Za-z_][A-Za-z0-9_]*)\b(?:\s*=\s*([^;]*);)?/g;
   let dm: RegExpExecArray | null;
   while ((dm = declRe.exec(flat))) {
-    const [, paramsText, what, name] = dm;
+    const [, paramsText, what, name, rhs] = dm;
     if (out[name] && out[name].params.length) continue; // first declaration wins (aliases repeat with X variants)
     const docs = seenDocs.get(name);
     const params: Param[] = []; let variadic = false;
@@ -112,11 +112,15 @@ for (const file of files) {
       if (/Tr$|^TR\d*$|TRANSITION/i.test(p.name) && p.kind !== 'TRANSITION' && !p.default) p.kind = 'TRANSITION';
       if (file.startsWith('functions') && /^[AB]$/.test(p.name) && p.kind === 'COLOR') p.kind = 'FUNCTION';
       if (/X$/.test(name) && p.kind === 'INTEGER' && !/^(int|bool|uint|float|size_t)/.test(paramsText)) p.kind = 'FUNCTION';
+      if (file.startsWith('transitions') && variadic && p === params[params.length - 1] && p.kind === 'FUNCTION') p.kind = 'TRANSITION'; // TrJoin<TR...>, TrRandom<TR...>
     }
     let kind = docs?.kind ?? 'OTHER';
     if (kind === 'OTHER') kind = file.startsWith('transitions') ? 'TRANSITION' : file.startsWith('functions') ? 'FUNCTION' : /L$|Layer/.test(name) ? 'COLOR' : /F$|Func$/.test(name) ? 'FUNCTION' : 'COLOR';
     const internal = /SVF$|Base$|Helper$|Impl$|X$|^Layers$|^Sequence$/.test(name) && !docs;
-    out[name] = { name, kind, params, doc: docs?.doc ?? '', file, variadic, ...(internal ? { internal: true } : {}) };
+    // The alias body, when it is plain template text the simulator can substitute into (no arithmetic or decltype).
+    const alias = what === 'using' && rhs ? rhs.replace(/\s+/g, '') : '';
+    const usable = alias && /^[A-Za-z0-9_:<>,.-]+$/.test(alias) && !/[A-Za-z0-9_]\s*[*+/]\s*[A-Za-z0-9_]/.test(rhs ?? '');
+    out[name] = { name, kind, params, doc: docs?.doc ?? '', file, variadic, ...(internal ? { internal: true } : {}), ...(usable ? { alias } : {}) };
   }
   // 3. Plain aliases and classes without template parameters (Rainbow, TrInstant, Black ...).
   for (const am of flat.matchAll(/^(?:using|typedef)\s+(?:([A-Za-z_][A-Za-z0-9_<>, ]*?)\s+)?([A-Z][A-Za-z0-9_]*)\s*(?:=\s*([^;]+))?;/gm)) {
