@@ -125,6 +125,8 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
   const [hilts, setHilts] = useState<StoredHilt[]>([]);
   const [hiltName, setHiltName] = useState<string>(() => { try { return localStorage.getItem('hiltwright.demo.hilt') ?? ''; } catch { return ''; } });
   const [hiltNote, setHiltNote] = useState<string | null>(null);
+  // The fit controls are for placing a hilt on the blade: shown when the owner loads a hilt of their own, folded away otherwise.
+  const [fitOpen, setFitOpen] = useState(false);
   const [hiltLength, setHiltLength] = useState<number | null>(null);
   const loaded = useRef<{ name: string; model: Object3D } | null>(null);
   const hilt = hilts.find((h) => h.name === hiltName) ?? null;
@@ -171,7 +173,7 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
     await saveHilt(entry).catch(() => undefined);
     loaded.current = null;
     setHilts((all) => [...all.filter((h) => h.name !== entry.name), entry]);
-    setHiltName(entry.name);
+    setHiltName(entry.name); setFitOpen(true);
     if (format !== 'obj' || sideFiles.some((f) => /\.mtl$/i.test(f.name))) setHiltNote(null);
   };
   const setFit = (patch: Partial<HiltFit>) => {
@@ -426,6 +428,9 @@ export function Demo({ initialLook, board }: { initialLook?: string | null; boar
                   <input type="file" multiple accept=".glb,.gltf,.obj,.stl,.mtl,.png,.jpg,.jpeg,.webp,.tga" aria-label="Load a hilt model" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} onChange={(e) => { void loadHiltFiles(e.target.files); e.target.value = ''; }} /></label>
               </div>
               {hilt && (
+                <button type="button" className="row nowrap" style={{ gap: 6, alignSelf: 'flex-start' }} aria-expanded={fitOpen} onClick={() => setFitOpen((o) => !o)}><span style={{ display: 'flex', width: 14, height: 14, color: 'var(--mute)' }}><Icon name={fitOpen ? 'down' : 'chev'} /></span><span className="small dim">Fit and placement</span></button>
+              )}
+              {hilt && fitOpen && (
                 <>
                   <label className="row" style={{ gap: 8 }} title="Overall length of the hilt">
                     <span className="dim" style={{ width: 76, flex: 'none' }}>Length</span>
