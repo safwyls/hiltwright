@@ -70,8 +70,10 @@ export interface SceneSettings {
   bladeInches: number;
   bladeDiameter: BladeDiameter;
   ledsPerMetre: number;
+  /** A second blade out of the pommel, as on a staff. It shows the same LEDs as the first: a staff preset drives both blades alike. */
+  staff: boolean;
 }
-export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144 };
+export const DEFAULT_SCENE: SceneSettings = { glow: 1.15, glowSpread: 0.5, bladeBrightness: 1.2, bladeLight: 1, roomLight: 1, haze: 0.09, grid: true, bladeInches: 36, bladeDiameter: '1', ledsPerMetre: 144, staff: false };
 
 export interface Motion { swing: number; tilt: number; twist: number; on: boolean }
 /** What the saber did, for whoever makes its sounds. `motion` comes every frame with the blade's turn rate. */
@@ -125,6 +127,10 @@ export class DemoScene {
   private settings: SceneSettings = { ...DEFAULT_SCENE };
   private bladeMaterial!: THREE.MeshBasicMaterial;
   private tube!: THREE.Mesh;
+  /** The staff's second blade: the same tube and tip geometry, hung from the pommel, pointing the other way. */
+  private staff: THREE.Group | null = null;
+  private staffLights: THREE.PointLight[] = [];
+  private hiltLength = HILT_LENGTH;
   private tipMesh!: THREE.Mesh;
   private bladeLength = BLADE_LENGTH;
   private bladeRadius = BLADE_RADIUS;
@@ -293,6 +299,38 @@ export class DemoScene {
     this.grid.visible = next.grid;
     this.setBlade(next.bladeInches * 0.0254, BLADE_DIAMETERS[next.bladeDiameter] / 2);
     this.setLedCount(ledsFor(next.bladeInches * 0.0254, next.ledsPerMetre));
+    this.setStaff(next.staff);
+  }
+
+  private setStaff(on: boolean): void {
+    if (on && !this.staff) {
+      const g = new THREE.Group();
+      const tube = new THREE.Mesh(this.tube.geometry, this.bladeMaterial);
+      const tip = new THREE.Mesh(this.tipMesh.geometry, this.tipMaterial);
+      g.add(tube, tip);
+      for (let i = 0; i < 3; i++) { const lamp = new THREE.PointLight(0xffffff, 0, 7, 2); g.add(lamp); this.staffLights.push(lamp); }
+      this.glowing.add(tube); this.glowing.add(tip);
+      this.roll.add(g);
+      this.staff = g;
+    } else if (!on && this.staff) {
+      for (const o of this.staff.children) this.glowing.delete(o);
+      this.roll.remove(this.staff);
+      this.staff = null; this.staffLights = [];
+    }
+    this.placeStaff();
+  }
+
+  /** The second blade hangs from the pommel, which is the hilt's length below the emitter, and points down the axis. */
+  private placeStaff(): void {
+    const g = this.staff;
+    if (!g) return;
+    const [tube, tip] = g.children as THREE.Mesh[];
+    tube.geometry = this.tube.geometry; tip.geometry = this.tipMesh.geometry;
+    g.position.y = HILT_LENGTH / 2 - this.hiltLength;
+    g.rotation.x = Math.PI;
+    tube.position.y = this.bladeLength / 2;
+    tip.position.y = this.bladeLength;
+    this.staffLights.forEach((lamp, i) => { lamp.position.y = this.bladeLength * (0.18 + i * 0.32); });
   }
 
   /** A different blade in the emitter: the tube, its tip, the lamps along it and the weight in the hand all follow. */
@@ -307,6 +345,7 @@ export class DemoScene {
     this.tipMesh.position.y = HILT_LENGTH / 2 + length;
     this.lights.forEach((lamp, i) => { lamp.position.y = HILT_LENGTH / 2 + length * (0.18 + i * 0.32); });
     this.wield.setLength(length);
+    this.placeStaff();
   }
 
   /**
@@ -317,10 +356,11 @@ export class DemoScene {
     const old = this.customHilt;
     if (old) { this.roll.remove(old.group); if (old.model !== model) disposeObject(old.model); this.customHilt = null; }
     this.builtInHilt.visible = model === null;
-    if (!model) return HILT_LENGTH;
+    if (!model) { this.hiltLength = HILT_LENGTH; this.placeStaff(); return HILT_LENGTH; }
     const { group, length } = fitHilt(model, fit, HILT_LENGTH / 2);
     this.roll.add(group);
     this.customHilt = { model, group };
+    this.hiltLength = length; this.placeStaff();
     return length;
   }
 
@@ -503,8 +543,8 @@ export class DemoScene {
     const boost = this.settings.bladeBrightness;
     this.tipMaterial.color.setRGB((out[last] / 255) * boost, (out[last + 1] / 255) * boost, (out[last + 2] / 255) * boost, THREE.SRGBColorSpace);
     const per = n / 3;
-    this.lights.forEach((lamp, i) => {
-      const [r, g, b] = sums[i].map((v) => v / per);
+    [...this.lights, ...this.staffLights].forEach((lamp, i) => {
+      const [r, g, b] = sums[i % 3].map((v) => v / per);
       const level = Math.max(r, g, b);
       lamp.intensity = level * 7 * this.settings.bladeLight;
       if (level > 0.001) lamp.color.setRGB(r / level, g / level, b / level);
