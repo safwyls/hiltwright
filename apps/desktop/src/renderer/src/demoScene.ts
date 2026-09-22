@@ -42,7 +42,7 @@ const STEER = { yawPerPixel: 0.35, pitchPerPixel: 0.3, follow: 16, minPitch: -85
 /** The view the room opens with: a little to one side and above, so the floor reads as a floor. */
 const VIEW = { yaw: 0.42, pitch: 0.3, distance: 2.0, focus: [-0.36, 1.33, 0.05] as [number, number, number] };
 /** Hold mode is wielded from the viewer's side, so its view is from behind the wielder: nearly straight on and well above, so a level sweep reads as an arc over the floor. */
-const VIEW_HOLD = { yaw: 0.16, pitch: 0.52, distance: 3.0, focus: [0, 1.2, -0.45] as [number, number, number] };
+const VIEW_HOLD = { yaw: 0.5, pitch: 0.46, distance: 1.8, focus: [0.28, 1.36, -0.62] as [number, number, number] };
 const UP = new THREE.Vector3(0, 1, 0);
 /** How far past white the blade is drawn. The excess is what the bloom pass turns into glow; too much and every colour reads as white. */
 const BOOST = 1.2;
