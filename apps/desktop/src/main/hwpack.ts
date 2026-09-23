@@ -207,3 +207,173 @@ export function objToMesh(objText: string, mtlText: string, finishes: Record<str
   }
   return { positions: new Float32Array(positions), normals: new Float32Array(normals), indices: new Uint32Array(reindexed), groups: order.map((n) => merged.get(n)!) };
 }
+
+// ---- the mesh a glTF becomes ----
+//
+// A .glb, or a .gltf with its buffers, read into the same packed mesh: every triangle primitive in the scene, moved
+// by its node's transform, one group per material. glTF carries real metal and roughness where an MTL gives only a
+// colour, so those are kept; a material that states neither falls back to the guess. Textures are left out, as they
+// are for OBJ: a pack holds one colour per material. glTF is always in metres.
+
+interface GltfNode { mesh?: number; children?: number[]; matrix?: number[]; translation?: number[]; rotation?: number[]; scale?: number[] }
+interface GltfPrimitive { attributes: Record<string, number>; indices?: number; material?: number; mode?: number }
+interface GltfAccessor { bufferView?: number; byteOffset?: number; componentType: number; count: number; type: string; sparse?: unknown }
+interface GltfMaterial { name?: string; pbrMetallicRoughness?: { baseColorFactor?: number[]; metallicFactor?: number; roughnessFactor?: number; baseColorTexture?: unknown } }
+interface GltfJson {
+  asset?: { version?: string };
+  scene?: number; scenes?: { nodes?: number[] }[]; nodes?: GltfNode[]; meshes?: { primitives: GltfPrimitive[] }[];
+  accessors?: GltfAccessor[]; bufferViews?: { buffer: number; byteOffset?: number; byteLength: number; byteStride?: number }[];
+  buffers?: { uri?: string; byteLength: number }[]; materials?: GltfMaterial[]; extensionsRequired?: string[];
+}
+
+const COMPONENTS: Record<number, { bytes: number; read: (b: Buffer, at: number) => number }> = {
+  5120: { bytes: 1, read: (b, at) => b.readInt8(at) }, 5121: { bytes: 1, read: (b, at) => b.readUInt8(at) },
+  5122: { bytes: 2, read: (b, at) => b.readInt16LE(at) }, 5123: { bytes: 2, read: (b, at) => b.readUInt16LE(at) },
+  5125: { bytes: 4, read: (b, at) => b.readUInt32LE(at) }, 5126: { bytes: 4, read: (b, at) => b.readFloatLE(at) },
+};
+const WIDTH: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
+
+/** A node's local transform as a column-major 4x4, from its matrix or its translation, rotation and scale. */
+function nodeMatrix(n: GltfNode): number[] {
+  if (n.matrix) return n.matrix;
+  const [x, y, z, w] = n.rotation ?? [0, 0, 0, 1]; const [sx, sy, sz] = n.scale ?? [1, 1, 1]; const [tx, ty, tz] = n.translation ?? [0, 0, 0];
+  return [
+    (1 - 2 * (y * y + z * z)) * sx, 2 * (x * y + z * w) * sx, 2 * (x * z - y * w) * sx, 0,
+    2 * (x * y - z * w) * sy, (1 - 2 * (x * x + z * z)) * sy, 2 * (y * z + x * w) * sy, 0,
+    2 * (x * z + y * w) * sz, 2 * (y * z - x * w) * sz, (1 - 2 * (x * x + y * y)) * sz, 0,
+    tx, ty, tz, 1,
+  ];
+}
+const mul4 = (a: number[], b: number[]) => { const o = new Array<number>(16).fill(0); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k]; return o; };
+const toSrgb = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+
+export interface GltfOptions {
+  /** Material name to a named finish, as for OBJ. */
+  finishes?: Record<string, string>;
+  /** A .gltf's buffers that live in files beside it, by the uri the file gives. */
+  readUri?: (uri: string) => Buffer;
+  /** What was left out, for the packer to tell whoever runs it. */
+  warn?: (message: string) => void;
+}
+
+export function gltfToMesh(file: Buffer, { finishes = {}, readUri, warn = () => undefined }: GltfOptions = {}): PackedMesh {
+  let json: GltfJson | undefined; let bin: Buffer | undefined;
+  if (file.subarray(0, 4).toString('latin1') === 'glTF') {
+    const version = file.readUInt32LE(4);
+    if (version !== 2) throw new Error(`This is glTF ${version}; export glTF 2.0`);
+    for (let o = 12; o + 8 <= file.length;) {
+      const len = file.readUInt32LE(o); const type = file.readUInt32LE(o + 4); const body = file.subarray(o + 8, o + 8 + len);
+      if (type === 0x4e4f534a) json = JSON.parse(body.toString('utf8')) as GltfJson; else if (type === 0x004e4942) bin = body;
+      o += 8 + len;
+    }
+  } else json = JSON.parse(file.toString('utf8')) as GltfJson;
+  if (!json) throw new Error('No glTF JSON in that file');
+  if (json.asset?.version && !json.asset.version.startsWith('2')) throw new Error(`This is glTF ${json.asset.version}; export glTF 2.0`);
+  // Mesh compression (Draco, meshopt, quantisation) needs a decoder the packer does not carry. Material extensions
+  // only change the look, and the pack keeps just colour, metal and roughness, so those are safe to pass over.
+  const blocking = (json.extensionsRequired ?? []).filter((e) => !/^KHR_(materials_|texture_transform)/.test(e));
+  if (blocking.length) throw new Error(`This file needs ${blocking.join(', ')}; export it again without mesh compression`);
+
+  const buffers = new Map<number, Buffer>();
+  const bufferOf = (i: number): Buffer => {
+    let b = buffers.get(i);
+    if (b) return b;
+    const uri = json!.buffers?.[i]?.uri;
+    if (uri == null) { if (!bin) throw new Error('The file has no binary chunk'); b = bin; }
+    else if (uri.startsWith('data:')) b = Buffer.from(uri.slice(uri.indexOf(',') + 1), 'base64');
+    else { if (!readUri) throw new Error(`The .gltf keeps its data in ${uri}; pack the .glb instead`); b = readUri(decodeURIComponent(uri)); }
+    buffers.set(i, b);
+    return b;
+  };
+  const accessor = (i: number) => {
+    const a = json!.accessors?.[i];
+    if (!a || a.bufferView == null) throw new Error(`Accessor ${i} has no data`);
+    if (a.sparse) throw new Error('Sparse accessors are not supported');
+    const comp = COMPONENTS[a.componentType]; const size = WIDTH[a.type];
+    if (!comp || !size) throw new Error(`Accessor ${i} has a type the packer does not read`);
+    const view = json!.bufferViews![a.bufferView]; const buf = bufferOf(view.buffer);
+    const stride = view.byteStride ?? size * comp.bytes; const base = (view.byteOffset ?? 0) + (a.byteOffset ?? 0);
+    return { count: a.count, at: (k: number, c: number) => comp.read(buf, base + k * stride + c * comp.bytes) };
+  };
+
+  const positions: number[] = []; const normals: number[] = [];
+  const trisByMaterial = new Map<number, number[]>();
+  let skipped = 0;
+  const addMesh = (meshIndex: number, m: number[]) => {
+    // Normals turn by the inverse transpose, which is the cofactor matrix up to the sign of the determinant. A
+    // mirrored node (negative determinant) also turns its triangles inside out, so their winding is reversed.
+    const [a00, a10, a20, , a01, a11, a21, , a02, a12, a22] = m;
+    const c = [a11 * a22 - a12 * a21, a12 * a20 - a10 * a22, a10 * a21 - a11 * a20, a02 * a21 - a01 * a22, a00 * a22 - a02 * a20, a01 * a20 - a00 * a21, a01 * a12 - a02 * a11, a02 * a10 - a00 * a12, a00 * a11 - a01 * a10];
+    const det = a00 * c[0] + a01 * c[1] + a02 * c[2];
+    const sign = det < 0 ? -1 : 1;
+    for (const p of json!.meshes?.[meshIndex]?.primitives ?? []) {
+      const mode = p.mode ?? 4;
+      if (mode < 4 || mode > 6 || p.attributes.POSITION == null) { skipped++; continue; } // points and lines: edges some exporters add
+      const pos = accessor(p.attributes.POSITION); const nor = p.attributes.NORMAL != null ? accessor(p.attributes.NORMAL) : null;
+      const first = positions.length / 3;
+      for (let k = 0; k < pos.count; k++) {
+        const x = pos.at(k, 0), y = pos.at(k, 1), z = pos.at(k, 2);
+        positions.push(m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14]);
+        if (!nor) { normals.push(0, 0, 0); continue; }
+        const nx = nor.at(k, 0), ny = nor.at(k, 1), nz = nor.at(k, 2);
+        const tx = sign * (c[0] * nx + c[1] * ny + c[2] * nz), ty = sign * (c[3] * nx + c[4] * ny + c[5] * nz), tz = sign * (c[6] * nx + c[7] * ny + c[8] * nz);
+        const l = Math.hypot(tx, ty, tz) || 1;
+        normals.push(tx / l, ty / l, tz / l);
+      }
+      const idx = p.indices != null ? accessor(p.indices) : null;
+      const n = idx ? idx.count : pos.count; const at = (k: number) => first + (idx ? idx.at(k, 0) : k);
+      const tris: number[] = [];
+      if (mode === 4) for (let k = 0; k + 2 < n; k += 3) tris.push(at(k), at(k + 1), at(k + 2));
+      else if (mode === 5) for (let k = 0; k + 2 < n; k++) tris.push(...(k % 2 ? [at(k + 1), at(k), at(k + 2)] : [at(k), at(k + 1), at(k + 2)]));
+      else for (let k = 1; k + 1 < n; k++) tris.push(at(0), at(k), at(k + 1));
+      if (det < 0) for (let t = 0; t < tris.length; t += 3) [tris[t + 1], tris[t + 2]] = [tris[t + 2], tris[t + 1]];
+      if (!nor) { // no normals in the file: each vertex takes the sum of its faces'
+        for (let t = 0; t < tris.length; t += 3) {
+          const [i, j, q] = [tris[t] * 3, tris[t + 1] * 3, tris[t + 2] * 3];
+          const ux = positions[j] - positions[i], uy = positions[j + 1] - positions[i + 1], uz = positions[j + 2] - positions[i + 2];
+          const vx = positions[q] - positions[i], vy = positions[q + 1] - positions[i + 1], vz = positions[q + 2] - positions[i + 2];
+          const fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
+          for (const v of [i, j, q]) { normals[v] += fx; normals[v + 1] += fy; normals[v + 2] += fz; }
+        }
+        for (let v = first * 3; v < normals.length; v += 3) { const l = Math.hypot(normals[v], normals[v + 1], normals[v + 2]) || 1; normals[v] /= l; normals[v + 1] /= l; normals[v + 2] /= l; }
+      }
+      const key = p.material ?? -1;
+      const list = trisByMaterial.get(key) ?? [];
+      for (const t of tris) list.push(t);
+      trisByMaterial.set(key, list);
+    }
+  };
+  const visit = (i: number, parent: number[]) => {
+    const node = json!.nodes?.[i];
+    if (!node) return;
+    const m = mul4(parent, nodeMatrix(node));
+    if (node.mesh != null) addMesh(node.mesh, m);
+    for (const child of node.children ?? []) visit(child, m);
+  };
+  const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const children = new Set((json.nodes ?? []).flatMap((n) => n.children ?? []));
+  const roots = json.scenes?.[json.scene ?? 0]?.nodes ?? (json.nodes ?? []).map((_n, i) => i).filter((i) => !children.has(i));
+  for (const r of roots) visit(r, IDENTITY);
+  if (!positions.length) throw new Error('No triangles in that file');
+  if (skipped) warn(`${skipped} point or line primitive${skipped === 1 ? '' : 's'} left out`);
+
+  const textured: string[] = [];
+  const indices: number[] = [];
+  const groups: MeshGroup[] = [];
+  for (const [mi, tris] of trisByMaterial) {
+    const mat = mi >= 0 ? json.materials?.[mi] : undefined;
+    const name = mat?.name || (mi >= 0 ? `material-${mi}` : 'default');
+    const pbr = mat?.pbrMetallicRoughness;
+    if (pbr?.baseColorTexture) textured.push(name);
+    // baseColorFactor is linear, as the room's colours are; the guess reads colours as a CAD tool shows them.
+    const color = (pbr?.baseColorFactor?.slice(0, 3) ?? (mat ? [1, 1, 1] : [0.6, 0.63, 0.66])) as [number, number, number];
+    const named = FINISHES[finishes[name]?.toLowerCase() ?? ''];
+    const finish = named ? { metalness: named.metalness, roughness: named.roughness }
+      : pbr && (pbr.metallicFactor != null || pbr.roughnessFactor != null) ? { metalness: pbr.metallicFactor ?? 1, roughness: pbr.roughnessFactor ?? 1 }
+      : guessFinish(name, color.map(toSrgb) as [number, number, number]);
+    groups.push({ start: indices.length, count: tris.length, color: named?.tint ?? color, ...finish, name });
+    for (const t of tris) indices.push(t);
+  }
+  if (textured.length) warn(`textures left out (one colour per material): ${textured.join(', ')}`);
+  return { positions: new Float32Array(positions), normals: new Float32Array(normals), indices: new Uint32Array(indices), groups };
+}
