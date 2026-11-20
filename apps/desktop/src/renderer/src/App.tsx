@@ -190,7 +190,7 @@ export function App() {
                 <a key={p.id} href="#" className={page === p.id ? 'on' : ''} aria-current={page === p.id ? 'page' : undefined} title={`Ctrl+${PAGES.indexOf(p) + 1}`} onClick={(e) => { e.preventDefault(); setPage(p.id, () => setStyleCreator(null)); }}>
                   {p.step ? <span className="stepn">{p.step}</span> : <Icon name={p.icon} />}<span>{p.title}</span>
                   {p.id === 'presets' && ws.live && !ws.model?.presetsFrom && <span className="tier">live</span>}
-                  {p.id === 'build' && (queued > 0 ? <span className="badge" title="Styles waiting for a build">{queued} queued</span> : null)}
+                  {p.id === 'build' && (queued > 0 ? <span className="badge" title={`${queued} ${queued === 1 ? 'style is' : 'styles are'} waiting for a build`} aria-label={`${queued} queued`}>{queued}</span> : null)}
                 </a>
               ))}
             </div>

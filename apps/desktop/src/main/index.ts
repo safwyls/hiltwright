@@ -113,11 +113,20 @@ function createWindow(): void {
   // run a script *as* a gesture, which is what makes "plug it in and it just connects" possible.
   win.webContents.on('did-finish-load', () => {
     if (noBoard) console.log('[main] auto-connect skipped: HILTWRIGHT_NO_BOARD');
-    else setTimeout(() => {
-      void win.webContents.executeJavaScript('window.hiltwrightAutoConnect ? window.hiltwrightAutoConnect() : "no hook"', true)
-        .then((r) => console.log('[main] auto-connect', r))
-        .catch((err) => console.log('[main] auto-connect failed', String(err)));
-    }, 400);
+    else {
+      // The page sets its hook once React has mounted, which can be later than this event (a development page
+      // loads slowly): ask again for a few seconds rather than give up on the first "no hook".
+      const ask = (triesLeft: number): void => {
+        if (win.isDestroyed()) return;
+        void win.webContents.executeJavaScript('window.hiltwrightAutoConnect ? window.hiltwrightAutoConnect() : "no hook"', true)
+          .then((r) => {
+            if (r === 'no hook' && triesLeft > 0) { setTimeout(() => ask(triesLeft - 1), 400); return; }
+            console.log('[main] auto-connect', r);
+          })
+          .catch((err) => console.log('[main] auto-connect failed', String(err)));
+      };
+      setTimeout(() => ask(20), 400);
+    }
     // Dev aid: HILTWRIGHT_E2E=1 runs the renderer's end-to-end preset edit against the connected board.
     if (process.env.HILTWRIGHT_E2E) setTimeout(() => {
       void win.webContents.executeJavaScript(`window.hiltwrightE2E ? window.hiltwrightE2E(${JSON.stringify(process.env.HILTWRIGHT_E2E)}) : "no hook"`, true)
