@@ -186,3 +186,12 @@ Work deferred past Beta 1, one line per item. Copied from the open OpenSpec prop
 - Font engine: accent swings inside SmoothSwing, SmoothSwing V1, and monophonic lockups replacing the hum are not played as the firmware plays them. (Beta 2)
 - Layout: the Presets middle column has its own scroll bar at 700 px high, and the Styles filter chips take three rows at 1180 px wide. (Beta 2)
 - Signing: with Smart App Control on, Windows blocks the unsigned installer and the installed app, with no way to allow them (owner's PC, 2026-11-18). A build from the development app worked with Smart App Control on, so the downloaded compiler is not blocked and signing Hiltwright itself would be the whole fix. The owner shipped Beta 1 unsigned with instructions and is undecided on signing because of cost; SignPath Foundation signs open-source projects for free and was the roadmap's plan. (Beta 2, undecided)
+
+## Found on 2026-11-20
+
+- Font packages: extras are left out whole. A package's `_Extras` (spare hums, alternate ignitions, music, quotes) could be offered: music as tracks, the rest as swaps for a font's own sounds. Tracks kept inside another board's copy (`CFX/tracks`) are also not brought over to the Proffie copy. (Later)
+- Font packages: a font found in a board folder is named after the folder above it, so three film versions of one release come in as `TFA`, `TLJ`, `TROS` with nothing of the release's name except the bundle. (Later)
+- Font packages: the search stops four folders down, so anything deeper is neither added nor mentioned. (Later)
+- Font library export (`.hwfonts`): makers' logos and links are not in the file (they live in the contributors list); on import, offer to replace a font already there. (Later)
+- Font library: with several fonts selected, set the maker or bundle for all of them, and replace fonts already on the card in one go. (Later)
+- Font library: the rows cannot be reached with the keyboard alone (no focus, no arrow keys); only Ctrl+A and Escape work without a mouse. (Later)

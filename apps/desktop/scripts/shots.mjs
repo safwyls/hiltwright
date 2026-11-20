@@ -86,6 +86,40 @@ STATES['tour-ended'] = { page: 'presets', js: run(`
 `) };
 // Every step in one run: a series (HILTWRIGHT_SHOTS) rather than a start of the app per step.
 const SERIES = { tour: { page: 'armory', shots: Array.from({ length: TOUR_COUNT }, (_v, k) => ({ name: `tour-${pad(k + 1)}`, js: tourJs(k + 1) })) } };
+// Font library with several fonts selected, in every theme (the theme is switched in the page, so one run does all),
+// then the remove question, the keys, and a copy of the selected fonts to the fixture card with its report. Nothing is
+// removed: that would put the fixture's folders in the real recycle bin.
+const themeIds = [...readFileSync(join(desktop, 'src/shared/themes.ts'), 'utf8').matchAll(/^\s*id: '([a-z0-9-]+)'/gm)].map((m) => m[1]);
+const rowClick = "const rowClick = (i, mods = {}) => { const rows = [...document.querySelectorAll('[data-tour=\"library-row\"]')]; if (!rows[i]) throw new Error('no row ' + i); rows[i].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...mods })); };";
+const said = "const said = (what) => console.log('[shots] ' + what + ': ' + (document.querySelector('[aria-label=\"Selected fonts\"] h2, [aria-label=\"Selected font\"] h2')?.textContent ?? 'nothing selected') + ', ' + document.querySelectorAll('tr[aria-selected=\"true\"]').length + ' rows marked');";
+const many = (body) => run(`${rowClick} ${said} ${body}`);
+SERIES['library-many'] = { page: 'library', shots: [
+  { name: 'library-many-setup', js: many("rowClick(1); await sleep(200); said('click row 2'); rowClick(3, { ctrlKey: true }); await sleep(200); said('ctrl+click row 4'); rowClick(3, { ctrlKey: true }); await sleep(200); said('ctrl+click row 4 again'); rowClick(6, { shiftKey: true }); await sleep(200); said('shift+click row 7'); rowClick(9, { ctrlKey: true }); await sleep(300); said('ctrl+click row 10');") },
+  ...themeIds.map((id) => ({ name: `library-many-${id}`, js: run(`document.documentElement.dataset.theme = '${id}'; await sleep(500);`) })),
+  { name: 'library-many-remove', js: many(`document.documentElement.dataset.theme = '${themeIds[0]}'; click('[aria-label="Selected fonts"] button', 'remove'); await sleep(400); console.log('[shots] remove asks: ' + document.querySelector('[aria-label="Selected fonts"] [role=alert]')?.textContent + ' | buttons: ' + [...document.querySelectorAll('[aria-label="Selected fonts"] .btn')].map((b) => b.textContent).join(' / '));`) },
+  { name: 'library-many-keys', js: many("const key = (k, mods = {}) => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...mods })); key('Escape'); await sleep(300); said('Escape'); key('a', { ctrlKey: true }); await sleep(300); said('Ctrl+A'); const q = document.querySelector('input[aria-label=\"Search fonts\"]'); q.focus(); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(200); said('Escape typed in the search box'); q.blur();") },
+  { name: 'library-many-copied', js: many("click('[aria-label=\"Selected fonts\"] button', 'copy'); for (let i = 0; i < 100 && !document.querySelector('.note[role=status]'); i++) await sleep(200); await sleep(300); console.log('[shots] copy report: ' + [...document.querySelectorAll('.note[role=status] span.small')].map((s) => s.textContent).join(' | ')); console.log('[shots] copy headline: ' + document.querySelector('.note[role=status] > span > span')?.textContent);") },
+] };
+// The fixture library exported to one file and that file imported again (every font is already here, so none is
+// added). HILTWRIGHT_DIALOG_FILE answers both dialogs; the file is made in the OS temp folder and deleted afterwards.
+const exportFile = join(tmpdir(), `hiltwright-shots-export-${process.pid}.hwfonts`);
+process.on('exit', () => rmSync(exportFile, { force: true }));
+const noteSaid = "const noteSaid = async (what) => { for (let i = 0; i < 150 && (document.querySelector('.spinner.on') || !document.querySelector('.note.green, .note.amber, .note.red')); i++) await sleep(200); console.log('[shots] ' + what + ': ' + (document.querySelector('.note.green, .note.amber, .note.red')?.textContent ?? 'nothing said')); };";
+// Five fonts are selected and exported with a passphrase (made up here, used nowhere else); the import is tried with
+// a wrong passphrase, then the right one.
+const pass = (label, v) => `typeInto(document.querySelector('input[aria-label="${label}"]'), '${v}'); await sleep(150);`;
+const exp = (body) => run(`${rowClick} ${noteSaid} ${body}`);
+SERIES['library-export'] = { page: 'library', env: { HILTWRIGHT_DIALOG_FILE: exportFile }, shots: [
+  { name: 'library-export-form', js: exp(`rowClick(1); await sleep(150); rowClick(5, { shiftKey: true }); await sleep(300); click('[aria-label="Selected fonts"] button', 'export'); await sleep(300); ${pass('Passphrase for the export, optional', 'shots-fixture-phrase')} ${pass('The passphrase again', 'shots-fixture-phrasf')} console.log('[shots] passphrases differ: ' + (document.querySelector('form[aria-label="Export fonts"] [role=alert]')?.textContent ?? 'nothing said') + ' | save button ' + (document.querySelector('form[aria-label="Export fonts"] button[type=submit]').disabled ? 'off' : 'on')); ${pass('The passphrase again', 'shots-fixture-phrase')}`) },
+  { name: 'library-export-saved', js: exp(`click('form[aria-label="Export fonts"] button', 'choose where'); await sleep(300); await noteSaid('export');`) },
+  { name: 'library-export-locked', js: exp(`click('.toolbar button', 'add export file'); for (let i = 0; i < 50 && !document.querySelector('form[aria-label="Passphrase for the import"]'); i++) await sleep(200); console.log('[shots] import asks: ' + document.querySelector('form[aria-label="Passphrase for the import"] span span')?.textContent);`) },
+  { name: 'library-export-wrong', js: exp(`${pass('Passphrase for the file', 'not-the-phrase')} click('form[aria-label="Passphrase for the import"] button', 'add the fonts'); await sleep(2500); console.log('[shots] wrong passphrase: ' + document.querySelector('form[aria-label="Passphrase for the import"] span span')?.textContent);`) },
+  { name: 'library-export-imported', js: exp(`${pass('Passphrase for the file', 'shots-fixture-phrase')} click('form[aria-label="Passphrase for the import"] button', 'add the fonts'); await sleep(500); await noteSaid('import');`) },
+] };
+// A bundle exported from its heading in the By bundle view.
+STATES['library-bundle'] = { page: 'library', env: { HILTWRIGHT_DIALOG_FILE: exportFile }, js: run(`${noteSaid} click('.seg button', 'by bundle'); await sleep(400); click('button[aria-label="Export the bundle Prequel set"]'); await sleep(300); console.log('[shots] form: ' + document.querySelector('form[aria-label="Export fonts"] span span')?.textContent.slice(0, 70)); click('form[aria-label="Export fonts"] button', 'choose where'); await sleep(300); await noteSaid('export bundle');`) };
+// One font exported from its own panel, with no passphrase.
+STATES['library-export-one'] = { page: 'library', env: { HILTWRIGHT_DIALOG_FILE: exportFile }, js: run(`${rowClick} ${noteSaid} rowClick(2); await sleep(300); click('[aria-label="Selected font"] button', 'export'); await sleep(300); console.log('[shots] form: ' + document.querySelector('form[aria-label="Export fonts"] span span')?.textContent.slice(0, 80)); click('form[aria-label="Export fonts"] button', 'choose where'); await sleep(300); await noteSaid('export one');`) };
 const isSingleTour = (name) => /^tour-\d+$/.test(name);
 const allNames = [...allPages, ...Object.keys(STATES), ...Object.keys(SERIES)];
 for (const p of wanted) if (!allNames.includes(p)) { console.error(`Unknown page or state "${p}". Pages: ${allPages.join(', ')}. States: ${Object.keys(STATES).filter((n) => !isSingleTour(n)).join(', ')}, tour, tour-1 to tour-${TOUR_COUNT}`); process.exit(2); }
@@ -119,7 +153,7 @@ const makers = ['Kyberphonic', 'Greyscale Audio', 'Shadowfoil', '', 'Vader’s W
 const index = { version: 1, fonts: {}, makers: {} };
 libFonts.forEach((f, i) => {
   makeFont(fontLibrary, f);
-  index.fonts[f] = { name: f.replace(/_/g, ' '), maker: makers[i], notes: i % 3 === 0 ? 'Needs the volume up a notch; the swings are quiet.' : '', added: '2026-10-0' + (1 + (i % 9)) + 'T10:00:00.000Z' };
+  index.fonts[f] = { name: f.replace(/_/g, ' '), maker: makers[i], notes: i % 3 === 0 ? 'Needs the volume up a notch; the swings are quiet.' : '', added: '2026-10-0' + (1 + (i % 9)) + 'T10:00:00.000Z', ...(i < 4 ? { bundle: 'Prequel set' } : i < 6 ? { bundle: 'Sequel set' } : {}) };
 });
 writeFileSync(join(fontLibrary, 'hiltwright-fonts.json'), JSON.stringify(index));
 
@@ -190,6 +224,8 @@ function shoot({ name, page, js, file: fileName, shots, env: extraEnv }, { w, h 
       else console.log(`${name} ${w}x${h}: ${shots ? `${shots.length} shots in ${outDir}` : file}`);
       // Where each tour card went, and anything wrong with it (Tour.tsx logs one line per step it places).
       if (tour) for (const l of log.split('\n')) if (/\[tour\] (step|refused|not )/.test(l)) console.log(`  ${l.replace(/^.*?\[tour\]/, '[tour]').trim()}`);
+      // What a series said about itself as it went (lines it logged as [shots]).
+      for (const l of log.split('\n')) if (l.includes('[shots] ')) console.log(`  ${l.replace(/^.*?\[shots\]/, '[shots]').trim()}`);
       setTimeout(() => done(ok), 1500);
     };
     const timer = setTimeout(() => finish(false), shots ? 600000 : 120000);

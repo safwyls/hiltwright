@@ -176,8 +176,8 @@ button.chip.sel{border-color:var(--sel)}
 .input.sans{font-family:var(--body)}
 .input .caret{margin-left:auto;color:var(--mute);display:flex}
 .input svg{width:16px;height:16px;flex:none}
-.input select,.input input[type=text],.input input[type=number]{position:absolute;inset:0;width:100%;height:100%;background:transparent;border:0;color:transparent;appearance:none;padding:0 12px;cursor:pointer}
-.input input[type=text],.input input[type=number]{color:var(--text);font-family:inherit;font-size:inherit;cursor:text}
+.input select,.input input[type=text],.input input[type=password],.input input[type=number]{position:absolute;inset:0;width:100%;height:100%;background:transparent;border:0;color:transparent;appearance:none;padding:0 12px;cursor:pointer}
+.input input[type=text],.input input[type=password],.input input[type=number]{color:var(--text);font-family:inherit;font-size:inherit;cursor:text}
 .input input[type=number]::-webkit-inner-spin-button{opacity:.6}
 .input:focus-within{border-color:var(--sel)}
 .tog{width:40px;height:22px;border:1px solid var(--line2);position:relative;background:var(--field);flex:none;cursor:pointer}

@@ -3,9 +3,10 @@
 // (polyphonic or not, SmoothSwing, special effects, tracks) is read from its files. Any sound or track can be
 // played here. Fonts can be grouped by maker (each with a logo) or by bundle, the sets makers release together.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as RowClick } from 'react';
 import type { CardInfo, FontLibraryStatus, FontSound, ImportResult, LibraryFont, LibraryFontDetail } from '../../shared/api';
 import { copyAnywayQuestion, shouldAskBeforeCopy } from '@hiltwright/core';
+import { bulkHeadline, clickSelection, importSummary, type BulkLine } from '../../shared/fontBulk';
 import { Icon } from './Icon';
 import { ContributorLogo, useContributors } from './credits';
 import { chooseCard, rememberedCardChoice } from './cardChoice';
@@ -58,6 +59,10 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
   const [fonts, setFonts] = useState<LibraryFont[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  // Several fonts selected at once (Ctrl+click, Shift+click, Ctrl+A). With one or none, `selected` is the font shown.
+  const [picked, setPicked] = useState<string[]>([]);
+  const anchor = useRef<string | null>(null);
+  const [bulk, setBulk] = useState<{ head: { tone: 'green' | 'amber' | 'red'; text: string }; lines: BulkLine[] } | null>(null);
   const [detail, setDetail] = useState<LibraryFontDetail | null>(null);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<{ poly?: boolean; smooth?: boolean; tracks?: boolean }>({});
@@ -105,19 +110,37 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
   }, [selected]);
 
   const run = async (what: () => Promise<ImportResult | null>) => {
-    setBusy(true); setNote(null); setProgress(null);
+    setBusy(true); setNote(null); setBulk(null); setProgress(null);
     try {
       const r = await what();
       if (!r) return;
       await refresh();
-      if (r.added.length) setSelected(r.added[0]);
-      const skipped = r.skipped.map((s) => `${s.name}: ${s.why}`).join(' ');
-      setNote(r.added.length
-        ? { tone: r.skipped.length ? 'amber' : 'green', text: `Added ${r.added.join(', ')}.${skipped ? ` Not added: ${skipped}` : ' Give each a name and maker on the right.'}` }
-        : { tone: 'red', text: skipped || 'Nothing was added.' });
+      if (r.added.length) { setSelected(r.added[0]); setPicked([]); anchor.current = r.added[0]; }
+      setNote(importSummary(r));
     } catch (err) { setNote({ tone: 'red', text: cleanErr(err) }); }
     finally { setBusy(false); setProgress(null); }
   };
+  // Export: a short form first (which fonts, an optional passphrase), then the save dialog. `folders` null: all.
+  const [exporting, setExporting] = useState<{ folders: string[] | null; pass: string; again: string; /** What is being exported, when it has a name of its own (a bundle). */ what?: string } | null>(null);
+  // Import of a file locked with a passphrase: the file is picked, and this asks for the passphrase.
+  const [unlock, setUnlock] = useState<{ name: string; wrong: boolean; pass: string } | null>(null);
+  const doExport = async () => {
+    if (!exporting || exporting.pass !== exporting.again) return;
+    const { folders, pass } = exporting;
+    setExporting(null);
+    setBusy(true); setNote(null); setBulk(null); setProgress(null);
+    try {
+      const r = await api().fontLibrary.exportPack({ ...(folders ? { folders } : {}), ...(pass ? { passphrase: pass } : {}) });
+      if (r) setNote({ tone: 'green', text: `Saved ${r.fonts} font${r.fonts === 1 ? '' : 's'} (${mb(r.bytes)} of files) with ${r.fonts === 1 ? 'its name, maker' : 'their names, makers'} and notes to ${r.file}. ${r.locked ? 'It opens only with your passphrase. ' : ''}On the other computer, open Font library and press Add export file.` });
+    } catch (err) { setNote({ tone: 'red', text: cleanErr(err) }); }
+    finally { setBusy(false); setProgress(null); }
+  };
+  const doImport = (passphrase?: string) => run(async () => {
+    const r = await api().fontLibrary.importPack(passphrase);
+    if (r && 'needsPassphrase' in r) { setUnlock({ name: r.name, wrong: r.wrong, pass: '' }); return null; }
+    setUnlock(null);
+    return r;
+  });
   const moveLibrary = async (reset: boolean) => {
     setBusy(true); setNote(null);
     try { setStatus(await (reset ? api().fontLibrary.resetRoot() : api().fontLibrary.chooseRoot())); await refresh(); }
@@ -158,8 +181,60 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
     try { for (const f of list) out.push(await api().fontLibrary.setMeta(f.folder, { maker: maker.trim() })); } catch (err) { setNote({ tone: 'red', text: cleanErr(err) }); }
     setFonts((all) => all.map((x) => out.find((o) => o.folder === x.folder) ?? x));
   };
+  // The rows as shown, top to bottom: what Shift+click and Ctrl+A go by. Fonts hidden by a filter, a search or a
+  // folded group are never part of a selection, so a bulk action only touches fonts the owner can see.
+  const shown = useMemo(() => groups.flatMap((g) => (groupBy !== 'none' && folded.has(g.key) ? [] : g.fonts.map((f) => f.folder))), [groups, groupBy, folded]);
+  const many = useMemo(() => { const p = new Set(picked); return p.size > 1 ? visible.filter((f) => p.has(f.folder) && shown.includes(f.folder)) : []; }, [picked, visible, shown]);
+  const multi = many.length > 1;
+  const isOn = (folder: string) => (multi ? many.some((f) => f.folder === folder) : folder === selected);
+  const clickRow = (folder: string, e: RowClick) => {
+    const now = { picked: multi ? many.map((f) => f.folder) : selected ? [selected] : [], anchor: anchor.current ?? selected };
+    const next = clickSelection(now, folder, shown, { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey });
+    anchor.current = next.anchor;
+    setPicked(next.picked);
+    setSelected(next.picked.includes(folder) ? folder : next.picked[next.picked.length - 1]);
+  };
+  const clearMany = () => setPicked([]);
+  // Ctrl+A selects every font shown; Escape goes back to one. Not while typing in a field.
+  const keys = useRef({ shown, multi });
+  keys.current = { shown, multi };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target instanceof Element ? e.target : null;
+      if (t?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        if (keys.current.shown.length > 1) setPicked(keys.current.shown);
+      } else if (e.key === 'Escape' && keys.current.multi) { e.preventDefault(); setPicked([]); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  /** One action over several fonts: each is tried, one that fails does not stop the rest, and each gets one line. */
+  const overMany = async (list: LibraryFont[], doing: string, done: string, failed: string, one: (f: LibraryFont) => Promise<BulkLine>) => {
+    setBusy(true); setNote(null); setBulk(null);
+    const lines: BulkLine[] = [];
+    for (const [i, f] of list.entries()) {
+      setProgress(`${doing} ${i + 1} of ${list.length}: ${f.meta.name}…`);
+      try { lines.push(await one(f)); } catch (err) { lines.push({ name: f.meta.name, ok: false, text: cleanErr(err) }); }
+    }
+    setBulk({ head: bulkHeadline(done, failed, lines), lines });
+    setBusy(false); setProgress(null);
+  };
+  const removeMany = async (list: LibraryFont[]) => {
+    player.stop();
+    await overMany(list, 'Removing', 'Removed', 'not removed', async (f) => { await api().fontLibrary.remove(f.folder); return { name: f.meta.name, ok: true, text: 'Moved to the recycle bin.' }; });
+    setPicked([]);
+    await refresh();
+  };
+  // A font already on the card is left as it is: replacing one is decided font by font.
+  const copyMany = (list: LibraryFont[], to: CardInfo) => overMany(list, 'Copying', 'Copied', 'not copied', async (f) => {
+    if (await api().sd.hasFolder(to.root, f.folder)) return { name: f.meta.name, ok: false, text: 'Already on the card. Left as it is.' };
+    const e = await api().fontLibrary.copyToCard(f.folder, to.root, false);
+    return { name: f.meta.name, ok: true, text: `Copied to the card (${e.report.files} sounds).` };
+  });
   const row = (f: LibraryFont) => (
-    <tr key={f.folder} className={f.folder === selected ? 'on' : ''} data-tour="library-row" onClick={() => setSelected(f.folder)} style={{ cursor: 'pointer' }}>
+    <tr key={f.folder} className={isOn(f.folder) ? 'on' : ''} aria-selected={isOn(f.folder)} data-tour="library-row" onMouseDown={(e) => { if (e.shiftKey) e.preventDefault(); }} onClick={(e) => clickRow(f.folder, e)} style={{ cursor: 'pointer' }}>
       <td className="fit"><span className="col" style={{ gap: 0, minWidth: 0 }}><span className="ellip" style={{ fontWeight: 600 }} title={f.meta.name}>{f.meta.name}</span>{(f.meta.name !== f.folder || (groupBy !== 'bundle' && f.meta.bundle) || f.meta.maker) && <span className="hint ellip" style={{ fontSize: 11 }} title={f.meta.bundle}>{f.meta.maker && <span className="maker-sub">{f.meta.maker}{f.meta.name !== f.folder || (groupBy !== 'bundle' && f.meta.bundle) ? ' · ' : ''}</span>}{f.meta.name !== f.folder && <span className="mono">{f.folder}</span>}{f.meta.name !== f.folder && groupBy !== 'bundle' && f.meta.bundle ? ' · ' : ''}{groupBy !== 'bundle' && f.meta.bundle}</span>}</span></td>
       <td className="dim col-maker">{f.meta.maker ? <span className="row" style={{ gap: 8 }}><ContributorLogo name={f.meta.maker} logo={people.logoFor(f.meta.maker)} size={20} /><span>{f.meta.maker}</span></span> : <span className="mute">—</span>}</td>
       <td className="dim small"><span style={{ display: 'block' }}>{TYPE[f.support.type]}{f.support.smoothSwing ? ' · SmoothSwing' : ''}</span><span className="hint" style={{ display: 'block', fontSize: 11 }}>{[f.support.special.length ? `${f.support.special.length} special` : null, f.support.tracks ? `${f.support.tracks} track${f.support.tracks === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ') || 'no extras'}</span></td>
@@ -178,7 +253,8 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
     const byLine = shared ? `by ${shared}` : bundleMakers.length ? `by ${bundleMakers.join(', ')}; ${unnamed ? `${unnamed} without a maker` : 'more than one maker'}` : 'no maker given';
     return (
       <tr key={`g:${g.key}`} className="grp">
-        <td colSpan={5}>
+        {/* maxWidth 0: the heading takes the table's width, never sets it, so a long by-line shortens and the chips stay in view. */}
+        <td colSpan={5} style={{ maxWidth: 0 }}>
           <div className="row" style={{ gap: 10 }}>
             <button type="button" className="row grow" style={{ gap: 10, textAlign: 'left', minWidth: 0 }} aria-expanded={!shut} onClick={() => setFolded((s) => { const n = new Set(s); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n; })}>
               <Icon name={shut ? 'chev' : 'down'} style={{ width: 14, height: 14, color: 'var(--mute)', flex: 'none' }} />
@@ -201,6 +277,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
                   <button type="button" className="chip" aria-label="Cancel" onClick={() => setBundleMaker(null)}><Icon name="x" /></button>
                 </form>
               : <button type="button" className="chip" title="Give every font in this bundle the same maker" onClick={() => setBundleMaker({ bundle: g.key, draft: bundleMakers[0] ?? '' })}>Set maker for all</button>)}
+            {groupBy === 'bundle' && !isNone && <button type="button" className="chip" disabled={busy} title="Save every font in this bundle, with its name, maker and notes, as one compressed, encrypted file" aria-label={`Export the bundle ${g.key}`} onClick={() => { setUnlock(null); setExporting({ folders: g.fonts.map((f) => f.folder), pass: '', again: '', what: `the bundle ${g.key} (${g.fonts.length} font${g.fonts.length === 1 ? '' : 's'})` }); }}>Export…</button>}
           </div>
         </td>
       </tr>
@@ -220,6 +297,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
           </div>
           <button type="button" className="btn sm pri" style={{ marginLeft: 'auto' }} disabled={busy} title="A font package as you downloaded it. Fonts for other boards in the same package are left out." onClick={() => void run(() => api().fontLibrary.addZip())}><span className="b"><span className="i"><Icon name="import" />Add package (.zip)</span></span></button>
           <button type="button" className="btn sm" disabled={busy} title="A font folder, or a folder holding several fonts" onClick={() => void run(() => api().fontLibrary.addFolder())}><span className="b"><span className="i"><Icon name="plus" />Add folder</span></span></button>
+          <button type="button" className="btn sm" disabled={busy} title="Add the fonts from a file made with Export here or on another computer. Fonts already here are left as they are." onClick={() => { setExporting(null); setUnlock(null); void doImport(); }}><span className="b"><span className="i"><Icon name="plus" />Add export file</span></span></button>
         </div>
 
         {status?.legacyBank && (
@@ -240,6 +318,44 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
         ))}
         {(busy || progress) && <div className="note"><span className="spinner on" style={{ width: 16, height: 16 }}><Icon name="spin" /></span><span>{progress ?? 'Working…'}</span></div>}
         {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span>{note.text}</span></div>}
+        {exporting && (
+          <form className="note" aria-label="Export fonts" onSubmit={(e) => { e.preventDefault(); void doExport(); }}><Icon name="info" />
+            <span className="col" style={{ gap: 8 }}>
+              <span>{exporting.what ? `Export ${exporting.what} as one file, with their names, makers and notes.` : !exporting.folders ?`Export all ${fonts.length} fonts as one file, with their names, makers and notes.` : exporting.folders.length === 1 ? `Export ${fonts.find((f) => f.folder === exporting.folders![0])?.meta.name ?? exporting.folders[0]} as one file, with its name, maker and notes.` : `Export the ${exporting.folders.length} selected fonts as one file, with their names, makers and notes.`} A passphrase is optional: with one, the file opens only for someone who knows it. Without one, any copy of Hiltwright can open it.</span>
+              <span className="row wrap" style={{ gap: 8 }}>
+                <span className="input sans" style={{ height: 30, flex: '1 1 150px', maxWidth: 240 }}><input type="password" autoFocus autoComplete="new-password" value={exporting.pass} placeholder="Passphrase (optional)" aria-label="Passphrase for the export, optional" onChange={(e) => setExporting({ ...exporting, pass: e.target.value })} /></span>
+                <span className="input sans" style={{ height: 30, flex: '1 1 150px', maxWidth: 240 }}><input type="password" autoComplete="new-password" value={exporting.again} placeholder="Passphrase again" aria-label="The passphrase again" disabled={!exporting.pass} onChange={(e) => setExporting({ ...exporting, again: e.target.value })} /></span>
+                <button type="submit" className="btn sm pri" disabled={busy || exporting.pass !== exporting.again}><span className="b"><span className="i">Choose where to save…</span></span></button>
+                <button type="button" className="btn sm ghost" onClick={() => setExporting(null)}><span className="b"><span className="i">Cancel</span></span></button>
+              </span>
+              {exporting.pass && exporting.again && exporting.pass !== exporting.again && <span className="small" role="alert">The two passphrases are not the same.</span>}
+              {exporting.pass && <span className="hint">Keep the passphrase safe. Hiltwright does not store it, and the file cannot be opened without it.</span>}
+            </span>
+          </form>
+        )}
+        {unlock && (
+          <form className={`note ${unlock.wrong ? 'amber' : ''}`} aria-label="Passphrase for the import" onSubmit={(e) => { e.preventDefault(); if (unlock.pass) void doImport(unlock.pass); }}><Icon name={unlock.wrong ? 'warn' : 'info'} />
+            <span className="col" style={{ gap: 8 }}>
+              <span>{unlock.wrong ? 'That passphrase does not open ' : ''}<span className="mono">{unlock.name}</span>{unlock.wrong ? '. Check it and try again.' : ' is locked with a passphrase. Type it to add the fonts.'}</span>
+              <span className="row wrap" style={{ gap: 8 }}>
+                <span className="input sans" style={{ height: 30, flex: '1 1 150px', maxWidth: 240 }}><input type="password" autoFocus autoComplete="off" value={unlock.pass} placeholder="Passphrase" aria-label="Passphrase for the file" onChange={(e) => setUnlock({ ...unlock, pass: e.target.value })} /></span>
+                <button type="submit" className="btn sm pri" disabled={busy || !unlock.pass}><span className="b"><span className="i">Add the fonts</span></span></button>
+                <button type="button" className="btn sm ghost" onClick={() => setUnlock(null)}><span className="b"><span className="i">Cancel</span></span></button>
+              </span>
+            </span>
+          </form>
+        )}
+        {bulk && (
+          <div className={`note ${bulk.head.tone}`} role="status"><Icon name={bulk.head.tone === 'green' ? 'check' : bulk.head.tone === 'red' ? 'x' : 'warn'} />
+            <span className="col" style={{ gap: 6 }}>
+              <span>{bulk.head.text}</span>
+              <span className="col scroll" style={{ gap: 3, maxHeight: 112 }}>
+                {bulk.lines.map((l, k) => <span key={k} className="small"><b style={{ fontWeight: 600, color: 'var(--text)' }}>{l.name}</b>{': '}{l.text}</span>)}
+              </span>
+            </span>
+            <button type="button" className="chip" aria-label="Close this report" onClick={() => setBulk(null)}><Icon name="x" /></button>
+          </div>
+        )}
 
         <section className="panel fill" aria-label="Fonts in the library" data-tour="library-table">
           <div className="scroll grow ft">
@@ -255,10 +371,11 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
             <datalist id="hw-makers">{makerNames.map((m) => <option key={m} value={m} />)}</datalist>
             <datalist id="hw-bundles">{bundles.map((b) => <option key={b} value={b} />)}</datalist>
           </div>
-          <div className="row" style={{ gap: 10, padding: '10px 14px', borderTop: '1px solid var(--line)', background: 'var(--bar)' }}>
+          <div className="row wrap" style={{ gap: '8px 10px', padding: '10px 14px', borderTop: '1px solid var(--line)', background: 'var(--bar)' }}>
             <span className="small dim nowrap">Library folder</span>
-            <span className="mono small ellip grow" title={status?.root}>{status?.root ?? '…'}</span>
+            <span className="mono small ellip" style={{ flex: '1 1 150px', minWidth: 0 }} title={status?.root}>{status?.root ?? '…'}</span>
             <span className="hint nowrap">{fonts.length} font{fonts.length === 1 ? '' : 's'} · {mb(fonts.reduce((a, f) => a + f.bytes, 0))}</span>
+            <button type="button" className="chip" disabled={busy || fonts.length === 0} title="Save every font, with its name, maker and notes, as one compressed, encrypted file to take to another computer" onClick={() => { setUnlock(null); setExporting({ folders: null, pass: '', again: '' }); }}>Export all…</button>
             <button type="button" className="chip" onClick={() => void api().fontLibrary.open()}>Open</button>
             <button type="button" className="chip" disabled={busy} onClick={() => void moveLibrary(false)}>Change…</button>
             {status && !status.isDefault && <button type="button" className="chip" disabled={busy} title="Use the default folder again. Fonts in the current folder stay there." onClick={() => void moveLibrary(true)}>Default</button>}
@@ -266,16 +383,69 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
         </section>
       </div>
 
-      {sel ? <FontDetail key={sel.folder} font={sel} detail={detail} card={card} askCard={pick.ask} looking={looking} player={player} onSetLogo={(m) => void setLogo(m)} onClearLogo={(m) => void clearLogo(m)} onDemo={onDemo} onChanged={onChanged} onRemoved={() => { player.stop(); void refresh(); }} />
+      {multi ? <ManyFonts fonts={many} card={card} askCard={pick.ask} looking={looking} busy={busy} onCopy={(to) => void copyMany(many, to)} onRemove={() => void removeMany(many)} onExport={() => { setUnlock(null); setExporting({ folders: many.map((f) => f.folder), pass: '', again: '' }); }} onClear={clearMany} />
+        : sel ? <FontDetail key={sel.folder} font={sel} detail={detail} card={card} askCard={pick.ask} looking={looking} player={player} onSetLogo={(m) => void setLogo(m)} onClearLogo={(m) => void clearLogo(m)} onDemo={onDemo} onChanged={onChanged} onExport={() => { setUnlock(null); setExporting({ folders: [sel.folder], pass: '', again: '' }); }} onRemoved={() => { player.stop(); void refresh(); }} />
         : <section className="panel" data-tour="library-detail"><div className="pb hint">Pick a font to see and hear what is in it.</div></section>}
     </div>
   );
 }
 
-function FontDetail({ font, detail, card, askCard, looking, player, onSetLogo, onClearLogo, onDemo, onChanged, onRemoved }: {
+/** Several fonts selected: what they are, and the actions that make sense for many (copy to the card, remove). */
+function ManyFonts({ fonts, card, askCard, looking, busy, onCopy, onRemove, onExport, onClear }: {
+  fonts: LibraryFont[]; card: CardInfo | null; askCard: boolean; looking: boolean; busy: boolean;
+  onCopy: (card: CardInfo) => void; onRemove: () => void; onExport: () => void; onClear: () => void;
+}) {
+  const n = fonts.length;
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [askFs, setAskFs] = useState(false);
+  // A changed selection is a new question: an open "are you sure" goes away.
+  const which = fonts.map((f) => f.folder).join('\n');
+  useEffect(() => { setConfirmRemove(false); setAskFs(false); }, [which]);
+  const copy = (sure: boolean) => {
+    if (!card) return;
+    if (shouldAskBeforeCopy(card.fileSystem) && !sure) { setAskFs(true); setConfirmRemove(false); return; }
+    setAskFs(false);
+    onCopy(card);
+  };
+  return (
+    <section className="panel fill" aria-label="Selected fonts" data-tour="library-detail">
+      <div className="ph">
+        <div className="col" style={{ gap: 2, minWidth: 0 }}><h2 className="ellip">{n} fonts selected</h2><span className="hint ellip">{mb(fonts.reduce((a, f) => a + f.bytes, 0))} in all</span></div>
+        <button type="button" className="chip" title="Go back to one font (Escape)" onClick={onClear}><Icon name="x" />Clear</button>
+      </div>
+      <div className="pb col scroll grow" style={{ gap: 12, overflowX: 'hidden' }}>
+        <span className="hint">Ctrl+click adds or removes a font. Shift+click selects from the last one you clicked. Ctrl+A selects every font shown.</span>
+        <div className="list" style={{ border: '1px solid var(--line)' }}>
+          {fonts.map((f) => (
+            <div key={f.folder} className="li" style={{ minHeight: 36 }}>
+              <span className="small grow ellip" title={f.folder}>{f.meta.name}</span>
+              <span className="mono mute nowrap" style={{ fontSize: 11.5 }}>{mb(f.bytes)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="col" style={{ gap: 8, padding: '12px 18px 14px', borderTop: '1px solid var(--line)', background: 'var(--bar)', flex: 'none' }}>
+        {askFs && card && <div className="note amber"><Icon name="warn" /><span>{copyAnywayQuestion(`${n} fonts`, card.root, card.fileSystem)}</span><span className="row" style={{ gap: 8, marginLeft: 'auto', flex: 'none' }}><button type="button" className="btn sm warn" disabled={busy} onClick={() => copy(true)}><span className="b"><span className="i">Copy anyway</span></span></button><button type="button" className="btn sm ghost" onClick={() => setAskFs(false)}><span className="b"><span className="i">Cancel</span></span></button></span></div>}
+        {confirmRemove && <div className="note red" role="alert"><Icon name="warn" /><span>Remove {n} fonts from the library? Their folders go to the recycle bin, so you can put them back from there.</span></div>}
+        <div className="row wrap" style={{ gap: 8 }}>
+          <button type="button" className="btn sm pri" style={{ flex: '0 1 auto', minWidth: 0, maxWidth: '100%' }} disabled={!card || busy} title={card ? `Copy these fonts' folders onto the card at ${card.root}. A font already on the card is left as it is.` : askCard ? 'More than one ProffieOS card is in. Choose which one on Fonts & SD first.' : 'No ProffieOS card found. Put one in a reader, or share the saber’s card on Fonts & SD.'} onClick={() => copy(false)}><span className="b"><span className="i"><Icon name="sd" /><span className="ellip">{card ? `Copy ${n} to card ${card.root}` : looking ? 'Looking for a card…' : askCard ? 'Choose the card on Fonts & SD' : 'No card'}</span></span></span></button>
+          <button type="button" className="btn sm ghost" disabled={busy} title="Save these fonts, with their names, makers and notes, as one compressed, encrypted file" onClick={onExport}><span className="b"><span className="i"><Icon name="import" />Export {n}…</span></span></button>
+          {confirmRemove
+            ? <span className="row" style={{ gap: 8, marginLeft: 'auto' }}>
+                <button type="button" className="btn sm danger" disabled={busy} onClick={() => { setConfirmRemove(false); onRemove(); }}><span className="b"><span className="i"><Icon name="trash" />Yes, remove {n}</span></span></button>
+                <button type="button" className="btn sm ghost" onClick={() => setConfirmRemove(false)}><span className="b"><span className="i">Cancel</span></span></button>
+              </span>
+            : <button type="button" className="btn sm ghost" style={{ marginLeft: 'auto' }} disabled={busy} title="Moves these fonts' folders to the recycle bin" onClick={() => { setConfirmRemove(true); setAskFs(false); }}><span className="b"><span className="i"><Icon name="trash" />Remove {n}</span></span></button>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FontDetail({ font, detail, card, askCard, looking, player, onSetLogo, onClearLogo, onDemo, onChanged, onExport, onRemoved }: {
   font: LibraryFont; detail: LibraryFontDetail | null; card: CardInfo | null; askCard: boolean; looking: boolean; player: ReturnType<typeof useSoundPlayer>;
   onSetLogo: (maker: string) => void; onClearLogo: (maker: string) => void;
-  onDemo: (folder: string) => void; onChanged: (f: LibraryFont) => void; onRemoved: () => void;
+  onDemo: (folder: string) => void; onChanged: (f: LibraryFont) => void; onExport: () => void; onRemoved: () => void;
 }) {
   const [name, setName] = useState(font.meta.name);
   const [maker, setMaker] = useState(font.meta.maker);
@@ -421,6 +591,7 @@ function FontDetail({ font, detail, card, askCard, looking, player, onSetLogo, o
         <div className="row wrap" style={{ gap: 8 }}>
           <button type="button" className="btn sm pri" style={{ flex: '0 1 auto', minWidth: 0, maxWidth: '100%' }} disabled={!card || copying} title={card ? `Copy this font's folder onto the card at ${card.root}` : askCard ? 'More than one ProffieOS card is in. Choose which one on Fonts & SD first.' : 'No ProffieOS card found. Put one in a reader, or share the saber’s card on Fonts & SD.'} onClick={() => void copy(onCard)}><span className="b"><span className="i"><Icon name="sd" /><span className="ellip">{copying ? 'Copying…' : card ? (onCard ? (confirmReplace ? `Really replace ${font.folder}?` : `Replace on card ${card.root}`) : `Copy to card ${card.root}`) : looking ? 'Looking for a card…' : askCard ? 'Choose the card on Fonts & SD' : 'No card'}</span></span></span></button>
           <button type="button" className="btn sm ghost" onClick={() => void api().fontLibrary.open(font.folder)}><span className="b"><span className="i">Show files</span></span></button>
+          <button type="button" className="btn sm ghost" title="Save this font, with its name, maker and notes, as one compressed, encrypted file" onClick={onExport}><span className="b"><span className="i">Export…</span></span></button>
           {confirmRemove
             ? <button type="button" className="btn sm danger" style={{ marginLeft: 'auto' }} onClick={() => void api().fontLibrary.remove(font.folder).then(onRemoved, (err) => setNote({ tone: 'red', text: cleanErr(err) }))}><span className="b"><span className="i"><Icon name="trash" />Yes, remove</span></span></button>
             : <button type="button" className="btn sm ghost" style={{ marginLeft: 'auto' }} title="Moves the font's folder to the recycle bin" onClick={() => setConfirmRemove(true)}><span className="b"><span className="i"><Icon name="trash" />Remove</span></span></button>}

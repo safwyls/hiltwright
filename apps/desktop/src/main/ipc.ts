@@ -17,6 +17,7 @@ import { checkFontDir, copyFont, listFonts, listTracks, lookForCards, readVoiceP
 import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
 import { FontLibrary, type ImportResult } from './fontLibrary';
+import { LIBRARY_PACK_EXT, WRONG_PASSPHRASE, libraryPackNeedsPassphrase } from './fontLibraryPack';
 import { ContributorStore, cleanUrl } from './contributors';
 import { HiltStore } from './hilts';
 import type { HiltInput, LegacyHilts } from '../shared/api';
@@ -271,6 +272,46 @@ export function registerIpc(): void {
   fontHandle('fontlib:addFolder', async () => {
     const r = await openDialog('fontFolder', { title: 'Add a font folder (or a folder of fonts)', properties: ['openDirectory', 'multiSelections'] });
     return r.canceled ? null : importPicked(r.filePaths);
+  });
+  // The whole library as one compressed, encrypted file, and back in on another computer (fontLibraryPack.ts).
+  // Dev aid: HILTWRIGHT_DIALOG_FILE answers both dialogs, as it does for hilts.
+  // `opts.folders`: only those fonts. `opts.passphrase`: lock the file with it; it is used here and kept nowhere.
+  const passphraseOf = (v: unknown) => (typeof v === 'string' && v ? str(v, 1000) : undefined);
+  // The locked file the owner picked, waiting for its passphrase: the page never names a path itself.
+  let lockedImport: string | null = null;
+  fontHandle('fontlib:exportPack', async (_e, o: unknown) => {
+    const opts = (o ?? {}) as { folders?: unknown; passphrase?: unknown };
+    const folders = Array.isArray(opts.folders) ? opts.folders.slice(0, 5000).map((f) => folder(f)) : undefined;
+    const passphrase = passphraseOf(opts.passphrase);
+    const d = new Date();
+    const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePath: process.env.HILTWRIGHT_DIALOG_FILE } : await dialog.showSaveDialog({ title: 'Export the font library', defaultPath: join(dialogFolders.start('fontExport') ?? app.getPath('documents'), `Hiltwright fonts ${folders ? `(${folders.length}) ` : ''}${day}.${LIBRARY_PACK_EXT}`), filters: [{ name: 'Hiltwright font library', extensions: [LIBRARY_PACK_EXT] }] });
+    if (r.canceled || !r.filePath) return null;
+    if (!process.env.HILTWRIGHT_DIALOG_FILE) await dialogFolders.remember('fontExport', r.filePath);
+    return { file: r.filePath, locked: !!passphrase, ...(await fontLib.exportTo(r.filePath, libEmit, { folders, passphrase })) };
+  });
+  // With no passphrase: ask for a file. One locked with a passphrase is kept as `lockedImport` and the page is told to
+  // ask for it; called again with a passphrase, that same file is opened. A wrong passphrase asks again.
+  fontHandle('fontlib:importPack', async (_e, p: unknown) => {
+    const passphrase = passphraseOf(p);
+    let file = passphrase ? lockedImport : null;
+    if (!file) {
+      lockedImport = null;
+      const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePaths: [process.env.HILTWRIGHT_DIALOG_FILE] } : await openDialog('fontExport', { title: 'Import a font library', properties: ['openFile'], filters: [{ name: 'Hiltwright font library', extensions: [LIBRARY_PACK_EXT] }] });
+      if (r.canceled || !r.filePaths[0]) return null;
+      file = r.filePaths[0];
+      if (await libraryPackNeedsPassphrase(file)) { lockedImport = file; return { needsPassphrase: true, name: basename(file), wrong: false }; }
+      return fontLib.importPack(file, libEmit);
+    }
+    try {
+      const done = await fontLib.importPack(file, libEmit, passphrase);
+      lockedImport = null;
+      return done;
+    } catch (err) {
+      if (err instanceof Error && err.message === WRONG_PASSPHRASE) return { needsPassphrase: true, name: basename(file), wrong: true };
+      lockedImport = null;
+      throw err;
+    }
   });
   fontHandle('fontlib:importLegacy', async () => { if (!legacyBank) return null; const r = await importPicked([legacyBank]); await saveLibSettings({ legacyDismissed: true }); return r; });
   fontHandle('fontlib:dismissLegacy', async () => { await saveLibSettings({ legacyDismissed: true }); return libStatus(); });

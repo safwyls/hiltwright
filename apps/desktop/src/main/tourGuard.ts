@@ -29,7 +29,7 @@ export const TOUR_BLOCKED: ReadonlySet<string> = new Set([
   'snapshots:save',
   'usb:wantSerial',
   'sd:eject', 'sd:pickFont', 'sd:copyFont',
-  'fontlib:setMeta', 'fontlib:remove', 'fontlib:copyToCard', 'fontlib:addZip', 'fontlib:addFolder', 'fontlib:importLegacy', 'fontlib:dismissLegacy', 'fontlib:chooseRoot', 'fontlib:resetRoot',
+  'fontlib:setMeta', 'fontlib:remove', 'fontlib:copyToCard', 'fontlib:addZip', 'fontlib:addFolder', 'fontlib:importLegacy', 'fontlib:exportPack', 'fontlib:importPack', 'fontlib:dismissLegacy', 'fontlib:chooseRoot', 'fontlib:resetRoot',
   'contributors:setLogo', 'contributors:clearLogo', 'contributors:setUrl', 'contributors:copy',
   'hilts:add', 'hilts:setFit', 'hilts:setCreator', 'hilts:remove', 'hilts:setPackFit', 'hilts:resetPackFit', 'hilts:setRoom', 'hilts:adopt', 'hilts:export', 'hilts:import',
   'packs:copyFontToCard',

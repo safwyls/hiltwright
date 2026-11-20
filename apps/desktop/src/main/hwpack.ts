@@ -36,6 +36,9 @@ export interface PackManifest {
   packed: string;
 }
 
+/** A key from the app's key for another kind of Hiltwright file (a font library export), kept apart by `purpose`. */
+export const appKeyFor = (salt: Uint8Array, purpose: string): Buffer => Buffer.from(hkdfSync('sha256', APP_KEY, salt, purpose, 32));
+
 const itemKey = (packId: string) => Buffer.from(hkdfSync('sha256', APP_KEY, packId, 'hwpack-item', 32));
 
 export function writePack(manifest: Omit<PackManifest, 'items' | 'packed'>, items: { name: string; kind: PackItem['kind']; data: Buffer }[]): Buffer {

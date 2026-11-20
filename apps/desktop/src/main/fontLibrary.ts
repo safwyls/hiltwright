@@ -3,13 +3,15 @@
 // folder, untouched; what the owner says about it (display name, maker, notes) lives in one index file beside them,
 // kept by the safe store (jsonStore.ts), so a font folder copied onto a card carries nothing extra.
 
-import { cp, mkdir, readFile, readdir, rename, rm, rmdir, stat } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { CORE_SOUNDS_TEXT, OTHER_FILES, checkFontListing, classifyFontFile, type FontReport } from '@hiltwright/core';
 export { classifyFontFile };
 import { copyFont, inBatches, looksLikeFont, readFontListing, readFontSounds, type CopyOptions, type FontEntry, type FontSounds } from './sd';
 import { extractZip, listZip } from './unzip';
+import { sortPackage, surveyPackage } from './fontBoards';
+import { NOT_A_PACK, openLibraryPack, writeLibraryPack, type PackedFont } from './fontLibraryPack';
 import { JsonStore } from './jsonStore';
 
 export const INDEX_FILE = 'hiltwright-fonts.json';
@@ -65,7 +67,8 @@ export interface LibraryFontDetail extends LibraryFont {
   tracks: FontSound[];
 }
 
-export interface ImportResult { added: string[]; skipped: { name: string; why: string }[] }
+/** `reason` and `from` are set when a folder was left out on purpose, so the page can say each kind once. */
+export interface ImportResult { added: string[]; skipped: { name: string; why: string; reason?: 'other-board' | 'extra' | 'have'; from?: string }[] }
 
 const BASIC = new Set(['hum', 'ignition', 'retraction', 'swing', 'clash', 'font name', 'boot', 'smoothswing']);
 
@@ -84,49 +87,6 @@ export async function scanFont(dir: string): Promise<{ sounds: FontSound[]; trac
     sounds, tracks, report, bytes, hasSmoothswIni,
     support: { type: report.type, smoothSwing, effects, special: effects.filter((e) => !BASIC.has(e) && e !== 'menu voice'), tracks: tracks.length },
   };
-}
-
-/** The font folders inside a folder someone downloaded: the folder itself, or folders below it, four levels down. */
-export async function findFontDirs(dir: string, depth = 0): Promise<string[]> {
-  if (await looksLikeFont(dir)) return [dir];
-  if (depth >= 4) return [];
-  const out: string[] = [];
-  let names: string[] = [];
-  try { names = await readdir(dir); } catch { return out; }
-  for (const n of names.sort()) {
-    if (n.startsWith('.') || n === '__MACOSX' || /^tracks?$/i.test(n)) continue;
-    const p = join(dir, n);
-    if (await isDir(p)) out.push(...(await findFontDirs(p, depth + 1)));
-  }
-  return out;
-}
-
-const PROFFIE = /proffie/i;
-/** Folder names that say a copy of a font is for another board. */
-const OTHER_BOARD = /(^|[^a-z])(cfx|crystal ?focus|xeno(pixel)?|golden ?harvest|ghv?\d|verso|asteria|plecter|lgt|sn-?pixel|darkwolf|polaris)([^a-z]|$)/i;
-
-/** A folder named only for a board ("Proffie", "ProffieOS v2", "CFX"): a variant folder, not a font's own name. */
-const BOARD_ONLY = /^(proffie(os|board)?|cfx|crystal ?focus|xeno(pixel)?|golden ?harvest|ghv?\d|verso|asteria|plecter|lgt|sn-?pixel|darkwolf|polaris)([ _-]?(v|ver|version)?[ _-]?\d+(\.\d+)*)?$/i;
-
-/**
- * Packages often hold the same font for several boards. Only when a package has both a folder named for Proffie and
- * a folder named for another board are the other boards' copies left out; everything else is kept. Folders above a
- * font count, and so does the font's own folder when its whole name is a board's ("Kyber Ember/CFX"); a font whose
- * name merely mentions a board ("ProffieOS Default") never does.
- */
-export function chooseVariants(top: string, dirs: string[]): { keep: string[]; dropped: { dir: string; board: string }[] } {
-  const above = (d: string) => relative(top, dirname(d)).split(/[\\/]+/).filter((x) => x && x !== '.');
-  const parents = dirs.map((d) => (BOARD_ONLY.test(basename(d)) ? [...above(d), basename(d)] : above(d)));
-  const hasProffie = parents.some((segs) => segs.some((x) => PROFFIE.test(x)));
-  const hasOther = parents.some((segs) => segs.some((x) => OTHER_BOARD.test(x) && !PROFFIE.test(x)));
-  if (!hasProffie || !hasOther) return { keep: dirs, dropped: [] };
-  const keep: string[] = [];
-  const dropped: { dir: string; board: string }[] = [];
-  dirs.forEach((d, i) => {
-    const board = parents[i].find((x) => OTHER_BOARD.test(x) && !PROFFIE.test(x));
-    if (board) dropped.push({ dir: d, board }); else keep.push(d);
-  });
-  return { keep, dropped };
 }
 
 /** System clutter that never comes into the library: hidden files, macOS resource forks, Windows thumbnails. */
@@ -315,10 +275,14 @@ export class FontLibrary {
         await extractZip(src, staging, (n) => !isJunk(n), (_n, done, total) => { if (done % 100 === 0 || done === total) onLine?.(`Unpacked ${done} of ${total} files`); });
         top = staging;
       } else if (!(await isDir(src))) throw new Error('Choose a font folder or a .zip package');
-      const found = await findFontDirs(top);
-      if (!found.length) throw new Error(`No sound font found in ${basename(src)}. A font folder holds at least one of the core sounds (${CORE_SOUNDS_TEXT}), as files like hum.wav or hum01.wav, or in folders like hum/.`);
-      const { keep: dirs, dropped } = chooseVariants(top, found);
-      for (const x of dropped) result.skipped.push({ name: basename(x.dir), why: `the copy in "${x.board}" is for another board, not Proffie` });
+      const found = await surveyPackage(top);
+      if (!found.some((f) => f.font)) throw new Error(`No sound font found in ${basename(src)}. A font folder holds at least one of the core sounds (${CORE_SOUNDS_TEXT}), as files like hum.wav or hum01.wav, or in folders like hum/.`);
+      const { keep: dirs, left } = sortPackage(top, found);
+      for (const x of left) {
+        result.skipped.push(x.reason === 'other-board'
+          ? { name: basename(x.dir), why: `the copy in "${x.from}" is for another board, not Proffie`, reason: x.reason, from: x.from }
+          : { name: basename(x.dir), why: 'extra sounds, not a whole font', reason: x.reason, from: x.from });
+      }
       for (const d of dirs) {
         const want = nameFor(d, top, label);
         const folder = await this.freeName(want);
@@ -344,6 +308,78 @@ export class FontLibrary {
       }
     } finally {
       if (staging) await rm(staging, { recursive: true, force: true }).catch(() => undefined);
+    }
+    return result;
+  }
+
+  /** Every file of a font folder, system clutter left out, as paths with forward slashes in name order. */
+  private async filesOf(dir: string, rel = ''): Promise<{ path: string; bytes: number }[]> {
+    const out: { path: string; bytes: number }[] = [];
+    for (const n of (await readdir(join(dir, ...rel.split('/').filter(Boolean)))).sort()) {
+      const path = rel ? `${rel}/${n}` : n;
+      if (isJunk(path)) continue;
+      const s = await stat(join(dir, ...path.split('/')));
+      if (s.isDirectory()) out.push(...(await this.filesOf(dir, path)));
+      else if (s.isFile()) out.push({ path, bytes: s.size });
+    }
+    return out;
+  }
+
+  /**
+   * Every font in the library, with what the owner said about each, in one compressed and encrypted file
+   * (fontLibraryPack.ts) to carry to another computer. The library itself is only read.
+   */
+  async exportTo(file: string, onLine?: (line: string) => void, opts: { folders?: string[]; passphrase?: string } = {}): Promise<{ fonts: number; files: number; bytes: number }> {
+    await this.ready();
+    if (inside(this.root, file)) throw new Error('Save the export outside the font library folder.');
+    // `folders`: only these fonts. One that is not in the library stops the export rather than being left out quietly.
+    const all = await this.list();
+    const want = opts.folders ? new Set(opts.folders) : null;
+    if (want) for (const w of want) if (!all.some((f) => f.folder === w)) throw new Error(`${w} is not in the font library.`);
+    const fonts: PackedFont[] = [];
+    for (const f of all) if (!want || want.has(f.folder)) fonts.push({ folder: f.folder, meta: f.meta, files: await this.filesOf(this.folderPath(f.folder)) });
+    if (!fonts.length) throw new Error('There are no fonts in the library to export.');
+    return writeLibraryPack(file, fonts, (font, path) => readFile(join(this.folderPath(font.folder), ...path.split('/'))), { passphrase: opts.passphrase, onFont: (font, done, total) => onLine?.(`Packing ${done} of ${total}: ${font.meta.name}…`) });
+  }
+
+  /**
+   * Add the fonts of a library export. Each keeps its folder name, because presets find fonts by it; a font whose
+   * folder name is already here is left out and nothing of it is replaced. A font arrives whole or not at all.
+   */
+  async importPack(file: string, onLine?: (line: string) => void, passphrase?: string): Promise<ImportResult> {
+    await this.ready();
+    const result: ImportResult = { added: [], skipped: [] };
+    const pack = await openLibraryPack(file, passphrase);
+    const staging = join(this.root, `.incoming-${Date.now().toString(36)}`);
+    try {
+      const index = await this.readIndex();
+      for (const [i, font] of pack.list.fonts.entries()) {
+        // Names from the file are never trusted as paths: one plain name per folder level, nothing that climbs out.
+        const plain = (p: string) => !!p && p !== '.' && p !== '..' && !/[\\/:*?"<>|\0]/.test(p);
+        const okName = plain(font.folder) && !font.folder.startsWith('.') && font.folder !== INDEX_FILE && font.folder !== MAKERS_DIR;
+        const okFiles = font.files.every((f) => !isJunk(f.path) && f.path.split('/').every(plain));
+        if (!okName || !okFiles) throw new Error(NOT_A_PACK);
+        const dest = join(this.root, font.folder);
+        const have = (await taken(dest)) || !!index[font.folder];
+        onLine?.(have ? `Already here: ${font.folder}` : `Adding ${i + 1} of ${pack.list.fonts.length}: ${font.meta.name}…`);
+        const tmp = join(staging, font.folder);
+        for (const f of font.files) {
+          // Read even when the font is left out: the file is read in order.
+          const data = await pack.next();
+          if (have) continue;
+          const to = join(tmp, ...f.path.split('/'));
+          await mkdir(dirname(to), { recursive: true });
+          await writeFile(to, data);
+        }
+        if (have) { result.skipped.push({ name: font.folder, why: 'a font with this folder name is already in the library', reason: 'have' }); continue; }
+        await mkdir(tmp, { recursive: true });
+        await rename(tmp, dest);
+        await this.store.update((s) => { s.fonts[font.folder] = font.meta; });
+        result.added.push(font.folder);
+      }
+    } finally {
+      await pack.close().catch(() => undefined);
+      await rm(staging, { recursive: true, force: true }).catch(() => undefined);
     }
     return result;
   }

@@ -114,7 +114,10 @@ export interface FontSound { path: string; effect: string; kind: 'mono' | 'poly'
 export interface FontSupport { type: FontReport['type']; smoothSwing: boolean; effects: string[]; special: string[]; tracks: number }
 export interface LibraryFont { folder: string; meta: FontMeta; report: FontReport; support: FontSupport; bytes: number }
 export interface LibraryFontDetail extends LibraryFont { sounds: FontSound[]; tracks: FontSound[] }
-export interface ImportResult { added: string[]; skipped: { name: string; why: string }[] }
+/** A picked library export that is locked: `name` is the file's name, `wrong` that the passphrase given did not open it. */
+export interface LockedImport { needsPassphrase: true; name: string; wrong: boolean }
+/** `reason` and `from` are set when a folder was left out on purpose, so the page can say each kind once. */
+export interface ImportResult { added: string[]; skipped: { name: string; why: string; reason?: 'other-board' | 'extra' | 'have'; from?: string }[] }
 export interface FontLibraryStatus {
   root: string;
   /** The library is in its default place, userData/fonts. */
@@ -314,6 +317,14 @@ export interface HiltwrightApi {
     addZip(): Promise<ImportResult | null>;
     addFolder(): Promise<ImportResult | null>;
     importLegacy(): Promise<ImportResult | null>;
+    /** Ask where to save, then write every font and its details to one compressed, encrypted file. Null when cancelled. */
+    /** `folders`: only these fonts. `passphrase`: lock the file with it; without one any copy of Hiltwright opens it. */
+    exportPack(opts?: { folders?: string[]; passphrase?: string }): Promise<{ file: string; locked: boolean; fonts: number; files: number; bytes: number } | null>;
+    /**
+     * Ask for a file made by exportPack and add its fonts; a font already here is left as it is. Null when cancelled.
+     * A file locked with a passphrase answers `needsPassphrase`: call again with the passphrase to open that file.
+     */
+    importPack(passphrase?: string): Promise<ImportResult | LockedImport | null>;
     dismissLegacy(): Promise<FontLibraryStatus>;
     /** Ask for a new location; offers to move the fonts there. */
     chooseRoot(): Promise<FontLibraryStatus>;
