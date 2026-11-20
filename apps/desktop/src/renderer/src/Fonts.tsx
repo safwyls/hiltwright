@@ -333,7 +333,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                 <tr key={f.name} className={f.name === selected ? 'on' : ''} onClick={() => { setSelected(f.name); setSide('detail'); }} style={{ cursor: 'pointer' }}>
                   <td className="fit"><span className="ellip" style={{ fontWeight: 600, display: 'block' }} title={f.name}>{f.name}</span><span className="hint ellip" style={{ display: 'block', fontSize: 11.5 }}>{f.report.type} · {f.report.files} files</span></td>
                   <td className="mono dim small nowrap">{mb(f.report.bytes)}</td>
-                  <td className="nowrap">{f.report.issues.length ? <span className={`chip ${f.report.issues.some((i) => i.kind === 'mixed' || i.kind === 'missing-hum') ? 'err' : 'warn'}`}><Icon name="warn" />{f.report.issues.length} issue{f.report.issues.length > 1 ? 's' : ''}</span> : <span className="chip ok"><Icon name="check" />Ready</span>}</td>
+                  <td className="nowrap">{f.report.issues.length ? <span className={`chip ${f.report.issues.some((i) => i.kind === 'missing-hum') ? 'err' : 'warn'}`}><Icon name="warn" />{f.report.issues.length} issue{f.report.issues.length > 1 ? 's' : ''}</span> : <span className="chip ok"><Icon name="check" />Ready</span>}</td>
                 </tr>
               ))}
               {fonts.length === 0 && <tr><td colSpan={3} className="hint">{card ? 'No font folders on this card.' : 'Nothing to show without a card.'}</td></tr>}
@@ -342,7 +342,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
           {issues.length > 0 && (
             <div className="col" style={{ padding: '16px 18px', gap: 10, borderTop: '1px solid var(--line)' }}>
               {issues.slice(0, 8).map((i, k) => (
-                <div key={k} className={`note ${i.kind === 'mixed' || i.kind === 'missing-hum' ? 'red' : 'amber'}`}><Icon name={i.kind === 'mixed' ? 'x' : 'warn'} /><span><b style={{ fontWeight: 600 }}>{i.font}:</b> {i.text}</span></div>
+                <div key={k} className={`note ${i.kind === 'missing-hum' ? 'red' : 'amber'}`}><Icon name="warn" /><span><b style={{ fontWeight: 600 }}>{i.font}:</b> {i.text}</span></div>
               ))}
               {issues.length > 8 && <span className="hint">{issues.length - 8} more…</span>}
             </div>
@@ -387,7 +387,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                 <>
                   <div className="col" style={{ gap: 2 }}><b style={{ fontWeight: 600 }}>{picked.name}</b><span className="hint mono" style={{ fontSize: 11 }}>{picked.path}</span></div>
                   <div className="row wrap" style={{ gap: 8 }}><span className="chip">{picked.report.type}</span><span className="chip">{picked.report.files} files</span><span className="chip">{mb(picked.report.bytes)}</span></div>
-                  {picked.report.issues.map((i, k) => <div key={k} className={`note ${i.kind === 'mixed' || i.kind === 'missing-hum' ? 'red' : 'amber'}`}><Icon name="warn" /><span>{i.text}</span></div>)}
+                  {picked.report.issues.map((i, k) => <div key={k} className={`note ${i.kind === 'missing-hum' ? 'red' : 'amber'}`}><Icon name="warn" /><span>{i.text}</span></div>)}
                   <div className="row" style={{ gap: 8 }}>
                     <button type="button" className="btn sm pri" disabled={working || !card} onClick={() => void copy(false)}><span className="b"><span className="i"><Icon name="check" />Copy to card</span></span></button>
                     {fonts.some((f) => f.name.toLowerCase() === picked.name.toLowerCase()) && <button type="button" className="btn sm warn" disabled={working || !card} onClick={() => void copy(true)}><span className="b"><span className="i">{confirmReplace ? `Really replace ${picked.name}?` : 'Replace on card'}</span></span></button>}

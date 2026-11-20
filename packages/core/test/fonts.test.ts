@@ -33,6 +33,33 @@ describe('sound file names', () => {
   });
 });
 
+describe('numbering without leading zeros', () => {
+  it('knows hum1.wav as a hum, and out1.wav and clsh1.wav by their names', () => {
+    expect(classifySound('hum1.wav')).toEqual({ effect: 'hum', kind: 'shared', index: 1 });
+    expect(classifySound('font2.wav')).toEqual({ effect: 'font name', kind: 'shared', index: 2 });
+    expect(classifySound('out1.wav')).toEqual({ effect: 'ignition', kind: 'poly', index: 1 });
+    expect(classifySound('in2.wav')).toEqual({ effect: 'retraction', kind: 'poly', index: 2 });
+    expect(classifySound('clsh1.wav')).toEqual({ effect: 'clash', kind: 'poly', index: 1 });
+    expect(classifySound('swng12.wav')).toEqual({ effect: 'swing', kind: 'poly', index: 12 });
+    expect(classifySound('humidity.wav').kind).toBe('other');
+  });
+
+  it('a font whose only hum is hum1.wav has a hum, flat or polyphonic or monophonic', () => {
+    const poly = checkFont(['hum1.wav', 'out1.wav', 'in1.wav', 'clsh1.wav', 'clsh2.wav'].map((name) => ({ name, size: 1, wav: null })));
+    expect(poly.issues).toEqual([]);
+    expect(poly.type).toBe('polyphonic');
+    const mono = checkFont(['hum1.wav', 'poweron.wav', 'poweroff.wav', 'clash1.wav'].map((name) => ({ name, size: 1, wav: null })));
+    expect(mono.issues).toEqual([]);
+    expect(mono.type).toBe('monophonic');
+  });
+
+  it('two names for one effect is said plainly, and is not a missing hum', () => {
+    const r = checkFont(['hum1.wav', 'poweron.wav', 'out01.wav', 'in01.wav'].map((name) => ({ name, size: 1, wav: null })));
+    expect(r.issues.map((i) => i.kind)).toEqual(['mixed']);
+    expect(r.issues[0].text).toBe('ignition: both poweron.wav and out01.wav are present. They are two names for the same effect. The font still works, but the saber may play only one of the two sets.');
+  });
+});
+
 describe('font checks', () => {
   const ok = (name: string, rate = 44100) => ({ name, size: 1000, wav: parseWavHeader(wav(rate)) });
   it('accepts a clean polyphonic font', () => {

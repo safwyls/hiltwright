@@ -63,8 +63,13 @@ export function classifySound(fileName: string): { effect: string; kind: 'mono' 
   const base = fileName.toLowerCase().replace(/\.wav$/, '');
   for (const e of EFFECT_NAMES) {
     let m: RegExpExecArray | null;
-    if ((m = new RegExp(`^${e.poly}(\\d{2,})$`).exec(base))) return { effect: e.label, kind: 'poly', index: Number(m[1]) };
-    if ((m = new RegExp(`^${e.mono}(\\d+)$`).exec(base)) && e.mono !== e.poly) return { effect: e.label, kind: 'mono', index: Number(m[1]) };
+    // ProffieOS takes any numbering, with or without leading zeros. Where the two conventions use different names
+    // (out, poweron), the name says which it is. Where they share one (hum, font, boot), two or more digits is the
+    // polyphonic habit and a single digit (hum1.wav) says nothing either way.
+    if (e.mono !== e.poly) {
+      if ((m = new RegExp(`^${e.poly}(\\d+)$`).exec(base))) return { effect: e.label, kind: 'poly', index: Number(m[1]) };
+      if ((m = new RegExp(`^${e.mono}(\\d+)$`).exec(base))) return { effect: e.label, kind: 'mono', index: Number(m[1]) };
+    } else if ((m = new RegExp(`^${e.poly}(\\d+)$`).exec(base))) return { effect: e.label, kind: m[1].length >= 2 ? 'poly' : 'shared', index: Number(m[1]) };
     if (base === e.poly || base === e.mono) return { effect: e.label, kind: e.mono === e.poly ? 'shared' : 'mono', index: null };
   }
   return { effect: base.replace(/\d+$/, ''), kind: 'other', index: null };
@@ -118,7 +123,7 @@ export function checkFont(files: FontFile[]): FontReport {
   }
   for (const [effect, v] of Object.entries(byEffect)) {
     if (v.mono.length && v.poly.length) {
-      issues.push({ kind: 'mixed', text: `${effect}: both ${v.mono[0]} and ${v.poly[0]} are present. ProffieOS plays only one form of an effect, so some ${effect} sounds will be silent.`, files: [...v.mono, ...v.poly] });
+      issues.push({ kind: 'mixed', text: `${effect}: both ${v.mono[0]} and ${v.poly[0]} are present. They are two names for the same effect. The font still works, but the saber may play only one of the two sets.`, files: [...v.mono, ...v.poly] });
     }
   }
   const bad = { rate: [] as string[], stereo: [] as string[], bits: [] as string[], format: [] as string[] };

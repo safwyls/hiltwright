@@ -27,7 +27,7 @@ Each row shows the font's name, its maker with a logo, what it supports, its siz
 
 Hiltwright reads this from the font's files:
 
-- **Polyphonic** fonts use numbered names such as `clsh01.wav`, and sounds can overlap. **Monophonic** fonts use names such as `clash1.wav` and play one sound at a time. **Mixed** means both forms appear, which is a fault.
+- **Polyphonic** fonts use numbered names such as `clsh01.wav`, and sounds can overlap. **Monophonic** fonts use names such as `clash1.wav` and play one sound at a time. **Mixed** means both forms appear. The font still works; see the status column below.
 - **SmoothSwing** is the smooth, pitch-following swing sound. Hiltwright shows whether the font has the files for it.
 - **Tracks** are music files kept with the font.
 - Any special effects the font includes are listed.
@@ -36,7 +36,7 @@ Hiltwright reads this from the font's files:
 
 A font that passes shows a green **Ready**. Otherwise you see the number of issues, in amber, or red when the problem is serious. Open the font to read each one. The checks are:
 
-- Both forms of an effect are present, for example `clash1.wav` and `clsh01.wav`. ProffieOS plays only one form, so some sounds will be silent. This is red.
+- Both forms of an effect are present, for example `clash1.wav` and `clsh01.wav`. They are two names for the same effect. The font still works, but the saber may play only one of the two sets. This is amber.
 - No hum. "Every font needs at least hum.wav or hum01.wav." This is red.
 - Files above 44.1 kHz. "The saber needs 44.1 kHz or lower."
 - Stereo files. "Fonts should be mono."

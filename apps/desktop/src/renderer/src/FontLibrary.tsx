@@ -240,7 +240,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
       <td className="dim col-maker">{f.meta.maker ? <span className="row" style={{ gap: 8 }}><ContributorLogo name={f.meta.maker} logo={people.logoFor(f.meta.maker)} size={20} /><span>{f.meta.maker}</span></span> : <span className="mute">—</span>}</td>
       <td className="dim small"><span style={{ display: 'block' }}>{TYPE[f.support.type]}{f.support.smoothSwing ? ' · SmoothSwing' : ''}</span><span className="hint" style={{ display: 'block', fontSize: 11 }}>{[f.support.special.length ? `${f.support.special.length} special` : null, f.support.tracks ? `${f.support.tracks} track${f.support.tracks === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ') || 'no extras'}</span></td>
       <td className="mono dim small nowrap">{mb(f.bytes)}</td>
-      <td className="nowrap">{f.report.issues.length ? <span className={`chip ${f.report.issues.some((i) => i.kind === 'mixed' || i.kind === 'missing-hum') ? 'err' : 'warn'}`}><Icon name="warn" />{f.report.issues.length} issue{f.report.issues.length > 1 ? 's' : ''}</span> : <span className="chip ok"><Icon name="check" />Ready</span>}</td>
+      <td className="nowrap">{f.report.issues.length ? <span className={`chip ${f.report.issues.some((i) => i.kind === 'missing-hum') ? 'err' : 'warn'}`}><Icon name="warn" />{f.report.issues.length} issue{f.report.issues.length > 1 ? 's' : ''}</span> : <span className="chip ok"><Icon name="check" />Ready</span>}</td>
     </tr>
   );
   const groupHead = (g: { key: string; fonts: LibraryFont[] }) => {
@@ -540,7 +540,7 @@ function FontDetail({ font, detail, card, askCard, looking, player, onSetLogo, o
           </div>
           <span className="small dim">{sp.special.length ? <>Special effects: {sp.special.join(', ')}.</> : 'No special effects beyond hum, ignition, retraction, swing and clash.'}</span>
         </div>
-        {font.report.issues.map((i, k) => <div key={k} className={`note ${i.kind === 'mixed' || i.kind === 'missing-hum' ? 'red' : 'amber'}`}><Icon name="warn" /><span>{i.text}</span></div>)}
+        {font.report.issues.map((i, k) => <div key={k} className={`note ${i.kind === 'missing-hum' ? 'red' : 'amber'}`}><Icon name="warn" /><span>{i.text}</span></div>)}
 
         <div className="col" style={{ gap: 0 }}>
           <div className="row between" style={{ marginBottom: 6 }}><span className="small" style={{ fontWeight: 600 }}>Sounds</span>{player.playing?.startsWith(`${font.folder}/`) && <button type="button" className="holo small" onClick={player.stop}>Stop</button>}</div>
