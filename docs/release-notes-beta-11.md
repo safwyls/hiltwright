@@ -1,13 +1,15 @@
-# Hiltwright 0.2.0-beta.10
+# Hiltwright 0.2.0-beta.11
 
 ## New in this beta
 
-- **A newer engine underneath.** Hiltwright is built on Electron, and this beta moves it from version 37, which no longer gets security fixes, to version 45. Nothing should look different. If something that worked in the last beta does not work in this one, tell us. On a Mac this beta needs macOS 13 or later; Windows 10 and 11 are unchanged.
-- **File windows open where you left them.** Adding font packages, font folders, logos and hilts each start in the folder you last used for that, instead of Downloads every time.
-- **The demo room opens with sound.** It used to open with no font, so it was silent, and choosing a font while the blade was lit did nothing until you retracted and ignited again. It now opens with the font you last used there, or the first one it finds, and a font you choose while the blade is lit plays straight away.
-- **Station has a new backdrop.** The default theme's wall of light slots is now a wall of dark panels.
-- **The count of styles waiting for a build fits its place** in the side list. It shows the number; hold the pointer over it for the rest.
-- **The macOS test build** is attached again: `Hiltwright-0.2.0-beta.10-mac-arm64.dmg` for Macs with Apple silicon, and `Hiltwright-0.2.0-beta.10-mac-x64.dmg` for Intel Macs. It is still a test build, not a supported one. On a Mac, Hiltwright's tests pass, the first-time toolchain setup works and firmware builds. Not yet confirmed on a Mac: installing firmware, the SD card, and how the window looks. The Intel build has not been run at all. If you try it, tell us what happens.
+- **Font packages made for several boards.** Font makers often put one font for every soundboard in one package. Hiltwright now looks inside each folder to tell which board it is for, and adds only the Proffie copies. Copies for Crystal Focus, Xenopixel, Verso and Asteria are left out, and so are folders of extras that are not whole fonts. The message afterwards says each thing once. A package made only for another board is still added, as before.
+- **Select several fonts in the Font library.** Ctrl+click adds or removes a font, Shift+click selects from the last one you clicked, Ctrl+A selects every font shown, and Escape goes back to one. With several selected you can copy them to the card or remove them together, and you get one line per font saying what happened. Removed fonts go to the recycle bin.
+- **Export fonts to one file.** Export one font, the fonts you selected, a bundle, or the whole library as a single compressed, encrypted file with the names, makers and notes you gave them. On another computer, press **Add export file** in the Font library to bring them in. A font that is already there is left as it is.
+- **A passphrase for an export, if you want one.** With a passphrase, the file opens only for someone who knows it. Hiltwright does not keep the passphrase, so a file whose passphrase is lost cannot be opened. Without one, any copy of Hiltwright can open the file.
+- **The demo room's hum starts when the room opens.** In the last beta the font's name played but the hum stayed silent until you retracted and ignited again.
+- **The macOS test build** is attached: `Hiltwright-0.2.0-beta.11-mac-arm64.dmg` for Macs with Apple silicon, and `Hiltwright-0.2.0-beta.11-mac-x64.dmg` for Intel Macs. It is still a test build, not a supported one. On a Mac, Hiltwright's tests pass, the first-time toolchain setup works and firmware builds. Not yet confirmed on a Mac: installing firmware, the SD card, and how the window looks. The Intel build has not been run at all. If you try it, tell us what happens.
+
+Not in an export: makers' logos and links. The maker's name travels with each font; its logo does not.
 
 An installed copy from 0.2.0-beta.3 on updates to this beta by itself. If that does not work for you, install this beta by hand and tell us.
 
@@ -59,11 +61,11 @@ Coming from 0.2.0-beta.1 or 0.2.0-beta.2? Download this installer and run it. It
 
 The installer is unsigned, so Windows will warn you before it runs. If Smart App Control is on, Windows blocks both the installer and the app, and it has to stay off while you use this beta: check that first (install guide, section 3). The install guide covers each Windows barrier to unsigned software.
 
-Install guide: https://github.com/safwyls/hiltwright/blob/v0.2.0-beta.10/docs/install-guide.md
+Install guide: https://github.com/safwyls/hiltwright/blob/v0.2.0-beta.11/docs/install-guide.md
 
 ## Licence and source
 
-Hiltwright is licensed under GPL-3.0-or-later. The source for this build is at https://github.com/safwyls/hiltwright/tree/v0.2.0-beta.10
+Hiltwright is licensed under GPL-3.0-or-later. The source for this build is at https://github.com/safwyls/hiltwright/tree/v0.2.0-beta.11
 
 ## Report a problem
 
