@@ -42,7 +42,7 @@ describe('the diagnostics file', () => {
     const t = composeBundle(base(), redact);
     for (const h of ['== About ==', '== Toolchain ==', '== USB ==', '== Connection ==', '== Saber ==', '== Last build in this run ==', '== Log of this run (hiltwright-20260925-155500.log) ==', "== End of the previous run's log (hiltwright-20260925-120000.log) =="]) expect(t).toContain(h);
     expect(t).toContain('Hiltwright: 0.1.0 (packaged build)');
-    expect(t).toContain('Windows: Windows 11 Pro 10.0.26200');
+    expect(t).toContain('System: Windows 11 Pro 10.0.26200');
     expect(t).toContain('ProffieOS: v8.10');
     expect(t).toContain('Status: connected');
     expect(t).toContain('Link pauses this connection: 2');

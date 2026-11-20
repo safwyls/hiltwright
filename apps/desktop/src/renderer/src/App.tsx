@@ -286,9 +286,20 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
   const [planName, setPlanName] = useState('');
   // A plan made while a saber is plugged in: the plugged-in saber stays the working one, and this says so.
   const [plannedAside, setPlannedAside] = useState<string | null>(null);
+  // Why a new saber could not be started. Without this, a refusal looked like Start doing nothing (as it did from
+  // 2026-09-27 until 0.2.0-beta.8, when a new plan was refused for not having chosen its board yet).
+  const [planError, setPlanError] = useState<string | null>(null);
   const plan = async () => {
     const name = planName.trim() || `Saber ${board.library.length + 1}`;
-    const rec = await board.planSaber(name, { name: `hiltwright_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`, board: 'V2', buttons: 2, prop: 'fett263', blades: guessBlades([132]), presets: [], looks: [], generator: `hiltwright ${window.hiltwright.appVersion}` });
+    setPlanError(null);
+    let rec: Awaited<ReturnType<typeof board.planSaber>>;
+    try {
+      rec = await board.planSaber(name, { name: `hiltwright_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`, board: 'V2', buttons: 2, prop: 'fett263', blades: guessBlades([132]), presets: [], looks: [], generator: `hiltwright ${window.hiltwright.appVersion}` });
+    } catch (err) {
+      // Electron puts its own words in front of the reason.
+      setPlanError(String(err instanceof Error ? err.message : err).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''));
+      return;
+    }
     setPlanning(false); setPlanName('');
     if (ws.live) { setPlannedAside(rec.name); return; }
     ws.choose(rec.id); go('wiring');
@@ -364,6 +375,9 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
               ? <form className="row" style={{ gap: 6 }} onSubmit={(e) => { e.preventDefault(); void plan(); }}><span className="input sans" style={{ height: 30, width: 200 }}><input type="text" value={planName} autoFocus placeholder="Name the saber" aria-label="Name for the new saber" onChange={(e) => setPlanName(e.target.value)} /></span><button type="submit" className="btn sm pri"><span className="b"><span className="i">Start</span></span></button><button type="button" className="chip" onClick={() => setPlanning(false)}><Icon name="x" /></button></form>
               : <button type="button" className="btn sm pri" data-tour="armory-new" title="Set a saber up before it is plugged in: wiring, presets and styles, ready to install when it arrives" onClick={() => setPlanning(true)}><span className="b"><span className="i"><Icon name="plus" />New saber</span></span></button>}
           </div>
+          {planError && planning && (
+            <div className="note red" role="alert" style={{ margin: '12px 18px 0' }}><Icon name="warn" /><span>The new saber was not started: {planError}</span></div>
+          )}
           {plannedAside && cur && (
             <div className="note" role="status" style={{ margin: '12px 18px 0' }}><Icon name="info" /><span className="col" style={{ gap: 8 }}>
               <span>{plannedAside} is set up. {cur.name} is plugged in, so it stays the saber you are working on. Unplug it to work on {plannedAside}.</span>

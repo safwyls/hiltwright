@@ -2,6 +2,7 @@
 // is what survives a reflash, so main asks the OS. Windows only for now (PnP instance id of the composite parent).
 
 import { execFile } from 'node:child_process';
+import { readdir } from 'node:fs/promises';
 import { activeWant, setWantedInterfaces } from './serialGate';
 
 const PARENT_RE = /USB\\VID_1209&PID_6668\\([^\\\s"]+)/gi;
@@ -31,6 +32,37 @@ export function lookUpWanted(): Promise<void> {
     try { setWantedInterfaces(w.serial, interfacesOf(await proffieInterfaces(), w.serial)); } finally { looking = null; }
   })();
   return looking;
+}
+
+/**
+ * The programs in an `lsof -F pcn` listing, by name, without this app's own processes. The listing gives one `p<pid>`
+ * line per process, then its `c<command>` and an `n<file>` per open file.
+ */
+export function parseLsofHolders(listing: string, own: number[]): string[] {
+  const names = new Set<string>();
+  let pid = 0;
+  for (const line of listing.split(/\r?\n/)) {
+    if (line.startsWith('p')) pid = Number(line.slice(1)) || 0;
+    else if (line.startsWith('c') && pid && !own.includes(pid)) { const name = line.slice(1).trim(); if (name && !/^Hiltwright( Helper.*)?$|^Electron( Helper.*)?$/i.test(name)) names.add(name); }
+  }
+  return [...names].sort();
+}
+
+/**
+ * Which other programs have a USB serial port open now. A port opens for one program at a time, so when the saber's
+ * port will not open, this names what to close (the Arduino IDE's Serial Monitor, most often). macOS and Linux, which
+ * can say; Windows cannot without administrator rights, so [] there.
+ */
+export async function portHolders(): Promise<string[]> {
+  if (process.platform === 'win32') return [];
+  try {
+    const all = await readdir('/dev');
+    const ports = all.filter((n) => (process.platform === 'darwin' ? /^(cu|tty)\.usbmodem/.test(n) : /^ttyACM\d+$/.test(n))).map((n) => `/dev/${n}`);
+    if (!ports.length) return [];
+    // +c 0: whole command names, not the first nine letters.
+    const out = await new Promise<string>((resolve) => execFile('lsof', ['+c', '0', '-F', 'pcn', ...ports], { timeout: 8000 }, (_err, stdout) => resolve(String(stdout ?? ''))));
+    return parseLsofHolders(out, [process.pid, process.ppid]);
+  } catch { return []; }
 }
 
 export async function proffieSerials(): Promise<string[]> {

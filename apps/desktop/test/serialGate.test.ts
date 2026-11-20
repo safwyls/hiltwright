@@ -21,8 +21,27 @@ describe('which serial devices the page may use', () => {
   it('allows nothing in a no-board run', () => {
     expect(serialAllowed(byIds, true)).toBe(false);
     expect(serialAllowed(byInstance, true)).toBe(false);
+    expect(serialAllowed(onMac, true)).toBe(false);
+  });
+
+  // macOS, exactly as a tester's log gave it (0.2.0-beta.7, 2026-11-20): every board was refused, so the port would
+  // not open, because the ids are spelled vendor_id and product_id there.
+  it('allows a Proffieboard as macOS describes it, and not the Bluetooth devices listed beside it', () => {
+    expect(serialAllowed(onMac, false)).toBe(true);
+    expect(serialAllowed({ bluetooth_device_path: '00:7F:1D:03:10:B4', name: 'soundcore Liberty 5 Pro' }, false)).toBe(false);
+    expect(serialAllowed({ name: 'Arduino Uno', vendor_id: 0x2341, product_id: 0x0043, usb_driver: 'com.apple.driver.usb.cdc.acm' }, false)).toBe(false);
+  });
+
+  it('on macOS, while one saber is wanted, allows only the board with that serial', () => {
+    wantSerial('205131855242');
+    expect(serialAllowed(onMac, false)).toBe(true);
+    expect(serialAllowed({ ...onMac, serial_number: '357A38753532' }, false)).toBe(false);
+    wantSerial(null);
+    expect(serialAllowed({ ...onMac, serial_number: '357A38753532' }, false)).toBe(true);
   });
 });
+
+const onMac = { name: 'Proffieboard', product_id: 26216, serial_number: '205131855242', usb_driver: 'com.apple.driver.usb.cdc.acm', vendor_id: 4617 };
 
 // install-target-safety design D6: after an install, only the saber coming back may be opened.
 describe('reaching one board by its USB serial', () => {

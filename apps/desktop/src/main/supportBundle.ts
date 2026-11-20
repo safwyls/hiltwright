@@ -55,7 +55,7 @@ function aboutLines(a: BundleInput['about'], now: Date): string[] {
   return [
     `Made: ${now.toISOString()} (local ${now.toString()})`,
     `Hiltwright: ${a.app} (${a.packaged ? 'packaged' : 'development'} build)`,
-    `Windows: ${a.os} (${a.arch})`,
+    `System: ${a.os} (${a.arch})`,
     `Electron: ${a.electron}, Chromium: ${a.chrome}`,
   ];
 }

@@ -8,6 +8,7 @@ import {
   type SaberConfigModel,
 } from '@hiltwright/core';
 import type { SaberIdentity, SaberPatch, SaberRecord, SnapshotMeta } from '../../shared/api';
+import { openFailureText } from '../../shared/openFailure';
 import { PROFFIE_FILTER, WebSerialTransport, describePort, grantedProffiePorts } from './serial';
 import { setConnectionSnapshot } from './support';
 import { assertMaySend, holdConnect, operationRefusal, tourLocked } from './tourLock';
@@ -325,7 +326,11 @@ export function useBoard() {
     } catch (err) {
       console.log(`[board] open failed: ${String(err)}`);
       setStatus('error');
-      setError(`Could not open the port: ${String(err)}`);
+      // A serial port opens for one program at a time, and "failed to open" is nearly always that. Where the system
+      // can say which program has it, name it.
+      const holders = await api().usb.portHolders().catch(() => [] as string[]);
+      console.log(`[board] other programs with a USB serial port open: ${holders.join(', ') || 'none found'}`);
+      setError(openFailureText(String(err), holders));
       return;
     }
     transport.current = t;

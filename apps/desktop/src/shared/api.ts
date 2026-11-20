@@ -270,6 +270,8 @@ export interface HiltwrightApi {
     proffieSerials(): Promise<string[]>;
     /** Let only the board with this USB serial be reached until it is read (null: every board). Returns how many of its serial interfaces were found. */
     wantSerial(serial: string | null): Promise<number>;
+    /** The other programs that have a USB serial port open now, by name (macOS and Linux; empty where it cannot be told). */
+    portHolders(): Promise<string[]>;
   };
   sd: {
     /** Removable volumes, flagged when they look like a ProffieOS card. */

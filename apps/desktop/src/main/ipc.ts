@@ -4,13 +4,14 @@ import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
 import { arch, release, version as osVersion } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { BOARD_NOT_CHOSEN, generateConfig, isBank, isStyleDoc, isTreeDoc, validateModel, wiringFingerprint, type PresetBank, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
+import { generateConfig, isBank, isStyleDoc, isTreeDoc, validateModel, wiringFingerprint, type PresetBank, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
+import { planProblems } from './planCheck';
 import { LooksStore, cleanLook, looksPath } from './looksStore';
 import { BanksStore, banksPath } from './banksStore';
 import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
-import { lookUpWanted, proffieSerials } from './usb';
+import { lookUpWanted, portHolders, proffieSerials } from './usb';
 import { activeWant, wantSerial } from './serialGate';
 import { checkFontDir, copyFont, listFonts, listTracks, lookForCards, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
 import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
@@ -102,7 +103,7 @@ export function registerIpc(): void {
     }, ex && typeof ex === 'object' ? { id: str(ex.id, 40), configName: str(ex.configName, 200) } : null);
   });
   handle('library:rename', (_e, id: unknown, name: unknown) => library.rename(str(id, 40), str(name, 80)));
-  handle('library:plan', (_e, name: unknown, model: unknown) => { const errors = validateModel(model as SaberConfigModel).filter((e) => e !== BOARD_NOT_CHOSEN && !/preset/i.test(e)); if (errors.length) throw new Error(errors[0]); return library.plan(str(name, 80), model as SaberConfigModel); });
+  handle('library:plan', (_e, name: unknown, model: unknown) => { const errors = planProblems(model as SaberConfigModel); if (errors.length) throw new Error(errors[0]); return library.plan(str(name, 80), model as SaberConfigModel); });
   handle('library:adopt', (_e, plannedId: unknown, targetId: unknown) => library.adopt(str(plannedId, 40), str(targetId, 40)));
   handle('library:noteBootloader', (_e, id: unknown, seen: unknown) => {
     const o = (seen ?? {}) as { serial?: unknown; flashBytes?: unknown };
@@ -148,6 +149,7 @@ export function registerIpc(): void {
   handle('snapshots:read', (_e, id: unknown, file: unknown) => snapshots.read(str(id, 40), str(file, 200)));
 
   handle('usb:proffieSerials', () => proffieSerials());
+  handle('usb:portHolders', () => portHolders());
   // Reach only this board next (the saber an install is bringing back); null lets every Proffieboard through again.
   handle('usb:wantSerial', async (_e, serial: unknown) => {
     const s = typeof serial === 'string' && /^[A-Za-z0-9]{1,40}$/.test(serial) ? serial : null;
