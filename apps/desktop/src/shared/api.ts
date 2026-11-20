@@ -117,7 +117,7 @@ export interface LibraryFontDetail extends LibraryFont { sounds: FontSound[]; tr
 /** A picked library export that is locked: `name` is the file's name, `wrong` that the passphrase given did not open it. */
 export interface LockedImport { needsPassphrase: true; name: string; wrong: boolean }
 /** `reason` and `from` are set when a folder was left out on purpose, so the page can say each kind once. */
-export interface ImportResult { added: string[]; skipped: { name: string; why: string; reason?: 'other-board' | 'extra' | 'have'; from?: string }[] }
+export interface ImportResult { /** Makers whose logo or link came in with an export file. */ makers?: string[]; added: string[]; skipped: { name: string; why: string; reason?: 'other-board' | 'extra' | 'have'; from?: string }[] }
 export interface FontLibraryStatus {
   root: string;
   /** The library is in its default place, userData/fonts. */

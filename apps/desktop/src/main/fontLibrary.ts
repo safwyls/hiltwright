@@ -11,6 +11,7 @@ export { classifyFontFile };
 import { copyFont, inBatches, looksLikeFont, readFontListing, readFontSounds, type CopyOptions, type FontEntry, type FontSounds } from './sd';
 import { extractZip, listZip } from './unzip';
 import { sortPackage, surveyPackage } from './fontBoards';
+import type { CarriedContributor } from './contributors';
 import { NOT_A_PACK, openLibraryPack, writeLibraryPack, type PackedFont } from './fontLibraryPack';
 import { JsonStore } from './jsonStore';
 
@@ -68,7 +69,7 @@ export interface LibraryFontDetail extends LibraryFont {
 }
 
 /** `reason` and `from` are set when a folder was left out on purpose, so the page can say each kind once. */
-export interface ImportResult { added: string[]; skipped: { name: string; why: string; reason?: 'other-board' | 'extra' | 'have'; from?: string }[] }
+export interface ImportResult { /** Makers whose logo or link came in with an export file. */ makers?: string[]; added: string[]; skipped: { name: string; why: string; reason?: 'other-board' | 'extra' | 'have'; from?: string }[] }
 
 const BASIC = new Set(['hum', 'ignition', 'retraction', 'swing', 'clash', 'font name', 'boot', 'smoothswing']);
 
@@ -329,7 +330,7 @@ export class FontLibrary {
    * Every font in the library, with what the owner said about each, in one compressed and encrypted file
    * (fontLibraryPack.ts) to carry to another computer. The library itself is only read.
    */
-  async exportTo(file: string, onLine?: (line: string) => void, opts: { folders?: string[]; passphrase?: string } = {}): Promise<{ fonts: number; files: number; bytes: number }> {
+  async exportTo(file: string, onLine?: (line: string) => void, opts: { folders?: string[]; passphrase?: string; /** The logos and links kept for these makers, to travel with their fonts. */ makersFor?: (names: string[]) => Promise<CarriedContributor[]> } = {}): Promise<{ fonts: number; files: number; bytes: number }> {
     await this.ready();
     if (inside(this.root, file)) throw new Error('Save the export outside the font library folder.');
     // `folders`: only these fonts. One that is not in the library stops the export rather than being left out quietly.
@@ -339,14 +340,15 @@ export class FontLibrary {
     const fonts: PackedFont[] = [];
     for (const f of all) if (!want || want.has(f.folder)) fonts.push({ folder: f.folder, meta: f.meta, files: await this.filesOf(this.folderPath(f.folder)) });
     if (!fonts.length) throw new Error('There are no fonts in the library to export.');
-    return writeLibraryPack(file, fonts, (font, path) => readFile(join(this.folderPath(font.folder), ...path.split('/'))), { passphrase: opts.passphrase, onFont: (font, done, total) => onLine?.(`Packing ${done} of ${total}: ${font.meta.name}…`) });
+    const makers = opts.makersFor ? await opts.makersFor([...new Set(fonts.map((f) => f.meta.maker.trim()).filter(Boolean))]) : [];
+    return writeLibraryPack(file, fonts, (font, path) => readFile(join(this.folderPath(font.folder), ...path.split('/'))), { passphrase: opts.passphrase, makers, onFont: (font, done, total) => onLine?.(`Packing ${done} of ${total}: ${font.meta.name}…`) });
   }
 
   /**
    * Add the fonts of a library export. Each keeps its folder name, because presets find fonts by it; a font whose
    * folder name is already here is left out and nothing of it is replaced. A font arrives whole or not at all.
    */
-  async importPack(file: string, onLine?: (line: string) => void, passphrase?: string): Promise<ImportResult> {
+  async importPack(file: string, onLine?: (line: string) => void, passphrase?: string, adoptMakers?: (carried: CarriedContributor[]) => Promise<string[]>): Promise<ImportResult> {
     await this.ready();
     const result: ImportResult = { added: [], skipped: [] };
     const pack = await openLibraryPack(file, passphrase);
@@ -376,6 +378,15 @@ export class FontLibrary {
         await rename(tmp, dest);
         await this.store.update((s) => { s.fonts[font.folder] = font.meta; });
         result.added.push(font.folder);
+      }
+      // The makers' logos and links come last and are an extra: if they cannot be read or kept, the fonts still count.
+      if (adoptMakers && pack.list.makers?.length) {
+        try {
+          const carried: CarriedContributor[] = [];
+          for (const m of pack.list.makers) carried.push({ name: m.name, ...(m.url ? { url: m.url } : {}), ...(m.logo ? { logo: { ext: m.logo.ext, data: await pack.next() } } : {}) });
+          const gained = await adoptMakers(carried);
+          if (gained.length) result.makers = gained;
+        } catch (err) { console.warn(`[fonts] the makers' logos and links in ${basename(file)} were not brought in: ${String(err)}`); }
       }
     } finally {
       await pack.close().catch(() => undefined);

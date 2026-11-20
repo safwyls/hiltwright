@@ -18,7 +18,7 @@ import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, planned
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
 import { FontLibrary, type ImportResult } from './fontLibrary';
 import { LIBRARY_PACK_EXT, WRONG_PASSPHRASE, libraryPackNeedsPassphrase } from './fontLibraryPack';
-import { ContributorStore, cleanUrl } from './contributors';
+import { ContributorStore, cleanUrl, type CarriedContributor } from './contributors';
 import { HiltStore } from './hilts';
 import type { HiltInput, LegacyHilts } from '../shared/api';
 import { buildFirmware } from './build';
@@ -279,6 +279,8 @@ export function registerIpc(): void {
   const passphraseOf = (v: unknown) => (typeof v === 'string' && v ? str(v, 1000) : undefined);
   // The locked file the owner picked, waiting for its passphrase: the page never names a path itself.
   let lockedImport: string | null = null;
+  // Makers' logos and links in an export: only what is missing here is added (contributors.ts).
+  const adoptMakers = async (carried: CarriedContributor[]) => { await contributorsReady; return contributors.adopt(carried); };
   fontHandle('fontlib:exportPack', async (_e, o: unknown) => {
     const opts = (o ?? {}) as { folders?: unknown; passphrase?: unknown };
     const folders = Array.isArray(opts.folders) ? opts.folders.slice(0, 5000).map((f) => folder(f)) : undefined;
@@ -288,7 +290,7 @@ export function registerIpc(): void {
     const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePath: process.env.HILTWRIGHT_DIALOG_FILE } : await dialog.showSaveDialog({ title: 'Export the font library', defaultPath: join(dialogFolders.start('fontExport') ?? app.getPath('documents'), `Hiltwright fonts ${folders ? `(${folders.length}) ` : ''}${day}.${LIBRARY_PACK_EXT}`), filters: [{ name: 'Hiltwright font library', extensions: [LIBRARY_PACK_EXT] }] });
     if (r.canceled || !r.filePath) return null;
     if (!process.env.HILTWRIGHT_DIALOG_FILE) await dialogFolders.remember('fontExport', r.filePath);
-    return { file: r.filePath, locked: !!passphrase, ...(await fontLib.exportTo(r.filePath, libEmit, { folders, passphrase })) };
+    return { file: r.filePath, locked: !!passphrase, ...(await fontLib.exportTo(r.filePath, libEmit, { folders, passphrase, makersFor: async (names) => { await contributorsReady; return contributors.carry(names); } })) };
   });
   // With no passphrase: ask for a file. One locked with a passphrase is kept as `lockedImport` and the page is told to
   // ask for it; called again with a passphrase, that same file is opened. A wrong passphrase asks again.
@@ -301,10 +303,10 @@ export function registerIpc(): void {
       if (r.canceled || !r.filePaths[0]) return null;
       file = r.filePaths[0];
       if (await libraryPackNeedsPassphrase(file)) { lockedImport = file; return { needsPassphrase: true, name: basename(file), wrong: false }; }
-      return fontLib.importPack(file, libEmit);
+      return fontLib.importPack(file, libEmit, undefined, adoptMakers);
     }
     try {
-      const done = await fontLib.importPack(file, libEmit, passphrase);
+      const done = await fontLib.importPack(file, libEmit, passphrase, adoptMakers);
       lockedImport = null;
       return done;
     } catch (err) {

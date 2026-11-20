@@ -156,6 +156,10 @@ libFonts.forEach((f, i) => {
   index.fonts[f] = { name: f.replace(/_/g, ' '), maker: makers[i], notes: i % 3 === 0 ? 'Needs the volume up a notch; the swings are quiet.' : '', added: '2026-10-0' + (1 + (i % 9)) + 'T10:00:00.000Z', ...(i < 4 ? { bundle: 'Prequel set' } : i < 6 ? { bundle: 'Sequel set' } : {}) };
 });
 writeFileSync(join(fontLibrary, 'hiltwright-fonts.json'), JSON.stringify(index));
+// One maker with a logo and a link, so an export has a maker to carry.
+mkdirSync(join(userData, 'contributors'), { recursive: true });
+writeFileSync(join(userData, 'contributors', 'kyberphonic.svg'), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8" fill="#2a6"/><path d="M2 6V2l4 4V2" stroke="#fff" fill="none"/></svg>');
+writeFileSync(join(userData, 'contributors.json'), JSON.stringify({ version: 1, people: { Kyberphonic: { logo: 'kyberphonic.svg', url: 'https://example.com/' } } }));
 
 // The card has most of the library's fonts, one with a missing hum, and tracks.
 libFonts.slice(0, 9).forEach((f) => makeFont(card, f));

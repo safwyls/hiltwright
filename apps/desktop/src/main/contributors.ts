@@ -3,12 +3,15 @@
 // font library and the looks, so the same person is credited the same way everywhere. The file is kept by the safe
 // store (jsonStore.ts).
 
-import { cp, mkdir, readFile, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { JsonStore } from './jsonStore';
 
 export interface ContributorMeta { logo?: string; url?: string }
 export interface ContributorInfo { name: string; /** Data URL, ready for an <img>. */ logo: string | null; url: string | null }
+
+/** A person as an export carries them: `ext` is the logo's file ending with its dot (".png"). */
+export interface CarriedContributor { name: string; url?: string; logo?: { ext: string; data: Buffer } }
 
 const LOGO_TYPES: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.svg': 'image/svg+xml' };
 const LOGO_MAX_BYTES = 2 * 1024 * 1024;
@@ -175,6 +178,64 @@ export class ContributorStore {
       throw err;
     }
     return true;
+  }
+
+  /** What is kept about these people, to travel with an export of their fonts: the link, and the logo's bytes. */
+  async carry(names: string[]): Promise<CarriedContributor[]> {
+    const people = await this.people();
+    const out: CarriedContributor[] = [];
+    const seen = new Set<string>();
+    for (const n of names) {
+      const k = this.keyIn(people, n);
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      const meta = people[k];
+      let logo: CarriedContributor['logo'];
+      if (meta.logo && goodLogo(meta.logo)) {
+        try { logo = { ext: extname(meta.logo).toLowerCase(), data: await readFile(join(this.logos, meta.logo)) }; } catch { /* the picture is gone: the link still travels */ }
+      }
+      if (logo || meta.url) out.push({ name: k, ...(meta.url ? { url: meta.url } : {}), ...(logo ? { logo } : {}) });
+    }
+    return out;
+  }
+
+  /**
+   * Take in what an export carried about its fonts' makers. Only what is missing here is added: a logo or link the
+   * owner already has for that person is never replaced. Anything not a small picture or a web address is left out.
+   * Returns the names that gained something.
+   */
+  async adopt(carried: CarriedContributor[]): Promise<string[]> {
+    const gained: string[] = [];
+    for (const c of carried) {
+      const name = typeof c.name === 'string' ? c.name.trim().slice(0, 120) : '';
+      if (!name) continue;
+      const have = (await this.people())[(await this.key(name)) ?? ''] ?? {};
+      let url: string | null = null;
+      try { url = !have.url && typeof c.url === 'string' ? cleanUrl(c.url) : null; } catch { url = null; }
+      let file: string | undefined;
+      if (!have.logo && c.logo && LOGO_TYPES[c.logo.ext] && c.logo.data.length > 0 && c.logo.data.length <= LOGO_MAX_BYTES) {
+        file = this.newLogoFile(name, c.logo.ext);
+        await mkdir(this.logos, { recursive: true });
+        await writeFile(join(this.logos, file), c.logo.data);
+      }
+      if (!url && !file) continue;
+      let used = false;
+      let logoUsed = false;
+      try {
+        await this.store.update((f) => {
+          const k = this.keyIn(f.people, name) ?? name;
+          const next: ContributorMeta = { ...f.people[k] };
+          if (url && !next.url) { next.url = url; used = true; }
+          if (file && !next.logo) { next.logo = file; used = true; logoUsed = true; }
+          if (next.logo || next.url) f.people[k] = next;
+        });
+      } finally {
+        // A picture written but not named in the list (the save failed, or a logo arrived meanwhile) does not stay.
+        if (file && !logoUsed) await rm(join(this.logos, file), { force: true });
+      }
+      if (used) gained.push(name);
+    }
+    return gained;
   }
 
   /** The link stored for a person, for opening: never a link the renderer made up. */

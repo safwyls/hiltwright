@@ -6,6 +6,9 @@ import { dirname, join } from 'node:path';
 import { FontLibrary, INDEX_FILE } from '../src/main/fontLibrary';
 import { NEEDS_PASSPHRASE, WRONG_PASSPHRASE, libraryPackNeedsPassphrase, openLibraryPack, writeLibraryPack, type PackedFont } from '../src/main/fontLibraryPack';
 import { importSummary } from '../src/shared/fontBulk';
+import { ContributorStore } from '../src/main/contributors';
+
+const PNG = Buffer.from('89504e470d0a1a0a', 'hex');
 
 const tmp = (name: string) => mkdtemp(join(tmpdir(), `hw-${name}-`));
 const newLibrary = async () => new FontLibrary(await tmp('lib'), async (p) => { await rm(p, { recursive: true, force: true }); });
@@ -184,6 +187,77 @@ describe('the font library as one file', () => {
     const raw = await readFile(locked);
     await writeFile(join(dir, 'cut.hwfonts'), raw.subarray(0, raw.length - 40));
     await expect((await newLibrary()).importPack(join(dir, 'cut.hwfonts'), undefined, 'correct horse battery')).rejects.toThrow(/damaged or was cut short/);
+  });
+
+  it('carries the makers\' logos and links, and adds only what the other computer lacks', async () => {
+    const lib = await filled();
+    await lib.setMeta('Ash Grey', { maker: 'Shadowfoil' });
+    const here = new ContributorStore(await tmp('data'));
+    const png = join(await tmp('img'), 'logo.png');
+    await writeFile(png, Buffer.concat([PNG, Buffer.from('greyscale')]));
+    await here.setLogo('Greyscale', png);
+    await here.setUrl('greyscale', 'greyscale.example');
+    await here.setUrl('Shadowfoil', 'shadowfoil.example');
+    await here.setUrl('Someone Else', 'else.example');
+    const file = join(await tmp('out'), 'fonts.hwfonts');
+    await lib.exportTo(file, undefined, { makersFor: (names) => here.carry(names) });
+    const raw = await readFile(file);
+    for (const plain of ['greyscale.example', 'Shadowfoil']) expect(raw.includes(Buffer.from(plain)), plain).toBe(false);
+
+    // Only the makers of the exported fonts travel, and they arrive whole on a computer that knows none of them.
+    const there = new ContributorStore(await tmp('data'));
+    const r = await (await newLibrary()).importPack(file, undefined, undefined, (c) => there.adopt(c));
+    expect(r.makers).toEqual(['Shadowfoil', 'Greyscale']);
+    const got = await there.list();
+    expect(got.map((p) => `${p.name} ${p.url}`)).toEqual(['Greyscale https://greyscale.example/', 'Shadowfoil https://shadowfoil.example/']);
+    expect(got[0].logo).toBe((await here.list()).find((p) => p.name === 'Greyscale')!.logo);
+    expect(got[1].logo).toBeNull();
+    expect(importSummary(r).text).toBe('Added Ash Grey, Ember. Also added the logo or link for Shadowfoil, Greyscale.');
+
+    // What the owner already has for a maker stays: the link here is kept, the missing logo is filled in.
+    const mine = new ContributorStore(await tmp('data'));
+    await mine.setUrl('GREYSCALE', 'my-own-link.example');
+    await mine.setUrl('Shadowfoil', 'shadowfoil.example');
+    const again = await (await newLibrary()).importPack(file, undefined, undefined, (c) => mine.adopt(c));
+    expect(again.makers).toEqual(['Greyscale']);
+    const kept = (await mine.list()).find((p) => p.name === 'GREYSCALE')!;
+    expect(kept.url).toBe('https://my-own-link.example/');
+    expect(kept.logo).toMatch(/^data:image\/png;base64,/);
+    // A second import adds nothing more and leaves no spare picture behind.
+    expect((await (await newLibrary()).importPack(file, undefined, undefined, (c) => mine.adopt(c))).makers).toBeUndefined();
+    expect(await readdir(join((mine as unknown as { dir: string }).dir, 'contributors'))).toHaveLength(1);
+
+    // With nobody to take the makers, or a selection whose maker has nothing kept, the fonts come in as before.
+    expect((await (await newLibrary()).importPack(file)).added).toEqual(['Ash Grey', 'Ember']);
+  });
+
+  it('takes nothing from a file\'s makers but a small picture and a web address', async () => {
+    const dir = await tmp('out');
+    const file = join(dir, 'odd.hwfonts');
+    const font: PackedFont = { folder: 'A', meta: { name: 'A', maker: 'M', notes: '', added: '' }, files: [{ path: 'hum.wav', bytes: 1 }] };
+    await writeLibraryPack(file, [font], async () => Buffer.from('x'), { makers: [
+      { name: 'Script', url: 'javascript:alert(1)', logo: { ext: '.exe', data: Buffer.from('MZ') } },
+      { name: '../Climber', logo: { ext: '.png', data: PNG } },
+      { name: 'Huge', logo: { ext: '.png', data: Buffer.alloc(2 * 1024 * 1024 + 1) } },
+      { name: 'Fine', url: 'fine.example' },
+    ] });
+    const data = await tmp('data');
+    const store = new ContributorStore(data);
+    const r = await (await newLibrary()).importPack(file, undefined, undefined, (c) => store.adopt(c));
+    expect(r.added).toEqual(['A']);
+    expect(r.makers).toEqual(['../Climber', 'Fine']);
+    // The odd name is only a name in the list; its picture is a file the app named, inside the logos folder.
+    expect((await readdir(data)).sort()).toEqual(['contributors', 'contributors.bak.json', 'contributors.json'].filter((n) => existsSync(join(data, n))).sort());
+    const logos = await readdir(join(data, 'contributors'));
+    expect(logos).toHaveLength(1);
+    expect(logos[0]).toMatch(/^[a-z0-9_]+-[a-z0-9]+\.png$/);
+    expect((await store.list()).map((p) => p.name).sort()).toEqual(['../Climber', 'Fine']);
+
+    // Logos cut off the end of a file: the fonts still come in.
+    const raw = await readFile(file);
+    await writeFile(join(dir, 'cut.hwfonts'), raw.subarray(0, raw.length - 20));
+    const cut = await (await newLibrary()).importPack(join(dir, 'cut.hwfonts'), undefined, undefined, (c) => new ContributorStore(dir).adopt(c));
+    expect(cut).toEqual({ added: ['A'], skipped: [] });
   });
 
   it('reads the list without unpacking the sounds', async () => {

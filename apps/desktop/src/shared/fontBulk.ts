@@ -25,8 +25,11 @@ export function importSummary(r: ImportResult): { tone: 'green' | 'amber' | 'red
   if (have.length) parts.push(`Already in the library, left as ${have.length === 1 ? 'it is' : 'they are'}: ${list(have)}.`);
   if (other.length) parts.push(`Not added: ${other.join(' ')}`);
   // Nothing new because it is all here already is not a failure.
-  if (!r.added.length) return { tone: r.skipped.length && have.length === r.skipped.length ? 'amber' : 'red', text: parts.join(' ') || 'Nothing was added.' };
-  if (!r.skipped.length) parts.push('Give each a name and maker on the right.');
+  const makers = r.makers ?? [];
+  const cameWith = makers.length ? `Also added the logo or link for ${list(makers)}.` : '';
+  if (!r.added.length) return { tone: r.skipped.length && have.length === r.skipped.length ? 'amber' : 'red', text: [...parts, cameWith].filter(Boolean).join(' ') || 'Nothing was added.' };
+  if (cameWith) parts.push(cameWith);
+  else if (!r.skipped.length) parts.push('Give each a name and maker on the right.');
   return { tone: r.skipped.length ? 'amber' : 'green', text: parts.join(' ') };
 }
 

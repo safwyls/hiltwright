@@ -116,6 +116,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
       if (!r) return;
       await refresh();
       if (r.added.length) { setSelected(r.added[0]); setPicked([]); anchor.current = r.added[0]; }
+      if (r.makers?.length) void people.refresh();
       setNote(importSummary(r));
     } catch (err) { setNote({ tone: 'red', text: cleanErr(err) }); }
     finally { setBusy(false); setProgress(null); }
@@ -321,7 +322,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
         {exporting && (
           <form className="note" aria-label="Export fonts" onSubmit={(e) => { e.preventDefault(); void doExport(); }}><Icon name="info" />
             <span className="col" style={{ gap: 8 }}>
-              <span>{exporting.what ? `Export ${exporting.what} as one file, with their names, makers and notes.` : !exporting.folders ?`Export all ${fonts.length} fonts as one file, with their names, makers and notes.` : exporting.folders.length === 1 ? `Export ${fonts.find((f) => f.folder === exporting.folders![0])?.meta.name ?? exporting.folders[0]} as one file, with its name, maker and notes.` : `Export the ${exporting.folders.length} selected fonts as one file, with their names, makers and notes.`} A passphrase is optional: with one, the file opens only for someone who knows it. Without one, any copy of Hiltwright can open it.</span>
+              <span>{exporting.what ? `Export ${exporting.what} as one file, with their names, makers and notes, and the makers' logos and links.` : !exporting.folders ?`Export all ${fonts.length} fonts as one file, with their names, makers and notes, and the makers' logos and links.` : exporting.folders.length === 1 ? `Export ${fonts.find((f) => f.folder === exporting.folders![0])?.meta.name ?? exporting.folders[0]} as one file, with its name, maker and notes, and the maker's logo and link.` : `Export the ${exporting.folders.length} selected fonts as one file, with their names, makers and notes, and the makers' logos and links.`} A passphrase is optional: with one, the file opens only for someone who knows it. Without one, any copy of Hiltwright can open it.</span>
               <span className="row wrap" style={{ gap: 8 }}>
                 <span className="input sans" style={{ height: 30, flex: '1 1 150px', maxWidth: 240 }}><input type="password" autoFocus autoComplete="new-password" value={exporting.pass} placeholder="Passphrase (optional)" aria-label="Passphrase for the export, optional" onChange={(e) => setExporting({ ...exporting, pass: e.target.value })} /></span>
                 <span className="input sans" style={{ height: 30, flex: '1 1 150px', maxWidth: 240 }}><input type="password" autoComplete="new-password" value={exporting.again} placeholder="Passphrase again" aria-label="The passphrase again" disabled={!exporting.pass} onChange={(e) => setExporting({ ...exporting, again: e.target.value })} /></span>

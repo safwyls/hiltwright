@@ -1,6 +1,7 @@
 // The .hwfonts file: a whole font library in one compressed, encrypted file, to carry to another computer.
 //
 //   "HWFL" | u8 version (1: app key, 2: passphrase) | 16-byte salt | records...
+//   records: the list | every font file, in the list's order | every maker's logo, in the list's order
 //   record: u32 length | 12-byte nonce | 16-byte tag | ciphertext (deflated bytes, AES-256-GCM)
 //
 // The first record is the list (JSON): every font, what the owner said about it, and its files in order. Then one
@@ -17,6 +18,7 @@ import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:
 import { deflateSync, inflateSync } from 'node:zlib';
 import { appKeyFor } from './hwpack';
 import type { FontMeta } from './fontLibrary';
+import type { CarriedContributor } from './contributors';
 
 /** The version byte also says how the file is locked: 1 with the key the app carries, 2 with the owner's passphrase. */
 const WITH_APP_KEY = 1;
@@ -28,7 +30,11 @@ const HEAD = MAGIC.length + 1 + 16;
 const MAX_RECORD = 0xfffffff0;
 
 export interface PackedFont { folder: string; meta: FontMeta; files: { path: string; bytes: number }[] }
-export interface LibraryPackList { kind: 'hiltwright-font-library'; version: 1; made: string; fonts: PackedFont[] }
+/** A font maker's link, and the size and kind of their logo; the logo's bytes are a record after every font file. */
+export interface PackedMaker { name: string; url?: string; logo?: { ext: string; bytes: number } }
+/** `makers` came after the first files of this kind were made: a file without it has none, and a copy of the app
+ *  from before it reads the fonts and never looks at the logo records at the end. */
+export interface LibraryPackList { kind: 'hiltwright-font-library'; version: 1; made: string; fonts: PackedFont[]; makers?: PackedMaker[] }
 
 export const NOT_A_PACK = 'That file is not a Hiltwright font library export.';
 const DAMAGED = 'That font library export is damaged or was cut short. Export it again and copy the file over once more.';
@@ -73,7 +79,7 @@ function seal(key: Buffer, index: number, data: Buffer): Buffer {
  * Write a library export to `file`, through a temp file renamed into place, so a failed export never leaves half a
  * file. `read(font, path)` gives one file's bytes; it is asked for each file in the list's order.
  */
-export async function writeLibraryPack(file: string, fonts: PackedFont[], read: (font: PackedFont, path: string) => Promise<Buffer>, opts: { passphrase?: string; onFont?: (font: PackedFont, done: number, total: number) => void; now?: Date } = {}): Promise<{ fonts: number; files: number; bytes: number }> {
+export async function writeLibraryPack(file: string, fonts: PackedFont[], read: (font: PackedFont, path: string) => Promise<Buffer>, opts: { passphrase?: string; makers?: CarriedContributor[]; onFont?: (font: PackedFont, done: number, total: number) => void; now?: Date } = {}): Promise<{ fonts: number; files: number; bytes: number }> {
   const { onFont, now = new Date() } = opts;
   const salt = randomBytes(16);
   const version = opts.passphrase ? WITH_PASSPHRASE : WITH_APP_KEY;
@@ -83,7 +89,8 @@ export async function writeLibraryPack(file: string, fonts: PackedFont[], read: 
   let files = 0; let bytes = 0;
   try {
     await fh.write(Buffer.concat([MAGIC, Buffer.from([version]), salt]));
-    const list: LibraryPackList = { kind: 'hiltwright-font-library', version: 1, made: now.toISOString(), fonts };
+    const makers = opts.makers ?? [];
+    const list: LibraryPackList = { kind: 'hiltwright-font-library', version: 1, made: now.toISOString(), fonts, ...(makers.length ? { makers: makers.map((m) => ({ name: m.name, ...(m.url ? { url: m.url } : {}), ...(m.logo ? { logo: { ext: m.logo.ext, bytes: m.logo.data.length } } : {}) })) } : {}) };
     let index = 0;
     await fh.write(seal(key, index++, Buffer.from(JSON.stringify(list), 'utf8')));
     for (const [i, font] of fonts.entries()) {
@@ -95,6 +102,7 @@ export async function writeLibraryPack(file: string, fonts: PackedFont[], read: 
         files++; bytes += data.length;
       }
     }
+    for (const m of makers) if (m.logo) await fh.write(seal(key, index++, m.logo.data));
     await fh.sync();
   } catch (err) {
     await fh.close().catch(() => undefined); await rm(tmp, { force: true }); throw err;
@@ -124,7 +132,16 @@ function cleanList(raw: unknown): LibraryPackList | null {
     if (typeof m.bundle === 'string' && m.bundle) meta.bundle = m.bundle;
     fonts.push({ folder: f.folder, meta, files });
   }
-  return { kind: 'hiltwright-font-library', version: 1, made: typeof raw.made === 'string' ? raw.made : '', fonts };
+  // Makers are an extra: one that is not shaped right is left out (with every maker after it, since the logo
+  // records are read in order) rather than refusing the fonts.
+  const makers: PackedMaker[] = [];
+  for (const m of Array.isArray(raw.makers) ? raw.makers : []) {
+    if (!isObj(m) || typeof m.name !== 'string') break;
+    const logo = isObj(m.logo) && typeof m.logo.ext === 'string' && typeof m.logo.bytes === 'number' ? { ext: m.logo.ext, bytes: m.logo.bytes } : undefined;
+    if (m.logo !== undefined && !logo) break;
+    makers.push({ name: m.name, ...(typeof m.url === 'string' ? { url: m.url } : {}), ...(logo ? { logo } : {}) });
+  }
+  return { kind: 'hiltwright-font-library', version: 1, made: typeof raw.made === 'string' ? raw.made : '', fonts, ...(makers.length ? { makers } : {}) };
 }
 
 export interface LibraryPackReader {
