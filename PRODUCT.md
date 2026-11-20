@@ -43,7 +43,7 @@ Neighbouring products, for context: ProffieConfig (open source, C++) and SaberBe
 
 ## Capabilities and Constraints
 
-In the beta (0.2.0-beta.8):
+In the beta (0.2.0-beta.9):
 
 - **The saber path:** Armory (remembered sabers, plan one ahead, remove one), Wiring, Presets, Fonts & SD, Build & Install.
 - **The workshop:** Styles, Style editor (Simple and Full), Font library, Contributors, Demo room.
@@ -84,11 +84,11 @@ Undecided:
 
 - Screenshots of every tour step: `site/assets/shots/` (47 `tour-NN.png`, 18 `clean-NN.png`). These show the earlier blue appearance and need retaking in the Station theme.
 - The walkthrough text: `site/data/tour.json`, generated from the app's own tour.
-- Docs: `site/content/docs/*.md`, plus `docs/install-guide.md` and `docs/release-notes-beta-8.md`.
+- Docs: `site/content/docs/*.md`, plus `docs/install-guide.md` and `docs/release-notes-beta-9.md`.
 - A live blade demo on the site that runs the app's own simulator (`site/src/blade-demo.ts`).
 - The Punk Saber hilt model and a side-on render of it (`site/assets/hilt.png`).
 - Six free ProffieOS sound fonts shipped with the app.
-- Seven public releases on GitHub: 0.2.0-beta.1 and 0.2.0-beta.3 to 0.2.0-beta.8.
+- Eight public releases on GitHub: 0.2.0-beta.1 and 0.2.0-beta.3 to 0.2.0-beta.9.
 
 Not on hand, and not to be invented: testimonials, user counts, download numbers, reviews, press, comparisons measured against other tools.
 
