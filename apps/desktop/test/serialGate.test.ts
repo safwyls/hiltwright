@@ -5,6 +5,7 @@ import { interfacesOf } from '../src/main/usb';
 const byIds = { vendorId: 0x1209, productId: 0x6668 };
 const byIdStrings = { vendorId: '4617', productId: '26216' };
 const byInstance = { device_instance_id: 'USB\\VID_1209&PID_6668&MI_00\\7&380A8E11&0&0000', name: 'USB Serial Device (COM8)' };
+const byMacIds = { name: 'Proffieboard', vendor_id: 4617, product_id: 26216, usb_driver: 'com.apple.driver.usb.cdc.acm' };
 const other = { vendorId: 0x2341, productId: 0x0043 };
 
 describe('which serial devices the page may use', () => {
@@ -12,6 +13,7 @@ describe('which serial devices the page may use', () => {
     expect(serialAllowed(byIds, false)).toBe(true);
     expect(serialAllowed(byIdStrings, false)).toBe(true);
     expect(serialAllowed(byInstance, false)).toBe(true);
+    expect(serialAllowed(byMacIds, false)).toBe(true);
     expect(serialAllowed(other, false)).toBe(false);
     expect(serialAllowed(undefined, false)).toBe(false);
   });

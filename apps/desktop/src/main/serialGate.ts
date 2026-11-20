@@ -17,12 +17,16 @@ export function isProffie(vendorId: unknown, productId: unknown): boolean {
 /**
  * Whether the page may use this serial device. On Windows a serial device arrives as
  * { device_instance_id: "USB\\VID_1209&PID_6668&MI_00\\...", name } with no vendorId/productId; other platforms
- * report ids. With `noBoard` (the HILTWRIGHT_NO_BOARD development switch) nothing is allowed.
+ * report ids (macOS as `vendor_id`/`product_id`). With `noBoard` (the HILTWRIGHT_NO_BOARD development switch) nothing
+ * is allowed.
  */
 export function serialAllowed(device: unknown, noBoard: boolean, now = Date.now()): boolean {
   if (noBoard) return false;
-  const d = (device ?? {}) as { vendorId?: unknown; productId?: unknown; device_instance_id?: string };
-  if (!(isProffie(d.vendorId, d.productId) || /VID_1209&PID_6668/i.test(d.device_instance_id ?? ''))) return false;
+  const d = (device ?? {}) as {
+    vendorId?: unknown; productId?: unknown; vendor_id?: unknown; product_id?: unknown; device_instance_id?: string;
+  };
+  const byId = isProffie(d.vendorId, d.productId) || isProffie(d.vendor_id, d.product_id);
+  if (!(byId || /VID_1209&PID_6668/i.test(d.device_instance_id ?? ''))) return false;
   // After an install only the saber installed may be reached, so that another board plugged in beside it is not
   // opened first (HW-2026-09-25c). An interface not yet known to be its board waits until main has looked it up.
   const w = activeWant(now);
