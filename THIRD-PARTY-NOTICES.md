@@ -62,7 +62,7 @@ Beta 1 ships the six free sound fonts from the ProffieOS default SD card, each a
 
 ## Theme backdrops
 
-The seven pictures behind the main view (Hoth, Ronin, The Ninth Jedi, Coruscant at night, Crait, Naboo, Kashyyyk) were made with an AI image generator by safwyls, the author of Hiltwright, for this app. They are fan art: Hiltwright is not affiliated with or endorsed by Lucasfilm or Disney, and Star Wars names and designs belong to their owners.
+The eight pictures behind the main view (Station, Hoth, Ronin, The Ninth Jedi, Coruscant at night, Crait, Naboo, Kashyyyk) were made with an AI image generator by safwyls, the author of Hiltwright, for this app. They are fan art: Hiltwright is not affiliated with or endorsed by Lucasfilm or Disney, and Star Wars names and designs belong to their owners.
 
 ## Built-in PunkSaber hilt
 
