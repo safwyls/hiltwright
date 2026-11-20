@@ -100,8 +100,27 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     setSource((cur) => next.find((n) => n.root === cur?.root) ?? next[0] ?? null);
     return next;
   };
-  // Opened from the font library with a font chosen: switch to the library and load it.
-  useEffect(() => { void refreshSources().then((next) => { const lib = next.find((n) => n.kind === 'library'); if (initialFont && lib) { setSource(lib); void loadFont(initialFont, lib); } }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  /** The fonts a source holds, read straight from it (the `fonts` state follows the selected source a moment later). */
+  const entriesOf = async (src: Source): Promise<{ name: string; path: string }[]> => src.kind === 'pack'
+    ? (await api().packs.list().catch(() => [] as PackInfo[])).filter((p) => p.kind === 'font' && p.allow.demoPlayback).map((p) => ({ name: p.name, path: p.id }))
+    : (await api().fontLibrary.list().catch(() => [])).map((f) => ({ name: f.folder, path: f.folder }));
+  // The room opens with a font, so it is never silent: the one chosen in the font library on the way here, else the
+  // one last heard here if it is still there, else the first font to hand.
+  useEffect(() => {
+    void refreshSources().then(async (next) => {
+      const lib = next.find((n) => n.kind === 'library');
+      if (initialFont && lib) { setSource(lib); void loadFont(initialFont, lib); return; }
+      let last: { root?: unknown; name?: unknown } = {};
+      try { last = JSON.parse(localStorage.getItem('hiltwright.demo.font') ?? '{}') as typeof last; } catch { /* nothing remembered */ }
+      const lastSource = next.find((n) => n.root === last.root);
+      const remembered = lastSource ? (await entriesOf(lastSource)).find((f) => f.name === last.name) : undefined;
+      if (lastSource && remembered) { setSource(lastSource); void loadFont(remembered.name, lastSource, remembered.path); return; }
+      for (const src of next) {
+        const first = (await entriesOf(src))[0];
+        if (first) { setSource(src); void loadFont(first.name, src, first.path); return; }
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!source) { setFonts([]); return; }
     let live = true;
@@ -109,19 +128,22 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     return () => { live = false; };
   }, [source?.root]); // eslint-disable-line react-hooks/exhaustive-deps
   const addToLibrary = async () => { const r = await api().fontLibrary.addFolder(); if (r?.added.length) await refreshSources(); };
-  const loadFont = async (name: string, from: Source | null = source) => {
+  const loadFont = async (name: string, from: Source | null = source, packId?: string) => {
     if (!from || !name) return;
     setFontName(name); setSoundNote(null);
     setLoading({ done: 0, total: 0, what: 'reading' });
     const off = api().sd.onReadFontProgress((p) => setLoading({ done: p.done, total: p.total, what: 'reading' }));
     try {
-      const sounds = from.kind === 'pack' ? await api().packs.font(fonts.find((f) => f.name === name)?.path ?? name) : await api().fontLibrary.readFont(name);
+      const sounds = from.kind === 'pack' ? await api().packs.font(packId ?? fonts.find((f) => f.name === name)?.path ?? name) : await api().fontLibrary.readFont(name);
       off();
-      const wasOn = engineRef.current?.isOn ?? false;
+      // With no font loaded yet there is no engine to ask, and the blade may be lit all the same (the room lights
+      // it as it opens): the blade itself says whether the saber is on.
+      const wasOn = engineRef.current?.isOn ?? scene.current?.isOn ?? false;
       engineRef.current?.dispose();
       const eng = await FontEngine.load(sounds, (done, total) => setLoading({ done, total, what: 'decoding' }));
       eng.setVolume(volume);
       engineRef.current = eng; setEngine(eng);
+      try { localStorage.setItem('hiltwright.demo.font', JSON.stringify({ root: from.root, name })); } catch { /* private mode */ }
       if (sounds.skipped) setSoundNote(`${sounds.skipped} file${sounds.skipped === 1 ? '' : 's'} left out to stay under the memory cap.`);
       // A preset change while lit, as prop_base SetPreset does it: a fast on (fastout, no preon), then the font's name.
       if (wasOn) eng.ignite();
