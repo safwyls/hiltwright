@@ -5,6 +5,7 @@
 - **A newer engine underneath.** Hiltwright is built on Electron, and this beta moves it from version 37, which no longer gets security fixes, to version 45. Nothing should look different. If something that worked in the last beta does not work in this one, tell us. On a Mac this beta needs macOS 13 or later; Windows 10 and 11 are unchanged.
 - **File windows open where you left them.** Adding font packages, font folders, logos and hilts each start in the folder you last used for that, instead of Downloads every time.
 - **The demo room opens with sound.** It used to open with no font, so it was silent, and choosing a font while the blade was lit did nothing until you retracted and ignited again. It now opens with the font you last used there, or the first one it finds, and a font you choose while the blade is lit plays straight away.
+- **Station has a new backdrop.** The default theme's wall of light slots is now a wall of dark panels.
 - **The count of styles waiting for a build fits its place** in the side list. It shows the number; hold the pointer over it for the rest.
 - **The macOS test build** is attached again: `Hiltwright-0.2.0-beta.10-mac-arm64.dmg` for Macs with Apple silicon, and `Hiltwright-0.2.0-beta.10-mac-x64.dmg` for Intel Macs. It is still a test build, not a supported one. On a Mac, Hiltwright's tests pass, the first-time toolchain setup works and firmware builds. Not yet confirmed on a Mac: installing firmware, the SD card, and how the window looks. The Intel build has not been run at all. If you try it, tell us what happens.
 
