@@ -128,31 +128,39 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     return () => { live = false; };
   }, [source?.root]); // eslint-disable-line react-hooks/exhaustive-deps
   const addToLibrary = async () => { const r = await api().fontLibrary.addFolder(); if (r?.added.length) await refreshSources(); };
+  // Loads can overlap (the room's own first load, a font picked while one is still decoding): only the latest
+  // one may sound. An engine from an earlier load is thrown away when it arrives.
+  const loadSeq = useRef(0);
   const loadFont = async (name: string, from: Source | null = source, packId?: string) => {
     if (!from || !name) return;
+    const mine = ++loadSeq.current;
     setFontName(name); setSoundNote(null);
     setLoading({ done: 0, total: 0, what: 'reading' });
     const off = api().sd.onReadFontProgress((p) => setLoading({ done: p.done, total: p.total, what: 'reading' }));
     try {
       const sounds = from.kind === 'pack' ? await api().packs.font(packId ?? fonts.find((f) => f.name === name)?.path ?? name) : await api().fontLibrary.readFont(name);
       off();
-      // With no font loaded yet there is no engine to ask, and the blade may be lit all the same (the room lights
-      // it as it opens): the blade itself says whether the saber is on.
-      const wasOn = engineRef.current?.isOn ?? scene.current?.isOn ?? false;
+      const wasOn = engineRef.current?.isOn ?? false;
       engineRef.current?.dispose();
       const eng = await FontEngine.load(sounds, (done, total) => setLoading({ done, total, what: 'decoding' }));
+      if (mine !== loadSeq.current) { eng.dispose(); return; }
+      engineRef.current?.dispose();
       eng.setVolume(volume);
       engineRef.current = eng; setEngine(eng);
       try { localStorage.setItem('hiltwright.demo.font', JSON.stringify({ root: from.root, name })); } catch { /* private mode */ }
       if (sounds.skipped) setSoundNote(`${sounds.skipped} file${sounds.skipped === 1 ? '' : 's'} left out to stay under the memory cap.`);
       // A preset change while lit, as prop_base SetPreset does it: a fast on (fastout, no preon), then the font's name.
-      if (wasOn) eng.ignite();
+      // Whether the saber is on is asked of the blade, and only now: decoding takes a while, and the room lights
+      // the blade as it opens, so a blade that was dark when the load began may be lit by the time the font is
+      // ready, with no font having heard it ignite. (A blade still in preon lights later and says so itself.)
+      if (scene.current ? scene.current.isLit : wasOn) eng.ignite();
       eng.announce();
-    } catch (err) { off(); setSoundNote(`Could not load that font: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
-    finally { setLoading(null); }
+    } catch (err) { off(); if (mine === loadSeq.current) setSoundNote(`Could not load that font: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
+    finally { if (mine === loadSeq.current) setLoading(null); }
   };
   useEffect(() => { engineRef.current?.setVolume(volume); try { localStorage.setItem('hiltwright.demo.volume', String(volume)); } catch { /* private mode */ } }, [volume]);
-  useEffect(() => () => { engineRef.current?.dispose(); }, []);
+  // Leaving the room: the font goes quiet, and a load still on its way must not start playing after it.
+  useEffect(() => () => { loadSeq.current++; engineRef.current?.dispose(); engineRef.current = null; }, []);
 
   /** The saber as it is set up: the current preset's main-blade look and its font. */
   const saber = board.saber ?? board.library[0] ?? null;

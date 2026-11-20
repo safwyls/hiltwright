@@ -419,6 +419,8 @@ export class DemoScene {
   private sims(): BladeSim[] { return this.staffSim ? [this.sim, this.staffSim] : [this.sim]; }
   /** On, or waiting out preon (prop_base's IsOn counts on_pending_ too, so pressing again cancels). */
   get isOn(): boolean { return this.sim.isOn || this.preonTimer !== null; }
+  /** The blade itself is lit: preon is over. A blade still in preon reports its ignition later, on its own. */
+  get isLit(): boolean { return this.sim.isOn; }
   /**
    * The main blade's simulator is the saber: whatever turns it on or off, raises an effect or asks for a sound, whether
    * the panel or the style itself (TrDoEffect), shows up on its bus and is passed on from here.
