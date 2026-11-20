@@ -6,7 +6,7 @@ order: 3
 ---
 ## Which boards and systems does it support?
 
-The Proffieboard V2.2 and V3, running ProffieOS 8.x. Hiltwright runs on Windows 10 or 11, 64-bit (Windows in S mode is not supported), and on macOS 11 or later, on Apple silicon and Intel Macs.
+The Proffieboard V2.2 and V3, running ProffieOS 8.x. Hiltwright runs on Windows 10 or 11, 64-bit (Windows in S mode is not supported), and on macOS 13 or later, on Apple silicon and Intel Macs.
 
 ## Is it free? Is it open source?
 

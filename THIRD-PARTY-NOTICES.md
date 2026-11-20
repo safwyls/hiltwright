@@ -998,7 +998,7 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ````
 
-### electron 37.10.3
+### electron 45.4.1
 
 - Licence: MIT
 - Repository: https://github.com/electron/electron

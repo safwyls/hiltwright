@@ -36,6 +36,7 @@ import { runLog, runLogs } from './log';
 import { cleanSnapshot, composeBundle, writeBundle, type LastBuild } from './supportBundle';
 import { Updates, WorkCounter, pickAutoUpdater } from './updates';
 import { captionOverlay, saveTheme } from './appearance';
+import { DialogFolders } from './dialogFolders';
 import { WORK_CHANNELS, type BusyFacts, type UpdateState, type WorkKind } from '../shared/updates';
 import type { FontLibraryStatus, JobEvent } from '../shared/api';
 import type { FirmwareManifest } from '@hiltwright/core';
@@ -88,7 +89,14 @@ function busyFacts(v: unknown): BusyFacts {
 
 export function registerIpc(): void {
   const userData = app.getPath('userData');
-  const library = new Library(libraryPath(userData));
+  // File dialogs open where their kind of dialog last was (dialogFolders.ts says why the app keeps this itself).
+  const dialogFolders = new DialogFolders(join(userData, 'dialog-folders.json'));
+  const openDialog = async (kind: string, options: Electron.OpenDialogOptions): Promise<Electron.OpenDialogReturnValue> => {
+    const r = await dialog.showOpenDialog({ ...options, defaultPath: dialogFolders.start(kind) ?? options.defaultPath });
+    if (!r.canceled && r.filePaths[0]) await dialogFolders.remember(kind, r.filePaths[0]);
+    return r;
+  };
+  const library =new Library(libraryPath(userData));
   const snapshots = new Snapshots(userData);
 
   handle('library:list', () => library.list());
@@ -224,7 +232,7 @@ export function registerIpc(): void {
   // A logo comes only from a file the owner picked in the dialog.
   handle('contributors:setLogo', async (_e, who: unknown) => {
     const name = str(who, 120);
-    const r = await dialog.showOpenDialog({ title: `Choose a logo for ${name}`, properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'] }] });
+    const r = await openDialog('logo', { title: `Choose a logo for ${name}`, properties: ['openFile'], filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'] }] });
     if (r.canceled || !r.filePaths[0]) return null;
     await contributorsReady;
     return contributors.setLogo(name, r.filePaths[0]);
@@ -257,11 +265,11 @@ export function registerIpc(): void {
     return all;
   };
   fontHandle('fontlib:addZip', async () => {
-    const r = await dialog.showOpenDialog({ title: 'Add sound font packages', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Font packages', extensions: ['zip'] }] });
+    const r = await openDialog('fontPackages', { title: 'Add sound font packages', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Font packages', extensions: ['zip'] }] });
     return r.canceled ? null : importPicked(r.filePaths);
   });
   fontHandle('fontlib:addFolder', async () => {
-    const r = await dialog.showOpenDialog({ title: 'Add a font folder (or a folder of fonts)', properties: ['openDirectory', 'multiSelections'] });
+    const r = await openDialog('fontFolder', { title: 'Add a font folder (or a folder of fonts)', properties: ['openDirectory', 'multiSelections'] });
     return r.canceled ? null : importPicked(r.filePaths);
   });
   fontHandle('fontlib:importLegacy', async () => { if (!legacyBank) return null; const r = await importPicked([legacyBank]); await saveLibSettings({ legacyDismissed: true }); return r; });
@@ -269,7 +277,7 @@ export function registerIpc(): void {
   // Choosing a folder: refused into itself or its surroundings, clashes listed before anything moves, nothing renamed.
   // With the library folder missing there is nothing to move: the chosen folder is simply where it is now.
   fontHandle('fontlib:chooseRoot', async () => {
-    const r = await dialog.showOpenDialog({ title: 'Where should the font library live?', properties: ['openDirectory', 'createDirectory'] });
+    const r = await openDialog('fontLibrary', { title: 'Where should the font library live?', properties: ['openDirectory', 'createDirectory'] });
     if (r.canceled || !r.filePaths[0] || resolve(r.filePaths[0]) === resolve(fontLib.root)) return libStatus();
     const next = r.filePaths[0];
     const missing = await fontLib.missing();
@@ -329,12 +337,13 @@ export function registerIpc(): void {
     const d = new Date();
     const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     // Dev aid: HILTWRIGHT_DIALOG_FILE answers this dialog (and Import's), so an offscreen run can export and import.
-    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePath: process.env.HILTWRIGHT_DIALOG_FILE } : await dialog.showSaveDialog({ title: 'Export hilts', defaultPath: join(app.getPath('documents'), `Hiltwright hilts ${day}.zip`), filters: [{ name: 'Zip file', extensions: ['zip'] }] });
+    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePath: process.env.HILTWRIGHT_DIALOG_FILE } : await dialog.showSaveDialog({ title: 'Export hilts', defaultPath: join(dialogFolders.start('hilts') ?? app.getPath('documents'), `Hiltwright hilts ${day}.zip`), filters: [{ name: 'Zip file', extensions: ['zip'] }] });
     if (r.canceled || !r.filePath) return null;
+    if (!process.env.HILTWRIGHT_DIALOG_FILE) await dialogFolders.remember('hilts', r.filePath);
     return { file: r.filePath, ...(await hilts.exportTo(r.filePath)) };
   });
   handle('hilts:import', async () => {
-    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePaths: [process.env.HILTWRIGHT_DIALOG_FILE] } : await dialog.showOpenDialog({ title: 'Import hilts', properties: ['openFile'], filters: [{ name: 'Hiltwright hilt export', extensions: ['zip'] }] });
+    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePaths: [process.env.HILTWRIGHT_DIALOG_FILE] } : await openDialog('hilts', { title: 'Import hilts', properties: ['openFile'], filters: [{ name: 'Hiltwright hilt export', extensions: ['zip'] }] });
     return r.canceled || !r.filePaths[0] ? null : hilts.importFrom(r.filePaths[0]);
   });
   // Packs: encrypted hilts and fonts. Payloads are decrypted here and handed over in memory, never as files.
@@ -353,7 +362,7 @@ export function registerIpc(): void {
   handle('sd:voicePack', (_e, r: unknown) => readVoicePack(root(r)));
   let pickedFonts = new Set<string>();
   handle('sd:pickFont', async () => {
-    const res = await dialog.showOpenDialog({ title: 'Choose a sound font folder', properties: ['openDirectory'] });
+    const res = await openDialog('fontFolder', { title: 'Choose a sound font folder', properties: ['openDirectory'] });
     if (res.canceled || !res.filePaths[0]) return null;
     const entry = await checkFontDir(res.filePaths[0]);
     pickedFonts.add(entry.path);
@@ -370,7 +379,7 @@ export function registerIpc(): void {
   // Import from a Xenopixel card. The owner picks the folder; only fonts found by that scan can be imported.
   let xenoFonts = new Map<string, XenoFontInfo>();
   handle('import:pickXeno', async () => {
-    const res = await dialog.showOpenDialog({ title: 'Choose the Xenopixel SD card (or a copy of it)', properties: ['openDirectory'] });
+    const res = await openDialog('xenoCard', { title: 'Choose the Xenopixel SD card (or a copy of it)', properties: ['openDirectory'] });
     if (res.canceled || !res.filePaths[0]) return null;
     const fonts = await scanXenoCard(res.filePaths[0]);
     xenoFonts = new Map(fonts.map((f) => [f.path, f]));

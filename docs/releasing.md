@@ -75,7 +75,7 @@ How to cut a Hiltwright beta from now on, and how an installed copy then finds i
 - **The macOS disk images of a release come from it.** Run it on the release commit, download the `hiltwright-macos-test-build` artifact, and attach the two `.dmg` files to the release beside the Windows files. They are unsigned and do not update themselves.
 - **The Windows job is a check, not the release build.** Its installer has no font packs, because the six free fonts are not in the repository (font-packs.md). The installer a release ships is still built on a PC that has the packs (step 3). A green Windows job says the release commit installs, tests, sets up its toolchain and compiles firmware on a clean Windows machine.
 
-Node.js: the build tools, the tests, the site and every workflow use Node.js 24 (`.nvmrc`, and `engines` in the root and site `package.json`). The app itself runs on the Node.js that its Electron version carries (Electron 37 carries Node.js 22), which changes only with an Electron upgrade; `@types/node` follows that one.
+Node.js: the build tools, the tests, the site and every workflow use Node.js 24 (`.nvmrc`, and `engines` in the root and site `package.json`). The app itself runs on the Node.js that its Electron version carries (Electron 45 carries Node.js 24 and Chromium 156), which changes only with an Electron upgrade; `@types/node` and the build targets in `apps/desktop/electron.vite.config.ts` follow that one. An Electron upgrade can also raise the oldest system the app runs on (Electron 45 needs macOS 13; Windows 10 and 11, 64-bit): check the download page and the FAQ.
 
 ## How an installed copy finds it
 
