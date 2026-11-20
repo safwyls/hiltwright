@@ -20,8 +20,8 @@
      --plate-ring   the line round a selected surface      --sel-text   the selection colour, as text
      --loose --loose-ctl --loose-blur   the backing for text and for chips that sit straight on the backdrop
 
-   Station: a battle station's corridor. Gloss black floor and panels, hard edges, and the wall of rounded light
-   slots as its one pattern. Trooper green is the accent. Nothing is pure white. */
+   Station: a battle station's corridor. Gloss black floor and panels, hard edges, and a wall of kitbashed panels in
+   dark grey behind them. Trooper green is the accent. Nothing is pure white. */
 :root{
   --bg0:#050506;--bg1:#0e0e10;--bg2:#17171a;--bg3:#202024;--bg4:#2c2c31;
   --side:#17181a;--bar:#0a0a0b;--field:#060607;--well:#000;--track:#2c2c31;
@@ -47,12 +47,13 @@
   --disp:'Barlow Condensed','Arial Narrow','Segoe UI',sans-serif;
   /* No dust here: the surfaces are gloss. The name stays so the layers that use it need no change. */
   --grain:none;
-  /* The light wall: columns of rounded slots. */
-  --lights:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='148'%3E%3Crect x='16' y='14' width='14' height='120' rx='7' fill='%23fff' fill-opacity='.075'/%3E%3C/svg%3E");
+  /* The wall: a picture of kitbashed panels in greys barely off the black, with a column of light slots and a few
+     white lamps. The lamps are white so that nothing on the wall is the accent's green. */
+  --wall:url(./assets/backdrops/station.webp);
   /* Gloss: a soft band of reflected light across the top of a surface. */
   --gloss:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 46px,transparent 110px);
-  /* The ground: a gloss black floor under the light wall, with the slots' reflection as soft vertical streaks. */
-  --ground:linear-gradient(180deg,rgba(5,5,6,.2),rgba(5,5,6,.75) 62%,rgba(5,5,6,.35)),var(--lights) 12px 20px,repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 14px,transparent 14px 46px) 28px 0,var(--bg0);
+  /* The ground: the wall, as it is. */
+  --ground:var(--wall) center/cover no-repeat,var(--bg0);
   color-scheme:dark;
 }
 /* Selected: a plate in the theme's accent, with a line of it round the edge. */
