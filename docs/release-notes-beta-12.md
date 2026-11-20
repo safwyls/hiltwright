@@ -1,15 +1,12 @@
-# Hiltwright 0.2.0-beta.11
+# Hiltwright 0.2.0-beta.12
 
 ## New in this beta
 
-- **Font packages made for several boards.** Font makers often put one font for every soundboard in one package. Hiltwright now looks inside each folder to tell which board it is for, and adds only the Proffie copies. Copies for Crystal Focus, Xenopixel, Verso and Asteria are left out, and so are folders of extras that are not whole fonts. The message afterwards says each thing once. A package made only for another board is still added, as before.
-- **Select several fonts in the Font library.** Ctrl+click adds or removes a font, Shift+click selects from the last one you clicked, Ctrl+A selects every font shown, and Escape goes back to one. With several selected you can copy them to the card or remove them together, and you get one line per font saying what happened. Removed fonts go to the recycle bin.
-- **Export fonts to one file.** Export one font, the fonts you selected, a bundle, or the whole library as a single compressed, encrypted file with the names, makers and notes you gave them. On another computer, press **Add export file** in the Font library to bring them in. A font that is already there is left as it is.
-- **A passphrase for an export, if you want one.** With a passphrase, the file opens only for someone who knows it. Hiltwright does not keep the passphrase, so a file whose passphrase is lost cannot be opened. Without one, any copy of Hiltwright can open the file.
-- **The demo room's hum starts when the room opens.** In the last beta the font's name played but the hum stayed silent until you retracted and ignited again.
-- **The macOS test build** is attached: `Hiltwright-0.2.0-beta.11-mac-arm64.dmg` for Macs with Apple silicon, and `Hiltwright-0.2.0-beta.11-mac-x64.dmg` for Intel Macs. It is still a test build, not a supported one. On a Mac, Hiltwright's tests pass, the first-time toolchain setup works and firmware builds. Not yet confirmed on a Mac: installing firmware, the SD card, and how the window looks. The Intel build has not been run at all. If you try it, tell us what happens.
+- **An export carries the makers' logos and links.** When you export fonts to one file, the logo and link you keep for each of their makers go with them. On the other computer, **Add export file** adds the ones that are missing there. A logo or link you already have for a maker is never replaced.
+- **Files from 0.2.0-beta.11 still work**, and 0.2.0-beta.11 can open files made by this beta: it brings in the fonts and leaves the logos and links.
+- **The macOS test build** is attached: `Hiltwright-0.2.0-beta.12-mac-arm64.dmg` for Macs with Apple silicon, and `Hiltwright-0.2.0-beta.12-mac-x64.dmg` for Intel Macs. It is still a test build, not a supported one. On a Mac, Hiltwright's tests pass, the first-time toolchain setup works and firmware builds. Not yet confirmed on a Mac: installing firmware, the SD card, and how the window looks. The Intel build has not been run at all. If you try it, tell us what happens.
 
-Not in an export: makers' logos and links. The maker's name travels with each font; its logo does not.
+New in 0.2.0-beta.11, for anyone who skipped it: font packages made for several boards add only the Proffie copies; several fonts can be selected and copied to the card, removed or exported together; and one font, a selection, a bundle or the whole library can be exported to a single encrypted file, with a passphrase if you want one.
 
 An installed copy from 0.2.0-beta.3 on updates to this beta by itself. If that does not work for you, install this beta by hand and tell us.
 
@@ -61,11 +58,11 @@ Coming from 0.2.0-beta.1 or 0.2.0-beta.2? Download this installer and run it. It
 
 The installer is unsigned, so Windows will warn you before it runs. If Smart App Control is on, Windows blocks both the installer and the app, and it has to stay off while you use this beta: check that first (install guide, section 3). The install guide covers each Windows barrier to unsigned software.
 
-Install guide: https://github.com/safwyls/hiltwright/blob/v0.2.0-beta.11/docs/install-guide.md
+Install guide: https://github.com/safwyls/hiltwright/blob/v0.2.0-beta.12/docs/install-guide.md
 
 ## Licence and source
 
-Hiltwright is licensed under GPL-3.0-or-later. The source for this build is at https://github.com/safwyls/hiltwright/tree/v0.2.0-beta.11
+Hiltwright is licensed under GPL-3.0-or-later. The source for this build is at https://github.com/safwyls/hiltwright/tree/v0.2.0-beta.12
 
 ## Report a problem
 
