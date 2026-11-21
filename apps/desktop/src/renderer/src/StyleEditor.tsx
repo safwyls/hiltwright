@@ -10,6 +10,7 @@ import { BASES, EFFECTS, TRANSITIONS, aliasFor, checkStyle, defaultStyle, defaul
 import { BladePreview } from './BladePreview';
 import { useHistory } from './editorHistory';
 import { Icon } from './Icon';
+import { Loader } from './Loader';
 import { PasteStyle, TreeEditor } from './TreeEditor';
 import { Select } from './Select';
 import { saveTarget, type EditorMode } from './styleSave';
@@ -152,7 +153,7 @@ export function StyleEditor({ editing, onSaved, onDemo, onLeaveGuard }: { editin
             <button type="button" className="chip" disabled={!history.canRedo} aria-label="Redo" title="Redo (Ctrl+Y or Ctrl+Shift+Z)" onClick={history.redo}><Icon name="redo" /></button>
             <button type="button" className="chip" aria-label="Paste a style" title="Paste a style" onClick={() => setPasting((p) => !p)}><Icon name="import" /><span className="chiptext">Paste a style</span></button>
             <button type="button" className="chip" aria-label={showCode ? 'Hide the code' : 'Show the code'} title={showCode ? 'Hide the code' : 'Show the code'} onClick={() => setShowCode((s) => !s)}><Icon name="code" /><span className="chiptext">{showCode ? 'Hide the code' : 'Show the code'}</span></button>
-            <button type="button" className="btn sm pri" disabled={!name.trim() || saving} onClick={() => void save().catch(() => undefined)}><span className="b"><span className="i"><Icon name="check" />{saving ? 'Saving…' : editingId ? 'Save changes' : 'Save as a style'}</span></span></button>
+            <button type="button" className="btn sm pri" disabled={!name.trim() || saving} onClick={() => void save().catch(() => undefined)}><span className="b"><span className="i">{saving ? <Loader size="sm" /> : <Icon name="check" />}{saving ? 'Saving…' : editingId ? 'Save changes' : 'Save as a style'}</span></span></button>
           </div>
         </div>
         <div className="pb col scroll" style={{ gap: 14 }}>

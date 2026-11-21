@@ -16,6 +16,7 @@ type CardCheck = { source: 'reader'; root: string; by: OwnedBy; card: CardInfo; 
 import type { SaberConfigModel } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
+import { Loader } from './Loader';
 import { SaveDiagnostics } from './SaveDiagnostics';
 import { readTransfer } from './transfer';
 import { toolchainBlockers } from '../../shared/toolchainChecks';
@@ -370,7 +371,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
         <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
           <span>Other Windows users on this computer could change the compiler Hiltwright uses, in {tool.root}. Repair makes it changeable only by administrators and your account; Windows may ask for approval.</span>
           {repairNote && <span className="red small">{repairNote}</span>}
-          <span className="row"><button type="button" className="btn sm" disabled={repairing || installing} onClick={() => void repair()}><span className="b"><span className="i">{repairing ? 'Repairing…' : 'Repair'}</span></span></button></span>
+          <span className="row"><button type="button" className="btn sm" disabled={repairing || installing} onClick={() => void repair()}><span className="b"><span className="i">{repairing ? <><Loader size="sm" />Repairing…</> : 'Repair'}</span></span></button></span>
         </span></div>
       )}
       {tool && !tool.ready && !installing && (
@@ -477,7 +478,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
           {model && firmwareHasStaged(model, saber?.firmware) && (
             <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="info" /><span className="col" style={{ gap: 8 }}>
               <span>This saber's firmware has your staged presets, but the saber still uses its own.{connectedNow ? ' Putting them on restarts the saber once; a snapshot of its own is kept first.' : ' Connect the saber to put them on.'}</span>
-              {connectedNow && <span className="row"><button type="button" className="btn sm" disabled={busy || stagedBusy} onClick={() => void useStaged()}><span className="b"><span className="i"><Icon name="presets" />{stagedBusy ? 'Putting them on…' : 'Use the staged presets'}</span></span></button></span>}
+              {connectedNow && <span className="row"><button type="button" className="btn sm" disabled={busy || stagedBusy} onClick={() => void useStaged()}><span className="b"><span className="i">{stagedBusy ? <Loader size="sm" /> : <Icon name="presets" />}{stagedBusy ? 'Putting them on…' : 'Use the staged presets'}</span></span></button></span>}
             </span></div>
           )}
           {preview?.errors.map((e) => <div key={e} className="note red" style={{ padding: '8px 10px' }}><Icon name="x" /><span>{e}</span></div>)}
@@ -495,7 +496,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
             </div>
           )}
           {result?.problems.map((p) => <div key={p} className="note red"><Icon name="x" /><span>{p}</span></div>)}
-          <button type="button" className={`btn full ${nowStep === 3 ? 'pri' : ''}`} disabled={!canBuild} onClick={() => void build(true)}><span className="b"><span className="i"><Icon name="build" />{step === 'building' ? 'Building…' : built ? 'Build again' : 'Build firmware'}</span></span></button>
+          <button type="button" className={`btn full ${nowStep === 3 ? 'pri' : ''}`} disabled={!canBuild} onClick={() => void build(true)}><span className="b"><span className="i">{step === 'building' ? <Loader size="sm" /> : <Icon name="build" />}{step === 'building' ? 'Building…' : built ? 'Build again' : 'Build firmware'}</span></span></button>
         </div>
 
         <div className={`stepc ${step === 'done' ? 'done' : nowStep === 4 ? 'now' : ''}`} data-tour="build-install">
@@ -520,7 +521,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
             <div className="col" style={{ gap: 8 }}>
               <span className="small"><b style={{ fontWeight: 600 }}>Windows has no driver for the bootloader yet.</b> This happens once per computer. Nothing has been changed on the saber.</span>
               <span className="hint">Hiltwright downloads the driver installer published by the ProffieOS author (3 MB, fredrik.hubbe.net), checks the file and starts it. Windows asks for administrator approval. Leave the saber plugged in; the install carries on by itself.</span>
-              <button type="button" className="btn full pri" disabled={driverBusy} onClick={() => void installDriver()}><span className="b"><span className="i"><Icon name="shield" />{driverBusy ? 'Installing the driver…' : 'Install the driver'}</span></span></button>
+              <button type="button" className="btn full pri" disabled={driverBusy} onClick={() => void installDriver()}><span className="b"><span className="i">{driverBusy ? <Loader size="sm" /> : <Icon name="shield" />}{driverBusy ? 'Installing the driver…' : 'Install the driver'}</span></span></button>
               <div className="row" style={{ gap: 8 }}>
                 <button type="button" className="btn sm grow" disabled={driverBusy} onClick={() => void checkDriver()}><span className="b"><span className="i"><Icon name="usb" />Check again</span></span></button>
                 <button type="button" className="btn sm ghost" disabled={driverBusy} onClick={() => { setStep('built'); setDriverCheck(null); }}><span className="b"><span className="i">Cancel</span></span></button>

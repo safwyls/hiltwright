@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { STARTER_LOOKS, UNKNOWN_AUTHOR, analyzeStyleCode, creditOf, creditWords, pastedAuthor, registerLookSim, argInfo, hexToColorWord, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
+import { Loader } from './Loader';
 import { ContributorLogo, CreditCard, NOT_A_CONTRIBUTOR, useContributors } from './credits';
 import { BladePreview, canSimulate } from './BladePreview';
 import { installedLookIds, queuedLookIds } from './slotModel';
@@ -305,7 +306,7 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
               )}
               {plan && words && (
                 <>
-                  <button type="button" className="btn pri full" disabled={!words.enabled || applying || (plan.kind === 'live' && board.busy)} onClick={() => void putIn()}><span className="b"><span className="i"><Icon name={plan.kind === 'live' ? 'presets' : plan.kind === 'already' ? 'check' : 'plus'} />{applying && plan.kind === 'live' ? 'Writing to the saber…' : words.button}</span></span></button>
+                  <button type="button" className="btn pri full" disabled={!words.enabled || applying || (plan.kind === 'live' && board.busy)} onClick={() => void putIn()}><span className="b"><span className="i">{applying && plan.kind === 'live' ? <Loader size="sm" /> : <Icon name={plan.kind === 'live' ? 'presets' : plan.kind === 'already' ? 'check' : 'plus'} />}{applying && plan.kind === 'live' ? 'Writing to the saber…' : words.button}</span></span></button>
                   <span className="hint">{words.hint} <button type="button" className="holo" onClick={onPresets}>Open Presets</button></span>
                   {selState === 'queued' && <button type="button" className="btn warn full" onClick={onBuild}><span className="b"><span className="i"><Icon name="bolt" />Build &amp; install queued styles</span></span></button>}
                 </>

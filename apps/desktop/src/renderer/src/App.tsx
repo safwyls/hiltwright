@@ -6,6 +6,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { registerLookSim, wiringConfirmed, type LookDef } from '@hiltwright/core';
 import { useBoard } from './board';
 import { Icon } from './Icon';
+import { Loader } from './Loader';
 import { Logo } from './Logo';
 import { Presets } from './Presets';
 import { Fonts } from './Fonts';
@@ -238,7 +239,7 @@ export function App() {
               )}</EditorLoader>
             : page === 'library' ? <FontLibrary board={board} onDemo={(folder) => { setDemoFont(folder); setPage('demo'); }} />
             : page === 'contributors' ? <Contributors onFonts={() => setPage('library')} onLooks={(name) => { setStyleCreator(name); setPage('looks'); }} onDemo={() => setPage('demo')} />
-            : page === 'demo' ? <Suspense fallback={<span className="hint">Opening the demo room…</span>}><Demo initialLook={demoLook} initialFont={demoFont} board={board} /></Suspense>
+            : page === 'demo' ? <Suspense fallback={<span className="hint row" style={{ gap: 14, padding: 24 }}><Loader />Opening the demo room…</span>}><Demo initialLook={demoLook} initialFont={demoFont} board={board} /></Suspense>
             : page === 'about' ? <About updates={tour ? null : updates} />
             : <Diagnostics board={board} />}
         </ErrorBoundary>}
@@ -474,7 +475,7 @@ function EditorLoader({ lookId, children }: { lookId: string | null; children: (
     void window.hiltwright.looks.list().then((all) => { const look = all.find((l) => l.id === lookId) ?? null; if (live) setState({ look, gone: !look }); }, () => { if (live) setState({ look: null, gone: true }); });
     return () => { live = false; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!state) return <div className="pb hint">Loading the style…</div>;
+  if (!state) return <div className="pb hint row" style={{ gap: 14 }}><Loader />Loading the style…</div>;
   return <>{state.gone && <div className="note amber" style={{ margin: '0 0 12px' }}><Icon name="warn" /><span>That style is no longer in your Styles, so the editor starts a new one.</span></div>}{children(state.look)}</>;
 }
 

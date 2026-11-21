@@ -10,6 +10,7 @@ import { HardwareEditor } from './Hardware';
 import { FEATURES } from './features';
 import type { Board } from './board';
 import { Icon } from './Icon';
+import { Loader } from './Loader';
 import type { Workspace } from './workspace';
 import { Select } from './Select';
 import { boardCorrection, boardSuggestion } from './saberModel';
@@ -229,7 +230,7 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
               <span>Which Proffieboard is this? Check the label on the board (V2.2 or V3.x) and choose it above. Nothing is built until you do.{suggestion ? ` Its config name suggests a ${suggestion}.` : ''}</span>
               {live && !saber.planned && <>
                 <span>Or let Hiltwright check: the saber restarts into bootloader mode for a few seconds, its flash size is read, and it comes straight back. Nothing is written.</span>
-                <span className="row"><button type="button" className="btn sm" disabled={checking || board.busy} onClick={() => void runCheck()}><span className="b"><span className="i"><Icon name="usb" />{checking ? 'Checking the board…' : 'Check the board'}</span></span></button></span>
+                <span className="row"><button type="button" className="btn sm" disabled={checking || board.busy} onClick={() => void runCheck()}><span className="b"><span className="i">{checking ? <Loader size="sm" /> : <Icon name="usb" />}{checking ? 'Checking the board…' : 'Check the board'}</span></span></button></span>
               </>}
             </span></div>
           )}

@@ -4,6 +4,7 @@
 import { useState, type CSSProperties } from 'react';
 import { chainRanges, type BladeVariant, type BoardModel, type ModelBlade } from '@hiltwright/core';
 import { Icon } from './Icon';
+import { Loader } from './Loader';
 import { BladeBar, Crystal, Hilt } from './Saber';
 
 import { KIND_LABEL, ROLES, ROLE_META, bladeSummary, dataPins, freeDataPins, kindOf, pinLabel, pinTable, powerOptions, powerPinsOf, withBladeCount, withKind, type Kind } from './hardwareModel';
@@ -172,7 +173,7 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                                 : <>
                                     <span className="input" style={{ width: 96, height: 32 }}><input type="number" min={1} max={400} value={v.pixels} disabled={locked} aria-label={`Pixels in ${v.name}`} onChange={(e) => setV(v.id, { pixels: Math.max(0, Math.round(Number(e.target.value) || 0)) })} /><span className="mute small">px</span></span>
                                     <span className="mono grow small" style={{ color: v.ohms == null ? 'var(--amber)' : 'var(--dim)' }}>{v.ohms == null ? 'ID not measured yet' : `ID ${v.ohms >= 1000 ? `${(v.ohms / 1000).toFixed(1)} kΩ` : `${Math.round(v.ohms)} Ω`}`}</span>
-                                    <button type="button" className="btn sm" disabled={locked || !!swap.measureBlocked || measuring !== null} title={swap.measureBlocked ?? 'Plug this blade in first'} onClick={() => { setMeasuring(v.id); void swap.measure().then((ohms) => { if (ohms != null) setV(v.id, { ohms }); }).finally(() => setMeasuring(null)); }}><span className="b"><span className="i">{measuring === v.id ? 'Reading…' : v.ohms == null ? 'Measure' : 'Measure again'}</span></span></button>
+                                    <button type="button" className="btn sm" disabled={locked || !!swap.measureBlocked || measuring !== null} title={swap.measureBlocked ?? 'Plug this blade in first'} onClick={() => { setMeasuring(v.id); void swap.measure().then((ohms) => { if (ohms != null) setV(v.id, { ohms }); }).finally(() => setMeasuring(null)); }}><span className="b"><span className="i">{measuring === v.id ? <><Loader size="sm" />Reading…</> : v.ohms == null ? 'Measure' : 'Measure again'}</span></span></button>
                                   </>}
                               <button type="button" className="chip" aria-label={`Remove ${v.name}`} disabled={locked} onClick={() => swap.onVariants(vs.filter((x) => x.id !== v.id))}><Icon name="x" /></button>
                             </div>

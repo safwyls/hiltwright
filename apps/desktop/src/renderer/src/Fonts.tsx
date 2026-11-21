@@ -10,6 +10,7 @@ import { XenoImport } from './XenoImport';
 import { fontsForPresets, packCredit } from './fontNeeds';
 import { FEATURES } from './features';
 import { Icon } from './Icon';
+import { Loader } from './Loader';
 import { cardKind, chooseCard, rememberCardChoice, rememberedCardChoice } from './cardChoice';
 import { ownedByText, ownerOfCard } from './cardOwner';
 import { cachedCards, cachedRead, lastCardRead, rememberCards, rememberRead } from './cardCache';
@@ -358,7 +359,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
     <>
       <section className="panel" aria-label="SD card status" data-tour="fonts-card">
         <div className="row" style={{ padding: '12px 18px', gap: 16 }}>
-          <span style={{ color: card ? 'var(--holo)' : 'var(--mute)', display: 'flex', width: 26, height: 26 }}><Icon name="sd" /></span>
+          <span style={{ color: card ? 'var(--holo)' : 'var(--mute)', display: 'flex', width: 26, height: 26, alignItems: 'center', justifyContent: 'center' }}>{scanning ? <Loader size="sm" /> : <Icon name="sd" />}</span>
           <div className="col grow" style={{ gap: 2 }}>
             <h3>{card ? `${kind === 'empty' ? 'Empty card' : kind === 'other' ? 'Not a saber card' : 'ProffieOS card'} at ${card.root}${card.label ? ` (${card.label})` : ''}${choice.own && card.root === choice.card?.root ? `: ${board.saber?.name ?? 'the saber'}'s own card` : ''}` : scanning ? 'Looking for a card…' : choice.ask ? (choice.choices.some((c) => c.proffie) ? `${choice.choices.length} cards found. Which one is this saber's?` : 'No ProffieOS card found. Choose a card to use') : 'No ProffieOS card found'}</h3>
             <div className="dim small">
@@ -377,15 +378,15 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
           </div>
           {sharing
             ? <>
-                <button type="button" className="btn sm pri" disabled><span className="b"><span className="i"><Icon name="usb" />{usb === 'asking' ? 'Asking the saber…' : 'Waiting for the drive…'}</span></span></button>
+                <button type="button" className="btn sm pri" disabled><span className="b"><span className="i"><Loader size="sm" />{usb === 'asking' ? 'Asking the saber…' : 'Waiting for the drive…'}</span></span></button>
                 <button type="button" className="btn sm warn" title="Stop waiting and give the card back to the saber" onClick={cancelShare}><span className="b"><span className="i"><Icon name="x" />Cancel</span></span></button>
               </>
             : shared
             ? <>
                 {!usbRoot && <button type="button" className="btn sm" disabled={busy || usbBusy} title="Look for the saber's card again, for up to 3 minutes" onClick={() => void mountUsb()}><span className="b"><span className="i"><Icon name="usb" />{waitedOut ? 'Keep waiting' : 'Look for the drive'}</span></span></button>}
-                <button type="button" className="btn sm warn" disabled={busy || usbBusy} title={busy ? 'Wait for the copy to finish' : undefined} onClick={() => void ejectUsb()}><span className="b"><span className="i"><Icon name="eject" />{usb === 'ejecting' ? 'Giving it back…' : 'Give the card back'}</span></span></button>
+                <button type="button" className="btn sm warn" disabled={busy || usbBusy} title={busy ? 'Wait for the copy to finish' : undefined} onClick={() => void ejectUsb()}><span className="b"><span className="i">{usb === 'ejecting' ? <Loader size="sm" /> : <Icon name="eject" />}{usb === 'ejecting' ? 'Giving it back…' : 'Give the card back'}</span></span></button>
               </>
-            : <button type="button" className="btn sm pri" disabled={!live || busy || usbBusy || usb === 'unsupported'} title={live ? 'The saber releases its card and it appears as a drive. The blade goes off and sound stops until you give it back.' : 'Plug the saber in first'} onClick={() => void mountUsb()}><span className="b"><span className="i"><Icon name="usb" />{usb === 'ejecting' ? 'Giving it back…' : 'Share the saber\u2019s card'}</span></span></button>}
+            : <button type="button" className="btn sm pri" disabled={!live || busy || usbBusy || usb === 'unsupported'} title={live ? 'The saber releases its card and it appears as a drive. The blade goes off and sound stops until you give it back.' : 'Plug the saber in first'} onClick={() => void mountUsb()}><span className="b"><span className="i">{usb === 'ejecting' ? <Loader size="sm" /> : <Icon name="usb" />}{usb === 'ejecting' ? 'Giving it back…' : 'Share the saber\u2019s card'}</span></span></button>}
           {(choice.choices.length > 1 || choice.ask) && (
             <label className="field" style={{ minWidth: 200 }}>
               <span className="input sans"><span className="ellip">{card ? cardName(card) : 'Choose a card…'}</span><span className="caret"><Icon name="down" /></span><Select aria-label="Card" value={card?.root ?? ''} disabled={busy} onChange={(e) => { const root = e.target.value || null; pickRef.current = { ...pickRef.current, chosen: root }; setChosen(root); /* the choice shows at once; its fonts follow (owner, 2026-11-14) */ setCard(cards.find((c) => c.root === root) ?? null); setFonts([]); setTracks([]); setVoice(null); void scan(); }}>
@@ -429,15 +430,15 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
           </span>
           {voiceList.credit && !pickedVoice && <span className="hint small">{voiceList.credit} {voiceList.support && <button type="button" className="holo" onClick={() => void api().sd.openVoicePackLink('support')}>Support his work</button>}{voiceList.source && <> · <button type="button" className="holo" onClick={() => void api().sd.openVoicePackLink('source')}>Where they come from</button></>}</span>}
         </span></div></div>}
-        {voiceDownload && busy && !progress && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="sd" /><span>Downloading the {voiceDownload.name} voice pack: {mb(voiceDownload.got)} of {mb(voiceDownload.total)}</span></div></div>}
+        {voiceDownload && busy && !progress && <div style={{ padding: '0 18px 12px' }}><div className="note" style={{ alignItems: 'center' }}><Loader progress={voiceDownload.total ? voiceDownload.got / voiceDownload.total : null} label={`Downloading the ${voiceDownload.name} voice pack`} /><span>Downloading the {voiceDownload.name} voice pack: {mb(voiceDownload.got)} of {mb(voiceDownload.total)}</span></div></div>}
         {card && kind === 'other' && !scanning && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>This drive has other files on it and no fonts or <span className="mono">presets.ini</span>, so it is not a saber card. Copying a font adds its folder beside those files and changes nothing else.</span></div></div>}
-        {usb === 'asking' && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="usb" /><span>Asking the saber to share its card. It lets go of the card once any sound has stopped, which can take several seconds.</span></div></div>}
-        {usb === 'waiting' && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="usb" /><span>The saber has let go of its card. Waiting for Windows to open it as a drive: {plainDuration(waitedFor)} so far. Windows can take a minute or two to open a large card over the saber{'’'}s USB link; Hiltwright keeps looking for up to {plainDuration(DRIVE_WAIT_MS)}.{wait?.last === 'no-answer' ? ' Windows did not answer the last look for drives, which usually means it is still opening the card.' : ''} Cancel gives the card back to the saber.</span></div></div>}
+        {usb === 'asking' && <div style={{ padding: '0 18px 12px' }}><div className="note"><Loader size="sm" /><span>Asking the saber to share its card. It lets go of the card once any sound has stopped, which can take several seconds.</span></div></div>}
+        {usb === 'waiting' && <div style={{ padding: '0 18px 12px' }}><div className="note"><Loader size="sm" /><span>The saber has let go of its card. Waiting for Windows to open it as a drive: {plainDuration(waitedFor)} so far. Windows can take a minute or two to open a large card over the saber{'’'}s USB link; Hiltwright keeps looking for up to {plainDuration(DRIVE_WAIT_MS)}.{wait?.last === 'no-answer' ? ' Windows did not answer the last look for drives, which usually means it is still opening the card.' : ''} Cancel gives the card back to the saber.</span></div></div>}
         {shared && !usbRoot && waitedOut && !sharing && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>Windows has not shown the card as a drive after {plainDuration(DRIVE_WAIT_MS)}. The saber is still sharing it, so preset changes stay off until you give it back. If a drive window has opened since, press Look again. Otherwise keep waiting, or give the card back.</span></div></div>}
         {noAnswer && !sharing && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="info" /><span>Windows did not answer when Hiltwright asked for its drives. It may be busy opening a card. Press Look again in a moment.</span></div></div>}
         {shared && !sharing && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>The saber has handed its card to this computer{usbRoot ? ` (${usbRoot})` : ''}. It cannot play until you give the card back; do that here rather than unplugging, so nothing is left half written. Copying is slow this way, a big font can take minutes.</span></div></div>}
         {!live && board.cardLostWhileShared && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>The connection went while the saber was sharing its card. The saber may still be holding its card. Reconnect it to give the card back.</span></div></div>}
-        {progress && busy && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="sd" /><span>Copying {progress.name}: {progress.done} of {progress.total} files</span></div></div>}
+        {progress && busy && <div style={{ padding: '0 18px 12px' }}><div className="note" style={{ alignItems: 'center' }}><Loader progress={progress.total ? progress.done / progress.total : null} label={`Copying ${progress.name}`} /><span>Copying {progress.name}: {progress.done} of {progress.total} files</span></div></div>}
         {usbNote && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>{usbNote}</span></div></div>}
         {message && <div style={{ padding: '0 18px 16px' }}><div className={`note ${message.tone}`}><Icon name={message.tone === 'green' ? 'check' : message.tone === 'red' ? 'x' : 'warn'} /><span>{message.text}</span></div></div>}
       </section>
@@ -488,8 +489,8 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                       <span className="col grow" style={{ gap: 0 }}><span className="small ellip" style={{ fontWeight: 600 }}>{f}</span>{lib && lib.meta.name !== lib.folder && <span className="hint ellip" style={{ fontSize: 11.5 }}>{lib.meta.name}{lib.meta.maker ? `, ${lib.meta.maker}` : ''}</span>}{pack && <span className="hint ellip" style={{ fontSize: 11.5 }}>{packCredit(pack)}</span>}</span>
                       {!card ? (lib ? <span className="chip ok"><Icon name="check" />In library</span> : pack ? <span className="chip ok"><Icon name="check" />Ready to copy</span> : <span className="chip" title="Put the card in to see whether it is there">Card not checked</span>)
                         : onCard(f) ? <span className="chip ok"><Icon name="check" />On the card</span>
-                        : lib ? <button type="button" className="btn sm" disabled={working} onClick={() => void copyNeeded([f])}><span className="b"><span className="i">{copyingNeeded === f ? 'Copying…' : 'Copy from library'}</span></span></button>
-                        : pack ? <button type="button" className="btn sm" disabled={working} onClick={() => void copyNeeded([f])}><span className="b"><span className="i">{copyingNeeded === f ? 'Copying…' : 'Copy to card'}</span></span></button>
+                        : lib ? <button type="button" className="btn sm" disabled={working} onClick={() => void copyNeeded([f])}><span className="b"><span className="i">{copyingNeeded === f ? <><Loader size="sm" />Copying…</> : 'Copy from library'}</span></span></button>
+                        : pack ? <button type="button" className="btn sm" disabled={working} onClick={() => void copyNeeded([f])}><span className="b"><span className="i">{copyingNeeded === f ? <><Loader size="sm" />Copying…</> : 'Copy to card'}</span></span></button>
                         : <span className="chip err" title="Not on the card, not in the font library and not in a font pack"><Icon name="x" />Missing</span>}
                     </div>
                   );

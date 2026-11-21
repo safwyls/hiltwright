@@ -213,11 +213,32 @@ button.chip.sel{border-color:var(--sel)}
 .lens.off{background:radial-gradient(circle at 40% 35%,var(--line2),var(--bg2));box-shadow:none;border-color:var(--line2)}
 .lens.pulse{animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
-.spinner{display:inline-flex;flex:none;color:var(--mute)}
-.spinner.on{color:var(--holo)}
-.spinner.on svg{animation:spin 1.4s linear infinite}
-.spinner svg{width:100%;height:100%}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* Loader (Loader.tsx). Power cells, shaped like the step boxes (--r-num), with a light passing along them; with
+   progress they fill. Small: a kyber crystal whose facets catch the light in turn; with progress it charges. Accent
+   colours everywhere, and a button's own ink inside a button, where the accent would vanish on an accent face. */
+.ld-cells{display:inline-flex;gap:4px;flex:none;vertical-align:middle}
+.ld-cells i{width:12px;height:18px;border:1px solid var(--line2);border-radius:var(--r-num);background:var(--field);box-sizing:border-box;transition:background .2s,border-color .2s}
+.ld-cells i.on{background:var(--holo-fill);border-color:var(--holo)}
+.ld-cells.run i{animation:ld-cell 1.4s cubic-bezier(.16,1,.3,1) infinite}
+.ld-cells.run i:nth-child(1){animation-delay:-1.4s}.ld-cells.run i:nth-child(2){animation-delay:-1.28s}.ld-cells.run i:nth-child(3){animation-delay:-1.16s}
+.ld-cells.run i:nth-child(4){animation-delay:-1.04s}.ld-cells.run i:nth-child(5){animation-delay:-.92s}.ld-cells.run i:nth-child(6){animation-delay:-.8s}
+@keyframes ld-cell{0%{background:var(--holo-fill);border-color:var(--holo)}45%,100%{background:var(--field);border-color:var(--line2)}}
+.ld-kyber{display:inline-flex;flex:none;vertical-align:middle;width:12px;height:22px}
+.ld-kyber svg{width:100%;height:100%;overflow:visible}
+.ld-kyber .f,.ld-kyber .charge{fill:var(--holo-fill)}
+.ld-kyber .edge{fill:none;stroke:var(--holo);stroke-width:1.4;stroke-linejoin:round}
+.ld-kyber .f1{opacity:.28}.ld-kyber .f2{opacity:.55}.ld-kyber .f3{opacity:.18}.ld-kyber .charge{opacity:.9}
+.ld-kyber.run .f1{animation:ld-facet 1.5s ease-in-out infinite}.ld-kyber.run .f2{animation:ld-facet 1.5s ease-in-out -.5s infinite}.ld-kyber.run .f3{animation:ld-facet 1.5s ease-in-out -1s infinite}
+@keyframes ld-facet{0%,100%{opacity:.16}50%{opacity:.85}}
+/* In a note it keeps its own size: notes stretch their spans and set their icons to 16px. */
+.note>.ld-cells,.note>.ld-kyber{flex:none}
+.note .ld-kyber{margin-top:1px}.note .ld-kyber svg{width:100%;height:100%;margin-top:0}
+.btn .ld-kyber .f,.btn .ld-kyber .charge{fill:currentColor}.btn .ld-kyber .edge{stroke:currentColor}
+.btn .ld-kyber{width:10px;height:18px}
+.btn .ld-cells i{border-color:currentColor;background:transparent;opacity:.45}
+.btn .ld-cells i.on{background:currentColor;opacity:1}
+.btn .ld-cells.run i{animation-name:ld-cell-ink}
+@keyframes ld-cell-ink{0%{background:currentColor;opacity:1}45%,100%{background:transparent;opacity:.45}}
 
 /* Lists and tables */
 .list{display:flex;flex-direction:column}
@@ -315,7 +336,11 @@ td.fit{width:100%;max-width:0}
 
 @media (prefers-reduced-motion:reduce){
   .blade.anim{transition:none}
-  .blade.lockup,.lens.pulse,.spinner.on svg,.step.now .box svg{animation:none}
+  .blade.lockup,.lens.pulse,.step.now .box svg{animation:none}
+  /* The loader holds still: the cells half lit, the crystal's facets as they rest. */
+  .ld-cells.run i,.ld-kyber.run .f{animation:none}
+  .ld-cells.run i{background:color-mix(in srgb,var(--holo-fill) 35%,var(--field));border-color:var(--holo)}
+  .ld-cells i{transition:none}
   .fade{animation:none}
   .tog i{transition:none}
 }

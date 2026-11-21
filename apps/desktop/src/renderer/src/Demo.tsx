@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PROPS, propFamily, SIMULATED_LOOKS, STARTER_LOOKS, argInfo, canSimulateLook, hexToColorWord, propBehaviour, registerLookSim, type LockupType, type LookDef } from '@hiltwright/core';
 import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
+import { Loader } from './Loader';
 import { DEFAULT_FIT, formatOf, meshFromPack, parseHilt, type HiltFit, type HiltFormat, type SideFile } from './hiltModel';
 import type { HiltAddMode, HiltInfo, HiltInput, PackInfo } from '../../shared/api';
 import { FontEngine } from './fontEngine';
@@ -556,7 +557,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
                 <div className="row between"><span className="label">Volume</span><span className="mono mute" style={{ fontSize: 11 }}>{Math.round(volume * 100)}%</span></div>
                 <input type="range" min={0} max={1} step={0.05} value={volume} aria-label="Volume" onChange={(e) => setVolume(Number(e.target.value))} />
               </label>
-              {loading && <span className="hint">{loading.what === 'reading' ? 'Reading' : 'Decoding'} {loading.done}{loading.total ? ` of ${loading.total}` : ''}…</span>}
+              {loading && <span className="hint row" style={{ gap: 8 }}><Loader size="sm" progress={loading.total ? loading.done / loading.total : null} label={loading.what === 'reading' ? 'Reading the font' : 'Decoding the font'} />{loading.what === 'reading' ? 'Reading' : 'Decoding'} {loading.done}{loading.total ? ` of ${loading.total}` : ''}…</span>}
               {soundNote && <span className="hint">{soundNote}</span>}
               {!engine && !loading && source && <span className="hint" style={{ fontSize: 11.5 }}>Pick a font and the saber hums, swings, clashes and answers every effect with its sounds.</span>}
             </>
