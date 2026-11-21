@@ -4,7 +4,7 @@
 import { copyFile, mkdir, readFile, readdir, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { parseXenoFontConfig, planXenoFont, proffieFolderName, xenoColorHex, xenoColorWord, XENO_BLADE_EFFECTS } from '@hiltwright/core';
-import { checkFontDir, type FontEntry } from './sd';
+import { checkFontDir, noteCardWritten, type FontEntry } from './sd';
 
 export interface XenoFontInfo {
   /** Folder on the source card, e.g. "7". */
@@ -66,6 +66,7 @@ export async function importXenoFont(srcDir: string, destRoot: string, folder: s
   if (!replace && await isDir(dest)) throw new Error(`${folder} is already on the card`);
   const plan = planXenoFont(await readdir(srcDir));
   if (!plan.sounds) throw new Error('No sounds found in that folder');
+  noteCardWritten(destRoot);
   for (const m of plan.moves) {
     const to = join(dest, m.to);
     await mkdir(dirname(to), { recursive: true });

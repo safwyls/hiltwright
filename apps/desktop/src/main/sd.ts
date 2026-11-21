@@ -24,6 +24,8 @@ export interface CardInfo {
   volumeSerial: string | null;
   /** The font and name of each preset in its presets.ini, or null when it has none. */
   presets: { font: string; name: string }[] | null;
+  /** How many times this app has written to it since it started (copies, the voice pack, presets removed). */
+  writes: number;
 }
 
 /** Names Windows and macOS put on a card by themselves, which do not make it anything but empty. */
@@ -38,6 +40,15 @@ export interface FontEntry {
   path: string;
   report: FontReport;
 }
+
+/**
+ * How many times this app has written to each card since it started, by drive root. The page keeps what it last read
+ * from a card while this, the card's serial number and its free space are unchanged, so it need not read it again.
+ */
+const written = new Map<string, number>();
+const rootKey = (root: string) => root.replace(/[\\/]+$/, '').toLowerCase();
+export function noteCardWritten(root: string): void { const k = rootKey(root); written.set(k, (written.get(k) ?? 0) + 1); }
+export function cardWrites(root: string): number { return written.get(rootKey(root)) ?? 0; }
 
 export async function isDir(p: string): Promise<boolean> {
   try { return (await stat(p)).isDirectory(); } catch { return false; }
@@ -304,7 +315,7 @@ export async function lookForCards(): Promise<DriveLook> {
         if (await isDir(p) && await looksLikeFont(p)) { fontDirs++; if (fontDirs >= 1) break; }
       }
     } catch { /* unreadable */ }
-    out.push({ root: c.root, label: c.label, freeBytes: c.free, totalBytes: c.total, proffie: hasPresetsIni || fontDirs > 0, hasPresetsIni, saberSerial: c.saberSerial, fileSystem: c.fileSystem, empty: isEmptyCard(names), volumeSerial: c.volumeSerial, presets: hasPresetsIni ? await cardPresets(c.root) : null });
+    out.push({ root: c.root, label: c.label, freeBytes: c.free, totalBytes: c.total, proffie: hasPresetsIni || fontDirs > 0, hasPresetsIni, saberSerial: c.saberSerial, fileSystem: c.fileSystem, empty: isEmptyCard(names), volumeSerial: c.volumeSerial, presets: hasPresetsIni ? await cardPresets(c.root) : null, writes: cardWrites(c.root) });
   }
   const ms = Date.now() - started;
   if (ms > 3000) console.log(`[sd] the drive list took ${ms} ms (${out.length} removable volume(s))`);
@@ -469,6 +480,7 @@ export async function copyFont(src: string, root: string, options: CopyOptions |
   if (!/^[^\\/:*?"<>|]+$/.test(name)) throw new Error('Font folder name is not valid on an SD card');
   if (/[;,]/.test(name)) throw new Error(`"${name}" has a ; or , in its name, which ProffieOS reads as a break between font folders. Rename the folder first.`);
   await clearLeftovers(root);
+  noteCardWritten(root);
   const dst = join(root, name);
   if (!o.replace && await exists(dst)) throw new Error(`${name} is already on the card`);
   const files = await filesUnder(src);
@@ -527,7 +539,7 @@ export async function clearPresetsFiles(root: string): Promise<string[]> {
     const p = join(root, f);
     if (await exists(p)) { await rm(p, { force: true }); removed.push(f); }
   }
-  if (removed.length) console.log(`[sd] removed ${removed.join(' and ')} from ${root}`);
+  if (removed.length) { noteCardWritten(root); console.log(`[sd] removed ${removed.join(' and ')} from ${root}`); }
   return removed;
 }
 

@@ -8,7 +8,7 @@ const saber = (id: string, over: Partial<SaberRecord> = {}): SaberRecord => ({
   identity: { usbSerial: `USB${id}`, configName: null, version: null, prop: null, buttons: null, installed: null, pixelBlades: [], bladeConfig: null },
   presets: [preset('Loth_Hero;common', 'Hero'), preset('Dark;common', 'Dark')], ...over,
 });
-const card = (root: string, over: Partial<CardInfo> = {}): CardInfo => ({ root, label: null, freeBytes: null, totalBytes: null, proffie: true, hasPresetsIni: true, saberSerial: null, fileSystem: 'FAT32', empty: false, volumeSerial: null, presets: null, ...over });
+const card = (root: string, over: Partial<CardInfo> = {}): CardInfo => ({ root, label: null, freeBytes: null, totalBytes: null, proffie: true, hasPresetsIni: true, saberSerial: null, fileSystem: 'FAT32', empty: false, volumeSerial: null, presets: null, writes: 0, ...over });
 
 const nihilus = saber('nihilus', { cards: [{ serial: '5A1C3F0E', label: 'NIHILUS', at: '' }] });
 const other = saber('other', { presets: [preset('TeensySF', 'Teensy')] });

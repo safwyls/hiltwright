@@ -13,7 +13,7 @@ import { basename, dirname, join } from 'node:path';
 import { FETT263_REQUIRED_VOICE_PACK, hasMenuSounds, parseVoicePackIni, voicePackFolder, type VoicePackStatus } from '@hiltwright/core';
 import { extractZip, listZip } from './unzip';
 import { checkEntryName } from './packCopy';
-import { cardFree, exists, filesUnder, isDir, readVoicePack } from './sd';
+import { cardFree, exists, filesUnder, isDir, noteCardWritten, readVoicePack } from './sd';
 import type { VoicePackInfo } from '../shared/api';
 
 /** Voice packs are 15 to 20 MB in a couple of hundred files; this stops a crafted zip from filling the disk. */
@@ -88,6 +88,7 @@ export async function installVoicePack(file: string, root: string, o: VoicePackI
   const need = FETT263_REQUIRED_VOICE_PACK;
   if (pack.version < need) throw new Error(`${pack.name} is voice pack version ${pack.version}, and the Fett263 controls need version ${need}. Nothing was copied.`);
   await clearVoiceLeftovers(root);
+  noteCardWritten(root);
   // The old entries go only once the new ones are in, so the whole pack must fit beside them.
   const free = o.freeBytes !== undefined ? o.freeBytes : await cardFree(root);
   if (free != null && pack.bytes + Math.max(1e6, pack.bytes * 0.02) > free) throw new Error(`The voice pack needs ${Math.ceil(pack.bytes / 1e6)} MB and the card has ${Math.floor(free / 1e6)} MB free.`);

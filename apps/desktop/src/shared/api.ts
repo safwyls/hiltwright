@@ -85,6 +85,8 @@ export interface CardInfo {
   volumeSerial: string | null;
   /** The font and name of each preset in its presets.ini, or null when it has none. */
   presets: { font: string; name: string }[] | null;
+  /** How many times this app has written to it since it started: what was read from it is current while this holds. */
+  writes: number;
 }
 
 /**

@@ -12,6 +12,7 @@ import { FEATURES } from './features';
 import { Icon } from './Icon';
 import { cardKind, chooseCard, rememberCardChoice, rememberedCardChoice } from './cardChoice';
 import { ownedByText, ownerOfCard } from './cardOwner';
+import { cachedCards, cachedRead, lastCardRead, rememberCards, rememberRead } from './cardCache';
 import { Select } from './Select';
 import { duringWork } from './work';
 import { DRIVE_WAIT_MS, giveCardBack, pickSaberDrive, plainDuration, shareCard, type Baseline, type GiveBackOutcome, type ShareDeps, type WaitProgress } from './cardShare';
@@ -24,15 +25,16 @@ function mb(bytes: number | null): string {
 }
 
 export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (page: 'library') => void }) {
-  const [cards, setCards] = useState<CardInfo[]>([]);
-  const [card, setCard] = useState<CardInfo | null>(null);
-  const [fonts, setFonts] = useState<FontEntry[]>([]);
-  const [tracks, setTracks] = useState<{ name: string; size: number }[]>([]);
+  // Drawn at once from what was last seen and read (cardCache.ts); the look on opening then says whether it still holds.
+  const [cards, setCards] = useState<CardInfo[]>(() => cachedCards() ?? []);
+  const [card, setCard] = useState<CardInfo | null>(() => { const r = lastCardRead(); return r ? cachedCards()?.find((c) => c.root === r.root) ?? null : null; });
+  const [fonts, setFonts] = useState<FontEntry[]>(() => lastCardRead()?.fonts ?? []);
+  const [tracks, setTracks] = useState<{ name: string; size: number }[]>(() => lastCardRead()?.tracks ?? []);
   const [picked, setPicked] = useState<FontEntry | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: '' | 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [voice, setVoice] = useState<VoicePackStatus | null>(null);
+  const [voice, setVoice] = useState<VoicePackStatus | null>(() => lastCardRead()?.voice ?? null);
   const [library, setLibrary] = useState<LibraryFont[]>([]);
   const [copyingNeeded, setCopyingNeeded] = useState<string | null>(null);
   useEffect(() => { void api().fontLibrary.list().then(setLibrary).catch(() => setLibrary([])); }, []);
@@ -192,10 +194,15 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
   const [scanning, setScanning] = useState(false);
   const [noAnswer, setNoAnswer] = useState(false);
   const scanGen = useRef(0);
-  const scan = useCallback(async () => {
+  /**
+   * Look for cards, and read the chosen one. What was read before (cardCache.ts) is kept while it still describes the
+   * card, so coming back to this page shows it at once and the look runs quietly; `fresh` (Look again) reads it anyway.
+   */
+  const scan = useCallback(async (fresh = false) => {
     const gen = ++scanGen.current;
     const current = () => gen === scanGen.current;
-    setScanning(true);
+    // With an earlier read on show, the drive look runs without holding up the page; reading the card again does not.
+    if (fresh || !lastCardRead()) setScanning(true);
     try {
       const look = await api().sd.look();
       if (!current()) return;
@@ -217,6 +224,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
         }
       }
       setCards(found);
+      rememberCards(found);
       // A card the connected saber shares is its own: remembered by its serial number, so it is known in a reader too.
       const sharing = liveRef.current ? meRef.current : null;
       const toLink = sharing?.identity.usbSerial ? found.find((c) => c.saberSerial === sharing.identity.usbSerial && c.volumeSerial && !sharing.cards?.some((x) => x.serial === c.volumeSerial)) : undefined;
@@ -227,12 +235,20 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
       const best = chooseCard(found, { ...pickRef.current, ownRoots: ownRootsIn(found) }).card;
       setCard(best);
       if (best) {
+        const kept = fresh ? null : cachedRead(best);
+        if (kept) {
+          setFonts(kept.fonts); setTracks(kept.tracks); setVoice(kept.voice);
+          console.log(`[sd] card ${best.root} unchanged since it was read ${Math.round((Date.now() - kept.at) / 1000)} s ago: not read again`);
+          return;
+        }
+        setScanning(true);
         setFonts([]); setTracks([]); setVoice(null);
         const [f, t, vp] = await Promise.all([api().sd.listFonts(best.root), api().sd.listTracks(best.root), api().sd.voicePack(best.root)]);
         if (!current()) { console.log(`[sd] reading ${best.root} finished after it was no longer wanted; dropped`); return; }
         setVoice(vp);
         setFonts(f);
         setTracks(t);
+        rememberRead(best, { fonts: f, tracks: t, voice: vp });
         console.log(`[sd] card ${best.root} fonts=${f.length} tracks=${t.length} issues=${f.reduce((a, x) => a + x.report.issues.length, 0)}`);
       } else {
         setFonts([]);
@@ -378,7 +394,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
               </Select></span>
             </label>
           )}
-          <button type="button" className="btn sm" disabled={working} onClick={() => void scan()}><span className="b"><span className="i"><Icon name="undo" />Look again</span></span></button>
+          <button type="button" className="btn sm" disabled={working} onClick={() => void scan(true)}><span className="b"><span className="i"><Icon name="undo" />Look again</span></span></button>
         </div>
         {card && unreadable && !scanning && <div style={{ padding: '0 18px 12px' }}><div className="note red"><Icon name="warn" /><span><b style={{ fontWeight: 600 }}>A saber cannot read this card.</b> It is formatted {card.fileSystem}, and a saber reads only FAT32 cards. With fonts on it the saber will still find no fonts or presets. To use this card, back up anything you need from it, then format it as FAT32. Windows{'’'} own format only offers FAT32 for cards up to 32 GB; a larger card needs a FAT32 formatting tool. Formatting erases everything on the card.</span></div></div>}
         {askFs && card && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>{copyAnywayQuestion(askFs.what, card.root, card.fileSystem)}</span><span className="row" style={{ gap: 8, marginLeft: 'auto' }}><button type="button" className="btn sm warn" onClick={askFs.run}><span className="b"><span className="i">Copy anyway</span></span></button><button type="button" className="btn sm ghost" onClick={() => setAskFs(null)}><span className="b"><span className="i">Cancel</span></span></button></span></div></div>}

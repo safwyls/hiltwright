@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { cardKind, chooseCard, rememberCardChoice, rememberedCardChoice } from '../src/renderer/src/cardChoice';
 import type { CardInfo } from '../src/shared/api';
 
-const card = (root: string, saberSerial: string | null = null, proffie = true, empty = false): CardInfo => ({ root, label: null, freeBytes: null, totalBytes: null, proffie, hasPresetsIni: proffie, saberSerial, fileSystem: null, empty, volumeSerial: null, presets: null });
+const card = (root: string, saberSerial: string | null = null, proffie = true, empty = false): CardInfo => ({ root, label: null, freeBytes: null, totalBytes: null, proffie, hasPresetsIni: proffie, saberSerial, fileSystem: null, empty, volumeSerial: null, presets: null, writes: 0 });
 const reader = card('E:\\');
 const shared = card('H:\\', '209133815232');
 const blankCard = card('G:\\', null, false, true);

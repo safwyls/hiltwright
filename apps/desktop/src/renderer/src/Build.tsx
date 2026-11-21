@@ -9,6 +9,7 @@ import { missingFontWarning } from './fontNeeds';
 import type { Workspace } from './workspace';
 import type { BackupInfo, BuildResult, CardInfo, JobEvent, ToolchainStatus } from '../../shared/api';
 import { saberCardIn, type OwnedBy } from './cardOwner';
+import { cachedRead, rememberRead } from './cardCache';
 
 /** Where the checks on the saber's SD card were made: its card in a reader, the saber itself, or nowhere (card out). */
 type CardCheck = { source: 'reader'; root: string; by: OwnedBy; card: CardInfo; fonts: string[] } | { source: 'saber'; fonts: string[] } | { source: 'out' };
@@ -96,9 +97,15 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
       if (reader && (reader.by !== 'presets' || !own || own.out || !own.fonts.length)) {
         const root = reader.card.root;
         try {
-          const [fonts, vp] = await Promise.all([api().sd.listFonts(root), api().sd.voicePack(root)]);
-          if (!live) return;
-          setCardCheck({ source: 'reader', root, by: reader.by, card: reader.card, fonts: fonts.map((f) => f.name) }); setVoice(vp); setVoiceWhy(null);
+          // What Fonts & SD read from this card, while it is still what is on it (cardCache.ts); else read it, and keep that.
+          let read = cachedRead(reader.card);
+          if (!read) {
+            const [fonts, tracks, vp] = await Promise.all([api().sd.listFonts(root), api().sd.listTracks(root), api().sd.voicePack(root)]);
+            rememberRead(reader.card, { fonts, tracks, voice: vp });
+            read = cachedRead(reader.card);
+          }
+          if (!live || !read) return;
+          setCardCheck({ source: 'reader', root, by: reader.by, card: reader.card, fonts: read.fonts.map((f) => f.name) }); setVoice(read.voice); setVoiceWhy(null);
           return;
         } catch (err) { console.log(`[build] reading the card in the reader (${root}) failed: ${String(err)}`); }
       }
