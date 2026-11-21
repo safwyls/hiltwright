@@ -16,6 +16,8 @@ import { activeWant, wantSerial } from './serialGate';
 import { checkFontDir, copyFont, listFonts, listTracks, lookForCards, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
 import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
+import { inspectVoicePack, installVoicePack } from './voicePackInstall';
+import { listChoices, readCatalogue, voicePackFile } from './voicePackCatalogue';
 import { FontLibrary, type ImportResult } from './fontLibrary';
 import { LIBRARY_PACK_EXT, WRONG_PASSPHRASE, libraryPackNeedsPassphrase } from './fontLibraryPack';
 import { ContributorStore, cleanUrl, type CarriedContributor } from './contributors';
@@ -403,6 +405,50 @@ export function registerIpc(): void {
   });
   handle('sd:listTracks', (_e, r: unknown) => listTracks(root(r)));
   handle('sd:voicePack', (_e, r: unknown) => readVoicePack(root(r)));
+  // The Fett263 voice pack: one from the catalogue (bundled in resources/voicepack, or downloaded into the data
+  // folder when picked), or a zip the owner picked here.
+  const voicePackDir = app.isPackaged ? join(process.resourcesPath, 'voicepack') : join(app.getAppPath(), 'resources', 'voicepack');
+  const voicePackCache = join(userData, 'voice-packs');
+  const pickedVoicePacks = new Set<string>();
+  handle('voicePack:list', async () => {
+    const cat = await readCatalogue(voicePackDir);
+    if (!cat) return { packs: [], support: null, source: null, credit: null };
+    return { packs: await listChoices(cat, voicePackDir, voicePackCache), support: cat.support || null, source: cat.source || null, credit: cat.credit || null };
+  });
+  // The author's support page or the thread the packs come from: addresses from the catalogue, never from the page.
+  handle('voicePack:openLink', async (_e, which: unknown) => {
+    const cat = await readCatalogue(voicePackDir);
+    const url = which === 'support' ? cat?.support : which === 'source' ? cat?.source : null;
+    if (!url || !/^https:\/\//.test(url)) throw new Error('No such link');
+    await shell.openExternal(url);
+  });
+  handle('voicePack:pick', async () => {
+    const res = await openDialog('voicePack', { title: 'Choose a voice pack zip', properties: ['openFile'], filters: [{ name: 'Voice pack', extensions: ['zip'] }] });
+    if (res.canceled || !res.filePaths[0]) return null;
+    const { prefix: _prefix, ...info } = await inspectVoicePack(res.filePaths[0]);
+    pickedVoicePacks.add(info.file);
+    return info;
+  });
+  handle('voicePack:install', async (e, r: unknown, source: unknown) => {
+    const cardRoot = root(r);
+    const s = (source ?? {}) as { pack?: unknown; file?: unknown };
+    let file: string;
+    let name: string;
+    if (typeof s.pack === 'string') {
+      const cat = await readCatalogue(voicePackDir);
+      if (!cat) throw new Error('This copy of Hiltwright has no voice pack list. Choose a voice pack zip instead.');
+      const id = str(s.pack, 100);
+      const packName = cat.packs.find((p) => p.id === id)?.name ?? id;
+      name = `the ${packName} voice pack`;
+      file = (await voicePackFile(cat, id, { resDir: voicePackDir, cacheDir: voicePackCache, onBytes: (got, total) => e.sender.send('voicePack:download:progress', { name: packName, got, total }) })).file;
+    } else {
+      file = str(s.file, 1000);
+      if (!pickedVoicePacks.has(file)) throw new Error('Choose the voice pack zip first');
+      name = basename(file);
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return installVoicePack(file, cardRoot, { backupDir: join(userData, 'voice-pack-backups', stamp), onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) });
+  });
   let pickedFonts = new Set<string>();
   handle('sd:pickFont', async () => {
     const res = await openDialog('fontFolder', { title: 'Choose a sound font folder', properties: ['openDirectory'] });

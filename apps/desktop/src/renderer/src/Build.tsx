@@ -2,7 +2,7 @@
 // this page shows the config they make, builds it, and installs: backup → bootloader → write → verify.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { presetsWithoutCommon, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
+import { FETT263_REQUIRED_VOICE_PACK, presetsWithoutCommon, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
 import { firmwareHasStaged, queuedLookIds } from './saberModel';
 import { PROPS } from './Wiring';
 import { missingFontWarning } from './fontNeeds';
@@ -490,7 +490,12 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
         {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span className="col" style={{ gap: 8 }}><span>{note.text}</span>{(note.tone === 'red' || step === 'failed') && <SaveDiagnostics small />}</span></div>}
         {notes.map((n) => <div key={n.text} className={`note ${n.tone}`}><Icon name={n.tone === 'green' ? 'check' : n.tone === 'red' ? 'x' : 'warn'} /><span>{n.text}</span></div>)}
         {fontWarn && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 6 }}><span>{fontWarn.text}</span><span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('fonts')}>Fonts &amp; SD</button><button type="button" className="holo" onClick={() => go('presets')}>Presets</button></span></span></div>}
-        {verdict && <div className={`note ${verdict.tone}`}><Icon name={verdict.ok ? 'check' : 'warn'} /><span>{verdict.text}</span></div>}
+        {verdict && <div className={`note ${verdict.tone}`}><Icon name={verdict.ok ? 'check' : 'warn'} />{verdict.ok || !voice ? <span>{verdict.text}</span> : <span className="col" style={{ gap: 6 }}><span>{verdict.text}</span><span className="row" style={{ gap: 8 }}>
+          {/* The pack itself is short: Fonts & SD can put one on the card. Otherwise it is presets leaving common out. */}
+          {!voice.menuSounds || (voice.version ?? 0) < FETT263_REQUIRED_VOICE_PACK
+            ? <button type="button" className="holo" onClick={() => go('fonts')}>Update it on Fonts &amp; SD</button>
+            : <button type="button" className="holo" onClick={() => go('presets')}>Presets</button>}
+        </span></span>}</div>}
         {preview?.warnings.map((w) => <div key={w} className="note"><Icon name="info" /><span>{w}</span></div>)}
         {step === 'failed' && <span className="hint">{STOPPED_HINT}</span>}
       </aside>

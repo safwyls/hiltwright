@@ -101,6 +101,58 @@ export interface PackMesh {
 
 export interface FontSounds { name: string; files: Record<string, ArrayBuffer>; ini: Record<string, string>; smoothsw: Record<string, string>; bytes: number; skipped: number }
 
+/** A Fett263 voice pack zip on this computer, as checked before copying. */
+export interface VoicePackInfo {
+  /** The zip on this computer. */
+  file: string;
+  /** From the zip's name. */
+  name: string;
+  /** voice_pack_version from its voicepack.ini; 1 when it has none, as ProffieOS reads it. */
+  version: number;
+  files: number;
+  bytes: number;
+  /** The first line of the pack's licence or readme, when it has one. */
+  credit: string | null;
+}
+
+/** One voice pack Hiltwright offers (resources/voicepack/catalogue.json, made by scripts/voicepacks.ts). */
+export interface VoicePackCataloguePack {
+  id: string;
+  name: string;
+  /** "Proffie voices" (the plain spoken defaults, by language) or "Characters". */
+  group: string;
+  author: string;
+  year: number | null;
+  /** The pack's own words about itself, from its readme. */
+  about: string;
+  version: number;
+  /** Files and bytes it puts in common. */
+  files: number;
+  bytes: number;
+  /** The zip, on the release (baseUrl + asset) or beside the app when bundled. */
+  asset: string;
+  assetBytes: number;
+  sha256: string;
+  /** A small JPEG data URL of the pack's picture. */
+  picture: string | null;
+}
+
+export interface VoicePackCatalogue {
+  /** The GitHub release holding every pack's zip. */
+  release: string;
+  baseUrl: string;
+  /** The pack that ships inside the app. */
+  bundled: string;
+  /** The credit shown wherever the packs are offered, the author's support link, and where the packs are published. */
+  credit: string;
+  support: string;
+  source: string;
+  packs: VoicePackCataloguePack[];
+}
+
+/** A catalogue pack and whether this computer already has it. */
+export interface VoicePackChoice extends VoicePackCataloguePack { have: 'bundled' | 'downloaded' | null }
+
 export interface FontEntry {
   name: string;
   path: string;
@@ -293,6 +345,19 @@ export interface HiltwrightApi {
     listTracks(root: string): Promise<{ name: string; size: number }[]>;
     /** The Fett263 voice pack in the card's common folder. */
     voicePack(root: string): Promise<VoicePackStatus>;
+    /** The voice packs Hiltwright offers, with the author's links; empty when this build has no catalogue. */
+    voicePacks(): Promise<{ packs: VoicePackChoice[]; support: string | null; source: string | null; credit: string | null }>;
+    /** Open the packs' author's support page, or the thread they come from (addresses from the catalogue). */
+    openVoicePackLink(which: 'support' | 'source'): Promise<void>;
+    /** Ask for a voice pack zip on this computer and check it without copying. */
+    pickVoicePack(): Promise<VoicePackInfo | null>;
+    /**
+     * Put a voice pack in the card's common folder: a catalogue pack by id (downloaded first when this computer does
+     * not have it), or the `file` of a picked zip. What it replaces is copied to this computer first (`backup`). Copy
+     * progress comes through onCopyProgress, download progress through onVoicePackDownload.
+     */
+    installVoicePack(root: string, source: { pack: string } | { file: string }): Promise<{ status: VoicePackStatus; backup: string | null; replaced: number }>;
+    onVoicePackDownload(cb: (p: { name: string; got: number; total: number }) => void): () => void;
     /** Ask the user for a font folder on this computer and check it without copying. */
     pickFont(): Promise<FontEntry | null>;
     copyFont(src: string, root: string, replace: boolean): Promise<FontEntry>;

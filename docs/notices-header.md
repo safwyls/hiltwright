@@ -60,6 +60,13 @@ Beta 1 ships the six free sound fonts from the ProffieOS default SD card, each a
 - SmthFuzz: no author is named in its files. CC BY-SA 4.0.
 - RgueCmdr: no author is named in its files. CC BY-SA 4.0.
 
+## Voice packs
+
+The spoken menu prompts for the Fett263 controls are Brian Conner's (NoSloppy) voice packs, offered with his permission (given to the Hiltwright author on 2026-11-21) and credited to him wherever they are offered. They come from his Crucible thread, https://crucible.hubbe.net/t/additional-voicepacks/4227. His support page is https://www.buymeacoffee.com/BrianConner.
+
+- English A ships inside the app. Like the other plain-voice defaults (English A to G, Chinese, French, Italian, Japanese, Russian and Spanish), it is "Edit Mode Menu Prompts Copyright (c) 2021 Brian Conner", made with text-to-speech, under Creative Commons Attribution 4.0 International (CC BY 4.0), https://creativecommons.org/licenses/by/4.0/. Its licence file is copied to the card with it.
+- The character packs are downloaded only when the owner picks one, from the Hiltwright voicepacks release. Each keeps its own readme and picture. They are shared as fan works: the characters and voices they portray belong to their owners.
+
 ## Theme backdrops
 
 The eight pictures behind the main view (Station, Hoth, Ronin, The Ninth Jedi, Coruscant at night, Crait, Naboo, Kashyyyk) were made with an AI image generator by safwyls, the author of Hiltwright, for this app. They are fan art: Hiltwright is not affiliated with or endorsed by Lucasfilm or Disney, and Star Wars names and designs belong to their owners.

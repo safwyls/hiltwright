@@ -34,6 +34,25 @@ export function hasMenuSounds(names: string[]): boolean {
 }
 
 /**
+ * Where a voice pack sits inside a downloaded package, given every path in it (forward slashes): the folder holding
+ * `voicepack.ini`, or failing that the one holding the menu number sounds, as a prefix ending in `/` ('' for the top).
+ * Packages wrap it differently (`common/`, `<pack name>/common/`, or loose files), so the shallowest folder wins.
+ * Null when the package holds no voice pack. Mac resource-fork folders are ignored.
+ */
+export function voicePackFolder(paths: string[]): string | null {
+  const ini: string[] = []; const mnum: string[] = [];
+  for (const raw of paths) {
+    const parts = raw.replace(/\\/g, '/').split('/').filter(Boolean);
+    if (parts.some((p) => p === '__MACOSX')) continue;
+    const i = parts.findIndex((p) => /^mnum(\d*\.wav)?$/i.test(p));
+    if (i >= 0) mnum.push(parts.slice(0, i).map((p) => `${p}/`).join(''));
+    if (!raw.endsWith('/') && parts.length && parts[parts.length - 1].toLowerCase() === 'voicepack.ini') ini.push(parts.slice(0, -1).map((p) => `${p}/`).join(''));
+  }
+  const pick = (l: string[]) => l.length ? l.reduce((a, b) => (b.split('/').length < a.split('/').length ? b : a)) : null;
+  return pick(ini) ?? pick(mnum);
+}
+
+/**
  * Read the board's answers to `cat common/voicepack.ini` and `dir common`. `cat` on a missing file prints nothing;
  * `dir` prints "<name> <size>" per entry and ends with "Done listing files.".
  */

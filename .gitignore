@@ -20,3 +20,6 @@ packs/
 
 # the free ProffieOS font packs (about 100 MB): rebuilt by npm run fontpacks, shipped by the installer, kept out of the repo
 apps/desktop/resources/packs/
+
+# the bundled voice pack (about 17 MB): fetched from the voicepacks release by npm run dist, or written by npm run voicepacks build
+apps/desktop/resources/voicepack/*.zip

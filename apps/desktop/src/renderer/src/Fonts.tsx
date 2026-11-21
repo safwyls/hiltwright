@@ -2,8 +2,8 @@
 // lists tracks, and copies a font folder from this computer onto the card after checking it.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { copyAnywayQuestion, saberCanReadFileSystem, shouldAskBeforeCopy, type VoicePackStatus } from '@hiltwright/core';
-import type { CardInfo, FontEntry, LibraryFont, PackInfo } from '../../shared/api';
+import { FETT263_REQUIRED_VOICE_PACK, copyAnywayQuestion, saberCanReadFileSystem, shouldAskBeforeCopy, type VoicePackStatus } from '@hiltwright/core';
+import type { CardInfo, FontEntry, LibraryFont, PackInfo, VoicePackChoice, VoicePackInfo } from '../../shared/api';
 import type { Workspace } from './workspace';
 import type { Board } from './board';
 import { XenoImport } from './XenoImport';
@@ -247,6 +247,42 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
     } finally { setBusy(false); setProgress(null); }
   };
 
+  // The Fett263 controls speak their menus from a voice pack in common. Hiltwright can put one there: one of the packs
+  // it offers (NoSloppy's, one bundled and the rest downloaded when picked), or a zip the owner chose. Whatever it
+  // replaces is kept on this computer. The note opens by itself when the card's pack is missing or too old.
+  const prop = ws.model?.prop ?? 'fett263';
+  const fett263Card = !!card && !!voice && kind !== 'other' && prop === 'fett263';
+  const voiceShort = fett263Card && !!voice && (!voice.menuSounds || (voice.version ?? 0) < FETT263_REQUIRED_VOICE_PACK);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const noVoices = { packs: [] as VoicePackChoice[], support: null, source: null, credit: null };
+  const [voiceList, setVoiceList] = useState<{ packs: VoicePackChoice[]; support: string | null; source: string | null; credit: string | null }>(noVoices);
+  const loadVoices = () => api().sd.voicePacks().then(setVoiceList).catch(() => setVoiceList(noVoices));
+  useEffect(() => { void loadVoices(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [voiceId, setVoiceId] = useState('');
+  const voiceSel = voiceList.packs.find((p) => p.id === voiceId) ?? voiceList.packs.find((p) => p.have === 'bundled') ?? voiceList.packs[0] ?? null;
+  const voiceGroups = [...new Set(voiceList.packs.map((p) => p.group))];
+  const [voiceDownload, setVoiceDownload] = useState<{ name: string; got: number; total: number } | null>(null);
+  useEffect(() => api().sd.onVoicePackDownload(setVoiceDownload), []);
+  const [pickedVoice, setPickedVoice] = useState<VoicePackInfo | null>(null);
+  const plainErr = (err: unknown) => String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '');
+  const pickVoice = async () => {
+    setMessage(null);
+    try { const v = await api().sd.pickVoicePack(); if (v) setPickedVoice(v); } catch (err) { setMessage({ tone: 'red', text: plainErr(err) }); }
+  };
+  const putVoicePack = async (source: { pack: string; name: string } | { file: string; name: string }, sure = false) => {
+    if (!card) return;
+    if (shouldAskBeforeCopy(card.fileSystem) && !sure) { setAskFs({ what: `the ${source.name} voice pack`, run: () => void putVoicePack(source, true) }); return; }
+    setAskFs(null);
+    setBusy(true); setProgress(null); setVoiceDownload(null); setMessage(null);
+    try {
+      const r = await duringWork('copy', () => api().sd.installVoicePack(card.root, 'pack' in source ? { pack: source.pack } : { file: source.file }));
+      setVoice(r.status); setPickedVoice(null); setVoiceOpen(false);
+      setMessage({ tone: 'green', text: `The ${source.name} voice pack (version ${r.status.version ?? 1}) is in the common folder.${r.backup ? ` What it replaced is kept on this computer, in ${r.backup}.` : ''}` });
+    } catch (err) {
+      setMessage({ tone: 'red', text: plainErr(err) });
+    } finally { setBusy(false); setProgress(null); setVoiceDownload(null); void loadVoices(); }
+  };
+
   // The fonts this saber's presets name, and where each one is: on the card, in the library ready to copy, or nowhere.
   const { needed, onCard, inLibrary, inPack, copyFrom, copyable } = fontsForPresets(ws.model?.presets ?? [], fonts, library, packs);
   const copyNeeded = async (list: string[], sure = false) => {
@@ -285,6 +321,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                 : choice.ask ? 'Choose the card in the list. Nothing is copied until you do.'
                 : cards.length ? `${cards.length} removable volume${cards.length > 1 ? 's' : ''} seen, none with fonts on it. Put the saber's card in a reader.`
                 : live ? 'Put the card in a reader, or let the saber share it over USB: it stops playing while it does.' : 'Put the saber\'s SD card in a card reader, or plug the saber in and share its card over USB.'}
+              {fett263Card && !voiceShort && !voiceOpen && voiceList.packs.length > 0 && !scanning && <> · <button type="button" className="holo" onClick={() => setVoiceOpen(true)}>Change the voice</button></>}
             </div>
           </div>
           {sharing
@@ -299,7 +336,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
               </>
             : <button type="button" className="btn sm pri" disabled={!live || busy || usbBusy || usb === 'unsupported'} title={live ? 'The saber releases its card and it appears as a drive. The blade goes off and sound stops until you give it back.' : 'Plug the saber in first'} onClick={() => void mountUsb()}><span className="b"><span className="i"><Icon name="usb" />{usb === 'ejecting' ? 'Giving it back…' : 'Share the saber\u2019s card'}</span></span></button>}
           {(choice.choices.length > 1 || choice.ask) && (
-            <label className="field" style={{ minWidth: 200 }}><span className="label">Card</span>
+            <label className="field" style={{ minWidth: 200 }}>
               <span className="input sans"><span className="ellip">{card ? cardName(card) : 'Choose a card…'}</span><span className="caret"><Icon name="down" /></span><Select aria-label="Card" value={card?.root ?? ''} disabled={busy} onChange={(e) => { const root = e.target.value || null; pickRef.current = { ...pickRef.current, chosen: root }; setChosen(root); /* the choice shows at once; its fonts follow (owner, 2026-11-14) */ setCard(cards.find((c) => c.root === root) ?? null); setFonts([]); setTracks([]); setVoice(null); void scan(); }}>
                 {!card && <option value="">Choose a card…</option>}
                 {choice.choices.map((c) => <option key={c.root} value={c.root}>{cardName(c)}</option>)}
@@ -310,7 +347,38 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
         </div>
         {card && unreadable && !scanning && <div style={{ padding: '0 18px 12px' }}><div className="note red"><Icon name="warn" /><span><b style={{ fontWeight: 600 }}>A saber cannot read this card.</b> It is formatted {card.fileSystem}, and a saber reads only FAT32 cards. With fonts on it the saber will still find no fonts or presets. To use this card, back up anything you need from it, then format it as FAT32. Windows{'’'} own format only offers FAT32 for cards up to 32 GB; a larger card needs a FAT32 formatting tool. Formatting erases everything on the card.</span></div></div>}
         {askFs && card && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>{copyAnywayQuestion(askFs.what, card.root, card.fileSystem)}</span><span className="row" style={{ gap: 8, marginLeft: 'auto' }}><button type="button" className="btn sm warn" onClick={askFs.run}><span className="b"><span className="i">Copy anyway</span></span></button><button type="button" className="btn sm ghost" onClick={() => setAskFs(null)}><span className="b"><span className="i">Cancel</span></span></button></span></div></div>}
-        {card && kind === 'empty' && !scanning && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="sd" /><span>This card is empty. Copy the fonts the presets use, or add a font, to start a saber card on it. A saber also needs its <span className="mono">common</span> folder and voice pack, which Hiltwright does not put on the card yet.</span></div></div>}
+        {card && kind === 'empty' && !scanning && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="sd" /><span>This card is empty. Copy the fonts the presets use, or add a font, to start a saber card on it. A saber also needs its <span className="mono">common</span> folder of shared sounds, which Hiltwright does not put on the card yet.</span></div></div>}
+        {fett263Card && voice && (voiceShort || voiceOpen) && !scanning && <div style={{ padding: '0 18px 12px' }}><div className={`note${voiceShort ? ' amber' : ''}`}><Icon name={voiceShort ? 'warn' : 'sd'} /><span className="col grow" style={{ gap: 10, minWidth: 0 }}>
+          <span>{voiceShort
+            ? `${!voice.ini && !voice.menuSounds ? 'This card has no voice pack' : !voice.menuSounds ? 'This card’s voice pack has no menu sounds (mnum)' : `This card has voice pack version ${voice.version ?? 1}`}, and the Fett263 controls need version ${FETT263_REQUIRED_VOICE_PACK}. Until it has one, the saber speaks a voice pack error on every preset change.`
+            : 'Choose the voice the Fett263 controls speak their menus in.'} It goes in the card{'’'}s common folder, and anything it replaces is kept on this computer first.</span>
+          {pickedVoice
+            ? <span><b style={{ fontWeight: 600 }}>{pickedVoice.name}</b>: version {pickedVoice.version}, {pickedVoice.files} files, {mb(pickedVoice.bytes)}.{pickedVoice.credit ? ` ${pickedVoice.credit}.` : ''}{pickedVoice.version < FETT263_REQUIRED_VOICE_PACK ? ` That is too old to stop the error: choose a version ${FETT263_REQUIRED_VOICE_PACK} pack.` : ''}</span>
+            : voiceSel && <span className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
+                {voiceSel.picture ? <img src={voiceSel.picture} alt="" style={{ height: 72, width: 'auto', maxWidth: 128, objectFit: 'cover', borderRadius: 4, flex: 'none' }} /> : null}
+                <span className="col grow" style={{ gap: 6, minWidth: 0 }}>
+                  <label className="field" style={{ maxWidth: 340 }}>
+                    <span className="input sans"><span className="ellip">{voiceSel.name}</span><span className="caret"><Icon name="down" /></span><Select aria-label="Voice" value={voiceSel.id} disabled={working} onChange={(e) => setVoiceId(e.target.value)}>
+                      {voiceGroups.map((g) => <optgroup key={g} label={g}>{voiceList.packs.filter((p) => p.group === g).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>)}
+                    </Select></span>
+                  </label>
+                  {voiceSel.about && <span className="small">{voiceSel.about}</span>}
+                  <span className="hint small">By {voiceSel.author}{voiceSel.year ? `, ${voiceSel.year}` : ''} · {voiceSel.have === 'bundled' ? 'comes with Hiltwright' : voiceSel.have === 'downloaded' ? 'downloaded before' : `downloads ${mb(voiceSel.assetBytes)}`}</span>
+                </span>
+              </span>}
+          <span className="row wrap" style={{ gap: 8 }}>
+            {pickedVoice ? <>
+              {pickedVoice.version >= FETT263_REQUIRED_VOICE_PACK && <button type="button" className="btn sm pri" disabled={working} onClick={() => void putVoicePack({ file: pickedVoice.file, name: pickedVoice.name })}><span className="b"><span className="i"><Icon name="sd" />Copy this pack to the card</span></span></button>}
+              <button type="button" className="btn sm ghost" disabled={working} onClick={() => setPickedVoice(null)}><span className="b"><span className="i">Cancel</span></span></button>
+            </> : <>
+              {voiceSel && <button type="button" className="btn sm pri" disabled={working} onClick={() => void putVoicePack({ pack: voiceSel.id, name: voiceSel.name })}><span className="b"><span className="i"><Icon name="sd" />Put {voiceSel.name} on the card</span></span></button>}
+              <button type="button" className={`btn sm${voiceSel ? '' : ' pri'}`} disabled={working} onClick={() => void pickVoice()}><span className="b"><span className="i">{voiceSel ? 'Use a zip you downloaded…' : 'Choose a voice pack zip…'}</span></span></button>
+              {!voiceShort && <button type="button" className="btn sm ghost" disabled={working} onClick={() => setVoiceOpen(false)}><span className="b"><span className="i">Close</span></span></button>}
+            </>}
+          </span>
+          {voiceList.credit && !pickedVoice && <span className="hint small">{voiceList.credit} {voiceList.support && <button type="button" className="holo" onClick={() => void api().sd.openVoicePackLink('support')}>Support his work</button>}{voiceList.source && <> · <button type="button" className="holo" onClick={() => void api().sd.openVoicePackLink('source')}>Where they come from</button></>}</span>}
+        </span></div></div>}
+        {voiceDownload && busy && !progress && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="sd" /><span>Downloading the {voiceDownload.name} voice pack: {mb(voiceDownload.got)} of {mb(voiceDownload.total)}</span></div></div>}
         {card && kind === 'other' && !scanning && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>This drive has other files on it and no fonts or <span className="mono">presets.ini</span>, so it is not a saber card. Copying a font adds its folder beside those files and changes nothing else.</span></div></div>}
         {usb === 'asking' && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="usb" /><span>Asking the saber to share its card. It lets go of the card once any sound has stopped, which can take several seconds.</span></div></div>}
         {usb === 'waiting' && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="usb" /><span>The saber has let go of its card. Waiting for Windows to open it as a drive: {plainDuration(waitedFor)} so far. Windows can take a minute or two to open a large card over the saber{'’'}s USB link; Hiltwright keeps looking for up to {plainDuration(DRIVE_WAIT_MS)}.{wait?.last === 'no-answer' ? ' Windows did not answer the last look for drives, which usually means it is still opening the card.' : ''} Cancel gives the card back to the saber.</span></div></div>}

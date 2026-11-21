@@ -9,7 +9,7 @@ export const TOUR_REFUSAL = 'Not done: the tour is running, and nothing is saved
 export const TOUR_ALLOWED: ReadonlySet<string> = new Set([
   'library:list', 'banks:list', 'looks:list', 'snapshots:list', 'snapshots:read',
   'usb:proffieSerials', 'usb:portHolders',
-  'sd:locate', 'sd:listFonts', 'sd:hasFolder', 'sd:readFont', 'sd:listTracks', 'sd:voicePack',
+  'sd:locate', 'sd:listFonts', 'sd:hasFolder', 'sd:readFont', 'sd:listTracks', 'sd:voicePack', 'voicePack:list', 'voicePack:openLink',
   'fontlib:status', 'fontlib:list', 'fontlib:detail', 'fontlib:readSound', 'fontlib:readFont', 'fontlib:open',
   'contributors:list', 'contributors:open',
   'hilts:list', 'hilts:model', 'hilts:packFits', 'hilts:room',
@@ -28,7 +28,7 @@ export const TOUR_BLOCKED: ReadonlySet<string> = new Set([
   'looks:add', 'looks:remove', 'looks:update',
   'snapshots:save',
   'usb:wantSerial',
-  'sd:eject', 'sd:pickFont', 'sd:copyFont',
+  'sd:eject', 'sd:pickFont', 'sd:copyFont', 'voicePack:pick', 'voicePack:install',
   'fontlib:setMeta', 'fontlib:remove', 'fontlib:copyToCard', 'fontlib:addZip', 'fontlib:addFolder', 'fontlib:importLegacy', 'fontlib:exportPack', 'fontlib:importPack', 'fontlib:dismissLegacy', 'fontlib:chooseRoot', 'fontlib:resetRoot',
   'contributors:setLogo', 'contributors:clearLogo', 'contributors:setUrl', 'contributors:copy',
   'hilts:add', 'hilts:setFit', 'hilts:setCreator', 'hilts:remove', 'hilts:setPackFit', 'hilts:resetPackFit', 'hilts:setRoom', 'hilts:adopt', 'hilts:export', 'hilts:import',

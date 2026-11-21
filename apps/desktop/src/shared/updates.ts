@@ -163,7 +163,7 @@ export const WORK_CHANNELS: Readonly<Record<string, WorkKind>> = {
   'flash:waitForBootloader': 'install', 'flash:target': 'install', 'flash:leave': 'install', 'flash:backup': 'install', 'flash:write': 'install', 'flash:waitForRuntime': 'install',
   'flash:restore': 'restore',
   'flash:installDriver': 'driver',
-  'sd:copyFont': 'copy', 'fontlib:copyToCard': 'copy', 'packs:copyFontToCard': 'copy', 'import:xenoFont': 'copy',
+  'sd:copyFont': 'copy', 'fontlib:copyToCard': 'copy', 'packs:copyFontToCard': 'copy', 'import:xenoFont': 'copy', 'voicePack:install': 'copy',
   'sd:eject': 'share',
 };
 

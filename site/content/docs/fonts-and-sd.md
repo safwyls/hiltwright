@@ -92,6 +92,10 @@ If a font of that name is already on the card, **Replace on card** is offered, a
 
 Tracks are the music files in the card's tracks folder. Name one in a preset's **Track** field.
 
-The status line reports the voice pack, for example "voice pack version 2" or "not found". Presets that use the Fett263 prop need the voice pack in the `common` folder. Hiltwright does not put the `common` folder or the voice pack on the card for you yet. Build & Install warns if it is missing, and Presets has the "Also use common sounds" switch.
+The status line reports the voice pack, for example "voice pack version 2" or "not found". Presets that use the Fett263 prop need voice pack version 2 in the `common` folder. When the card has none, or an older one, a note says so and offers to put one there. With a good pack already on the card, **Change the voice** on the status line opens the same choice.
+
+Choose a voice from the list: the plain voices in several languages, or one of the character voices. They are Brian Conner's (NoSloppy) voice packs, included with his permission. English A comes with Hiltwright. Any other is downloaded when you put it on the card, checked, and kept on this computer for next time. **Use a zip you downloaded** takes a pack you downloaded yourself, as the zip it came in. Hiltwright checks the zip is version 2 and has its menu sounds before copying.
+
+The pack replaces only its own files and folders in `common`. Other sounds you keep there stay. Whatever it replaces is copied to this computer first, and the note says where. Hiltwright does not put the rest of the `common` folder on the card. Build & Install warns if the voice pack is missing, and Presets has the "Also use common sounds" switch.
 
 Next: [Build & Install](build-and-install.html).

@@ -84,7 +84,7 @@ Fix it on the **Presets** page. The line under a preset's font says "not on the 
 
 ## The saber says "voice pack not found"
 
-This happens with the Fett263 prop when the voice pack is not on the card, is too old, or the preset does not use the `common` folder where it lives. The Build & Install page says which. Copy the voice pack into `common` on the card. If the card has it, turn on **Also use common sounds** for the preset on the Presets page. See [Diagnostics](diagnostics.html).
+This happens with the Fett263 prop when the voice pack is not on the card, is too old, or the preset does not use the `common` folder where it lives. The Build & Install page says which. To put a version 2 pack in `common`, use the voice pack note on [Fonts & SD](fonts-and-sd.html). If the card has it, turn on **Also use common sounds** for the preset on the Presets page. See [Diagnostics](diagnostics.html).
 
 ## Fonts show "Missing"
 

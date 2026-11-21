@@ -12,7 +12,8 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "fontpacks": "node scripts/fontpacks.mjs",
-    "dist": "node scripts/fontpacks.mjs --check && electron-vite build && electron-builder --win --publish never",
+    "voicepacks": "node scripts/voicepacks.ts",
+    "dist": "node scripts/fontpacks.mjs --check && node scripts/voicepacks.ts --check && electron-vite build && electron-builder --win --publish never",
     "test": "vitest run",
     "shots": "node scripts/shots.mjs",
     "icons": "electron scripts/icons.mjs",
@@ -79,6 +80,14 @@
       {
         "from": "../../THIRD-PARTY-NOTICES.md",
         "to": "THIRD-PARTY-NOTICES.md"
+      },
+      {
+        "from": "resources/voicepack",
+        "to": "voicepack",
+        "filter": [
+          "*.zip",
+          "catalogue.json"
+        ]
       },
       {
         "from": "resources/packs",

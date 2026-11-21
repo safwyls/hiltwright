@@ -35,11 +35,11 @@ export interface FontEntry {
   report: FontReport;
 }
 
-async function isDir(p: string): Promise<boolean> {
+export async function isDir(p: string): Promise<boolean> {
   try { return (await stat(p)).isDirectory(); } catch { return false; }
 }
 
-async function exists(p: string): Promise<boolean> {
+export async function exists(p: string): Promise<boolean> {
   try { await stat(p); return true; } catch { return false; }
 }
 
@@ -403,7 +403,7 @@ const OLD = '.hiltwright-old-';
 const mbText = (b: number) => `${Math.max(1, Math.round(b / 1e6))} MB`;
 
 /** Every file under `dir`, with its size, relative to `dir`. */
-async function filesUnder(dir: string): Promise<{ rel: string; size: number }[]> {
+export async function filesUnder(dir: string): Promise<{ rel: string; size: number }[]> {
   const out: { rel: string; size: number }[] = [];
   const walk = async (d: string) => {
     for (const e of await readdir(d, { withFileTypes: true })) {
@@ -416,7 +416,7 @@ async function filesUnder(dir: string): Promise<{ rel: string; size: number }[]>
   return out;
 }
 
-async function cardFree(root: string): Promise<number | null> {
+export async function cardFree(root: string): Promise<number | null> {
   try { const s = await statfs(root); return Number(s.bavail) * Number(s.bsize); } catch { return null; }
 }
 

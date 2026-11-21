@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasMenuSounds, presetsWithoutCommon, parseVoicePackIni, voicePackFromSerial, voicePackVerdict } from '../src';
+import { hasMenuSounds, presetsWithoutCommon, parseVoicePackIni, voicePackFolder, voicePackFromSerial, voicePackVerdict } from '../src';
 
 describe('voice pack', () => {
   it('parses voicepack.ini; a file without the key counts as version 1, like ProffieOS', () => {
@@ -13,6 +13,17 @@ describe('voice pack', () => {
     expect(hasMenuSounds(['hum01.wav', 'mnum1.wav', 'mnum2.wav'])).toBe(true);
     expect(hasMenuSounds(['mnum'])).toBe(true);
     expect(hasMenuSounds(['hum.wav', 'minimum.wav'])).toBe(false);
+  });
+
+  it('finds the voice pack inside a package however it is wrapped', () => {
+    // The V2 C-3PO package: common/ at the top, with a readme and picture beside it.
+    expect(voicePackFolder(['a_ReadMe.txt', 'common/', 'common/voicepack.ini', 'common/mnum/', 'common/mnum/mnum1.wav', 'common/mup.wav'])).toBe('common/');
+    // The hubbe.net English packs: wrapped in a folder named after the pack, and no voicepack.ini (version 1).
+    expect(voicePackFolder(['ProffieOS_Voicepack_English_B/common/mup.wav', 'ProffieOS_Voicepack_English_B/common/mnum/mnum1.wav'])).toBe('ProffieOS_Voicepack_English_B/common/');
+    // Loose files, and the shallowest voicepack.ini when a package carries a spare copy deeper down.
+    expect(voicePackFolder(['voicepack.ini', 'mnum1.wav', 'extras/voicepack.ini'])).toBe('');
+    expect(voicePackFolder(['__MACOSX/common/voicepack.ini', 'x/common/voicepack.ini'])).toBe('x/common/');
+    expect(voicePackFolder(['TeensySF/hum.wav', 'TeensySF/config.ini'])).toBeNull();
   });
 
   it('reads the board answers to cat and dir', () => {
