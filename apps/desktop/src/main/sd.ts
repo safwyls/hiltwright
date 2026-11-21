@@ -530,6 +530,28 @@ export function soundKind(fileName: string): string {
 }
 
 /**
+ * Config files an installer left on the card: `.h` files at its top or in a `config` folder that hold a BladeConfig
+ * table. Their text is read so the wiring they describe can be compared with the saber's (configWiring.ts).
+ */
+export async function findConfigFiles(root: string): Promise<{ name: string; text: string }[]> {
+  const out: { name: string; text: string }[] = [];
+  for (const dir of ['', 'config']) {
+    let names: string[] = [];
+    try { names = await readdir(join(root, dir)); } catch { continue; }
+    for (const n of names.filter((x) => /\.h$/i.test(x)).sort()) {
+      const p = join(root, dir, n);
+      try {
+        if ((await stat(p)).size > 512 * 1024) continue;
+        const text = await readFile(p, 'utf8');
+        if (/\bBladeConfig\b/.test(text)) out.push({ name: dir ? `${dir}/${n}` : n, text });
+      } catch { /* unreadable: skip */ }
+      if (out.length >= 8) return out;
+    }
+  }
+  return out;
+}
+
+/**
  * Remove presets.ini and presets.tmp from a card in a reader, so the saber starts with the presets its firmware
  * carries once the card is back in it (staged presets, installed while the card is out). Returns the files removed.
  */

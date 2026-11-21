@@ -102,6 +102,12 @@ export interface SaberConfigModel {
   looks?: LookDef[];
   /** Swappable main blades told apart by their ID resistor. Absent or empty: one blade, no Blade ID. */
   bladeId?: { variants: BladeVariant[] };
+  /**
+   * The installer's config file this saber's wiring is checked against (configWiring.ts): what it said about the
+   * board, buttons and blades when the owner imported or compared it. Build & Install warns when the wiring differs.
+   * The generator ignores it.
+   */
+  wiringReference?: { file: string; from: 'card' | 'file'; at: string; board: BoardModel | null; buttons: number | null; blades: BladeSpec[]; unreadable: { blade: number; text: string }[] };
   /** Extra `#define` lines the caller wants, verbatim without the `#define`. */
   extraDefines?: string[];
   /** Hiltwright version, written into the header. */

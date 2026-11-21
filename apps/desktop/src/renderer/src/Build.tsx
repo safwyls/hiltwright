@@ -2,7 +2,7 @@
 // this page shows the config they make, builds it, and installs: backup → bootloader → write → verify.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FETT263_REQUIRED_VOICE_PACK, parseList, presetsWithoutCommon, propFamily, sdFailureIn, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
+import { FETT263_REQUIRED_VOICE_PACK, compareWiring, differenceText, parseList, presetsWithoutCommon, propFamily, wiringFromConfig, type ConfigWiring, sdFailureIn, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
 import { firmwareHasStaged, queuedLookIds } from './saberModel';
 import { propLabel } from './Wiring';
 import { missingFontWarning } from './fontNeeds';
@@ -72,6 +72,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const cardCheckRef = useRef<CardCheck | null>(null);
   cardCheckRef.current = cardCheck;
   const [lookAgain, setLookAgain] = useState(0);
+  const [cardConfig, setCardConfig] = useState<{ name: string; wiring: ConfigWiring } | null>(null);
   const [linkNote, setLinkNote] = useState<string | null>(null);
   useEffect(() => {
     const me = saber;
@@ -106,6 +107,10 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
           }
           if (!live || !read) return;
           setCardCheck({ source: 'reader', root, by: reader.by, card: reader.card, fonts: read.fonts.map((f) => f.name) }); setVoice(read.voice); setVoiceWhy(null);
+          // An installer's config on the card: its pins are checked against the wiring below.
+          void api().sd.configFiles(root).then((files) => {
+            for (const f of files) { const w = wiringFromConfig(f.text); if (w && live) { setCardConfig({ name: f.name, wiring: w }); return; } }
+          }).catch(() => undefined);
           return;
         } catch (err) { console.log(`[build] reading the card in the reader (${root}) failed: ${String(err)}`); }
       }
@@ -412,6 +417,11 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const cardFonts = cardCheck?.source === 'reader' ? cardCheck.fonts
     : cardCheck?.source === 'saber' && connectedNow && !cardShared && !saber?.planned && cardCheck.fonts.length ? cardCheck.fonts : null;
   const fontWarn = missingFontWarning(willHave, cardFonts);
+  // The installer's config: the one the owner chose on Wiring, else one on the saber's card in a reader. A pin that
+  // differs from it can damage the board, so it is said before anything is built or installed.
+  const pinRef = model?.wiringReference ? { name: model.wiringReference.file, wiring: model.wiringReference } : cardConfig;
+  const pinDiffs = model && pinRef ? compareWiring(model, pinRef.wiring) : [];
+  const pinDanger = pinDiffs.some((d) => d.danger);
   const canBuild = !busy && !!tool?.ready && !!model && !preview?.errors.length;
 
   return (
@@ -543,6 +553,11 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
 
         {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span className="col" style={{ gap: 8 }}><span>{note.text}</span>{(note.tone === 'red' || step === 'failed') && <SaveDiagnostics small />}</span></div>}
         {notes.map((n) => <div key={n.text} className={`note ${n.tone}`}><Icon name={n.tone === 'green' ? 'check' : n.tone === 'red' ? 'x' : 'warn'} /><span>{n.text}</span></div>)}
+        {pinRef && pinDiffs.length > 0 && <div className={`note ${pinDanger ? 'red' : 'amber'}`}><Icon name="warn" /><span className="col" style={{ gap: 6 }}>
+          <span>{pinDanger ? `The wiring differs from ${pinRef.name}, the installer's config. A wrong pin can damage the board: check these before installing.` : `The wiring differs from ${pinRef.name}, the installer's config:`}</span>
+          {pinDiffs.map((d) => <span key={`${d.blade}-${d.what}`} className="small">{differenceText(d)}</span>)}
+          <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('wiring')}>Wiring</button></span>
+        </span></div>}
         {cardCheck?.source === 'reader' && <div className="note"><Icon name="sd" /><span className="col" style={{ gap: 6 }}>
           <span>Fonts and the voice pack were checked on {saber.name}{'’'}s card in the card reader ({cardCheck.root}){cardCheck.by === 'presets' ? ', which Hiltwright knows by its presets' : ''}. Put it back in the saber before you use it.</span>
           <span className="row" style={{ gap: 8 }}>

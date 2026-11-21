@@ -13,7 +13,8 @@ import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
 import { lookUpWanted, portHolders, proffieSerials } from './usb';
 import { activeWant, wantSerial } from './serialGate';
-import { checkFontDir, clearPresetsFiles, copyFont, listFonts, listTracks, lookForCards, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
+import { stat as statFile } from 'node:fs/promises';
+import { checkFontDir, clearPresetsFiles, copyFont, findConfigFiles, listFonts, listTracks, lookForCards, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
 import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
 import { inspectVoicePack, installVoicePack } from './voicePackInstall';
@@ -412,6 +413,15 @@ export function registerIpc(): void {
   handle('sd:listTracks', (_e, r: unknown) => listTracks(root(r)));
   handle('sd:voicePack', (_e, r: unknown) => readVoicePack(root(r)));
   handle('sd:clearPresets', (_e, r: unknown) => clearPresetsFiles(root(r)));
+  handle('sd:configFiles', (_e, r: unknown) => findConfigFiles(root(r)));
+  // A config file from this computer, read so its wiring can be compared and imported; nothing is kept but what the page saves.
+  handle('config:pick', async () => {
+    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePaths: [process.env.HILTWRIGHT_DIALOG_FILE] } : await openDialog('configFile', { title: 'Choose a ProffieOS config file', properties: ['openFile'], filters: [{ name: 'Config file', extensions: ['h'] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    const file = r.filePaths[0];
+    if ((await statFile(file)).size > 512 * 1024) throw new Error(`${basename(file)} is far bigger than a config file should be.`);
+    return { name: basename(file), text: readFileSync(file, 'utf8') };
+  });
   // The Fett263 voice pack: one from the catalogue (bundled in resources/voicepack, or downloaded into the data
   // folder when picked), or a zip the owner picked here.
   const voicePackDir = app.isPackaged ? join(process.resourcesPath, 'voicepack') : join(app.getAppPath(), 'resources', 'voicepack');

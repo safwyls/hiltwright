@@ -358,6 +358,10 @@ export interface HiltwrightApi {
     voicePack(root: string): Promise<VoicePackStatus>;
     /** Remove presets.ini and presets.tmp from a known card (staged presets installed while the card is in a reader). */
     clearPresets(root: string): Promise<string[]>;
+    /** Config files (.h with a BladeConfig) at the top of a known card or in its config folder, with their text. */
+    configFiles(root: string): Promise<{ name: string; text: string }[]>;
+    /** Ask for a config file on this computer and read it; null when the owner cancels. */
+    pickConfig(): Promise<{ name: string; text: string } | null>;
     /** The voice packs Hiltwright offers, with the author's links; empty when this build has no catalogue. */
     voicePacks(): Promise<{ packs: VoicePackChoice[]; support: string | null; source: string | null; credit: string | null }>;
     /** Open the packs' author's support page, or the thread they come from (addresses from the catalogue). */

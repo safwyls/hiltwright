@@ -26,6 +26,12 @@ Start here with every saber.
 | ProffieOS default | |
 | Custom prop file… | A prop file (`.h`) from your computer: a newer or changed version of one of the four, or another prop altogether. |
 
+### The installer's config file
+
+The saber's firmware does not say which pins its blades use: they are compiled into it. The installer's config file does, and installers often leave it on the card. With the saber's card in a card reader, Wiring looks for a config file at the top of the card or in a `config` folder, and shows what it describes: the board, the buttons, and each blade's pixels, data pin and power pins. **Compare with a config file…** reads one from your computer instead.
+
+If the wiring here matches it, Wiring says so. If it differs, each difference is listed; a different pin or number of blades is shown in red, because a wrong pin can damage the board. **Use its wiring** fills in the blades, the buttons and the board from the config (a board read from the saber itself stays). **Check builds against it** keeps it as the reference: Build & Install then warns before installing whenever the wiring here differs from it. Hiltwright reads the common blade forms (`WS281XBladePtr`, `WS2811BladePtr`, `SubBlade`, `SimpleBladePtr`); a blade written another way is named as not readable, so you check that one by hand. A config with several blade configurations (Blade ID) is read from its first.
+
 ### A custom prop file
 
 Choose **Custom prop file…** and pick the file. Hiltwright checks that it is a ProffieOS prop file (it has a `#define PROP_TYPE`) and keeps its own copy. The build puts it next to the props that come with ProffieOS, so it can include them, under a name of its own so none of them is replaced. **Choose another file…** swaps it, and choosing a stock prop and then Custom again goes back to the same file.

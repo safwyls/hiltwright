@@ -3,7 +3,9 @@
 // it is changed; Build & Install compiles from it.
 
 import { useEffect, useRef, useState } from 'react';
-import { parseId, wiringConfirmed, withWiringConfirmation, type BladeVariant, type BoardModel, type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
+import { compareWiring, differenceText, parseId, wiringConfirmed, wiringFromConfig, withWiringConfirmation, type BladeVariant, type BoardModel, type ConfigWiring, type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
+import { saberCardIn } from './cardOwner';
+import { bladeWords, importedBlades, referenceFrom } from './wiringImport';
 import { HardwareEditor } from './Hardware';
 import { FEATURES } from './features';
 import type { Board } from './board';
@@ -93,6 +95,53 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
   };
   useEffect(() => () => { const p = pending.current; if (p) { clearTimeout(p.t); save(p.next); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The installer's config file, when there is one: found on the saber's card in a card reader, or chosen from this
+  // computer. Its pins are the surest source there is (the firmware cannot tell them), so it is shown beside the
+  // wiring here, can fill it in, and is remembered so Build & Install warns when they differ.
+  const [config, setConfig] = useState<{ name: string; from: 'card' | 'file'; where: string | null; wiring: ConfigWiring } | null>(null);
+  const [configNote, setConfigNote] = useState<string | null>(null);
+  useEffect(() => {
+    setConfig(null); setConfigNote(null);
+    if (!saber) return;
+    let live = true;
+    void (async () => {
+      try {
+        const look = await window.hiltwright.sd.look();
+        const own = look.answered ? saberCardIn(look.cards, saber, board.library) : null;
+        if (!own) return;
+        for (const f of await window.hiltwright.sd.configFiles(own.card.root)) {
+          const wiring = wiringFromConfig(f.text);
+          if (wiring && live) { setConfig({ name: f.name, from: 'card', where: own.card.root, wiring }); return; }
+        }
+      } catch (err) { console.log(`[wiring] looking for a config on the card failed: ${String(err)}`); }
+    })();
+    return () => { live = false; };
+  }, [saber?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pickConfig = async () => {
+    setConfigNote(null);
+    try {
+      const f = await window.hiltwright.sd.pickConfig();
+      if (!f) return;
+      const wiring = wiringFromConfig(f.text);
+      if (!wiring) { setConfigNote(`${f.name} has no BladeConfig table, so it says nothing about the wiring.`); return; }
+      setConfig({ name: f.name, from: 'file', where: null, wiring });
+    } catch (err) { setConfigNote(String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')); }
+  };
+  /** Fill in the wiring from the config, and check builds against it. A board read from the saber itself stays. */
+  const useConfigWiring = () => {
+    if (!config || !draft) return;
+    const w = config.wiring;
+    const keepBoard = draft.boardFrom === 'bootloader' || !w.board;
+    change({
+      blades: importedBlades(w, draft.blades),
+      ...(keepBoard ? {} : { board: w.board!, boardFrom: 'owner' as const }),
+      ...(w.buttons === 1 || w.buttons === 2 || w.buttons === 3 ? { buttons: w.buttons } : {}),
+      wiringReference: referenceFrom(config.name, config.from, w),
+    });
+    setConfigNote(keepBoard && w.board && w.board !== draft.board ? `The board stays a Proffieboard ${draft.board}: that was read from the saber itself, and the config says ${w.board}.` : null);
+  };
+  const checkAgainstConfig = () => { if (config) change({ wiringReference: referenceFrom(config.name, config.from, config.wiring) }); };
+
   if (!saber || !info || !draft) {
     return <section className="panel"><div className="pb col" style={{ gap: 6 }}><h3>No saber to wire yet</h3><span className="dim small">Plug a saber in, or start one in the Armory, and describe its wiring here.</span> <button type="button" className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={() => go('armory')}><span className="b"><span className="i">Go to the Armory</span></span></button></div></section>;
   }
@@ -144,6 +193,37 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
             </span></div>
           )}
           {propNote && <div className="note red"><Icon name="x" /><span>{propNote}</span></div>}
+          {config ? (() => {
+            const w = config.wiring;
+            const diffs = compareWiring(draft, w);
+            const danger = diffs.some((d) => d.danger);
+            const kept = draft.wiringReference?.file === config.name;
+            return (
+              <div className={`note${danger ? ' red' : diffs.length || w.unreadable.length ? ' amber' : ' green'}`}><Icon name={diffs.length || w.unreadable.length ? 'warn' : 'check'} /><span className="col" style={{ gap: 6 }}>
+                <span><b style={{ fontWeight: 600 }}>{config.name}</b> {config.from === 'card' ? `on ${saber.name}’s card in the card reader (${config.where})` : 'from this computer'} describes {w.board ? `a Proffieboard ${w.board}, ` : ''}{w.buttons != null ? `${w.buttons} button${w.buttons === 1 ? '' : 's'}, ` : ''}{w.blades.length} blade{w.blades.length === 1 ? '' : 's'}:</span>
+                <span className="col" style={{ gap: 2 }}>{w.blades.map((b, i) => <span key={b.id} className="small mono">Blade {i + 1}: {w.unreadable.some((u) => u.blade === i + 1) ? 'not readable here' : bladeWords(b)}</span>)}</span>
+                {w.unreadable.length > 0 && <span className="small">Hiltwright cannot read {w.unreadable.map((u) => `blade ${u.blade}`).join(', ')} ({w.unreadable[0].text}). Check {w.unreadable.length === 1 ? 'its' : 'their'} pins against the config by hand.</span>}
+                {w.rows > 1 && <span className="small">It has {w.rows} blade configurations (Blade ID); this is the first.</span>}
+                {w.prop && !w.prop.stock && draft.prop !== 'custom' && <span className="small">It uses the prop {w.prop.include.split('/').pop()}. If you have that file, choose it above as a custom prop file.</span>}
+                {diffs.length === 0
+                  ? <span>The wiring here matches it.{kept ? '' : ' Check builds against it, so Build & Install warns if the wiring here ever changes from it.'}</span>
+                  : <span className="col" style={{ gap: 2 }}><span>{danger ? 'The wiring here differs from it. A wrong pin can damage the board:' : 'The wiring here differs from it:'}</span>{diffs.map((d) => <span key={`${d.blade}-${d.what}`} className="small">{differenceText(d)}</span>)}</span>}
+                <span className="row wrap" style={{ gap: 8 }}>
+                  {diffs.length > 0 && w.unreadable.length === 0 && <button type="button" className="btn sm pri" onClick={useConfigWiring}><span className="b"><span className="i">Use its wiring</span></span></button>}
+                  {!kept && <button type="button" className="btn sm" onClick={checkAgainstConfig}><span className="b"><span className="i">Check builds against it</span></span></button>}
+                  {kept && <span className="hint small">Builds are checked against it.</span>}
+                  <button type="button" className="btn sm ghost" onClick={() => void pickConfig()}><span className="b"><span className="i">Another config file…</span></span></button>
+                </span>
+                {configNote && <span className="small">{configNote}</span>}
+              </span></div>
+            );
+          })() : (
+            <div className="row wrap" style={{ gap: 8, alignItems: 'center' }}>
+              {draft.wiringReference && (() => { const d = compareWiring(draft, draft.wiringReference); return <span className={`small${d.some((x) => x.danger) ? '' : ' hint'}`}>{d.length ? `Differs from ${draft.wiringReference.file}: ${d.map(differenceText).join('; ')}.` : `Matches ${draft.wiringReference.file}, the config builds are checked against.`}</span>; })()}
+              <button type="button" className="btn sm ghost" onClick={() => void pickConfig()}><span className="b"><span className="i">Compare with a config file…</span></span></button>
+              {configNote && <span className="small">{configNote}</span>}
+            </div>
+          )}
           {!boardChosen && (
             <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
               <span>Which Proffieboard is this? Check the label on the board (V2.2 or V3.x) and choose it above. Nothing is built until you do.{suggestion ? ` Its config name suggests a ${suggestion}.` : ''}</span>
