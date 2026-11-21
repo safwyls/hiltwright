@@ -10,6 +10,7 @@ import type { SaberRecord } from '../../shared/api';
 import type { Board } from './board';
 import { draftModel, infoFromRecord } from './saberModel';
 import { setWorkingSaber } from './support';
+import { chosenFonts } from './saberFonts';
 
 export interface Workspace {
   /** The saber every step is about, or null when none is remembered yet. */
@@ -46,22 +47,24 @@ export function starterModel(saber: SaberRecord): SaberConfigModel {
 }
 
 /** Where the saber is in the flow, for the Armory's progress card and the next-step buttons. */
-export type FlowStep = 'wiring' | 'presets' | 'fonts' | 'build';
+export type FlowStep = 'wiring' | 'fonts' | 'presets' | 'build';
 export function flowStatus(ws: Workspace): { step: FlowStep; label: string }[] {
   const m = ws.model; const s = ws.saber;
   const wired = wiringConfirmed(m);
   const presets = m?.presets.length ?? 0;
+  const fonts = chosenFonts(m).length;
   const installed = s?.firmware?.at ? new Date(s.firmware.at).toLocaleDateString() : null;
   return [
     { step: 'wiring', label: !m ? 'not started' : `${m.blades.length} blade${m.blades.length === 1 ? '' : 's'}, ${wired ? 'confirmed' : 'not confirmed yet'}` },
+    { step: 'fonts', label: fonts ? `${fonts} chosen` : 'none chosen yet' },
     { step: 'presets', label: presets ? `${presets}${m?.presetsFrom ? ', staged for the next install' : ''}` : 'none yet' },
-    { step: 'fonts', label: 'check the card has every font the presets name' },
     { step: 'build', label: installed ? `installed ${installed}` : 'not installed yet' },
   ];
 }
 export function nextStep(ws: Workspace): FlowStep {
   const m = ws.model;
   if (!m || !wiringConfirmed(m)) return 'wiring';
+  if (!chosenFonts(m).length) return 'fonts';
   if (!m.presets.length) return 'presets';
   return 'build';
 }

@@ -10,6 +10,8 @@ import { Loader, LoadingSpace } from './Loader';
 import { Logo } from './Logo';
 import { Presets } from './Presets';
 import { Fonts } from './Fonts';
+import { FontChoice } from './FontChoice';
+import { chosenFonts } from './saberFonts';
 import { Build } from './Build';
 import { Looks } from './Looks';
 import { Wiring } from './Wiring';
@@ -40,13 +42,13 @@ const Demo = lazy(() => import('./Demo').then((m) => ({ default: m.Demo })));
 
 // The sidebar (docs/install-live-plan.md): the Armory on top, where a saber is picked; Install, the numbered steps that
 // set a saber up and flash it; Live, for adjusting a saber that is plugged in now; the Workshop; and Tools.
-type Page = 'armory' | 'wiring' | 'presets' | 'fonts' | 'build' | 'live-presets' | 'diag' | 'live-card' | 'looks' | 'editor' | 'library' | 'contributors' | 'demo' | 'settings' | 'about';
+type Page = 'armory' | 'wiring' | 'fonts' | 'presets' | 'build' | 'live-presets' | 'diag' | 'live-card' | 'looks' | 'editor' | 'library' | 'contributors' | 'demo' | 'settings' | 'about';
 const NAV: { section: string; pages: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name']; step?: number }[] }[] = [
   { section: '', pages: [{ id: 'armory', title: 'Armory', icon: 'armory' }] },
   { section: 'Install', pages: [
     { id: 'wiring', title: 'Wiring', icon: 'blade', step: 1 },
-    { id: 'presets', title: 'Presets', icon: 'presets', step: 2 },
-    { id: 'fonts', title: 'Fonts & SD', icon: 'fonts', step: 3 },
+    { id: 'fonts', title: 'Fonts', icon: 'fonts', step: 2 },
+    { id: 'presets', title: 'Presets', icon: 'presets', step: 3 },
     { id: 'build', title: 'Build & Install', icon: 'build', step: 4 },
   ] },
   { section: 'Live', pages: [
@@ -64,7 +66,7 @@ const NAV: { section: string; pages: { id: Page; title: string; icon: Parameters
   { section: 'Tools', pages: [{ id: 'settings', title: 'Settings', icon: 'gear' }, { id: 'about', title: 'About', icon: 'info' }] },
 ];
 const PAGES = NAV.flatMap((g) => g.pages);
-const TITLE: Record<Page, string> = { armory: 'Armory', wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts & SD', build: 'Build & Install', 'live-presets': 'Live presets', diag: 'Controls', 'live-card': 'Card', looks: 'Styles', editor: 'Style editor', library: 'Font library', contributors: 'Contributors', demo: 'Demo room', settings: 'Settings', about: 'About' };
+const TITLE: Record<Page, string> = { armory: 'Armory', wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts', build: 'Build & Install', 'live-presets': 'Live presets', diag: 'Controls', 'live-card': 'Card', looks: 'Styles', editor: 'Style editor', library: 'Font library', contributors: 'Contributors', demo: 'Demo room', settings: 'Settings', about: 'About' };
 const TOUR_STEPS = flattenTour(TOUR);
 /**
  * The guided tour (Tour.tsx). 'starting': the page underneath has closed, and main is being told to refuse writes;
@@ -231,7 +233,7 @@ export function App() {
           {page === 'armory' ? <Armory board={board} ws={ws} go={go} />
             : page === 'wiring' ? <Wiring ws={ws} board={board} go={go} />
             : page === 'presets' ? <Presets ws={ws} board={board} go={go} mode="install" />
-            : page === 'fonts' ? <Fonts board={board} ws={ws} go={go} />
+            : page === 'fonts' ? <FontChoice ws={ws} go={go} />
             : page === 'build' ? <Build ws={ws} board={board} go={go} />
             : page === 'looks' ? <Looks ws={ws} board={board} initialCreator={styleCreator} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} onEdit={(l) => { setEditingLook(l); setEditorOpen((n) => n + 1); setPage('editor'); }} onNew={() => { setEditingLook(null); setEditorOpen((n) => n + 1); setPage('editor'); }} />
             : page === 'editor' ? <EditorLoader key={editorOpen} lookId={editingLook?.id ?? null}>{(fresh) => (
@@ -350,7 +352,7 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
   const steps = flowStatus(ws);
   const next = nextStep(ws);
   const stepPage: Record<string, Page> = { wiring: 'wiring', presets: 'presets', fonts: 'fonts', build: 'build' };
-  const stepTitle: Record<string, string> = { wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts & SD', build: 'Build & Install' };
+  const stepTitle: Record<string, string> = { wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts', build: 'Build & Install' };
   const cur = ws.saber;
   const plans = ws.plans;
   const adoptable = ws.live && cur && !cur.firmware && !cur.planned && plans.length > 0;
@@ -466,7 +468,7 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
             <div className="row between" style={{ minHeight: 24 }}><b style={{ fontWeight: 600 }} className="ellip">{cur.name}</b><span className="hint">{ws.live ? 'plugged in' : cur.planned ? 'set up ahead' : 'unplugged'}</span></div>
             <div className="inspect">
               {steps.map((st, i) => {
-                const done = (st.step === 'wiring' && wiringConfirmed(ws.model)) || (st.step === 'presets' && !!ws.model?.presets.length) || (st.step === 'build' && !!cur.firmware && !queuedLookIds(ws.model ?? undefined, cur.firmware).length && !ws.model?.presetsFrom);
+                const done = (st.step === 'wiring' && wiringConfirmed(ws.model)) || (st.step === 'fonts' && chosenFonts(ws.model).length > 0) || (st.step === 'presets' && !!ws.model?.presets.length) || (st.step === 'build' && !!cur.firmware && !queuedLookIds(ws.model ?? undefined, cur.firmware).length && !ws.model?.presetsFrom);
                 const now = st.step === next;
                 return (
                   <button key={st.step} type="button" className={`insp ${done ? 'done' : now ? 'now' : ''}`} onClick={() => go(stepPage[st.step])}>

@@ -78,7 +78,8 @@ export function parseId(lines: string[]): number | null {
 
 /** list_fonts and list_tracks print one entry per line, then the SD unmount notice. */
 export function parseList(lines: string[]): string[] {
-  return lines.map((l) => l.trim()).filter((l) => l && !isNoise(l) && !isWhut(l));
+  // A saber that cannot read its card answers list_fonts and list_tracks with its mount error, which is no folder.
+  return lines.map((l) => l.trim()).filter((l) => l && !isNoise(l) && !isWhut(l) && !/^Failed to mount SD card/i.test(l));
 }
 
 export interface ScanIdInfo {

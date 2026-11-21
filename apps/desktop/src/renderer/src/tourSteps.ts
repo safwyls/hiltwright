@@ -124,7 +124,27 @@ export const TOUR: TourChapter[] = [
     ],
   },
   {
-    id: 'presets', name: '2 Presets', page: 'presets', steps: [
+    id: 'fonts', name: '2 Fonts', page: 'fonts', steps: [
+      {
+        title: 'Fonts for this saber',
+        target: 'fontchoice-chosen',
+        text: [
+          'Choose the sound fonts this saber will carry. They are copied onto its card at Build & Install.',
+          'No card or saber is needed for this. Every font a preset names is on this list too.',
+        ],
+      },
+      {
+        title: 'Your font library',
+        target: 'fontchoice-library',
+        text: [
+          'Fonts come from your font library. Add a downloaded font package or a font folder here, and it is chosen at once.',
+          'Six free ProffieOS fonts come with Hiltwright: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'presets', name: '3 Presets', page: 'presets', steps: [
       {
         title: 'Presets',
         target: 'presets-list',
@@ -134,19 +154,11 @@ export const TOUR: TourChapter[] = [
         ],
       },
       {
-        title: 'Live on the saber',
+        title: 'Kept for the next install',
         target: 'presets-state',
         text: [
-          '"Live on the saber" means the saber is plugged in. A change is written to it at once, and shows as saved when the saber reads it back.',
-          'With the example saber, nothing is written.',
-        ],
-      },
-      {
-        title: 'Staged for the next install',
-        target: 'presets-state',
-        text: [
-          'With no saber plugged in, changes are "staged" instead. They wait in Hiltwright and replace the saber\'s presets at the next Build & Install.',
-          'A copy of the saber\'s own presets is kept first, so they can be put back.',
+          'Changes here are "staged": they wait in Hiltwright and replace the saber\'s presets at the next Build & Install. A copy of the saber\'s own is kept first.',
+          'To change a plugged-in saber right away, use Live › Presets instead.',
         ],
       },
       {
@@ -171,44 +183,6 @@ export const TOUR: TourChapter[] = [
         text: [
           'A set is a saved copy of a whole preset list. Save one to reuse it on another saber, or to keep a copy.',
           'Loading a set stages it: it replaces this saber\'s presets at the next install.',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'fonts', name: '3 Fonts & SD', page: 'fonts', steps: [
-      {
-        title: 'The SD card',
-        target: 'fonts-card',
-        text: [
-          'Sound fonts live on the saber\'s SD card. Hiltwright copies them there in one of two ways.',
-          'Put the card in a card reader, or press "Share the saber\'s card" and the saber lends its card over USB. The card shown is the one this computer can see.',
-        ],
-      },
-      {
-        title: 'Fonts on the card',
-        target: 'fonts-table',
-        text: [
-          'Every font folder on the card, checked for the usual faults, such as a missing hum or mixed sound files.',
-          '"Ready" means the saber should play it. Pick a font to see its sounds.',
-        ],
-      },
-      {
-        title: 'Fonts the presets use',
-        target: 'fonts-side',
-        before: ['fonts-tab-presets'],
-        text: [
-          'The font each preset names, and whether it is on the card. A missing one can be copied from your Font library in one click.',
-          'Six free ProffieOS fonts come with Hiltwright, ready to copy: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl.',
-        ],
-      },
-      {
-        title: 'Add a font from this computer',
-        target: 'fonts-side',
-        before: ['fonts-tab-add'],
-        text: [
-          '"Choose folder" copies a font folder from this computer to the card.',
-          'Hiltwright checks the files first, and never changes your original.',
         ],
       },
     ],
@@ -265,7 +239,7 @@ export const TOUR: TourChapter[] = [
         target: 'nav-live',
         text: [
           'Live is for a saber that is already installed and plugged in. Its presets change on the saber at once, with nothing built or flashed.',
-          'It works with any ProffieOS firmware, not only Hiltwright\'s.',
+          '"Live on the saber" means a change is written to it now, and shows as saved when the saber reads it back. It works with any ProffieOS firmware.',
         ],
       },
     ],
@@ -294,9 +268,18 @@ export const TOUR: TourChapter[] = [
     id: 'live-card', name: 'Live card', page: 'live-card', steps: [
       {
         title: 'A small fix on the card',
-        target: 'nav-live',
+        target: 'fonts-card',
         text: [
-          'Share the saber\'s card over its USB cable for a small fix, such as one font. It is slow: a card reader is about 30 times faster.',
+          '"Share the saber\'s card" lends it over the USB cable for a small fix, such as one font. It is slow: a card reader is about 30 times faster.',
+          'The card shown is the one this computer can see, shared or in a reader.',
+        ],
+      },
+      {
+        title: 'Fonts on the card',
+        target: 'fonts-table',
+        text: [
+          'Every font folder on the card, checked for the usual faults, such as a missing hum or mixed sound files.',
+          '"Ready" means the saber should play it. Pick a font to see its sounds.',
         ],
       },
     ],

@@ -19,10 +19,13 @@ export function guessBlades(pixelBlades: number[]): ModelBlade[] {
 }
 
 /** What is known about a saber from its library record alone, shaped like a live board reading. */
+const notMountError = (name: string) => !/^Failed to mount SD card/i.test(name.trim());
+
 export function infoFromRecord(rec: SaberRecord): BoardInfo {
   return {
     version: { version: rec.identity.version ?? '', config: rec.identity.configName, prop: rec.identity.prop, buttons: rec.identity.buttons, installed: rec.identity.installed, major: null },
-    battery: null, volume: null, currentPreset: null, presets: rec.presets, fonts: rec.fonts, tracks: rec.tracks,
+    // Records kept before list_fonts was read properly can list the saber's card error as a font (parseList).
+    battery: null, volume: null, currentPreset: null, presets: rec.presets, fonts: rec.fonts.filter(notMountError), tracks: rec.tracks.filter(notMountError),
     pixelBlades: rec.identity.pixelBlades, bladeConfig: rec.identity.bladeConfig, rejected: [], timings: {}, sdMissing: false,
   };
 }
@@ -128,6 +131,8 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
       return { font: p.font, track: p.track, name: p.name, ...(looks.some(Boolean) ? { looks: blades.map((_b, k) => looks[k] ?? null) } : {}), ...(lookArgs.some(Boolean) ? { lookArgs: blades.map((_b, k) => lookArgs[k] ?? null) } : {}) };
     }),
     looks: saved?.looks ?? [],
+    // The fonts chosen on Install › Fonts.
+    ...(saved?.fonts ? { fonts: saved.fonts } : {}),
     ...(saved?.presetsFrom ? { presetsFrom: saved.presetsFrom } : {}),
     // The owner's wiring confirmation travels with the model; it only counts while the layout matches (see wiringConfirmed).
     ...(saved?.wiringConfirmation ? { wiringConfirmation: saved.wiringConfirmation } : {}),

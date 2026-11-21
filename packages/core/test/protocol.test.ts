@@ -68,6 +68,10 @@ describe('recorded OS 8.10 transcripts (Hiltwright build on the same V2.2)', () 
     expect(parseList(os8('09-list_fonts.txt'))).toHaveLength(18);
     expect(parseList(os8('10-list_tracks.txt'))).toHaveLength(22);
   });
+  it('a saber that cannot read its card lists no fonts, not its error line', () => {
+    expect(parseList(['Failed to mount SD card.', 'Failed to mount SD card.'])).toEqual([]);
+    expect(parseList(['Kylo', 'Failed to mount SD card.', 'Vader'])).toEqual(['Kylo', 'Vader']);
+  });
   it('a Fett263 preset change is all chatter, then the read-back is a clean block', () => {
     const chatter = os8('31-fett263_set_preset_3.txt');
     expect(chatter.length).toBeGreaterThan(15);

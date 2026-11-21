@@ -23,6 +23,7 @@ import type { LibraryFont, SnapshotMeta } from '../../shared/api';
 import { FontPicker } from './FontPicker';
 import { Select } from './Select';
 import { joinFont, splitFont } from './presetFields';
+import { chosenFonts, withPresetFonts } from './saberFonts';
 import { withSlotChoice } from './slotModel';
 import { draftModel, presetBase, presetDrift, withPresetRenamed } from './saberModel';
 
@@ -128,7 +129,8 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
     const next = structuredClone(model);
     fn(next);
     if (!next.presetsFrom) next.presetsFrom = startList(why);
-    await ws.saveModel(next);
+    // A font named here joins the fonts chosen for the saber (Install › Fonts), to be copied at install.
+    await ws.saveModel(withPresetFonts(next));
   };
   // What Live learns about the saber's own presets (a rename, a style in a slot) is kept with its model, unless a list
   // for the next install is waiting there: that list is the owner's, and Live never changes it.
@@ -223,7 +225,7 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
     const loaded = bankToModel(bank, model, allLooks);
     // Counted from the saber as it was when the list first left it: an earlier list's starting point is kept.
     const base = model.presetsFrom?.base ?? presetBase(info);
-    const next = { ...loaded, presetsFrom: { ...loaded.presetsFrom!, ...(base ? { base } : {}) } };
+    const next = withPresetFonts({ ...loaded, presetsFrom: { ...loaded.presetsFrom!, ...(base ? { base } : {}) } });
     await ws.saveModel(next);
     setIx(0);
     setNote({ tone: 'green', text: `"${bank.name}" is loaded: ${bank.presets.length} preset${bank.presets.length === 1 ? '' : 's'}, staged for the next install${live ? `, replacing what is on ${saber.name}` : ''}.` });
@@ -250,7 +252,8 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
   const restorePlan = restoring ? planRestore(restoring.presets, info.presets) : null;
   const dropStaged = async () => { const { presetsFrom: _drop, ...rest } = model; await ws.saveModel(rest); setNote(null); };
 
-  const fontFolders = [...new Set([...fonts, ...(cur ? [splitFont(cur.font).folder] : [])])].filter(Boolean);
+  // Install offers the fonts chosen for the saber first; Live, what is known to be on cards.
+  const fontFolders = [...new Set([...(inLive ? [] : chosenFonts(model)), ...fonts, ...(cur ? [splitFont(cur.font).folder] : [])])].filter(Boolean);
   const trackChoices = [...new Set(['', ...tracks, ...(cur ? [cur.track] : [])])];
   const cf = cur ? splitFont(cur.font) : { folder: '', extra: [], common: true };
   // Read-only when locked: every control is off, as while a write to the saber is under way (Live only).
@@ -328,7 +331,7 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
                     <span className="hint ellip grow" title={libFont?.meta.notes || undefined}>
                       {cf.folder && (libFont ? <>{libFont.meta.name}{libFont.meta.maker ? ` by ${libFont.meta.maker}` : ''}</> : libraryRead ? 'Not in the font library' : 'Looking in the font library…')}
                       {fontOnCard === true && <span className="green"> · on the card</span>}
-                      {fontOnCard === false && <> · <span className="amber">not on the card</span>{libFont && <>, <button type="button" className="holo" onClick={() => go(inLive ? 'live-card' : 'fonts')}>copy it over</button></>}</>}
+                      {fontOnCard === false && <> · <span className="amber">not on the card</span>{libFont && (inLive ? <>, <button type="button" className="holo" onClick={() => go('live-card')}>copy it over</button></> : ', copied at install')}</>}
                     </span>
                     <button type="button" className="holo small nowrap" disabled={busy} title="Choose from the fonts in your font library" onClick={() => setPicking(true)}>Choose from library</button>
                   </div>

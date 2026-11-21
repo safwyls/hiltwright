@@ -104,6 +104,11 @@ export interface SaberConfigModel {
   wiringConfirmedAt?: string;
   /** Looks beyond the starters that presets may reference (pasted library styles). */
   looks?: LookDef[];
+  /**
+   * The sound fonts (folder names) chosen for this saber on Install › Fonts, copied onto its card at install. Every
+   * font a preset names counts as chosen too. The generator ignores it: fonts live on the card, not in firmware.
+   */
+  fonts?: string[];
   /** Swappable main blades told apart by their ID resistor. Absent or empty: one blade, no Blade ID. */
   bladeId?: { variants: BladeVariant[] };
   /**
