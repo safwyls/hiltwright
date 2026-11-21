@@ -28,7 +28,7 @@ export function propLabel(m: Pick<SaberConfigModel, 'prop' | 'customProp'> | nul
   return PROPS.find((p) => p.value === m.prop)?.label ?? m.prop;
 }
 
-export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'presets' | 'armory') => void }) {
+export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'presets' | 'armory' | 'fonts') => void }) {
   const { saber, info, model, live } = ws;
   // Edits happen on a local copy and are saved a moment after the last change, so a slider drag is one write. A change
   // still waiting when the page closes is saved then, not dropped (FW22).
@@ -263,8 +263,8 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
           <span className="hint">A wrong pin can leave a blade dark or drive one that is not there. This stays checked until the board or a blade changes.</span>
         </div>
         <div className="stepc">
-          <div className="head"><span className="nbox">2</span><b>Next</b><span className="what">presets</span></div>
-          <button type="button" className="btn pri full" disabled={!confirmed} onClick={() => go('presets')}><span className="b"><span className="i"><Icon name="presets" />Presets</span></span></button>
+          <div className="head"><span className="nbox">2</span><b>Next</b><span className="what">fonts</span></div>
+          <button type="button" className="btn pri full" disabled={!confirmed} onClick={() => go('fonts')}><span className="b"><span className="i"><Icon name="fonts" />Fonts</span></span></button>
           <span className="hint">{confirmed ? 'The saber’s presets: fonts, tracks and a style for each blade.' : 'Confirm the wiring first.'}</span>
         </div>
       </aside>

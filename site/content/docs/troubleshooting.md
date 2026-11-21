@@ -66,13 +66,19 @@ Leave the saber plugged in until the page says **Installed**. If the install sto
 
 Every install reads the saber's whole firmware into a backup first. To undo an install, open the **Backups** tab on Build & Install and press **Put back** on a backup. It writes that firmware to the saber exactly as it was. The presets and fonts on the SD card are not touched. See [Build and Install](build-and-install.html).
 
+## Install says another saber is plugged in, or that the saber has changed
+
+An install only goes to the saber you picked in the [Armory](armory.html). If a different saber is plugged in, Install refuses. Unplug it, or pick that saber.
+
+If Build & Install or Install › Presets says "(saber) has changed since this list was made", the saber's presets were changed after you started your list, for example on Live › Presets. Installing your list would replace those changes. On [Presets](presets.html), choose **Bring in the saber's presets** (your list is kept as a preset set first) or **Keep my list**.
+
 ## The card will not share, or will not give back
 
-On Fonts & SD, **Share the saber's card** makes the card appear as a drive on the computer. It can take 10 to 30 seconds for the drive to show up. While it waits, **Keep waiting** looks again, for up to three minutes. The blade goes off and sound stops until you give the card back.
+On Live › Card, **Share the saber's card** makes the card appear as a drive on the computer. It can take 10 to 30 seconds for the drive to show up, and copying over it is slow: the saber's USB runs at USB 1.1 speed, about 30 times slower than a card reader. For more than a small fix, take the card out and use a card reader. While it waits, **Keep waiting** looks again, for up to three minutes. The blade goes off and sound stops until you give the card back.
 
 **Give the card back** is sometimes refused while File Explorer has the card open. Close that window and try again. The second try usually works. If Hiltwright cannot tell which drive is the saber's card, it asks you to use **Safely Remove** in Windows, then press **Give the card back** again.
 
-A shared card blocks other work on purpose. Preset changes, "Use it in" on the Styles page, and installs all wait until the card is back, because the saber saves its settings on the card. Give the card back first.
+A shared card blocks other work on purpose. Changes on Live › Presets, "Use it in" on the Styles page, and installs all wait until the card is back, because the saber saves its settings on the card. Give the card back first.
 
 If the page says the firmware cannot share its card over USB, it needs Hiltwright firmware. Build and install it, or put the card in a reader.
 
@@ -80,15 +86,15 @@ If the page says the firmware cannot share its card over USB, it needs Hiltwrigh
 
 Each preset names a sound font by its folder name. If the font is not on the card, the saber says "font directory not found" on every preset change. This happens after an install when the presets name fonts such as TeensySF or SmthJedi that were never copied onto the card.
 
-Fix it on the **Presets** page. The line under a preset's font says "not on the card" and offers **copy it over**. Or open **Fonts & SD**, where fonts the presets use but the card lacks are listed with a one-click copy. See [Fonts and SD](fonts-and-sd.html).
+Fix it in one of three ways. On **Build & Install**, the Card step copies the fonts you chose that the card lacks. On [Live › Card](fonts-and-sd.html), the **Preset fonts** tab lists the fonts the presets use but the card lacks, with a one-click copy. Or choose another font on the Presets page. If the font is not in your library, add it on [Fonts](fonts.html) first.
 
 ## The saber says "voice pack not found"
 
-This happens with the Fett263 prop when the voice pack is not on the card, is too old, or the preset does not use the `common` folder where it lives. The Build & Install page says which. To put a version 2 pack in `common`, use the voice pack note on [Fonts & SD](fonts-and-sd.html). If the card has it, turn on **Also use common sounds** for the preset on the Presets page. See [Diagnostics](diagnostics.html).
+This happens with the Fett263 prop when the voice pack is not on the card, is too old, or the preset does not use the `common` folder where it lives. The Build & Install page says which. To put a version 2 pack in `common`, use the voice pack note on [Live › Card](fonts-and-sd.html). If the card has it, turn on **Also use common sounds** for the preset on the Presets page. See [Controls](diagnostics.html).
 
 ## Fonts show "Missing"
 
-On Fonts & SD, a font a preset names can show **Missing**. It means the font is missing from the card, from your [Font library](font-library.html) and from every font pack. Add it to the library, then copy it to the card.
+On Live › Card or on Fonts, a font a preset names can show **Missing**. It means the font is missing from the card, from your [Font library](font-library.html) and from every font pack. Add it to the library, then copy it to the card.
 
 A font with issues in the library shows an amber or red chip. Open the font to read each issue. A font with no hum, or with both `clash1.wav` and `clsh01.wav` style names, is red and needs fixing before it will sound right.
 
@@ -105,7 +111,7 @@ The preview runs the same math as the saber. A few things are left unmodeled.
 
 ## Reporting a problem
 
-1. Press **Save diagnostics** on the Diagnostics page, or on the fault screen or failed build note. It saves a file on your computer and sends nothing.
+1. Press **Save diagnostics** on the Controls page, or on the fault screen or failed build note. It saves a file on your computer and sends nothing.
 2. Open [github.com/safwyls/hiltwright/issues](https://github.com/safwyls/hiltwright/issues).
 3. Say what happened and which step you were on.
 4. Attach the diagnostics file.

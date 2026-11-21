@@ -57,7 +57,7 @@ Pick a row and the panel on the right opens.
 At the foot of the panel:
 
 - **Demo room** opens the font in the Demo room, so you can hear it on a blade.
-- **Copy to card** copies the font's folder onto the saber's SD card. The button shows the card's drive. If the font is already there, it reads **Replace on card**, and asks "Really replace" before it does. If no card is found, the button says **No card**. With more than one card in, it says **Choose the card on Fonts & SD**. See [Fonts and SD](fonts-and-sd.html) for sharing the saber's card over USB.
+- **Copy to card** copies the font's folder onto the saber's SD card. The button shows the card's drive. If the font is already there, it reads **Replace on card**, and asks "Really replace" before it does. If no card is found, the button says **No card**. With more than one card in, it says **Choose the card on Live › Card**. See [Live › Card](fonts-and-sd.html) for sharing the saber's card over USB. To choose which fonts a saber carries, use [Install › Fonts](fonts.html).
 - **Show files** opens the font's folder.
 - **Remove** moves the font's folder to the recycle bin.
 
@@ -76,4 +76,4 @@ If the file holding your names, makers and notes cannot be read, an amber note s
 
 ## Fonts that come with Hiltwright
 
-Six free ProffieOS fonts come with the app: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. They can be copied to a card from [Fonts and SD](fonts-and-sd.html), and played in the Demo room.
+Six free ProffieOS fonts come with the app: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. They can be chosen on [Fonts](fonts.html), copied to a card from [Live › Card](fonts-and-sd.html), and played in the Demo room.

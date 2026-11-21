@@ -10,13 +10,16 @@ Terms are in alphabetical order. If you come from Crystal Focus X, Xenopixel or 
 A small extra LED or LED strip on the saber, apart from the main blade. It can follow the blade, flash on hits or show the battery. Hiltwright treats it as a kind of blade you can give a style to.
 
 ## Backup
-A copy of the saber's whole firmware, saved to your computer before each install. **Put back** on the Backups tab writes one onto the saber exactly as it was. See [Build and Install](build-and-install.html).
+A copy of the saber's whole firmware, saved to your computer before each install. **Put back** on the Backups tab writes one onto the saber exactly as it was. See [Build & Install](build-and-install.html).
 
 ## Blade
 In Hiltwright, anything the saber lights or runs on its own: the main blade, a side blade, a crystal chamber, an accent LED or a motor. You set how many there are on the [Wiring](wiring.html) page.
 
 ## Blast
 An effect for a blaster bolt hitting the blade. A small ring of light spreads from where it lands.
+
+## Card reader
+A small device that plugs into your computer and holds the SD card, so the computer can read it without the saber. It is about 30 times faster than copying over the saber's own USB. See [Build & Install](build-and-install.html).
 
 ## Clash
 An effect for the blade hitting something hard. It flashes where the blade is hit, and the saber plays a clash sound.
@@ -46,10 +49,13 @@ To write firmware onto the board. Hiltwright calls it an install. It is also use
 See Sound font.
 
 ## Install
-Writing newly built firmware to the saber over USB. Hiltwright takes a backup first, writes the firmware, then waits for the saber to start again. Also see Flash.
+Two meanings. In the sidebar, Install is the four steps that set a saber up: Wiring, Fonts, Presets, and Build & Install. As an action, it is writing newly built firmware to the saber over USB. Hiltwright takes a backup first, writes the firmware, then waits for the saber to start again. Also see Flash and Live.
 
 ## Lightning block
 An effect for blocking Force lightning. Crackles run along the blade while it is held.
+
+## Live
+Changing a saber that is plugged in and already installed, with each change written to it at once. It needs no build and no install. The Live pages are Presets, Controls and Card. See [Live › Presets](live-presets.html). The other way is Install.
 
 ## Lockup
 An effect held while two blades are pressed together. The blade glows where they meet, and a lockup sound loops until you let go.
@@ -94,7 +100,7 @@ A swing sound that follows how you move the blade, with pitch and volume rising 
 A folder of sound files a saber plays: hum, ignition, retraction, swings, clashes and more. Some fonts also hold music tracks. The saber knows a font by its folder name. See [Font library](font-library.html).
 
 ## Staged
-Presets that are waiting in Hiltwright instead of being written to the saber. With no saber plugged in, changes are staged. They replace the saber's presets at the next install, after a copy of the saber's own presets is kept.
+Presets that are waiting in Hiltwright for the next install instead of being written to the saber. Everything you change on Install › Presets is staged. They replace the saber's presets at the next install, after a copy of the saber's own presets is kept.
 
 ## Stab
 An effect for thrusting the blade forward. The tip lights and the glow slides back.

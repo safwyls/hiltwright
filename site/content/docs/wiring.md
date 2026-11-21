@@ -1,8 +1,8 @@
 ---
 title: Wiring
 summary: Tell Hiltwright which board, buttons, prop file and blades your saber has, and confirm the pins before anything is installed.
-section: The saber path
-order: 2
+section: Install
+order: 1
 ---
 Step 1 is Wiring. Here you describe the hardware once: the board, the buttons, the prop file and every blade, with the pins each one uses. Old firmware cannot tell Hiltwright this, so you say it and then check it against what your installer wrote down.
 
@@ -20,7 +20,7 @@ Start here with every saber.
 
 | Label | Notes |
 | --- | --- |
-| Fett263 · edit mode, gestures | The default for a saber planned in the Armory. Needs a voice pack on the card, see [Fonts & SD](fonts-and-sd.html). |
+| Fett263 · edit mode, gestures | The default for a saber planned in the Armory. Needs a voice pack on the card, see [Live › Card](fonts-and-sd.html). |
 | SA22C | |
 | BC | |
 | ProffieOS default | |
@@ -90,7 +90,7 @@ Hiltwright will not build while a problem is listed. The pins on a Proffieboard 
 
 Check every data pin and power pin against what the installer wrote down. Then turn on **I checked the wiring**.
 
-This switch exists because a wrong power pin can damage hardware. Nothing is installed until it is on. Until then the **Presets** button under "Next" is grayed out, and the Build & Install page shows "Confirm the wiring to unlock the install."
+This switch exists because a wrong power pin can damage hardware. Nothing is installed until it is on. Until then the **Fonts** button under "Next" is grayed out, and the Build & Install page shows "Confirm the wiring to unlock the install."
 
 The confirmation belongs to the layout you checked. If you change the board or any blade, it turns off again. If you change it back, it comes back. A saber that was set up before this check existed asks you once: "Hiltwright now records which wiring you checked. Check it once more to go on."
 
@@ -106,4 +106,4 @@ Wiring is compiled into the saber's firmware. After you change it, Build & Insta
 
 If the wiring changes while this page is open (for example when you adopt a plan in the Armory), the page shows the new version. If you had an unsaved change, it says "This saber's wiring was changed elsewhere; your last change was not applied."
 
-Next: [Presets](presets.html).
+Next: [Fonts](fonts.html).

@@ -78,7 +78,7 @@ What happens depends on the saber:
 - **Presets are staged.** The style goes into the staged list and reaches the saber with the next install.
 - **Already in.** The button says **Already in** the preset and is disabled. That preset already uses this style on that blade, with these colors. Choose another preset or blade, or try other colors.
 
-The button is also disabled when the saber is plugged in but cannot take a write. If its SD card is out, the page says it has no readable card, because presets are saved on the card. If the card is shared with the computer, give it back on Fonts & SD first. It is disabled too while the board is busy with something else.
+The button is also disabled when the saber is plugged in but cannot take a write. If its SD card is out, the page says it has no readable card, because presets are saved on the card. If the card is shared with the computer, give it back on [Live › Card](fonts-and-sd.html) first. It is disabled too while the board is busy with something else.
 
 With no saber yet, the page says: "No saber yet: start one in the Armory, and styles can be put into its presets before it is ever plugged in."
 

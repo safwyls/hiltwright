@@ -153,7 +153,7 @@ writeFileSync(join(dist, '.nojekyll'), '');
 await build({ entryPoints: [join(here, 'src/blade-demo.ts')], bundle: true, minify: true, format: 'iife', target: 'es2020', outfile: join(dist, 'assets/blade-demo.js'), logLevel: 'warning' });
 
 // ---------- docs ----------
-const SECTIONS = ['Getting started', 'The saber path', 'The workshop', 'Help'];
+const SECTIONS = ['Getting started', 'Install', 'Live', 'The workshop', 'Tools', 'Help'];
 const docs = [];
 for (const f of readdirSync(join(here, 'content/docs')).filter((x) => x.endsWith('.md'))) {
   const { meta, body } = frontmatter(read(join(here, 'content/docs', f)));

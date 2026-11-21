@@ -1,12 +1,10 @@
 ---
-title: Diagnostics
+title: Controls
 summary: Change a saber's volume and brightness, try effects, send ProffieOS commands, and save a file to attach to a problem report.
-section: Help
-order: 1
+section: Live
+order: 2
 ---
-The Diagnostics page is a workbench for a plugged-in saber. It has settings you can change live, buttons that set off effects, a console that talks to the board, and the **Save diagnostics** button you use when something goes wrong. It is under **Tools** in the sidebar, next to About.
-
-![The Diagnostics page: saber settings on the left, the console on the right](shots/clean-44.png)
+Live › Controls is a workbench for a plugged-in saber. It has settings you can change live, buttons that set off effects, a console that talks to the board, and the **Save diagnostics** button you use when something goes wrong. It works with any ProffieOS firmware, and each control is offered only if the firmware answers it. This page was called Diagnostics before.
 
 ## Saber settings
 
@@ -24,7 +22,7 @@ The saber saves these settings itself once its speaker goes quiet, so they survi
 
 **Ignite**, **Retract**, **Clash**, **Blast**, **Force** and **Stab** send the same triggers the buttons and motion sensors send. Clash, Blast, Force and Stab work only while the blade is lit. Keep the blade clear of anything breakable before igniting.
 
-> **Note:** The saber keeps its settings, and plays its effects, from its SD card. While the card is shared with the computer, the sliders and effects are off and an amber note tells you to give the card back on Fonts & SD first.
+> **Note:** The saber keeps its settings, and plays its effects, from its SD card. While the card is shared with the computer, the sliders and effects are off and an amber note tells you to give the card back on [Live › Card](fonts-and-sd.html) first.
 
 ## The console
 
@@ -79,19 +77,4 @@ Your style code, the generated configuration, fonts, hilt models and backups are
 
 Open the file and read it before you attach it. To report a problem, go to [github.com/safwyls/hiltwright/issues](https://github.com/safwyls/hiltwright/issues), say what happened and which step you were on, and attach the file. See also [Troubleshooting](troubleshooting.html).
 
-## About
-
-The **About** page, under Tools, shows the version you are running and the license: GPL-3.0-or-later. It has **Show the licence** and **Show the third-party notices** buttons, and **Open the source**, which opens the source code of this exact build on GitHub. It also says that Hiltwright's own styles were composed from ProffieOS building blocks, taking ideas only from public style descriptions.
-
-![The About page with the version, license and source link](shots/clean-46.png)
-
-### Updates
-
-Versions from 0.2.0-beta.3 on have a working **Updates** panel on the About page. 0.2.0-beta.1 has none, and the one in 0.2.0-beta.2 cannot check: install a newer beta by hand once, over either.
-
-- **Check for updates when Hiltwright starts** is on unless you turn it off. Hiltwright then asks GitHub for its list of releases a little after it starts, and every few hours while it is open. The check sends nothing about your sabers or you; GitHub sees your internet address, as with any web page. A check that fails by itself says nothing, and being offline is not an error.
-- **Check now** checks at once, whether the setting is on or off, and says what it found: "You have the latest version", or "Could not check:" and why.
-- When a newer version is out, the panel says "Version ... is available", and a small chip beside the version, at the bottom right of the window, says so too. Nothing is downloaded until you press **Download version ...**. The panel shows how far the download has got.
-- **Restart to update** closes Hiltwright, runs the installer and opens Hiltwright again. Your sabers, styles and fonts are kept. It waits while a build, a firmware install, a **Put back**, a copy to the card or card sharing is running, and says what to wait for. Quitting Hiltwright never installs an update by itself.
-
-Nothing about updates shows or runs during the guided tour.
+Next: [Card](fonts-and-sd.html).
