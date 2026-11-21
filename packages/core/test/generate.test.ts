@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOARD_NOT_CHOSEN, bladeTables, boardHint, commentSafe, generateConfig, getDefine, hasDefine, parseConfig, presetArrays, readGeneratedHeader, rowToBlades, validateModel, withWiringConfirmation, type LookDef, type ModelBlade, type SaberConfigModel } from '../src';
+import { BOARD_NOT_CHOSEN, bladeTables, boardHint, commentSafe, customPropFileName, generateConfig, inspectPropText, propFamily, getDefine, hasDefine, parseConfig, presetArrays, readGeneratedHeader, rowToBlades, validateModel, withWiringConfirmation, type LookDef, type ModelBlade, type SaberConfigModel } from '../src';
 
 const hote2: SaberConfigModel = {
   name: 'hiltwright_hote2', board: 'V2', boardFrom: 'owner', buttons: 2, prop: 'fett263',
@@ -154,6 +154,41 @@ describe('config-generation audit', () => {
     const { text } = generateConfig({ ...hote2, board: 'V3' });
     expect(text).toContain('#include "proffieboard_v3_config.h"');
     expect(text).not.toContain('proffieboard_v2_config.h');
+  });
+});
+
+describe('a custom prop file', () => {
+  const sha = 'a'.repeat(64);
+  const fettLike = { file: 'saber_fett263_buttons.h', sha256: sha, propType: 'SaberFett263Buttons', like: 'fett263' as const };
+  const unknown = { file: 'my buttons (v2).h', sha256: 'b'.repeat(64), propType: 'MyButtons', like: null };
+
+  it('is recognised by its PROP_TYPE, as one of the stock props or none', () => {
+    expect(inspectPropText('#ifndef X\n  #define PROP_TYPE SaberFett263Buttons\n#endif')).toEqual({ propType: 'SaberFett263Buttons', like: 'fett263' });
+    expect(inspectPropText('#define PROP_TYPE SaberBlasterProp<SaberSA22CButtons, Blaster> // two props')).toEqual({ propType: 'SaberBlasterProp<SaberSA22CButtons, Blaster>', like: null });
+    expect(inspectPropText('// #define PROP_TYPE is not here\nclass X {};').propType).toBeNull();
+  });
+
+  it('is included under a name of its own, with its hash, so a new version of the file is a new build', () => {
+    const a = generateConfig({ ...hote2, prop: 'custom', customProp: fettLike });
+    expect(a.text).toContain('#ifdef CONFIG_PROP\n#include "../props/hiltwright_custom_saber_fett263_buttons.h"\n// Custom prop file saber_fett263_buttons.h, sha256 ' + sha);
+    expect(a.text).not.toContain('"../props/saber_fett263_buttons.h"');
+    const b = generateConfig({ ...hote2, prop: 'custom', customProp: { ...fettLike, sha256: 'c'.repeat(64) } });
+    expect(b.hash).not.toBe(a.hash);
+    expect(customPropFileName(unknown)).toBe('hiltwright_custom_my_buttons_v2.h');
+  });
+
+  it("gets the options of the stock prop it is a version of, and none when it is none of them", () => {
+    expect(hasDefine(parseConfig(generateConfig({ ...hote2, prop: 'custom', customProp: fettLike }).text), 'FETT263_EDIT_MODE_MENU')).toBe(true);
+    expect(hasDefine(parseConfig(generateConfig({ ...hote2, prop: 'custom', customProp: unknown }).text), 'FETT263_EDIT_MODE_MENU')).toBe(false);
+    expect(propFamily({ prop: 'custom', customProp: unknown })).toBeNull();
+    expect(propFamily({ prop: 'sa22c' })).toBe('sa22c');
+  });
+
+  it('is needed, and recorded properly, before anything is built; a stock prop ignores one kept from before', () => {
+    expect(validateModel({ ...hote2, prop: 'custom' })).toContain('Choose the custom prop file on the Wiring page.');
+    expect(validateModel({ ...hote2, prop: 'custom', customProp: { ...fettLike, file: '..\\evil.h' } }).join(' ')).toMatch(/not recorded properly/);
+    expect(validateModel({ ...hote2, prop: 'custom', customProp: fettLike })).toEqual([]);
+    expect(generateConfig({ ...hote2, prop: 'sa22c', customProp: fettLike }).text).toContain('#include "../props/saber_sa22c_buttons.h"');
   });
 });
 

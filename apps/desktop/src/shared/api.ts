@@ -3,7 +3,7 @@
 
 import type { HiltFit, SceneSettings } from './demoSettings';
 import type { BusyFacts, UpdateState } from './updates';
-import type { FirmwareManifest, FontReport, LookDef, PresetBank, PresetRecord, SaberConfigModel, VoicePackStatus } from '@hiltwright/core';
+import type { CustomProp, FirmwareManifest, FontReport, LookDef, PresetBank, PresetRecord, SaberConfigModel, VoicePackStatus } from '@hiltwright/core';
 
 /** A demo-room hilt the owner loaded, as the room lists it: everything but the model's bytes. */
 export interface HiltInfo { id: string; name: string; format: 'glb' | 'obj' | 'stl'; fit: HiltFit; creator?: string }
@@ -477,6 +477,8 @@ export interface HiltwrightApi {
     run(saberId: string, model: SaberConfigModel, force: boolean): Promise<BuildResult>;
     /** The generated config text, without compiling. */
     preview(model: SaberConfigModel): Promise<{ text: string; hash: string; warnings: string[]; errors: string[] }>;
+    /** Ask for a ProffieOS prop file (.h), check it, and keep a copy; null when the owner cancels. */
+    pickProp(): Promise<CustomProp | null>;
   };
   flash: {
     usb(): Promise<UsbState>;

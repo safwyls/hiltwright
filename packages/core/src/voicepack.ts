@@ -79,7 +79,7 @@ export interface VoicePackVerdict { ok: boolean; tone: 'green' | 'amber'; text: 
  * answer). A card that could not be read is not a card without the pack, so that warning says only that it could
  * not check and why: it never says the pack is missing or that the saber will speak an error.
  */
-export function voicePackVerdict(prop: Prop, s: VoicePackStatus | null, couldNotRead?: string | null, presetsWithoutCommon = 0): VoicePackVerdict | null {
+export function voicePackVerdict(prop: Prop | null, s: VoicePackStatus | null, couldNotRead?: string | null, presetsWithoutCommon = 0): VoicePackVerdict | null {
   if (prop !== 'fett263') return null;
   const need = FETT263_REQUIRED_VOICE_PACK;
   const fix = `Put the Fett263 Voice Pack version ${need} in the common folder on the SD card (voicepack.ini plus its menu sounds). Until then the saber speaks a voice pack error on every preset change; everything else works.`;

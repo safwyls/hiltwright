@@ -95,6 +95,8 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
     ...(known ? { boardFrom: known.from } : {}),
     buttons: saved?.buttons ?? ((info.version?.buttons === 1 || info.version?.buttons === 3 ? info.version.buttons : 2) as 1 | 2 | 3),
     prop: overrides.prop ?? saved?.prop ?? 'fett263',
+    // A custom prop file chosen before is kept, also while a stock prop is chosen, so choosing Custom again reuses it.
+    ...(saved?.customProp ? { customProp: saved.customProp } : {}),
     blades,
     // Presets loaded from a bank stay as loaded until they have been installed; otherwise the saber's own are the truth.
     presets: saved?.presetsFrom ? saved.presets.map((p) => ({ ...p, ...(p.looks ? { looks: blades.map((_b, k) => p.looks?.[k] ?? null) } : {}), ...(p.lookArgs ? { lookArgs: blades.map((_b, k) => p.lookArgs?.[k] ?? null) } : {}) })) : info.presets.map((p, i) => {

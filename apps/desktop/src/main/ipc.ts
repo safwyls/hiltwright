@@ -24,6 +24,7 @@ import { ContributorStore, cleanUrl, type CarriedContributor } from './contribut
 import { HiltStore } from './hilts';
 import type { HiltInput, LegacyHilts } from '../shared/api';
 import { buildFirmware } from './build';
+import { customPropsDir, importPropFile } from './customProps';
 import { cleanFirmware, hexMap } from './firmwareRecord';
 import { insideFolder } from './paths';
 import { legalDir, readLegal } from './legal';
@@ -514,6 +515,12 @@ export function registerIpc(): void {
     emit('toolchain', r.ok ? `locked ${toolchainRoot}` : `could not lock ${toolchainRoot}: ${r.text}`);
     return { ...r, status: await toolchainStatus(toolchainRoot) };
   });
+  // A custom prop file: checked, and kept in the data folder under its hash; the model records its name and hash.
+  handle('props:pick', async () => {
+    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePaths: [process.env.HILTWRIGHT_DIALOG_FILE] } : await openDialog('propFile', { title: 'Choose a ProffieOS prop file', properties: ['openFile'], filters: [{ name: 'Prop file', extensions: ['h'] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    return importPropFile(r.filePaths[0], customPropsDir(userData));
+  });
   handle('build:preview', (_e, m: unknown) => {
     const mm = model(m);
     const errors = validateModel(mm);
@@ -529,7 +536,7 @@ export function registerIpc(): void {
     const at = new Date().toISOString();
     try {
       const mm = model(m);
-      const r = await buildFirmware({ toolchainRoot, saberId: id, model: mm, force: force === true, onLine: (l) => emit('build', l) });
+      const r = await buildFirmware({ toolchainRoot, saberId: id, model: mm, force: force === true, customPropsDir: customPropsDir(userData), onLine: (l) => emit('build', l) });
       if (r.ok && r.dfuPath) lastBuildBySaber.set(id, { dfuPath: r.dfuPath, layout: wiringFingerprint(mm.board, mm.blades) });
       lastBuild = { at, saberId: id, ok: r.ok, cached: r.cached, ms: r.ms, textBytes: r.textBytes, flashBytes: r.flashBytes, flashPct: r.flashPct, warnings: r.warnings, problems: r.problems };
       console.log(`[build] result ok=${r.ok} cached=${r.cached} ms=${r.ms} flash=${r.flashPct ?? '?'}% warnings=${r.warnings.length} problems=${r.problems.length}${r.problems[0] ? `: ${r.problems[0]}` : ''}`);

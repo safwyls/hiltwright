@@ -131,6 +131,7 @@ const api: HiltwrightApi = {
   build: {
     run: (saberId, model, force) => ipcRenderer.invoke('build:run', saberId, model, force),
     preview: (model) => ipcRenderer.invoke('build:preview', model),
+    pickProp: () => ipcRenderer.invoke('props:pick'),
   },
   flash: {
     usb: () => ipcRenderer.invoke('flash:usb'),

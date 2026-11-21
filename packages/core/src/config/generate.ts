@@ -10,7 +10,45 @@ import { STARTER_LOOKS, starterLookFor, type FirmwareManifest, type LookDef } fr
 import { wiringProblems } from './pinRules';
 import { LIBRARY_LOOKS, LOOK_FX } from '../lookLibrary';
 
-export type Prop = 'fett263' | 'sa22c' | 'bc' | 'default';
+export type Prop = 'fett263' | 'sa22c' | 'bc' | 'default' | 'custom';
+/** The props that come with ProffieOS, which Hiltwright knows the options and checks of. */
+export type StockProp = Exclude<Prop, 'custom'>;
+
+/**
+ * A prop file the owner loaded (`prop: 'custom'`). The app keeps its text under its SHA-256, and the build puts it in
+ * the saber's own ProffieOS copy beside the stock props, under a name of its own, so a stock prop is never replaced.
+ */
+export interface CustomProp {
+  /** The file name the owner chose, e.g. `saber_fett263_buttons.h`. */
+  file: string;
+  /** SHA-256 of its text (hex). The config names it, so loading a new version of the file makes the build stale. */
+  sha256: string;
+  /** The class its `#define PROP_TYPE` names, e.g. `SaberFett263Buttons`. */
+  propType: string | null;
+  /** The stock prop it is a version of, by its PROP_TYPE: that prop's options and checks then apply to it. */
+  like: StockProp | null;
+}
+
+/** Each stock prop's class, as its `#define PROP_TYPE` names it. */
+export const STOCK_PROP_TYPES: Record<string, StockProp> = { SaberFett263Buttons: 'fett263', SaberSA22CButtons: 'sa22c', SaberBCButtons: 'bc', Saber: 'default' };
+
+/** What a prop file's text says about itself: the class it defines as PROP_TYPE, and the stock prop that class is. */
+export function inspectPropText(text: string): { propType: string | null; like: StockProp | null } {
+  const m = /^[ \t]*#define[ \t]+PROP_TYPE[ \t]+([A-Za-z_][A-Za-z0-9_]*(?:<[^>\r\n]*>)?)/m.exec(text);
+  const propType = m ? m[1].trim() : null;
+  return { propType, like: propType ? STOCK_PROP_TYPES[propType] ?? null : null };
+}
+
+/** The stock prop whose options and checks apply: the chosen one, or the one a custom prop file is a version of. */
+export function propFamily(m: Pick<SaberConfigModel, 'prop' | 'customProp'>): StockProp | null {
+  return m.prop === 'custom' ? m.customProp?.like ?? null : m.prop;
+}
+
+/** The name a custom prop file gets in the saber's ProffieOS props folder: its own name, marked as Hiltwright's. */
+export function customPropFileName(cp: Pick<CustomProp, 'file'>): string {
+  const stem = cp.file.replace(/\.h$/i, '').replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'prop';
+  return `hiltwright_custom_${stem}.h`;
+}
 export type BoardModel = 'V2' | 'V3';
 export type BladeRole = 'main' | 'crystal' | 'accent' | 'side' | 'motor';
 
@@ -38,6 +76,8 @@ export interface SaberConfigModel {
   boardFrom?: 'bootloader' | 'firmware' | 'owner';
   buttons: 1 | 2 | 3;
   prop: Prop;
+  /** The prop file loaded by the owner, when `prop` is 'custom'. */
+  customProp?: CustomProp;
   blades: ModelBlade[];
   /**
    * Presets to carry over. `looks` names the look compiled into each blade slot (index 0 = blade 1); a missing or
@@ -69,7 +109,7 @@ export interface SaberConfigModel {
 }
 
 const BOARD_INCLUDE: Record<BoardModel, string> = { V2: 'proffieboard_v2_config.h', V3: 'proffieboard_v3_config.h' };
-const PROP_INCLUDE: Record<Prop, string> = {
+const PROP_INCLUDE: Record<StockProp, string> = {
   fett263: '../props/saber_fett263_buttons.h',
   sa22c: '../props/saber_sa22c_buttons.h',
   bc: '../props/saber_BC_buttons.h',
@@ -170,6 +210,11 @@ export function validateModel(m: SaberConfigModel): string[] {
   if (!m.boardFrom) errors.push(BOARD_NOT_CHOSEN);
   if (!m.blades.length) errors.push('At least one blade is needed.');
   if (!m.presets.length) errors.push('At least one preset is needed.');
+  if (m.prop === 'custom') {
+    const cp = m.customProp;
+    if (!cp) errors.push('Choose the custom prop file on the Wiring page.');
+    else if (!/^[0-9a-f]{64}$/.test(cp.sha256) || !/\.h$/i.test(cp.file) || /[\\/]/.test(cp.file)) errors.push('The custom prop file is not recorded properly. Choose it again on the Wiring page.');
+  }
   // The same wiring rules, and words, as the Wiring page (pinRules.ts).
   for (const p of wiringProblems(m.blades, m.board)) errors.push(p.message);
   const known = new Set(modelLooks(m).map((l) => l.id));
@@ -233,7 +278,10 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     'COLOR_CHANGE_DIRECT',
     'ENABLE_ALL_EDIT_OPTIONS',
   ];
-  if (m.prop === 'fett263') defines.push('FETT263_EDIT_MODE_MENU', 'FETT263_SAY_BATTERY_PERCENT', 'FETT263_SAY_COLOR_LIST', 'FETT263_SAY_COLOR_LIST_CC');
+  // A custom prop file gets the options of the stock prop it is a version of, and none when it is none of them.
+  const family = propFamily(m);
+  const propName = m.prop === 'custom' ? `custom ${m.customProp?.file ?? ''}`.trim() : m.prop;
+  if (family === 'fett263') defines.push('FETT263_EDIT_MODE_MENU', 'FETT263_SAY_BATTERY_PERCENT', 'FETT263_SAY_COLOR_LIST', 'FETT263_SAY_COLOR_LIST_CC');
   if (swapping) {
     // Blade ID on a pixel blade only reads right with the blade powered, and rescanning makes a swap take effect
     // without a restart. These go in as soon as swapping is on, so readings taken before the rows exist still match.
@@ -255,8 +303,9 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
   const abilityLooks = usedLooks.filter((l) => /EFFECT_USER[1-8]\b/.test(`${l.define ?? ''} ${l.code}`));
   if (abilityLooks.length) {
     const names = abilityLooks.map((l) => `"${l.name}"`).join(', ');
-    if (m.prop === 'fett263') { defines.push('FETT263_SPECIAL_ABILITIES'); warnings.push(`${names} use${abilityLooks.length > 1 ? '' : 's'} special abilities: FETT263_SPECIAL_ABILITIES added, so hold Power and turn the hilt to use them.`); }
-    else if (m.prop !== 'bc') warnings.push(`${names} use${abilityLooks.length > 1 ? '' : 's'} special abilities, which the ${m.prop} prop has no gesture for; that part of the style will not trigger on this saber.`);
+    if (family === 'fett263') { defines.push('FETT263_SPECIAL_ABILITIES'); warnings.push(`${names} use${abilityLooks.length > 1 ? '' : 's'} special abilities: FETT263_SPECIAL_ABILITIES added, so hold Power and turn the hilt to use them.`); }
+    else if (family === null) warnings.push(`${names} use${abilityLooks.length > 1 ? '' : 's'} special abilities. Whether the ${propName} prop has a gesture for them depends on the prop; if it has none, that part of the style will not trigger.`);
+    else if (family !== 'bc') warnings.push(`${names} use${abilityLooks.length > 1 ? '' : 's'} special abilities, which the ${propName} prop has no gesture for; that part of the style will not trigger on this saber.`);
   }
   const manifest: GeneratedConfig['manifest'] = {
     hash: '',
@@ -271,6 +320,7 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
   const summary = {
     generator: m.generator ?? 'hiltwright',
     name: m.name, board: m.board, buttons: m.buttons, prop: m.prop,
+    ...(m.prop === 'custom' && m.customProp ? { customProp: { file: m.customProp.file, sha256: m.customProp.sha256 } } : {}),
     blades: m.blades.map((b) => ({ role: b.role, type: b.type, pixels: b.pixels, wiring: b.wiring })),
     presets: m.presets.length,
     looks: manifest.looks.map((l) => l.id),
@@ -283,7 +333,10 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     '#endif',
     '',
     '#ifdef CONFIG_PROP',
-    `#include "${PROP_INCLUDE[m.prop]}"`,
+    ...(m.prop === 'custom' && m.customProp
+      // The text's hash is in the config, so a new version of the file makes a new build.
+      ? [`#include "../props/${customPropFileName(m.customProp)}"`, `// Custom prop file ${commentSafe(m.customProp.file, 'line')}, sha256 ${m.customProp.sha256}`]
+      : [`#include "${PROP_INCLUDE[m.prop === 'custom' ? 'fett263' : m.prop]}"`]),
     '#endif',
     '',
     '#ifdef CONFIG_STYLES',

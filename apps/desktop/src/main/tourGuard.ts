@@ -35,7 +35,7 @@ export const TOUR_BLOCKED: ReadonlySet<string> = new Set([
   'packs:copyFontToCard',
   'import:pickXeno', 'import:xenoFont',
   'toolchain:install', 'toolchain:cancel', 'toolchain:repair',
-  'build:run',
+  'build:run', 'props:pick',
   'flash:waitForBootloader', 'flash:target', 'flash:leave', 'flash:backup', 'flash:write', 'flash:installDriver', 'flash:restore', 'flash:waitForRuntime',
   'support:save',
   // In-app updates: a check (answered quietly with the state as it is), a download and a restart to update.

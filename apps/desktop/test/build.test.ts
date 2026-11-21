@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtemp, readdir } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { analyzeStyleCode, generateConfig, validateModel, type LookDef, type ModelBlade, type SaberConfigModel } from '@hiltwright/core';
 import { newBlade, withKind } from '../src/renderer/src/hardwareModel';
 import { FLASH_BYTES, buildFirmware, configDefines, propRuleProblems, translateErrors } from '../src/main/build';
-import { toolchainStatus } from '../src/main/toolchain';
+import { toolchainPaths, toolchainStatus } from '../src/main/toolchain';
+import { importPropFile } from '../src/main/customProps';
 
 const root = process.env.HILTWRIGHT_TOOLCHAIN_DIR;
 
@@ -67,6 +68,42 @@ describe.skipIf(!root)('buildFirmware with a real toolchain', () => {
     // Second build hits the cache.
     const again = await buildFirmware({ toolchainRoot: root!, saberId: 'test-hote2', model: hote2 });
     expect(again.cached).toBe(true);
+  });
+});
+
+describe.skipIf(!root)('a custom prop file, with a real toolchain', () => {
+  // Stock props loaded as custom files: their own #includes (prop_base.h and the rest) must resolve from where the build puts them.
+  const asCustom = async (stock: string, saberId: string, model: Partial<SaberConfigModel> = {}) => {
+    const src = await mkdtemp(join(tmpdir(), 'hw-customprop-'));
+    const dir = await mkdtemp(join(tmpdir(), 'hw-props-'));
+    await writeFile(join(src, `my_${stock}`), await readFile(join(toolchainPaths(root!).osDir, 'props', stock), 'utf8'));
+    const customProp = await importPropFile(join(src, `my_${stock}`), dir);
+    const lines: string[] = [];
+    const m: SaberConfigModel = { ...hote2, name: `hiltwright_${saberId.replace(/-/g, '_')}`, prop: 'custom', customProp, ...model };
+    const r = await buildFirmware({ toolchainRoot: root!, saberId, model: m, customPropsDir: dir, onLine: (l) => lines.push(l), force: true });
+    if (!r.ok) console.log(r.problems, r.output.slice(0, 4000));
+    return { r, lines, customProp };
+  };
+
+  it('a version of the Fett263 prop compiles, with the Fett263 options', async () => {
+    const { r, lines, customProp } = await asCustom('saber_fett263_buttons.h', 'test-custom-fett');
+    expect(customProp.like).toBe('fett263');
+    expect(r.ok).toBe(true);
+    expect(lines.some((l) => /using the custom prop file my_saber_fett263_buttons\.h as props\/hiltwright_custom_my_saber_fett263_buttons\.h/.test(l))).toBe(true);
+    expect(configDefines(await readFile(r.configPath, 'utf8')).has('FETT263_EDIT_MODE_MENU')).toBe(true);
+  });
+
+  it('a prop Hiltwright does not know compiles with none of its options added', async () => {
+    const { r, customProp } = await asCustom('saber_shtok_buttons.h', 'test-custom-shtok', { buttons: 2 });
+    expect(customProp).toMatchObject({ propType: 'SaberShtokButtons', like: null });
+    expect(r.ok).toBe(true);
+    expect(configDefines(await readFile(r.configPath, 'utf8')).has('FETT263_EDIT_MODE_MENU')).toBe(false);
+  });
+
+  it('with its kept copy gone, the build stops before compiling and says so', async () => {
+    const r = await buildFirmware({ toolchainRoot: root!, saberId: 'test-custom-gone', model: { ...hote2, prop: 'custom', customProp: { file: 'gone.h', sha256: 'd'.repeat(64), propType: 'X', like: null } }, customPropsDir: await mkdtemp(join(tmpdir(), 'hw-props-')) });
+    expect(r.ok).toBe(false);
+    expect(r.problems[0]).toMatch(/gone\.h is not on this computer any more/);
   });
 });
 

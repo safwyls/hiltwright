@@ -2,9 +2,9 @@
 // this page shows the config they make, builds it, and installs: backup → bootloader → write → verify.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FETT263_REQUIRED_VOICE_PACK, parseList, presetsWithoutCommon, sdFailureIn, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
+import { FETT263_REQUIRED_VOICE_PACK, parseList, presetsWithoutCommon, propFamily, sdFailureIn, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
 import { firmwareHasStaged, queuedLookIds } from './saberModel';
-import { PROPS } from './Wiring';
+import { propLabel } from './Wiring';
 import { missingFontWarning } from './fontNeeds';
 import type { Workspace } from './workspace';
 import type { BackupInfo, BuildResult, CardInfo, JobEvent, ToolchainStatus } from '../../shared/api';
@@ -167,7 +167,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   previewRef.current = preview;
   const modelRef = useRef(model);
   modelRef.current = model;
-  const prop = model?.prop ?? 'fett263';
+  // A custom prop file is checked as the stock prop it is a version of, and not at all when it is none of them.
+  const prop = model ? propFamily(model) : 'fett263';
   // One rule for every page: confirmed only while the board and blades are the layout the owner checked.
   const confirmedWiring = wiringConfirmed(model);
   const setConfirmedWiring = (v: boolean) => { if (model) void ws.saveModel(withWiringConfirmation(model, v)); };
@@ -460,7 +461,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
             <button type="button" className="chip" onClick={() => go('looks')}><Icon name="looks" />Styles</button>
             <button type="button" className="chip" onClick={() => go('fonts')}><Icon name="fonts" />Fonts</button>
           </div>
-          <span className="hint">{PROPS.find((p) => p.value === prop)?.label}{saber?.planned ? ' · planned ahead, not connected yet' : ''}</span>
+          <span className="hint">{propLabel(model)}{saber?.planned ? ' · planned ahead, not connected yet' : ''}</span>
           {!confirmedWiring && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>Confirm the wiring on the Wiring page before building.</span></div>}
           {model?.presetsFrom && !saber?.planned && info && !firmwareHasStaged(model, saber?.firmware) && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="info" /><span>The staged presets replace the {info.presets.length} on the saber once the new firmware is on and checked; a snapshot is kept first.</span></div>}
           {model && firmwareHasStaged(model, saber?.firmware) && (

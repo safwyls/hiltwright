@@ -15,7 +15,15 @@ import { checkBoard, type BoardCheck } from './installFlow';
 
 export const PROPS: { value: Prop; label: string }[] = [
   { value: 'fett263', label: 'Fett263 · edit mode, gestures' }, { value: 'sa22c', label: 'SA22C' }, { value: 'bc', label: 'BC' }, { value: 'default', label: 'ProffieOS default' },
+  { value: 'custom', label: 'Custom prop file…' },
 ];
+
+/** The prop as the pages name it: a stock prop by its label, a custom one by its file. */
+export function propLabel(m: Pick<SaberConfigModel, 'prop' | 'customProp'> | null | undefined): string {
+  if (!m) return '';
+  if (m.prop === 'custom') return m.customProp ? `Custom · ${m.customProp.file}` : 'Custom prop file (not chosen)';
+  return PROPS.find((p) => p.value === m.prop)?.label ?? m.prop;
+}
 
 export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'presets' | 'armory') => void }) {
   const { saber, info, model, live } = ws;
@@ -24,7 +32,7 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
   const [draft, setDraft] = useState<SaberConfigModel | null>(model);
   const pending = useRef<{ t: ReturnType<typeof setTimeout>; next: SaberConfigModel } | null>(null);
   // What this page edits, as last loaded or saved here: a model that differs from it was changed elsewhere.
-  const wiringOf = (m: SaberConfigModel) => JSON.stringify({ board: m.board, boardFrom: m.boardFrom ?? null, buttons: m.buttons, prop: m.prop, blades: m.blades, bladeId: m.bladeId ?? null });
+  const wiringOf = (m: SaberConfigModel) => JSON.stringify({ board: m.board, boardFrom: m.boardFrom ?? null, buttons: m.buttons, prop: m.prop, customProp: m.customProp ?? null, blades: m.blades, bladeId: m.bladeId ?? null });
   const known = useRef<string | null>(model ? wiringOf(model) : null);
   const [outside, setOutside] = useState<string | null>(null);
   // Checking the board: the saber visits its bootloader for its flash size and comes straight back (design D8).
@@ -69,6 +77,20 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
     });
   };
   const change = (patch: Partial<SaberConfigModel>) => update((d) => ({ ...d, ...patch }));
+  // A custom prop file: chosen from this computer, checked and kept by the app; the model records its name and hash.
+  // Choosing "Custom" again reuses the file chosen before; Choose another file replaces it.
+  const [propNote, setPropNote] = useState<string | null>(null);
+  const pickProp = async () => {
+    setPropNote(null);
+    try {
+      const cp = await window.hiltwright.build.pickProp();
+      if (cp) change({ prop: 'custom', customProp: cp });
+    } catch (err) { setPropNote(String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')); }
+  };
+  const chooseProp = (value: Prop) => {
+    if (value !== 'custom') { change({ prop: value }); return; }
+    if (draft?.customProp) change({ prop: 'custom' }); else void pickProp();
+  };
   useEffect(() => () => { const p = pending.current; if (p) { clearTimeout(p.t); save(p.next); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!saber || !info || !draft) {
@@ -107,10 +129,21 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
               </div>
             </label>
             <label className="field grow" style={{ minWidth: 260 }}><span className="label">Prop file (how the buttons behave)</span>
-              <span className="input sans" style={{ height: 32 }}><span className="ellip">{PROPS.find((p) => p.value === draft.prop)?.label}</span><span className="caret"><Icon name="down" /></span>
-                <Select value={draft.prop} aria-label="Prop file" onChange={(e) => change({ prop: e.target.value as Prop })}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></span>
+              <span className="input sans" style={{ height: 32 }}><span className="ellip">{propLabel(draft)}</span><span className="caret"><Icon name="down" /></span>
+                <Select value={draft.prop} aria-label="Prop file" onChange={(e) => chooseProp(e.target.value as Prop)}>{PROPS.map((p) => <option key={p.value} value={p.value}>{p.value === 'custom' && draft.customProp ? `Custom · ${draft.customProp.file}` : p.label}</option>)}</Select></span>
             </label>
           </div>
+          {draft.prop === 'custom' && (
+            <div className={`note${draft.customProp ? '' : ' amber'}`}><Icon name={draft.customProp ? 'info' : 'warn'} /><span className="col" style={{ gap: 8 }}>
+              {draft.customProp
+                ? <span>Building with the prop file <b style={{ fontWeight: 600 }}>{draft.customProp.file}</b> ({draft.customProp.propType ?? 'no PROP_TYPE'}). {draft.customProp.like
+                    ? `It is a version of the ${PROPS.find((p) => p.value === draft.customProp?.like)?.label ?? draft.customProp.like} prop, so Hiltwright adds that prop's options and checks, as it would for the one that comes with ProffieOS.`
+                    : 'Hiltwright does not know this prop, so it adds none of its options and checks nothing about it: options it needs go in the prop file itself. The compiler still checks it.'} Hiltwright keeps its own copy: change the file, then choose it again to build with the new version.</span>
+                : <span>Choose the prop file (a .h file) to build with. It is put beside the props that come with ProffieOS, so it can include them.</span>}
+              <span className="row"><button type="button" className="btn sm" onClick={() => void pickProp()}><span className="b"><span className="i">{draft.customProp ? 'Choose another file…' : 'Choose the prop file…'}</span></span></button></span>
+            </span></div>
+          )}
+          {propNote && <div className="note red"><Icon name="x" /><span>{propNote}</span></div>}
           {!boardChosen && (
             <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
               <span>Which Proffieboard is this? Check the label on the board (V2.2 or V3.x) and choose it above. Nothing is built until you do.{suggestion ? ` Its config name suggests a ${suggestion}.` : ''}</span>

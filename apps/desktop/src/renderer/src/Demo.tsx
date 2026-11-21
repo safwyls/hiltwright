@@ -2,7 +2,7 @@
 // driven by the motion of the saber on screen.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PROPS, SIMULATED_LOOKS, STARTER_LOOKS, argInfo, canSimulateLook, hexToColorWord, propBehaviour, registerLookSim, type LockupType, type LookDef } from '@hiltwright/core';
+import { PROPS, propFamily, SIMULATED_LOOKS, STARTER_LOOKS, argInfo, canSimulateLook, hexToColorWord, propBehaviour, registerLookSim, type LockupType, type LookDef } from '@hiltwright/core';
 import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
 import { DEFAULT_FIT, formatOf, meshFromPack, parseHilt, type HiltFit, type HiltFormat, type SideFile } from './hiltModel';
@@ -64,7 +64,9 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   const toggleHelp = () => setTab((t) => (t === 'help' ? lastTab.current : 'help'));
   toggleHelpRef.current = toggleHelp;
   // The prop file decides what a style can do to the saber (turn it off, answer an ability): the saber's own unless changed here.
-  const saberProp = board.saber?.model?.prop ?? board.library[0]?.model?.prop ?? null;
+  // A custom prop file behaves here as the stock prop it is a version of.
+  const saberModel = board.saber?.model ?? board.library[0]?.model ?? null;
+  const saberProp = saberModel ? propFamily(saberModel) : null;
   const [propKey, setPropKey] = useState<string>(() => saberProp ?? 'fett263');
   const prop = propBehaviour(propKey);
   useEffect(() => { scene.current?.setProp(prop); }, [prop]);

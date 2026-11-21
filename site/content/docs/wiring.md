@@ -16,7 +16,7 @@ Start here with every saber.
 
 - **Board.** Choose "Proffieboard V2" or "Proffieboard V3". The label on the board says V2.2 or V3.x. Until you choose, a warning says "Which Proffieboard is this?" and nothing is built.
 - **Buttons.** Choose 1, 2 or 3.
-- **Prop file (how the buttons behave).** The prop file is the part of ProffieOS that decides what each button press does, such as ignite, change preset or edit mode. Four are offered:
+- **Prop file (how the buttons behave).** The prop file is the part of ProffieOS that decides what each button press does, such as ignite, change preset or edit mode. Four come with ProffieOS, and you can load your own:
 
 | Label | Notes |
 | --- | --- |
@@ -24,6 +24,15 @@ Start here with every saber.
 | SA22C | |
 | BC | |
 | ProffieOS default | |
+| Custom prop file… | A prop file (`.h`) from your computer: a newer or changed version of one of the four, or another prop altogether. |
+
+### A custom prop file
+
+Choose **Custom prop file…** and pick the file. Hiltwright checks that it is a ProffieOS prop file (it has a `#define PROP_TYPE`) and keeps its own copy. The build puts it next to the props that come with ProffieOS, so it can include them, under a name of its own so none of them is replaced. **Choose another file…** swaps it, and choosing a stock prop and then Custom again goes back to the same file.
+
+Hiltwright reads which prop the file is from its `PROP_TYPE`. A version of one of the four, such as a newer Fett263 prop, gets that prop's options and checks: for Fett263, the edit mode and the voice pack check. Any other prop gets none: the options it needs go in the file itself, and the compiler checks the rest.
+
+Hiltwright builds with the copy it kept. After you edit the file, choose it again so the next build uses the new version.
 
 If a saber is plugged in and the board is not known, you can press **Check the board**. The saber restarts into bootloader mode for a few seconds, its flash size is read, and it comes straight back. Nothing is written. If the board was read from the saber at its last install, that choice is fixed and the other one is grayed out.
 

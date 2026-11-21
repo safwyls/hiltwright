@@ -4,7 +4,8 @@
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, join, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
-import { generateConfig, validateModel, type GeneratedConfig, type SaberConfigModel, type SlotLines } from '@hiltwright/core';
+import { customPropFileName, generateConfig, validateModel, type GeneratedConfig, type SaberConfigModel, type SlotLines } from '@hiltwright/core';
+import { readCustomProp } from './customProps';
 import { PROFFIEOS_TAG, cliEnv, run, toolchainPaths, type Progress, type ToolchainPaths, ensureBuildRoot, userBuildRoot } from './toolchain';
 
 export const FQBN: Record<'V2' | 'V3', string> = {
@@ -142,7 +143,7 @@ async function prepareSketch(p: ToolchainPaths, saberDir: string, onLine: Progre
  * Build a saber's firmware. Each saber builds in `<buildRoot>/<saberId>`, by default a folder of the Windows user's own
  * (userBuildRoot): never the shared toolchain folder, so another run's files cannot block it.
  */
-export async function buildFirmware(opts: { toolchainRoot: string; buildRoot?: string; saberId: string; model: SaberConfigModel; onLine?: Progress; force?: boolean }): Promise<BuildResult> {
+export async function buildFirmware(opts: { toolchainRoot: string; buildRoot?: string; saberId: string; model: SaberConfigModel; onLine?: Progress; force?: boolean; customPropsDir?: string }): Promise<BuildResult> {
   const onLine = opts.onLine ?? (() => {});
   const t0 = Date.now();
   const p = toolchainPaths(opts.toolchainRoot);
@@ -164,11 +165,24 @@ export async function buildFirmware(opts: { toolchainRoot: string; buildRoot?: s
   await writeFile(configPath, gen.text, 'utf8');
   const base = { configPath, configHash: gen.hash, flashBytes, warnings: gen.warnings, manifest: gen.manifest, os: PROFFIEOS_TAG, board: opts.model.board };
 
+  // A custom prop file: the version the owner chose, from the app's own copy, checked against its hash.
+  let customProp: { name: string; text: string } | null = null;
+  if (opts.model.prop === 'custom' && opts.model.customProp) {
+    try {
+      if (!opts.customPropsDir) throw new Error('Custom prop files are not available here.');
+      customProp = { name: customPropFileName(opts.model.customProp), text: await readCustomProp(opts.customPropsDir, opts.model.customProp) };
+    } catch (err) {
+      const problem = err instanceof Error ? err.message : String(err);
+      onLine(`build stopped before compiling: ${problem}`);
+      return { ...base, ok: false, cached: false, ms: Date.now() - t0, dfuPath: null, textBytes: null, flashPct: null, problems: [problem], output: '' };
+    }
+  }
+
   // Options the chosen prop refuses together, caught from its own rules before the compiler runs (FW14).
   const propFile = /#ifdef CONFIG_PROP\s*\n#include "([^"]+)"/.exec(gen.text)?.[1];
   if (propFile) {
-    let propText: string | null = null;
-    try { propText = await readFile(join(p.osDir, 'props', basename(propFile)), 'utf8'); } catch { /* not readable: the compiler still checks */ }
+    let propText: string | null = customProp?.text ?? null;
+    if (!customProp) { try { propText = await readFile(join(p.osDir, 'props', basename(propFile)), 'utf8'); } catch { /* not readable: the compiler still checks */ } }
     if (propText) {
       let ino = '';
       try { ino = await readFile(join(p.osDir, 'ProffieOS.ino'), 'utf8'); } catch { /* unknown */ }
@@ -193,6 +207,8 @@ export async function buildFirmware(opts: { toolchainRoot: string; buildRoot?: s
 
   const sketch = await prepareSketch(p, saberDir, onLine);
   await writeFile(inside(join(sketch, 'config', `${opts.model.name}.h`)), gen.text, 'utf8');
+  // Beside the stock props, so its own #includes of them work; under a name of its own, so none is replaced.
+  if (customProp) { await writeFile(inside(join(sketch, 'props', customProp.name)), customProp.text, 'utf8'); onLine(`using the custom prop file ${opts.model.customProp?.file} as props/${customProp.name}`); }
   const inoPath = join(sketch, 'ProffieOS.ino');
   let ino = await readFile(inoPath, 'utf8');
   ino = ino.replace(/^\s*#define CONFIG_FILE\b.*$/gm, (m) => `// ${m.trim()}`);

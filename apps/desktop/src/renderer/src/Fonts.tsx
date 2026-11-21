@@ -2,7 +2,7 @@
 // lists tracks, and copies a font folder from this computer onto the card after checking it.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FETT263_REQUIRED_VOICE_PACK, copyAnywayQuestion, saberCanReadFileSystem, shouldAskBeforeCopy, type VoicePackStatus } from '@hiltwright/core';
+import { FETT263_REQUIRED_VOICE_PACK, propFamily, copyAnywayQuestion, saberCanReadFileSystem, shouldAskBeforeCopy, type VoicePackStatus } from '@hiltwright/core';
 import type { CardInfo, FontEntry, LibraryFont, PackInfo, VoicePackChoice, VoicePackInfo } from '../../shared/api';
 import type { Workspace } from './workspace';
 import type { Board } from './board';
@@ -295,7 +295,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
   // The Fett263 controls speak their menus from a voice pack in common. Hiltwright can put one there: one of the packs
   // it offers (NoSloppy's, one bundled and the rest downloaded when picked), or a zip the owner chose. Whatever it
   // replaces is kept on this computer. The note opens by itself when the card's pack is missing or too old.
-  const prop = ws.model?.prop ?? 'fett263';
+  const prop = ws.model ? propFamily(ws.model) : 'fett263';
   const fett263Card = !!card && !!voice && kind !== 'other' && prop === 'fett263';
   const voiceShort = fett263Card && !!voice && (!voice.menuSounds || (voice.version ?? 0) < FETT263_REQUIRED_VOICE_PACK);
   const [voiceOpen, setVoiceOpen] = useState(false);
