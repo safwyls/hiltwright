@@ -138,6 +138,32 @@ export class Library {
   }
 
   /**
+   * This SD card is the saber's own: it is known by its volume serial number when it is in a card reader. A card
+   * belongs to one saber, so any other saber holding it lets it go.
+   */
+  linkCard(id: string, card: { serial: string; label: string | null }): Promise<SaberRecord> {
+    const serial = card.serial.toUpperCase();
+    if (!/^[0-9A-F]{8}$/.test(serial) && !/^[0-9A-Z]{1,16}$/.test(serial)) return Promise.reject(new Error('Not a volume serial number'));
+    return this.store.update((lib) => {
+      const rec = lib.sabers.find((s) => s.id === id);
+      if (!rec) throw new Error(`Unknown saber ${id}`);
+      for (const s of lib.sabers) if (s !== rec && s.cards?.some((c) => c.serial === serial)) s.cards = s.cards.filter((c) => c.serial !== serial);
+      const rest = (rec.cards ?? []).filter((c) => c.serial !== serial);
+      rec.cards = [...rest, { serial, label: card.label ? card.label.slice(0, 64) : null, at: new Date().toISOString() }].slice(-8);
+      return rec;
+    });
+  }
+
+  unlinkCard(id: string, serial: string): Promise<SaberRecord> {
+    return this.store.update((lib) => {
+      const rec = lib.sabers.find((s) => s.id === id);
+      if (!rec) throw new Error(`Unknown saber ${id}`);
+      rec.cards = (rec.cards ?? []).filter((c) => c.serial !== serial.toUpperCase());
+      return rec;
+    });
+  }
+
+  /**
    * A style was saved again: every saber whose plan holds a copy of it (planned or not) gets the new version for its
    * next build. Returns how many records changed.
    */

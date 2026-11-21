@@ -54,6 +54,8 @@ export interface SaberRecord {
   planned?: boolean;
   /** What its bootloader showed at the last install or restore: the serial it had there, and its flash size and so its board. */
   bootloader?: { serial: string | null; flashBytes: number; board: 'V2' | 'V3'; at: string };
+  /** The SD cards that belong to this saber, by volume serial number, so one in a card reader is known as its own. */
+  cards?: { serial: string; label: string | null; at: string }[];
 }
 
 /** A change to a remembered saber. `presets`: its presets as last read, kept up to date by live edits (preset-editor-fixes D5). */
@@ -79,6 +81,10 @@ export interface CardInfo {
   fileSystem: string | null;
   /** Nothing on it but the system's own files. */
   empty: boolean;
+  /** The volume serial number Windows reports (8 hex digits), unchanged until the card is formatted; null elsewhere. */
+  volumeSerial: string | null;
+  /** The font and name of each preset in its presets.ini, or null when it has none. */
+  presets: { font: string; name: string }[] | null;
 }
 
 /**
@@ -300,6 +306,9 @@ export interface HiltwrightApi {
     adopt(plannedId: string, targetId: string): Promise<SaberRecord>;
     /** Remember what this saber's bootloader showed at an install: its serial and flash size (256 KB or 512 KB only). */
     noteBootloader(id: string, seen: { serial: string | null; flashBytes: number }): Promise<SaberRecord>;
+    /** This SD card (by volume serial number) is the saber's own; any other saber holding it lets it go. */
+    linkCard(id: string, card: { serial: string; label: string | null }): Promise<SaberRecord>;
+    unlinkCard(id: string, serial: string): Promise<SaberRecord>;
   };
   /** Preset banks built without a saber, in userData/banks.json. */
   banks: {
@@ -345,6 +354,8 @@ export interface HiltwrightApi {
     listTracks(root: string): Promise<{ name: string; size: number }[]>;
     /** The Fett263 voice pack in the card's common folder. */
     voicePack(root: string): Promise<VoicePackStatus>;
+    /** Remove presets.ini and presets.tmp from a known card (staged presets installed while the card is in a reader). */
+    clearPresets(root: string): Promise<string[]>;
     /** The voice packs Hiltwright offers, with the author's links; empty when this build has no catalogue. */
     voicePacks(): Promise<{ packs: VoicePackChoice[]; support: string | null; source: string | null; credit: string | null }>;
     /** Open the packs' author's support page, or the thread they come from (addresses from the catalogue). */

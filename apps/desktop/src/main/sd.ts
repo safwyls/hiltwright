@@ -4,7 +4,7 @@
 import { execFile } from 'node:child_process';
 import { copyFile, mkdir, open, readFile, readdir, rename, rm, stat, statfs } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
-import { WAV_HEADER_BYTES, checkFontListing, classifySound, hasMenuSounds, parseVoicePackIni, type FontListingEntry, type FontReport, type VoicePackStatus } from '@hiltwright/core';
+import { WAV_HEADER_BYTES, checkFontListing, classifySound, hasMenuSounds, parsePresetsIni, parseVoicePackIni, type FontListingEntry, type FontReport, type VoicePackStatus } from '@hiltwright/core';
 
 export interface CardInfo {
   root: string;
@@ -20,6 +20,10 @@ export interface CardInfo {
   fileSystem: string | null;
   /** Nothing on it but the system's own files: a blank card fonts can be copied onto (card-safety 2.4). */
   empty: boolean;
+  /** The volume serial number Windows reports, unchanged until the card is formatted: how a saber knows its card. */
+  volumeSerial: string | null;
+  /** The font and name of each preset in its presets.ini, or null when it has none. */
+  presets: { font: string; name: string }[] | null;
 }
 
 /** Names Windows and macOS put on a card by themselves, which do not make it anything but empty. */
@@ -43,7 +47,7 @@ export async function exists(p: string): Promise<boolean> {
   try { await stat(p); return true; } catch { return false; }
 }
 
-type Candidate = { root: string; label: string | null; free: number | null; total: number | null; saberSerial: string | null; fileSystem: string | null };
+type Candidate = { root: string; label: string | null; free: number | null; total: number | null; saberSerial: string | null; fileSystem: string | null; volumeSerial: string | null };
 
 /**
  * Windows' removable drives, each followed through its partition and disk drive up the PnP tree. A drive whose
@@ -61,7 +65,7 @@ const DRIVES_SCRIPT = [
   '      $id = (Get-PnpDeviceProperty -InstanceId $id -KeyName DEVPKEY_Device_Parent -ErrorAction Stop).Data',
   '    }',
   '  } catch {}',
-  '  $out += [pscustomobject]@{ DeviceID = $ld.DeviceID; VolumeName = $ld.VolumeName; FreeSpace = $ld.FreeSpace; Size = $ld.Size; FileSystem = $ld.FileSystem; Owner = $owner }',
+  '  $out += [pscustomobject]@{ DeviceID = $ld.DeviceID; VolumeName = $ld.VolumeName; FreeSpace = $ld.FreeSpace; Size = $ld.Size; FileSystem = $ld.FileSystem; VolumeSerial = $ld.VolumeSerialNumber; Owner = $owner }',
   '}',
   'ConvertTo-Json -InputObject @($out)',
 ].join('\n');
@@ -70,7 +74,7 @@ const DRIVES_SCRIPT = [
 export function parseRemovableDrives(stdout: string): Candidate[] {
   try {
     const parsed = JSON.parse(stdout || '[]') as unknown;
-    const list = (Array.isArray(parsed) ? parsed : [parsed]) as { DeviceID?: unknown; VolumeName?: unknown; FreeSpace?: unknown; Size?: unknown; FileSystem?: unknown; Owner?: unknown }[];
+    const list = (Array.isArray(parsed) ? parsed : [parsed]) as { DeviceID?: unknown; VolumeName?: unknown; FreeSpace?: unknown; Size?: unknown; FileSystem?: unknown; VolumeSerial?: unknown; Owner?: unknown }[];
     return list.filter((d) => d && typeof d.DeviceID === 'string' && d.DeviceID).map((d) => ({
       root: `${d.DeviceID as string}\\`,
       label: typeof d.VolumeName === 'string' && d.VolumeName ? d.VolumeName : null,
@@ -78,6 +82,7 @@ export function parseRemovableDrives(stdout: string): Candidate[] {
       total: Number(d.Size) || null,
       fileSystem: typeof d.FileSystem === 'string' && d.FileSystem.trim() ? d.FileSystem.trim() : null,
       saberSerial: typeof d.Owner === 'string' && /^[0-9A-Za-z]+$/.test(d.Owner) ? d.Owner : null,
+      volumeSerial: typeof d.VolumeSerial === 'string' && /^[0-9A-Fa-f]{8}$/.test(d.VolumeSerial) ? d.VolumeSerial.toUpperCase() : null,
     }));
   } catch { return []; }
 }
@@ -90,7 +95,8 @@ export function parseRemovableDrives(stdout: string): Candidate[] {
 async function candidateRoots(): Promise<{ list: Candidate[]; failed: string | null }> {
   const override = process.env.HILTWRIGHT_SD_ROOT;
   // Dev aid: HILTWRIGHT_SD_FS names the override card's file system (for example exFAT), to see the page's warning.
-  if (override) return { list: [{ root: override, label: 'dev override', free: null, total: null, saberSerial: null, fileSystem: process.env.HILTWRIGHT_SD_FS?.trim() || null }], failed: null };
+  // HILTWRIGHT_SD_SERIAL gives it a volume serial number, to try linking a card to a saber.
+  if (override) return { list: [{ root: override, label: 'dev override', free: null, total: null, saberSerial: null, fileSystem: process.env.HILTWRIGHT_SD_FS?.trim() || null, volumeSerial: process.env.HILTWRIGHT_SD_SERIAL?.trim().toUpperCase() || null }], failed: null };
   if (process.platform === 'win32') {
     // 15 s: while a card shared over USB is being read, Windows answers slowly. A list that did not come back is
     // reported as such, never as an empty list (2026-11-18: the V3's card took minutes to open).
@@ -114,7 +120,7 @@ async function candidateRoots(): Promise<{ list: Candidate[]; failed: string | n
   const bases = ['/media', '/run/media', '/mnt'];
   const out: Candidate[] = [];
   for (const b of bases) {
-    try { for (const name of await readdir(b)) out.push({ root: join(b, name), label: name, free: null, total: null, saberSerial: null, fileSystem: null }); } catch { /* not present */ }
+    try { for (const name of await readdir(b)) out.push({ root: join(b, name), label: name, free: null, total: null, saberSerial: null, fileSystem: null, volumeSerial: null }); } catch { /* not present */ }
   }
   return { list: out, failed: null };
 }
@@ -131,7 +137,7 @@ export function parseMacMounts(text: string): Candidate[] {
     if (!m) continue;
     const fs = m[2].toLowerCase();
     if (fs !== 'msdos' && fs !== 'exfat') continue;
-    out.push({ root: m[1], label: m[1].slice('/Volumes/'.length), free: null, total: null, saberSerial: null, fileSystem: fs === 'exfat' ? 'exFAT' : 'FAT32' });
+    out.push({ root: m[1], label: m[1].slice('/Volumes/'.length), free: null, total: null, saberSerial: null, fileSystem: fs === 'exfat' ? 'exFAT' : 'FAT32', volumeSerial: null });
   }
   return out;
 }
@@ -265,6 +271,21 @@ export async function locateCards(): Promise<CardInfo[]> {
   return look.answered ? look.cards : [];
 }
 
+/**
+ * The font and name of each preset in the card's presets.ini (presets.tmp when there is no .ini), so the app can tell
+ * whose card it is by the presets the saber last reported. Null when there is neither, or it cannot be read.
+ */
+async function cardPresets(root: string): Promise<{ font: string; name: string }[] | null> {
+  for (const file of ['presets.ini', 'presets.tmp']) {
+    try {
+      const p = join(root, file);
+      if ((await stat(p)).size > 512 * 1024) return null;
+      return parsePresetsIni(await readFile(p, 'utf8')).presets.slice(0, 200).map((x) => ({ font: x.font, name: x.name }));
+    } catch { /* not there: try the other */ }
+  }
+  return null;
+}
+
 export async function lookForCards(): Promise<DriveLook> {
   const started = Date.now();
   const { list, failed } = await candidateRoots();
@@ -283,7 +304,7 @@ export async function lookForCards(): Promise<DriveLook> {
         if (await isDir(p) && await looksLikeFont(p)) { fontDirs++; if (fontDirs >= 1) break; }
       }
     } catch { /* unreadable */ }
-    out.push({ root: c.root, label: c.label, freeBytes: c.free, totalBytes: c.total, proffie: hasPresetsIni || fontDirs > 0, hasPresetsIni, saberSerial: c.saberSerial, fileSystem: c.fileSystem, empty: isEmptyCard(names) });
+    out.push({ root: c.root, label: c.label, freeBytes: c.free, totalBytes: c.total, proffie: hasPresetsIni || fontDirs > 0, hasPresetsIni, saberSerial: c.saberSerial, fileSystem: c.fileSystem, empty: isEmptyCard(names), volumeSerial: c.volumeSerial, presets: hasPresetsIni ? await cardPresets(c.root) : null });
   }
   const ms = Date.now() - started;
   if (ms > 3000) console.log(`[sd] the drive list took ${ms} ms (${out.length} removable volume(s))`);
@@ -494,6 +515,20 @@ export async function copyFont(src: string, root: string, options: CopyOptions |
 
 export function soundKind(fileName: string): string {
   return classifySound(fileName).kind;
+}
+
+/**
+ * Remove presets.ini and presets.tmp from a card in a reader, so the saber starts with the presets its firmware
+ * carries once the card is back in it (staged presets, installed while the card is out). Returns the files removed.
+ */
+export async function clearPresetsFiles(root: string): Promise<string[]> {
+  const removed: string[] = [];
+  for (const f of ['presets.ini', 'presets.tmp']) {
+    const p = join(root, f);
+    if (await exists(p)) { await rm(p, { force: true }); removed.push(f); }
+  }
+  if (removed.length) console.log(`[sd] removed ${removed.join(' and ')} from ${root}`);
+  return removed;
 }
 
 /** Whether a folder of this name is on the card: the font library offers Replace when it is (card-safety 2.5). */

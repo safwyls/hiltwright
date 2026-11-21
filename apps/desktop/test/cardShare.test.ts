@@ -8,7 +8,7 @@ import { DRIVE_WAIT_MS, giveCardBack, pickSaberDrive, plainDuration, shareCard, 
 import { CARD_ACCESS_SILENCE_MS, sendOptionsFor } from '../src/renderer/src/boardOps';
 
 const SERIAL = '2050335B4D30';
-const card = (root: string, saberSerial: string | null = null): CardInfo => ({ root, label: null, freeBytes: null, totalBytes: null, proffie: true, hasPresetsIni: true, saberSerial, fileSystem: 'FAT32', empty: false });
+const card = (root: string, saberSerial: string | null = null): CardInfo => ({ root, label: null, freeBytes: null, totalBytes: null, proffie: true, hasPresetsIni: true, saberSerial, fileSystem: 'FAT32', empty: false, volumeSerial: null, presets: null });
 
 /**
  * A saber and a Windows on one fake clock. `drives(t)` is what Windows lists at time t, or 'no-answer'; each look

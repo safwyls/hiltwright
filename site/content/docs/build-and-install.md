@@ -48,9 +48,10 @@ If you change the setup after a build, the step says "out of date" with "The set
 
 Read the notes under the steps. They can include:
 
+- **Where the card was checked.** Fonts and the voice pack are checked on the saber's own card wherever it is. With the card in a card reader on this computer, Hiltwright reads it there and says so, even with the saber unplugged. With the card in the saber, it asks the saber. With the card out of the saber and not in a reader, it says the card is out and warns about neither until the card is back. **Look again** checks once more.
 - **Missing fonts.** For example "2 presets name fonts that are not on the card (…). The saber will say "font directory not found" for them." Copy them on [Fonts & SD](fonts-and-sd.html), or choose another font on [Presets](presets.html). This warning shows only when the card's fonts are known.
 - **Voice pack.** With the Fett263 prop, Hiltwright reports whether the voice pack is on the card, its version, and whether presets use the `common` folder. Without it, the saber speaks a voice pack error on every preset change. Everything else works.
-- **Staged presets.** They replace the saber's presets once the new firmware is on and checked, and a snapshot is kept first. If the firmware already has them, press **Use the staged presets** to put them on with one restart and no install.
+- **Staged presets.** They replace the saber's presets once the new firmware is on and checked, and a snapshot is kept first. If the firmware already has them, press **Use the staged presets** to put them on with one restart and no install. With the saber's card in a card reader, its old presets file is removed from the card there; put the card back in the saber before you use it. With the card out and not in a reader, the presets stay staged until it is back.
 - **Shared card.** Give the saber's card back on Fonts & SD first. An install restarts the saber, and your computer must not be holding the card.
 
 ## Install, with a backup first

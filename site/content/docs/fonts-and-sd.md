@@ -40,6 +40,8 @@ If Hiltwright cannot tell which drive is the saber's card, it asks you to use Sa
 
 The line under the heading shows free and total space, the number of fonts and tracks, whether `presets.ini` is present, the card's format and the voice pack. If several cards are seen, a **Card** list lets you choose. Nothing is copied until you do. **Look again** reads the card once more.
 
+Below it, Hiltwright says whose card it is. A card the saber shares over USB is remembered as that saber's, by the card's serial number, so the same card in a card reader is known too. A card that holds the presets a saber last reported is taken to be that saber's. To be sure, press **This is (saber)'s card**; **Not (saber)'s card** undoes it. The saber's own card is chosen first when several are in, and Build & Install checks it there. Taking the card out and using a reader is often quicker than sharing it over USB.
+
 Headings tell you what Hiltwright found:
 
 | Heading | Meaning |

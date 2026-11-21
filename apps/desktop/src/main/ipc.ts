@@ -13,7 +13,7 @@ import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
 import { lookUpWanted, portHolders, proffieSerials } from './usb';
 import { activeWant, wantSerial } from './serialGate';
-import { checkFontDir, copyFont, listFonts, listTracks, lookForCards, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
+import { checkFontDir, clearPresetsFiles, copyFont, listFonts, listTracks, lookForCards, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
 import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
 import { inspectVoicePack, installVoicePack } from './voicePackInstall';
@@ -121,6 +121,11 @@ export function registerIpc(): void {
     return library.noteBootloader(str(id, 40), { serial: typeof o.serial === 'string' ? o.serial : null, flashBytes: Number(o.flashBytes) });
   });
   handle('library:remove', (_e, id: unknown) => library.remove(str(id, 40)));
+  handle('library:linkCard', (_e, id: unknown, card: unknown) => {
+    const c = (card ?? {}) as { serial?: unknown; label?: unknown };
+    return library.linkCard(str(id, 40), { serial: str(c.serial, 16), label: typeof c.label === 'string' ? c.label : null });
+  });
+  handle('library:unlinkCard', (_e, id: unknown, serial: unknown) => library.unlinkCard(str(id, 40), str(serial, 16)));
   handle('library:update', (_e, id: unknown, patch: unknown) => {
     const p = (patch ?? {}) as Record<string, unknown>;
     const out: SaberPatch = {};
@@ -405,6 +410,7 @@ export function registerIpc(): void {
   });
   handle('sd:listTracks', (_e, r: unknown) => listTracks(root(r)));
   handle('sd:voicePack', (_e, r: unknown) => readVoicePack(root(r)));
+  handle('sd:clearPresets', (_e, r: unknown) => clearPresetsFiles(root(r)));
   // The Fett263 voice pack: one from the catalogue (bundled in resources/voicepack, or downloaded into the data
   // folder when picked), or a zip the owner picked here.
   const voicePackDir = app.isPackaged ? join(process.resourcesPath, 'voicepack') : join(app.getAppPath(), 'resources', 'voicepack');

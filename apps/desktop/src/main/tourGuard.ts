@@ -23,12 +23,12 @@ export const TOUR_ALLOWED: ReadonlySet<string> = new Set([
 
 /** Requests that write, copy, build, flash or change a setting. Refused during the tour. Listed so tests can check every request is placed. */
 export const TOUR_BLOCKED: ReadonlySet<string> = new Set([
-  'library:upsert', 'library:rename', 'library:remove', 'library:update', 'library:plan', 'library:adopt', 'library:noteBootloader',
+  'library:upsert', 'library:rename', 'library:remove', 'library:linkCard', 'library:unlinkCard', 'library:update', 'library:plan', 'library:adopt', 'library:noteBootloader',
   'banks:save', 'banks:remove',
   'looks:add', 'looks:remove', 'looks:update',
   'snapshots:save',
   'usb:wantSerial',
-  'sd:eject', 'sd:pickFont', 'sd:copyFont', 'voicePack:pick', 'voicePack:install',
+  'sd:eject', 'sd:pickFont', 'sd:copyFont', 'sd:clearPresets', 'voicePack:pick', 'voicePack:install',
   'fontlib:setMeta', 'fontlib:remove', 'fontlib:copyToCard', 'fontlib:addZip', 'fontlib:addFolder', 'fontlib:importLegacy', 'fontlib:exportPack', 'fontlib:importPack', 'fontlib:dismissLegacy', 'fontlib:chooseRoot', 'fontlib:resetRoot',
   'contributors:setLogo', 'contributors:clearLogo', 'contributors:setUrl', 'contributors:copy',
   'hilts:add', 'hilts:setFit', 'hilts:setCreator', 'hilts:remove', 'hilts:setPackFit', 'hilts:resetPackFit', 'hilts:setRoom', 'hilts:adopt', 'hilts:export', 'hilts:import',

@@ -11,6 +11,7 @@ import { fontsForPresets, packCredit } from './fontNeeds';
 import { FEATURES } from './features';
 import { Icon } from './Icon';
 import { cardKind, chooseCard, rememberCardChoice, rememberedCardChoice } from './cardChoice';
+import { ownedByText, ownerOfCard } from './cardOwner';
 import { Select } from './Select';
 import { duringWork } from './work';
 import { DRIVE_WAIT_MS, giveCardBack, pickSaberDrive, plainDuration, shareCard, type Baseline, type GiveBackOutcome, type ShareDeps, type WaitProgress } from './cardShare';
@@ -80,9 +81,30 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
   const [chosen, setChosenNow] = useState<string | null>(rememberedCardChoice);
   const setChosen = (root: string | null) => { rememberCardChoice(root); setChosenNow(root); };
   const serial = live ? board.saber?.identity.usbSerial ?? null : null;
+  // The saber being worked on, connected or not: its own card in a reader is chosen first and named as its own.
+  const me = (live ? board.saber : null) ?? ws.saber ?? null;
+  const meRef = useRef(me);
+  meRef.current = me;
+  const libraryRef = useRef(board.library);
+  libraryRef.current = board.library;
+  const refreshLibraryRef = useRef(board.refreshLibrary);
+  refreshLibraryRef.current = board.refreshLibrary;
+  const owner = card ? ownerOfCard(card, board.library) : null;
+  const [ownerNote, setOwnerNote] = useState<string | null>(null);
+  /** The owner says whose card this is (or is not): it is known by its volume serial number from now on. */
+  const setCardOwner = async (link: boolean) => {
+    if (!card?.volumeSerial || !me) return;
+    setOwnerNote(null);
+    try {
+      if (link) await api().library.linkCard(me.id, { serial: card.volumeSerial, label: card.label });
+      else await api().library.unlinkCard(me.id, card.volumeSerial);
+      await board.refreshLibrary();
+    } catch (err) { setOwnerNote(`Could not change whose card this is: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
+  };
+  const ownRootsIn = (list: CardInfo[]) => { const s = meRef.current; return s ? list.filter((c) => ownerOfCard(c, libraryRef.current)?.saber.id === s.id).map((c) => c.root) : []; };
   const pickRef = useRef({ sharedRoot: usbRoot, saberSerial: serial, chosen });
   pickRef.current = { sharedRoot: usbRoot, saberSerial: serial, chosen };
-  const choice = chooseCard(cards, { sharedRoot: usbRoot, saberSerial: serial, chosen });
+  const choice = chooseCard(cards, { sharedRoot: usbRoot, saberSerial: serial, chosen, ownRoots: ownRootsIn(cards) });
   const isOwnCard = (c: CardInfo) => (!!serial && c.saberSerial === serial) || c.root === usbRoot;
   const cardName = (c: CardInfo) => `${c.root}${c.label ? ` ${c.label}` : ''}${isOwnCard(c) ? ` (${board.saber?.name ?? 'saber'}'s own)` : cardKind(c) === 'empty' ? ' (empty)' : cardKind(c) === 'other' ? ' (not a saber card)' : ''}`;
   const kind = card ? cardKind(card) : null;
@@ -195,7 +217,14 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
         }
       }
       setCards(found);
-      const best = chooseCard(found, pickRef.current).card;
+      // A card the connected saber shares is its own: remembered by its serial number, so it is known in a reader too.
+      const sharing = liveRef.current ? meRef.current : null;
+      const toLink = sharing?.identity.usbSerial ? found.find((c) => c.saberSerial === sharing.identity.usbSerial && c.volumeSerial && !sharing.cards?.some((x) => x.serial === c.volumeSerial)) : undefined;
+      if (sharing && toLink?.volumeSerial) {
+        try { await api().library.linkCard(sharing.id, { serial: toLink.volumeSerial, label: toLink.label }); await refreshLibraryRef.current(); console.log(`[sd] ${toLink.root} (${toLink.volumeSerial}) remembered as ${sharing.name}'s card`); }
+        catch (err) { console.log(`[sd] could not remember the shared card: ${String(err)}`); }
+      }
+      const best = chooseCard(found, { ...pickRef.current, ownRoots: ownRootsIn(found) }).card;
       setCard(best);
       if (best) {
         setFonts([]); setTracks([]); setVoice(null);
@@ -323,6 +352,12 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                 : live ? 'Put the card in a reader, or let the saber share it over USB: it stops playing while it does.' : 'Put the saber\'s SD card in a card reader, or plug the saber in and share its card over USB.'}
               {fett263Card && !voiceShort && !voiceOpen && voiceList.packs.length > 0 && !scanning && <> · <button type="button" className="holo" onClick={() => setVoiceOpen(true)}>Change the voice</button></>}
             </div>
+            {card && kind !== 'other' && (owner || (me && card.volumeSerial)) && <div className="small">
+              {owner ? `${owner.saber.name}’s card (${ownedByText(owner.by)})` : 'Not known as any saber’s card yet'}
+              {me && card.volumeSerial && (!owner || owner.saber.id !== me.id || owner.by === 'presets') && <> · <button type="button" className="holo" disabled={working} onClick={() => void setCardOwner(true)}>This is {me.name}{'’'}s card</button></>}
+              {me && card.volumeSerial && owner?.by === 'linked' && owner.saber.id === me.id && <> · <button type="button" className="holo" disabled={working} onClick={() => void setCardOwner(false)}>Not {me.name}{'’'}s card</button></>}
+              {ownerNote && <span className="dim"> {ownerNote}</span>}
+            </div>}
           </div>
           {sharing
             ? <>

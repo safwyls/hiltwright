@@ -22,10 +22,11 @@ export function cardKind(c: CardInfo): 'saber' | 'empty' | 'other' {
  * - the owner's own choice, while that card is still there (they switched, or answered "which card")
  * - the card the connected saber is sharing: its drive belongs to that saber's USB serial, or it is the drive that
  *   appeared when the app asked the saber to share
+ * - the working saber's own card in a card reader (`ownRoots`)
  * - the only ProffieOS card
  * - otherwise ask, when there is anything to choose: an empty or non-saber drive is never picked by itself
  */
-export function chooseCard(cards: CardInfo[], opts: { sharedRoot: string | null; saberSerial: string | null; chosen: string | null }): CardChoice {
+export function chooseCard(cards: CardInfo[], opts: { sharedRoot: string | null; saberSerial: string | null; chosen: string | null; ownRoots?: string[] }): CardChoice {
   const isOwn = (c: CardInfo) => (!!opts.saberSerial && c.saberSerial === opts.saberSerial) || (!!opts.sharedRoot && c.root === opts.sharedRoot);
   const choices = cards;
   const pick = (card: CardInfo | null, ask = false): CardChoice => ({ card, own: !!card && isOwn(card), ask, choices });
@@ -33,6 +34,9 @@ export function chooseCard(cards: CardInfo[], opts: { sharedRoot: string | null;
   if (chosen) return pick(chosen);
   const own = choices.find(isOwn);
   if (own) return pick(own);
+  // The working saber's own card in a reader (cardOwner.ts): known by its serial number or its presets.
+  const mine = opts.ownRoots?.length ? choices.find((c) => opts.ownRoots!.includes(c.root)) : undefined;
+  if (mine) return pick(mine);
   const saberCards = choices.filter((c) => c.proffie);
   if (saberCards.length === 1) return pick(saberCards[0]);
   return pick(null, choices.length > 0);

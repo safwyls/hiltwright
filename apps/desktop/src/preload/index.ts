@@ -23,6 +23,8 @@ const api: HiltwrightApi = {
     plan: (name, model) => ipcRenderer.invoke('library:plan', name, model),
     adopt: (plannedId, targetId) => ipcRenderer.invoke('library:adopt', plannedId, targetId),
     noteBootloader: (id, seen) => ipcRenderer.invoke('library:noteBootloader', id, seen),
+    linkCard: (id, card) => ipcRenderer.invoke('library:linkCard', id, card),
+    unlinkCard: (id, serial) => ipcRenderer.invoke('library:unlinkCard', id, serial),
   },
   banks: {
     list: () => ipcRenderer.invoke('banks:list'),
@@ -55,6 +57,7 @@ const api: HiltwrightApi = {
     onReadFontProgress: (cb) => { const h = (_e: unknown, p: { file: string; done: number; total: number }) => cb(p); ipcRenderer.on('sd:readFont:progress', h); return () => ipcRenderer.off('sd:readFont:progress', h); },
     listTracks: (root) => ipcRenderer.invoke('sd:listTracks', root),
     voicePack: (root) => ipcRenderer.invoke('sd:voicePack', root),
+    clearPresets: (root) => ipcRenderer.invoke('sd:clearPresets', root),
     voicePacks: () => ipcRenderer.invoke('voicePack:list'),
     openVoicePackLink: (which) => ipcRenderer.invoke('voicePack:openLink', which),
     pickVoicePack: () => ipcRenderer.invoke('voicePack:pick'),

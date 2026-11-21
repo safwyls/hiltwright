@@ -28,6 +28,8 @@ type Over = {
   recordFails?: string;
   /** Staged presets: what the new firmware has compiled in, whether the saber keeps its own after a restart, and whether the restart fails. */
   compiled?: { font: string; track: string; name: string }[]; keepsOwn?: boolean; restartFails?: boolean;
+  /** Its SD card is out (in a reader): it starts with its firmware's presets, there being no presets.ini to read. */
+  cardOut?: boolean;
 };
 /** The saber read after a reconnect: the record for that serial, just seen, reporting what `comesBackAs` says. */
 const readBack = (serial: string | null | undefined, over: Over): SaberRecord | null => {
@@ -94,7 +96,7 @@ function world(boards: Board[], over: Over = {}) {
       restartSaber: vi.fn(async () => {
         calls.push('restart');
         if (over.restartFails) return false;
-        if (removed && !over.keepsOwn && over.compiled) onSaber = over.compiled.map((c) => ({ ...c, styles: ['builtin 0 1'], variation: 0 }));
+        if ((removed || over.cardOut) && !over.keepsOwn && over.compiled) onSaber = over.compiled.map((c) => ({ ...c, styles: ['builtin 0 1'], variation: 0 }));
         return true;
       }),
       currentPresets: vi.fn(() => onSaber),
@@ -624,6 +626,33 @@ describe('staged presets', () => {
     expect(note.tone).toBe('green');
     expect(f.touched()).toEqual([]);
     expect(staging(f)).toEqual(['del presets.ini', 'del presets.tmp', 'restart']);
+  });
+
+  it('with the card in a reader: its presets files go from the card there, not through the saber, and the note says to put it back', async () => {
+    const f = world([hote2()], { compiled: staged, cardOut: true });
+    const cleared: string[] = [];
+    const deps = { ...f.deps, card: { where: 'reader' as const, root: 'E:\\', clearPresets: async (root: string) => { cleared.push(root); return ['presets.ini']; } } };
+    const note = await applyStagedPresets(deps, saberRec(), stagedModel, HOTE2);
+    expect(cleared).toEqual(['E:\\']);
+    expect(staging(f)).toEqual(['restart']);
+    expect(note.tone).toBe('green');
+    expect(note.text).toMatch(/card in the reader \(E:\\\): put the card back in the saber/);
+  });
+
+  it('with the card out and not in a reader: nothing is sent, nothing restarted, still staged', async () => {
+    const f = world([hote2()], { compiled: staged });
+    const note = await applyStagedPresets({ ...f.deps, card: { where: 'out' } }, saberRec(), stagedModel, HOTE2);
+    expect(staging(f)).toEqual([]);
+    expect(f.deps.snapshots.save).not.toHaveBeenCalled();
+    expect(note.tone).toBe('amber');
+    expect(note.text).toMatch(/SD card is out of the saber/);
+  });
+
+  it('a card in the reader whose presets file cannot be removed: no restart, still staged', async () => {
+    const f = world([hote2()], { compiled: staged });
+    const note = await applyStagedPresets({ ...f.deps, card: { where: 'reader', root: 'E:\\', clearPresets: async () => { throw new Error('EPERM: write protected'); } } }, saberRec(), stagedModel, HOTE2);
+    expect(staging(f)).toEqual([]);
+    expect(note.text).toMatch(/could not be removed: EPERM: write protected/);
   });
 
   it('samePresets compares names and fonts in order', () => {

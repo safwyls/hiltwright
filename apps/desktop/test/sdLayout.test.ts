@@ -133,11 +133,19 @@ describe("which removable drive is a saber's own card (card-safety D3)", () => {
       { DeviceID: 'J:', Owner: 'not a serial; rm -rf' },
     ]);
     expect(parseRemovableDrives(out)).toEqual([
-      { root: 'D:\\', label: null, free: null, total: null, saberSerial: null, fileSystem: null },
-      { root: 'E:\\', label: 'KYLO', free: 21_000_000_000, total: 31_900_000_000, saberSerial: null, fileSystem: null },
-      { root: 'H:\\', label: null, free: 7_000_000_000, total: 7_900_000_000, saberSerial: '209133815232', fileSystem: null },
-      { root: 'J:\\', label: null, free: null, total: null, saberSerial: null, fileSystem: null },
+      { root: 'D:\\', label: null, free: null, total: null, saberSerial: null, fileSystem: null, volumeSerial: null },
+      { root: 'E:\\', label: 'KYLO', free: 21_000_000_000, total: 31_900_000_000, saberSerial: null, fileSystem: null, volumeSerial: null },
+      { root: 'H:\\', label: null, free: 7_000_000_000, total: 7_900_000_000, saberSerial: '209133815232', fileSystem: null, volumeSerial: null },
+      { root: 'J:\\', label: null, free: null, total: null, saberSerial: null, fileSystem: null, volumeSerial: null },
     ]);
+  });
+  it('the volume serial number Windows reports is read, in capitals, and anything else is not one', () => {
+    const out = JSON.stringify([
+      { DeviceID: 'E:', VolumeSerial: '5a1c3f0e' },
+      { DeviceID: 'F:', VolumeSerial: 'not hex!' },
+      { DeviceID: 'G:', VolumeSerial: null },
+    ]);
+    expect(parseRemovableDrives(out).map((d) => d.volumeSerial)).toEqual(['5A1C3F0E', null, null]);
   });
   it("the file system Windows reports for each drive is read, and a drive with none stays unknown", () => {
     // The shape Windows prints (ConvertTo-Json of Win32_LogicalDisk): a 64 GB card as exFAT, a 16 GB card as FAT32,

@@ -62,6 +62,12 @@ export interface InstallDeps {
   };
   report: (r: InstallReport) => void;
   sleep: (ms: number) => Promise<void>;
+  /**
+   * Where the saber's SD card is, for staged presets: `reader` is its card in a card reader on this computer (its
+   * presets files are removed there), `out` that the saber cannot read a card and none of its own is in a reader.
+   * Absent or `saber`: the card is in the saber, and the saber removes them.
+   */
+  card?: { where: 'saber' } | { where: 'reader'; root: string; clearPresets: (root: string) => Promise<string[]> } | { where: 'out' };
 }
 /**
  * What is being installed: the saber, the model the build was made from, the build, what the saber last reported,
@@ -293,17 +299,27 @@ export const STAGED_ON = 'Your staged presets are on the saber now; its previous
  * remove its presets files, restart it so it starts with the compiled presets, and read them back. Only when the
  * saber reports the staged list is the list settled. Anything else leaves it staged, and says why.
  */
-export async function applyStagedPresets(deps: Pick<InstallDeps, 'flash' | 'snapshots' | 'board' | 'sleep'>, saber: SaberRecord, model: SaberConfigModel, serial: string | null): Promise<InstallNote> {
+export async function applyStagedPresets(deps: Pick<InstallDeps, 'flash' | 'snapshots' | 'board' | 'sleep' | 'card'>, saber: SaberRecord, model: SaberConfigModel, serial: string | null): Promise<InstallNote> {
   const { flash, board } = deps;
+  const card = deps.card ?? { where: 'saber' as const };
+  // With its card out, the saber starts with its firmware's presets anyway and would report the staged list; the card's
+  // own presets.ini would win again once it is back. So the file must go from the card itself, wherever it is.
+  if (card.where === 'out') return keepStaged(`${saber.name}'s SD card is out of the saber, so its presets file could not be removed. Put the card back in the saber, or in a card reader on this computer, then apply the staged presets again.`);
   try {
     const own = board.currentPresets();
     if (!own) return keepStaged("The saber's presets could not be read, so they were not replaced.");
     try { await deps.snapshots.save(saber.id, 'Before install with staged presets', own); } catch {
       return keepStaged("A snapshot of the saber's presets could not be kept, so they were not replaced.");
     }
-    // ProffieOS's del says nothing either way; what the saber reports after its restart is the check.
-    await board.send('del presets.ini', { idleMs: 400 });
-    await board.send('del presets.tmp', { idleMs: 400 });
+    if (card.where === 'reader') {
+      try { await card.clearPresets(card.root); } catch (err) {
+        return keepStaged(`The presets file on the card in the reader (${card.root}) could not be removed: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}.`);
+      }
+    } else {
+      // ProffieOS's del says nothing either way; what the saber reports after its restart is the check.
+      await board.send('del presets.ini', { idleMs: 400 });
+      await board.send('del presets.tmp', { idleMs: 400 });
+    }
     if (!(await board.restartSaber())) return keepStaged('The saber could not be restarted to pick up the staged presets.');
     // Let the USB device go before waiting for it to come back.
     await deps.sleep(1500);
@@ -317,7 +333,7 @@ export async function applyStagedPresets(deps: Pick<InstallDeps, 'flash' | 'snap
     try { await board.updateSaber({ model: settled }, saber.id); } catch (err) {
       return { tone: 'amber', text: `Your staged presets are on the saber now, but Hiltwright could not update its record of the saber: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}` };
     }
-    return { tone: 'green', text: STAGED_ON };
+    return { tone: 'green', text: card.where === 'reader' ? `${STAGED_ON} Their old presets file is gone from the card in the reader (${card.root}): put the card back in the saber before you use it.` : STAGED_ON };
   } catch (err) {
     return keepStaged(`Putting the staged presets on the saber stopped: ${String(err)}.`);
   }

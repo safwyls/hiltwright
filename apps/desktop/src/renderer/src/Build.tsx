@@ -2,12 +2,16 @@
 // this page shows the config they make, builds it, and installs: backup → bootloader → write → verify.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FETT263_REQUIRED_VOICE_PACK, presetsWithoutCommon, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
+import { FETT263_REQUIRED_VOICE_PACK, parseList, presetsWithoutCommon, sdFailureIn, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
 import { firmwareHasStaged, queuedLookIds } from './saberModel';
 import { PROPS } from './Wiring';
 import { missingFontWarning } from './fontNeeds';
 import type { Workspace } from './workspace';
-import type { BackupInfo, BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
+import type { BackupInfo, BuildResult, CardInfo, JobEvent, ToolchainStatus } from '../../shared/api';
+import { saberCardIn, type OwnedBy } from './cardOwner';
+
+/** Where the checks on the saber's SD card were made: its card in a reader, the saber itself, or nowhere (card out). */
+type CardCheck = { source: 'reader'; root: string; by: OwnedBy; card: CardInfo; fonts: string[] } | { source: 'saber'; fonts: string[] } | { source: 'out' };
 import type { SaberConfigModel } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
@@ -57,25 +61,62 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const [armed, setArmed] = useState(false);
   const [withBackup, setWithBackup] = useState(true);
   const [tab, setTab] = useState<Tab>('config');
-  // The Fett263 prop needs a voice pack on the card. The saber can tell us over serial: no card reader needed.
+  // The fonts the presets name and the Fett263 voice pack are checked on the saber's own SD card, wherever it is: in a
+  // card reader on this computer (read directly: the reader flow, which needs no USB sharing), or in the saber (asked
+  // over serial), or out of both, when nothing is said about fonts or the voice pack until it is back.
   const [voice, setVoice] = useState<VoicePackStatus | null>(null);
   // Why the card could not be read, when it could not (kept apart from "the pack is not there").
   const [voiceWhy, setVoiceWhy] = useState<string | null>(null);
+  const [cardCheck, setCardCheck] = useState<CardCheck | null>(null);
+  const cardCheckRef = useRef<CardCheck | null>(null);
+  cardCheckRef.current = cardCheck;
+  const [lookAgain, setLookAgain] = useState(0);
+  const [linkNote, setLinkNote] = useState<string | null>(null);
   useEffect(() => {
-    // Not while the card is shared: the saber would be reading a card this computer has (card-safety D2).
-    if (board.status !== 'connected' || board.card.shared) return;
+    const me = saber;
+    if (!me) return;
     let live = true;
     void (async () => {
-      try {
-        const cat = await board.send('cat common/voicepack.ini', { idleMs: 700 });
-        const dir = await board.send('dir common', { idleMs: 900, until: (l) => /^(Done listing files\.|No such directory\.)/.test(l) });
-        const rejected = [...cat.lines, ...dir.lines].some((l) => /^Whut\? :/.test(l));
-        if (live) { setVoice(rejected ? null : voicePackFromSerial(cat.lines, dir.lines)); setVoiceWhy(rejected ? 'this firmware does not answer the card commands (cat and dir)' : null); }
-      } catch { if (live) { setVoice(null); setVoiceWhy('the saber is not answering'); } }
+      // The saber's own view: not while its card is shared, when the saber would be reading a card this computer has
+      // (card-safety D2). The font list is read again here: the one from connecting is stale once fonts are copied.
+      let own: { fonts: string[]; voice: VoicePackStatus | null; why: string | null; out: boolean } | null = null;
+      if (board.status === 'connected' && !board.card.shared) {
+        try {
+          const lf = await board.send('list_fonts', { idleMs: 700 });
+          const cat = await board.send('cat common/voicepack.ini', { idleMs: 700 });
+          const dir = await board.send('dir common', { idleMs: 900, until: (l) => /^(Done listing files\.|No such directory\.)/.test(l) });
+          const out = sdFailureIn([...lf.lines, ...cat.lines, ...dir.lines]) || !!board.info?.sdMissing;
+          const rejected = [...cat.lines, ...dir.lines].some((l) => /^Whut\? :/.test(l));
+          own = { fonts: parseList(lf.lines), voice: rejected || out ? null : voicePackFromSerial(cat.lines, dir.lines), why: rejected ? 'this firmware does not answer the card commands (cat and dir)' : null, out };
+        } catch { own = { fonts: [], voice: null, why: 'the saber is not answering', out: false }; }
+      }
+      // Its card in a reader. One known only by its presets gives way to a card the saber is reading itself.
+      let reader: ReturnType<typeof saberCardIn> = null;
+      try { const look = await api().sd.look(); if (look.answered) reader = saberCardIn(look.cards, me, board.library); } catch { /* no drive list */ }
+      if (reader && (reader.by !== 'presets' || !own || own.out || !own.fonts.length)) {
+        const root = reader.card.root;
+        try {
+          const [fonts, vp] = await Promise.all([api().sd.listFonts(root), api().sd.voicePack(root)]);
+          if (!live) return;
+          setCardCheck({ source: 'reader', root, by: reader.by, card: reader.card, fonts: fonts.map((f) => f.name) }); setVoice(vp); setVoiceWhy(null);
+          return;
+        } catch (err) { console.log(`[build] reading the card in the reader (${root}) failed: ${String(err)}`); }
+      }
+      if (!live) return;
+      if (own?.out) { setCardCheck({ source: 'out' }); setVoice(null); setVoiceWhy(null); }
+      else if (own) { setCardCheck({ source: 'saber', fonts: own.fonts }); setVoice(own.voice); setVoiceWhy(own.why); }
+      else { setCardCheck(null); setVoice(null); setVoiceWhy(null); }
     })();
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [board.status, board.saber?.id, board.card.shared]);
+  }, [board.status, board.saber?.id, board.card.shared, saber?.id, lookAgain]);
+  /** The owner says the card in the reader, known only by its presets, is this saber's: it is known by its serial from now on. */
+  const linkReaderCard = async () => {
+    const c = cardCheck?.source === 'reader' ? cardCheck.card : null;
+    if (!c?.volumeSerial || !saber) return;
+    try { await api().library.linkCard(saber.id, { serial: c.volumeSerial, label: c.label }); await board.refreshLibrary(); setLinkNote(null); setLookAgain((n) => n + 1); }
+    catch (err) { setLinkNote(`Could not remember the card: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
+  };
   // Poll USB while disconnected so an install can proceed from a board that is already in its bootloader.
   const [inBootloader, setInBootloader] = useState(false);
   useEffect(() => {
@@ -164,6 +205,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
     confirmTarget: (name) => new Promise<boolean>((resolve) => setAskTarget({ name, answer: (yes) => { setAskTarget(null); resolve(yes); } })),
     report: (r) => { if (r.xfer !== undefined) setXfer(r.xfer); if (r.step) setStep(r.step); if (r.note !== undefined) setNote(r.note); if (r.notes !== undefined) setNotes(r.notes); },
     sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
+    // Staged presets need the card's presets file gone, from wherever the card is (installFlow applyStagedPresets).
+    card: (() => { const c = cardCheckRef.current; return c?.source === 'reader' ? { where: 'reader' as const, root: c.root, clearPresets: (root: string) => api().sd.clearPresets(root) } : c?.source === 'out' ? { where: 'out' as const } : { where: 'saber' as const }; })(),
   }), [board]);
   const connectedNow = status === 'connected';
   /** From a board sitting in its bootloader with a usable driver: which board, check, backup, write, wait, reconnect, record. */
@@ -355,9 +398,12 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   if (stale && armed) setArmed(false);
   // The presets that will be on the saber: the staged list when presets are staged, else the saber's own (both are model.presets).
   const willHave = model?.presets ?? [];
-  const verdict = voicePackVerdict(prop, voice, voiceWhy, presetsWithoutCommon(willHave));
-  // Only a card read from a connected saber counts as known; otherwise say nothing about fonts.
-  const fontWarn = missingFontWarning(willHave, connectedNow && !cardShared && !saber?.planned && info && info.fonts.length ? info.fonts : null);
+  // With the card out of the saber and not in a reader, nothing is said about the voice pack or fonts: not known is not missing.
+  const verdict = cardCheck?.source === 'out' ? null : voicePackVerdict(prop, voice, voiceWhy, presetsWithoutCommon(willHave));
+  // Fonts are known from the saber's card in a reader, or from a connected saber reading a card with fonts on it.
+  const cardFonts = cardCheck?.source === 'reader' ? cardCheck.fonts
+    : cardCheck?.source === 'saber' && connectedNow && !cardShared && !saber?.planned && cardCheck.fonts.length ? cardCheck.fonts : null;
+  const fontWarn = missingFontWarning(willHave, cardFonts);
   const canBuild = !busy && !!tool?.ready && !!model && !preview?.errors.length;
 
   return (
@@ -489,6 +535,18 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
 
         {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span className="col" style={{ gap: 8 }}><span>{note.text}</span>{(note.tone === 'red' || step === 'failed') && <SaveDiagnostics small />}</span></div>}
         {notes.map((n) => <div key={n.text} className={`note ${n.tone}`}><Icon name={n.tone === 'green' ? 'check' : n.tone === 'red' ? 'x' : 'warn'} /><span>{n.text}</span></div>)}
+        {cardCheck?.source === 'reader' && <div className="note"><Icon name="sd" /><span className="col" style={{ gap: 6 }}>
+          <span>Fonts and the voice pack were checked on {saber.name}{'’'}s card in the card reader ({cardCheck.root}){cardCheck.by === 'presets' ? ', which Hiltwright knows by its presets' : ''}. Put it back in the saber before you use it.</span>
+          <span className="row" style={{ gap: 8 }}>
+            <button type="button" className="holo" onClick={() => setLookAgain((n) => n + 1)}>Look again</button>
+            {cardCheck.by === 'presets' && cardCheck.card.volumeSerial && <button type="button" className="holo" onClick={() => void linkReaderCard()}>Remember it as {saber.name}{'’'}s card</button>}
+          </span>
+          {linkNote && <span className="small">{linkNote}</span>}
+        </span></div>}
+        {cardCheck?.source === 'out' && <div className="note"><Icon name="sd" /><span className="col" style={{ gap: 6 }}>
+          <span>{saber.name}{'’'}s SD card is out of the saber. The font and voice pack checks run once it is back in the saber, or in a card reader on this computer.</span>
+          <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => setLookAgain((n) => n + 1)}>Look again</button></span>
+        </span></div>}
         {fontWarn && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 6 }}><span>{fontWarn.text}</span><span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('fonts')}>Fonts &amp; SD</button><button type="button" className="holo" onClick={() => go('presets')}>Presets</button></span></span></div>}
         {verdict && <div className={`note ${verdict.tone}`}><Icon name={verdict.ok ? 'check' : 'warn'} />{verdict.ok || !voice ? <span>{verdict.text}</span> : <span className="col" style={{ gap: 6 }}><span>{verdict.text}</span><span className="row" style={{ gap: 8 }}>
           {/* The pack itself is short: Fonts & SD can put one on the card. Otherwise it is presets leaving common out. */}

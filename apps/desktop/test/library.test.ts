@@ -26,6 +26,22 @@ const connect = (lib: Library, identity: SaberIdentity, names = ['Preset: 1']) =
 const model = { name: 'kylo', board: 'V2', buttons: 2, prop: 'fett263', blades: [], presets: [] } as unknown as SaberConfigModel;
 
 describe('saber library', () => {
+  it('a card belongs to one saber: linking it to another takes it from the first, and it can be let go', async () => {
+    const lib = new Library(file);
+    const a = await connect(lib, hote2);
+    const b = await connect(lib, { ...hote2, usbSerial: '207A349A5430', configName: 'config/v3.h' });
+    await lib.linkCard(a.id, { serial: '5a1c3f0e', label: 'NIHILUS' });
+    let [ra, rb] = [(await lib.list()).find((s) => s.id === a.id)!, (await lib.list()).find((s) => s.id === b.id)!];
+    expect(ra.cards?.map((c) => [c.serial, c.label])).toEqual([['5A1C3F0E', 'NIHILUS']]);
+    await lib.linkCard(b.id, { serial: '5A1C3F0E', label: null });
+    [ra, rb] = [(await new Library(file).list()).find((s) => s.id === a.id)!, (await new Library(file).list()).find((s) => s.id === b.id)!];
+    expect(ra.cards).toEqual([]);
+    expect(rb.cards?.map((c) => c.serial)).toEqual(['5A1C3F0E']);
+    await lib.unlinkCard(b.id, '5a1c3f0e');
+    expect((await lib.list()).find((s) => s.id === b.id)?.cards).toEqual([]);
+    await expect(lib.linkCard(a.id, { serial: 'E:\\; del', label: null })).rejects.toThrow(/Not a volume serial/);
+  });
+
   it('1.1 a connected saber is still listed after a restart', async () => {
     await connect(new Library(file), hote2, ['Mara Jade Skywalker', 'Valkyrie']);
     const [s, ...rest] = await new Library(file).list();
