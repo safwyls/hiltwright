@@ -43,6 +43,8 @@
     if (e.key === 'ArrowRight') show(at + 1, true);
     if (e.key === 'ArrowLeft') show(at - 1, true);
   });
-  const m = /^#step-(\d+)$/.exec(location.hash);
-  show(m ? Number(m[1]) - 1 : 0, false);
+  // A step can be linked to (#step-12), and the page follows when that part of the address is changed by hand.
+  const fromHash = () => { const m = /^#step-(\d+)$/.exec(location.hash); return m ? Number(m[1]) - 1 : null; };
+  window.addEventListener('hashchange', () => { const i = fromHash(); if (i !== null && i !== at) show(i, false); });
+  show(fromHash() ?? 0, false);
 })();

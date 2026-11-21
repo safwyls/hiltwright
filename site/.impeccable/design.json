@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-19T00:00:00Z",
+  "generatedAt": "2026-11-20T00:00:00Z",
   "title": "Design System: Hiltwright website",
   "extensions": {
     "colorMeta": {
@@ -27,13 +27,12 @@
       "lede": { "displayName": "Lede", "purpose": "The paragraph under a display title, max 60ch." },
       "body": { "displayName": "Body", "purpose": "Prose. 16.5px under 900px; 68ch on promo pages, 72ch in docs." },
       "label": { "displayName": "Label", "purpose": "Controls, nav links and small headings. Sentence case, weight 600." },
-      "fine": { "displayName": "Fine", "purpose": "Fine print, captions, counters, table heads, in Mute." },
+      "fine": { "displayName": "Fine", "purpose": "Fine print, captions, counters, table heads, in Mute; Dim Cel on a page head or the stage, where it sits on a painting." },
       "numeral": { "displayName": "Numeral", "purpose": "The step number in a travelled path." },
       "mono": { "displayName": "Mono", "purpose": "Code and keyboard keys only." }
     },
     "shadows": [
       { "name": "stage-window", "value": "0 34px 70px rgba(0,0,0,.62), 0 0 0 1px rgba(246,239,226,.22)", "purpose": "The app window on the home stage." },
-      { "name": "scene-window", "value": "0 34px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(246,239,226,.28)", "purpose": "A window over a painted section." },
       { "name": "window", "value": "0 30px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(246,239,226,.32)", "purpose": "Screenshots in feature rows and the walkthrough; the blade demo at .5 alpha." },
       { "name": "inline-shot", "value": "0 18px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(246,239,226,.32)", "purpose": "Pictures inside docs articles." },
       { "name": "popover", "value": "0 20px 50px rgba(0,0,0,.7)", "purpose": "The docs search results." },
@@ -41,9 +40,10 @@
       { "name": "cel-title", "value": "0 2px 24px rgba(0,0,0,.55)", "purpose": "text-shadow on the stage title; smaller stage text uses 0 1px 10px at .7 and 0 1px 8px at .8." },
       { "name": "shade-stage", "value": "linear-gradient(90deg, rgba(14,10,7,.93), rgba(14,10,7,.8) 36%, rgba(14,10,7,0) 64%), linear-gradient(0deg, rgba(14,10,7,.86), rgba(14,10,7,0) 26%), linear-gradient(180deg, rgba(14,10,7,.8), rgba(14,10,7,0) 150px)", "purpose": "Shade under the lettering, the theme names and the top bar on the front plane of the stage." },
       { "name": "shade-stage-narrow", "value": "linear-gradient(180deg, rgba(14,10,7,.78), rgba(14,10,7,.7) 50%, rgba(14,10,7,.92))", "purpose": "The stage shade under 980px." },
-      { "name": "shade-deep", "value": "linear-gradient(rgba(14,10,7,.7), rgba(14,10,7,.74))", "purpose": "Even shade over a painting that runs behind a tall section." },
       { "name": "shade-pagehead", "value": "linear-gradient(90deg, rgba(14,10,7,.94), rgba(14,10,7,.7) 60%, rgba(14,10,7,.35))", "purpose": "Shade over a page head's painting." },
-      { "name": "shade-scene", "value": "linear-gradient(90deg, rgba(14,10,7,.92), rgba(14,10,7,.72) 55%, rgba(14,10,7,.5))", "purpose": "Shade over a painting behind a whole band." }
+      { "name": "shade-scene", "value": "linear-gradient(90deg, rgba(14,10,7,.92), rgba(14,10,7,.72) 55%, rgba(14,10,7,.5))", "purpose": "Shade over a painting behind a whole band." },
+      { "name": "shade-pagehead-narrow", "value": "linear-gradient(rgba(14,10,7,.78), rgba(14,10,7,.9))", "purpose": "The page head shade under 900px, where the lettering runs the full width." },
+      { "name": "shade-scene-narrow", "value": "linear-gradient(rgba(14,10,7,.8), rgba(14,10,7,.86))", "purpose": "The closing scene shade under 900px." }
     ],
     "motion": [
       { "name": "ease", "value": "cubic-bezier(.16,1,.3,1)", "purpose": "The one easing curve: plane changes and the button press." },
@@ -69,7 +69,7 @@
       "refersTo": "button-primary",
       "description": "The lamp-filled pill, for the primary action only: Get the beta, Download. One per group of controls.",
       "html": "<a class=\"ds-btn ds-btn-primary\" href=\"#\">Get the beta</a>",
-      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;text-decoration:none;color:var(--cel,#f6efe2);background:rgba(23,17,12,.42);border:1.5px solid var(--line2,rgba(246,239,226,.32));border-radius:999px;padding:11px 22px;min-height:46px;cursor:pointer;transition:background .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px}.ds-btn-primary{background:var(--lamp,#f2b23e);color:var(--lamp-ink,#231500);border-color:var(--lamp,#f2b23e);box-shadow:0 8px 22px rgba(0,0,0,.4)}.ds-btn-primary:hover{background:var(--lamp-hi,#ffc960);border-color:var(--lamp-hi,#ffc960)}"
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;text-decoration:none;color:var(--cel,#f6efe2);background:rgba(23,17,12,.42);border:1.5px solid var(--line2,rgba(246,239,226,.32));border-radius:999px;padding:11px 22px;min-height:46px;cursor:pointer;transition:background .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-btn:active{transform:translateY(1px)}.ds-btn:disabled{opacity:.4;cursor:default;pointer-events:none}.ds-btn:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px}.ds-btn-primary{background:var(--lamp,#f2b23e);color:var(--lamp-ink,#231500);border-color:var(--lamp,#f2b23e);box-shadow:0 8px 22px rgba(0,0,0,.4)}.ds-btn-primary:hover{background:var(--lamp-hi,#ffc960);border-color:var(--lamp-hi,#ffc960)}"
     },
     {
       "name": "Cel Tab Button",
@@ -146,13 +146,13 @@
       "kind": "card",
       "refersTo": "panel",
       "description": "A panel of included items over a painting, with one quiet 'not yet' row.",
-      "html": "<ul class=\"ds-ticks\"><li>Build and install, with a backup first</li><li>Edit presets live on the saber</li><li class=\"ds-no\">Not yet: macOS and Linux</li></ul>",
+      "html": "<ul class=\"ds-ticks\"><li>Build and install, with a backup first</li><li>Edit presets live on the saber</li><li class=\"ds-no\">Not yet: Linux, code signing, card formatting</li></ul>",
       "css": ".ds-ticks{list-style:none;margin:0;padding:8px 26px;background:rgba(14,10,7,.72);border:1px solid var(--line2,rgba(246,239,226,.32));border-radius:14px;font:400 17px/1.6 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#f6efe2)}.ds-ticks li{position:relative;padding:11px 0 11px 30px;border-bottom:1px solid var(--line,rgba(246,239,226,.14))}.ds-ticks li:last-child{border-bottom:0}.ds-ticks li::before{content:'';position:absolute;left:4px;top:19px;width:12px;height:6px;border-left:2px solid var(--good,#a6d9a0);border-bottom:2px solid var(--good,#a6d9a0);transform:rotate(-45deg)}.ds-ticks .ds-no{color:var(--mute,#a99e86);font-size:15.5px}.ds-ticks .ds-no::before{border:0;width:12px;height:2px;background:var(--mute,#a99e86);transform:none;top:23px}"
     }
   ],
   "narrative": {
     "northStar": "Painted Planes",
-    "overview": "The site is a multiplane animation stand. Background paintings are the large surfaces, lettering sits in front of them as if inked on a clear cel, and the app itself always appears as a floating window on the nearest plane. The ground between paintings is deep umber, warm and nearly black, so that a painting never has to compete with a neutral page: where there is no picture there is only dark, warm quiet.\n\nDensity is low on the promo pages (one idea per band, a picture beside most of them) and steady on the reading pages (docs and walkthrough), which drop the paintings below the page head and become a plain three-column reader on the same ground. Everything a visitor can press is a pill. Everything that shows the app is a rounded window with a soft, deep shadow and a hairline edge. Lamp amber is the single accent: it fills the primary action and tints a warning, and nothing else. Every small mark (underlines, dots, focus rings, progress) is cel.\n\nThe home stage is the system's one piece of theatre: one painting fills the screen, the other themes stand at the right as slanted slices of their own paintings, and choosing one racks focus to it. Other pages reuse the idea at rest: a page head, a closing band or a tall section carries one painting, held back by a Well shade so the lettering reads.",
+    "overview": "The site is a multiplane animation stand. Background paintings are the large surfaces, lettering sits in front of them as if inked on a clear cel, and the app itself always appears as a floating window on the nearest plane. The ground between paintings is deep umber, warm and nearly black, so that a painting never has to compete with a neutral page: where there is no picture there is only dark, warm quiet.\n\nDensity is low on the promo pages (one idea per band, a picture beside most of them) and steady on the reading pages (docs and walkthrough), which drop the paintings below the page head and become a plain three-column reader on the same ground. Everything a visitor can press is a pill. Everything that shows the app is a rounded window with a soft, deep shadow and a hairline edge. Lamp amber is the single accent: it fills the primary action and tints a warning, and nothing else. Every small mark (underlines, dots, focus rings, progress) is cel.\n\nThe home stage is the system's one piece of theatre: one painting fills the screen, the other themes stand at the right as slanted slices of their own paintings, and choosing one racks focus to it. Other pages reuse the idea at rest: a page head or a closing band carries one painting, held back by a Well shade so the lettering reads, and a tall section opens with its painting as a clear band at full strength, with no lettering on it.",
     "keyCharacteristics": [
       "Deep umber ground with three tonal steps (well, raised, high); no neutral grey anywhere.",
       "Paintings are surfaces, not decoration: full-bleed, always under a Well shade where text sits on them.",
@@ -169,12 +169,12 @@
       { "name": "The Amber Means Caution Too Rule", "body": "Warning surfaces (the download warning card, the docs warning callout) use the same lamp hue as an 8% tint with a 60% edge. The stylesheet's --warn is the same value as --lamp. This is a deliberate second job for the hue, the only one, and it widens the direction contract's \"primary action only\": the solid fill stays reserved for the action, the tint and edge mean caution. A warning never carries a lamp fill.", "section": "colors" },
       { "name": "The Sentence Case Rule", "body": "Labels, table heads, nav group names and footer column labels are sentence case at weight 600 or 700 with no added tracking. The only uppercase, letter-spaced text on the site is the wordmark in the top bar and footer (700, 0.2em).", "section": "typography" },
       { "name": "The One Weight Serif Rule", "body": "Gloock is always 400. Emphasis in a title comes from size, never from a bolder or italic cut. Headings balance their line breaks (text-wrap: balance).", "section": "typography" },
-      { "name": "The Shade Before Text Rule", "body": "Lettering never sits directly on a painting. A linear shade in the Well colour runs from 92 to 94% at the text side to 35 to 50% at the far side (on the stage: 93%, 80% at 36%, clear by 64%, plus a foot and a head shade for the names and the top bar). A tall section with a painting behind all of it takes an even shade instead, 70% at the top to 74% at the bottom. Under 980px the stage shade becomes vertical (78% to 70% to 92%).", "section": "elevation" },
+      { "name": "The Shade Before Text Rule", "body": "Lettering never sits directly on a painting. A linear shade in the Well colour runs from 92 to 94% at the text side to 35 to 50% at the far side (on the stage: 93%, 80% at 36%, clear by 64%, plus a foot and a head shade for the names and the top bar). A tall section does not put lettering on its painting at all: the painting is a clear band (clamp(240px, 48vh, 500px) high; clamp(180px, 34vh, 300px) under 900px) and the rows stand on Umber Ground below it. Under 980px the stage shade becomes vertical (78% to 70% to 92%). Under 900px, where lettering runs the full width, a page head and a closing scene also take an even shade (78% to 90% and 80% to 86%), and fine print on a page head steps up from Mute to Dim Cel.", "section": "elevation" },
       { "name": "The Hairline With Every Shadow Rule", "body": "A floating window always pairs its soft shadow with a 1px cel-white ring. The ring, not the shadow, is what separates a dark screenshot from the dark ground.", "section": "elevation" },
       { "name": "The Rack Focus Rule", "body": "Planes change by focus, not by sliding content: the incoming plane sharpens from a 16px blur over 0.9s on cubic-bezier(.16,1,.3,1) while slices re-seat, and the window cross-fades (0.35s). A theme with no painting comes to rest out of focus (10px blur, dimmed to 72%) because its plane is its own app capture and the sharp copy is in the window. On scroll, planes drift at different speeds and the stage window lifts 60px where scroll-driven animation is supported. State changes on controls take 0.2s. Under prefers-reduced-motion: reduce all of it holds still.", "section": "elevation" }
     ],
     "dos": [
-      "Do put a Well-coloured shade under any lettering that sits on a painting: heaviest on the text side, or an even 70 to 74% behind a tall section.",
+      "Do put a Well-coloured shade under any lettering that sits on a painting: heaviest on the text side. In a tall section keep lettering off the painting and show it as a clear band.",
       "Do show the app as a floating window: 10px corners, deep soft shadow, 1px cel hairline.",
       "Do make every pressable thing a pill with a 1.5px translucent cel edge, and show \"selected\" by inverting to Cel White with Umber Ground text.",
       "Do keep one lamp-filled button per group of controls, with Lamp Ink text.",

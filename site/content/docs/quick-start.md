@@ -4,7 +4,7 @@ summary: The whole path for a first saber, from plugging in to an installed boar
 section: Getting started
 order: 3
 ---
-This page walks a first saber from start to finish. Each step links to the page that explains it in full. Hiltwright (a closed beta, for Windows and macOS) works with Proffieboard V2.2 and V3 boards running ProffieOS 8.x.
+This page walks a first saber from start to finish. Each step links to the page that explains it in full. Hiltwright (a beta, for Windows and macOS) works with Proffieboard V2.2 and V3 boards running ProffieOS 8.x.
 
 ## What you need
 

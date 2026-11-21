@@ -15,7 +15,7 @@ scripts: assets/stage.js, assets/blade-demo.js
       <a class="btn primary big" href="download.html">Get the beta</a>
       <a class="btn big" href="walkthrough.html">Take the walkthrough</a>
     </div>
-    <p class="fine">Free and open source. Version {{version}}, a closed beta for Windows and macOS, for Proffieboard V2.2 and V3.</p>
+    <p class="fine">Free and open source. Version {{version}}, a beta for Windows and macOS, for Proffieboard V2.2 and V3.</p>
   </div>
   <figure class="win stage-win"><img src="assets/themes/{{firstTheme}}.jpg" width="1480" height="980" alt="The Hiltwright app: the Armory page with an example saber plugged in, in the {{firstThemeName}} theme"></figure>
   <div class="stage-names" role="radiogroup" aria-label="Show the app in this theme">
@@ -74,6 +74,7 @@ scripts: assets/stage.js, assets/blade-demo.js
 </section>
 
 <section class="band scene deep s-hoth">
+  <div class="pic" aria-hidden="true"></div>
   <div class="wrap feature">
     <div>
       <h2>Pick a style. Recolour it live.</h2>
@@ -83,7 +84,7 @@ scripts: assets/stage.js, assets/blade-demo.js
     </div>
     <figure class="frame"><img loading="lazy" src="assets/shots/clean-31.png" width="1480" height="980" alt="The Styles page: a grid of blade styles with previews, and one style open with effect buttons and colour pickers"></figure>
   </div>
-  <div class="wrap feature">
+  <div class="wrap feature flip">
     <div>
       <h2>Build your own, in blocks or in full.</h2>
       <p>Simple builds a style from a few plain blocks: a blade, effects on top, an ignition and a retraction. Full shows every ProffieOS layer, and you say what it shows, where on the blade, and when.</p>
@@ -117,10 +118,13 @@ scripts: assets/stage.js, assets/blade-demo.js
 <section class="band scene close">
   <div class="wrap beta">
     <div>
-      <h2>This is a closed beta for experts.</h2>
-      <p>It is for installers and style builders who own a Proffieboard V2.2 or V3 and run Windows or macOS. Neither build is signed, so both systems warn you before it opens, and on Windows Smart App Control must be off. macOS is new in this beta: on a Mac Hiltwright sets up its toolchain and builds firmware, and installing to a saber has not been confirmed there yet. The <a href="docs/install.html">install guide</a> covers every step.</p>
+      <h2>It is a beta. Here is who it is ready for.</h2>
+      <p><b>Install it now</b> if you own a saber with a Proffieboard V2.2 or V3, you know how it is wired or can ask whoever built it, and you are willing to follow an install guide past a few warnings from Windows or macOS.</p>
+      <p><b>Wait for a later release</b> if you want a signed installer, or if nobody can tell you how your saber is wired. Hiltwright installs nothing until the wiring is confirmed, because a wrong power pin can damage hardware.</p>
+      <p>Neither build is signed, so both systems warn you before it opens, and on Windows Smart App Control must be off. macOS is new in this beta: on a Mac Hiltwright sets up its toolchain and builds firmware, and installing to a saber has not been confirmed there yet. The <a href="docs/install.html">install guide</a> covers every step.</p>
+      <p>Whatever you change, the saber's whole firmware is backed up before every install, and "Put back" restores it exactly as it was.</p>
       <div class="cta">
-        <a class="btn primary big" href="download.html">Download and requirements</a>
+        <a class="btn primary big" href="download.html">Get the beta</a>
         <a class="btn big" href="docs/index.html">Read the docs</a>
       </div>
     </div>

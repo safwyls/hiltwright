@@ -18,8 +18,6 @@
       const isFront = p === front;
       p.classList.toggle('front', isFront);
       p.classList.remove('racking');
-      p.tabIndex = isFront ? -1 : 0;
-      p.setAttribute('aria-hidden', isFront ? 'true' : 'false');
       if (!isFront) p.style.setProperty('--s', String(slot++));
     }
     void front.offsetWidth; // restart the focus pull

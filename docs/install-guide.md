@@ -1,6 +1,6 @@
 # Hiltwright 0.2.0-beta.12: install guide
 
-Hiltwright Beta 1 is not signed. Windows will warn you. This guide takes you from the download to your first firmware install.
+This Hiltwright beta is not signed. Windows will warn you. This guide takes you from the download to your first firmware install.
 
 ## Before you start
 

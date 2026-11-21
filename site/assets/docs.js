@@ -7,7 +7,11 @@
   async function search() {
     const words = q.value.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
     if (!words.length) { hits.hidden = true; return; }
-    index ??= await fetch('search.json').then((r) => r.json()).catch(() => []);
+    // A failed load is said plainly and tried again on the next keystroke, not remembered as "nothing found".
+    if (!index) {
+      try { const r = await fetch('search.json'); if (!r.ok) throw new Error(String(r.status)); index = await r.json(); }
+      catch { hits.hidden = false; hits.innerHTML = '<div class="none">Search could not load. Check your connection, or use the list of pages.</div>'; return; }
+    }
     const found = [];
     for (const e of index) {
       const hay = `${e.p} ${e.h} ${e.t}`.toLowerCase();
@@ -28,6 +32,16 @@
   if (q) {
     q.addEventListener('input', search);
     q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; hits.hidden = true; } });
+    // Arrow keys move from the field into the results and between them; Escape goes back to the field.
+    const results = () => [...hits.querySelectorAll('a')];
+    q.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown' && !hits.hidden && results().length) { e.preventDefault(); results()[0].focus(); } });
+    hits.addEventListener('keydown', (e) => {
+      const list = results(), i = list.indexOf(document.activeElement);
+      if (e.key === 'Escape') { hits.hidden = true; q.focus(); return; }
+      if (i < 0 || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+      e.preventDefault();
+      if (e.key === 'ArrowUp' && i === 0) q.focus(); else list[Math.min(list.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1))].focus();
+    });
     document.addEventListener('click', (e) => { if (!e.target.closest('.docsearch')) hits.hidden = true; });
     document.addEventListener('keydown', (e) => { if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) { e.preventDefault(); q.focus(); } });
   }

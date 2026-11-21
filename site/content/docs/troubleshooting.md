@@ -8,7 +8,7 @@ Find the symptom that matches what you see. Each one gives the cause and the fix
 
 ## Windows blocks the installer or the app
 
-**Windows says "Windows protected your PC".** This is SmartScreen. Hiltwright Beta 1 is not signed, so Windows warns about it. Choose **More info**, then **Run anyway**.
+**Windows says "Windows protected your PC".** This is SmartScreen. This Hiltwright beta is not signed, so Windows warns about it. Choose **More info**, then **Run anyway**.
 
 **Your browser flags the download.** Edge and Chrome ask whether to keep the file. Choose **Keep**. It may be under a **...** or arrow menu beside the download.
 

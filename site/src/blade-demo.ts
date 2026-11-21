@@ -61,9 +61,16 @@ function mount(root: HTMLElement): void {
     applyMotion();
     about.textContent = look.description;
     on = false;
+    releaseHolds();
     if (ignite) setOn(true);
   }
+  // A held or toggled lockup never outlives what it was holding: a new style, a retracted blade, a lost pointer.
+  const holds = [...root.querySelectorAll<HTMLButtonElement>('[data-hold]')];
+  function releaseHolds(): void {
+    for (const b of holds) if (b.getAttribute('aria-pressed') === 'true') { b.setAttribute('aria-pressed', 'false'); sim.setLockup(null, 0.55); }
+  }
   function setOn(v: boolean): void {
+    if (!v) releaseHolds();
     on = v; sim.setOn(v);
     power.textContent = v ? 'Retract' : 'Ignite';
     power.setAttribute('aria-pressed', String(v));
@@ -71,6 +78,7 @@ function mount(root: HTMLElement): void {
 
   for (const l of STYLES) select.add(new Option(l.name, l.id));
   select.value = 'hw_stripes';
+  if (select.selectedIndex < 0) select.selectedIndex = 0;
   select.addEventListener('change', () => load(select.value, true));
 
   COLOURS.forEach((c, i) => {
@@ -97,11 +105,15 @@ function mount(root: HTMLElement): void {
     else sim.trigger(kind as 'clash' | 'blast' | 'stab', kind === 'stab' ? 1 : hit);
   }));
   // Lockups hold while the button is down (or toggle from the keyboard).
-  root.querySelectorAll<HTMLButtonElement>('[data-hold]').forEach((b) => {
+  holds.forEach((b) => {
     const kind = b.dataset.hold as LockupType;
-    const set = (v: boolean) => { if (v && !on) setOn(true); sim.setLockup(v ? kind : null, kind === 'drag' || kind === 'melt' ? 0.97 : 0.55); b.setAttribute('aria-pressed', String(v)); };
-    b.addEventListener('pointerdown', () => set(true));
-    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => { if (b.getAttribute('aria-pressed') === 'true') set(false); });
+    const set = (v: boolean) => { if (v && !on) setOn(true); if (v) releaseHolds(); sim.setLockup(v ? kind : null, kind === 'drag' || kind === 'melt' ? 0.97 : 0.55); b.setAttribute('aria-pressed', String(v)); };
+    // Only the pointer that started a hold can end it, so a second finger does not cut it short.
+    let holder: number | null = null;
+    b.addEventListener('pointerdown', (e) => { if (holder !== null) return; holder = e.pointerId; set(true); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel'] as const) b.addEventListener(ev, (e) => { if (e.pointerId !== holder) return; holder = null; if (b.getAttribute('aria-pressed') === 'true') set(false); });
+    // Switching windows mid-hold loses the release, so the hold ends there.
+    window.addEventListener('blur', () => { if (holder === null) return; holder = null; if (b.getAttribute('aria-pressed') === 'true') set(false); });
     b.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); set(b.getAttribute('aria-pressed') !== 'true'); } });
   });
   // A click on the blade lands a blast there, as in the app.

@@ -6,104 +6,104 @@ order: 4
 ---
 Terms are in alphabetical order. If you come from Crystal Focus X, Xenopixel or LGT boards, some of these will be new, and a few are the same idea under another name.
 
-### Accent
+## Accent
 A small extra LED or LED strip on the saber, apart from the main blade. It can follow the blade, flash on hits or show the battery. Hiltwright treats it as a kind of blade you can give a style to.
 
-### Backup
+## Backup
 A copy of the saber's whole firmware, saved to your computer before each install. **Put back** on the Backups tab writes one onto the saber exactly as it was. See [Build and Install](build-and-install.html).
 
-### Blade
+## Blade
 In Hiltwright, anything the saber lights or runs on its own: the main blade, a side blade, a crystal chamber, an accent LED or a motor. You set how many there are on the [Wiring](wiring.html) page.
 
-### Blast
+## Blast
 An effect for a blaster bolt hitting the blade. A small ring of light spreads from where it lands.
 
-### Clash
+## Clash
 An effect for the blade hitting something hard. It flashes where the blade is hit, and the saber plays a clash sound.
 
-### Common folder
+## Common folder
 A folder named `common` on the SD card. It holds sounds shared by every preset, such as the voice pack. A preset must use it for those sounds to play.
 
-### Crystal chamber
+## Crystal chamber
 The space inside a hilt, usually with a clear window, where a crystal sits. A Proffieboard can light it with its own LED and style.
 
-### Data pin
+## Data pin
 The board pin that carries the colour signal to a blade's LEDs. Check each data pin against what the installer wrote down before you install.
 
-### DFU
+## DFU
 Short for device firmware upgrade. It is the bootloader mode a Proffieboard enters to accept new firmware. Hiltwright puts the board in it for you. If it does not, hold BOOT, tap RESET, then release BOOT.
 
-### Drag
+## Drag
 An effect for the blade tip scraping along the ground. It is held while you drag, and the tip glows.
 
-### Firmware
+## Firmware
 The program that runs on the board. ProffieOS, with your wiring, presets and styles built in, is the firmware. Hiltwright builds it and installs it.
 
-### Flash
+## Flash
 To write firmware onto the board. Hiltwright calls it an install. It is also used as a noun: a board has a fixed amount of flash memory, and every style takes a little of it.
 
-### Font
+## Font
 See Sound font.
 
-### Install
+## Install
 Writing newly built firmware to the saber over USB. Hiltwright takes a backup first, writes the firmware, then waits for the saber to start again. Also see Flash.
 
-### Lightning block
+## Lightning block
 An effect for blocking Force lightning. Crackles run along the blade while it is held.
 
-### Lockup
+## Lockup
 An effect held while two blades are pressed together. The blade glows where they meet, and a lockup sound loops until you let go.
 
-### Melt
+## Melt
 An effect held while the blade is pushed into a surface, as if melting through it. A font with a drag sound but no melt sound plays the drag sound.
 
-### Pixel blade
+## Pixel blade
 A blade made of LEDs that can each show their own colour, so styles can do more than light the whole blade one colour. Proffieboards drive pixel blades. Each LED strip has a data pin and gets its power from a power pin.
 
-### Polyphonic
+## Polyphonic
 A sound font whose sounds can overlap, with numbered names such as `clsh01.wav`. The other kind, monophonic, plays one sound at a time with names such as `clash1.wav`. A font should not mix the two for the same effect.
 
-### Power pin
+## Power pin
 The board pin that supplies power to a blade's LEDs. Two blades on one power pin is allowed. A wrong power pin can damage hardware, so Hiltwright asks you to confirm the wiring before it installs.
 
-### Preon
+## Preon
 A sound, and sometimes a light effect, that plays before the blade ignites.
 
-### Preset
+## Preset
 One setup you switch to with the buttons: a sound font, a music track, and a style for each blade. See [Presets](presets.html).
 
-### Proffieboard
+## Proffieboard
 The saber controller board Hiltwright sets up. Hiltwright supports the Proffieboard V2.2 and V3.
 
-### ProffieOS
+## ProffieOS
 The open-source software that runs on a Proffieboard. It decides how the saber lights, sounds and reacts. Hiltwright supports ProffieOS 8.x.
 
-### Prop file
+## Prop file
 The part of ProffieOS that decides what each button press does, such as ignite, change preset or enter edit mode. You choose it on the Wiring page, along with the number of buttons.
 
-### Queued
+## Queued
 A style that is chosen for a preset but not in the firmware yet. It goes on with the next Build & Install. See [Styles](styles.html).
 
-### SD card
+## SD card
 The memory card in the saber. It holds the sound fonts, tracks and the `presets.ini` file. FAT32 is the format to use. A saber cannot read a card formatted exFAT or NTFS.
 
-### SmoothSwing
+## SmoothSwing
 A swing sound that follows how you move the blade, with pitch and volume rising and falling smoothly. A font needs the right files for it. The [Font library](font-library.html) shows whether a font has them.
 
-### Sound font
+## Sound font
 A folder of sound files a saber plays: hum, ignition, retraction, swings, clashes and more. Some fonts also hold music tracks. The saber knows a font by its folder name. See [Font library](font-library.html).
 
-### Staged
+## Staged
 Presets that are waiting in Hiltwright instead of being written to the saber. With no saber plugged in, changes are staged. They replace the saber's presets at the next install, after a copy of the saber's own presets is kept.
 
-### Stab
+## Stab
 An effect for thrusting the blade forward. The tip lights and the glow slides back.
 
-### Style
+## Style
 What a blade does: its colour, flicker, ignition and retraction, and how it reacts to clashes, swings and other effects. See [Styles](styles.html) and the [Style editor](style-editor.html).
 
-### Track
+## Track
 A music file kept with a sound font, which a preset can play. A preset names it as the font's folder plus the file path.
 
-### Voice pack
+## Voice pack
 A set of spoken menu sounds, kept in the `common` folder on the card. The Fett263 button controls speak their menus from it. Without it the saber says "voice pack not found" on a preset change.

@@ -91,7 +91,7 @@ ${body}
   <div class="wrap footgrid">
     <div>
       <a class="brand" href="${root}index.html"><img src="${root}assets/brand/hiltwright-icon.svg" width="30" height="30" alt="">Hiltwright</a>
-      <p>ProffieOS for people who never want to see a compiler. Version ${esc(VERSION)}, a closed beta for Windows and macOS.</p>
+      <p>ProffieOS for people who never want to see a compiler. Version ${esc(VERSION)}, a beta for Windows and macOS.</p>
     </div>
     <div><p class="foot-h">Site</p><a href="${root}features.html">Features</a><a href="${root}walkthrough.html">Walkthrough</a><a href="${root}download.html">Download</a></div>
     <div><p class="foot-h">Docs</p><a href="${root}docs/install.html">Install guide</a><a href="${root}docs/quick-start.html">Quick start</a><a href="${root}docs/troubleshooting.html">Troubleshooting</a><a href="${root}docs/faq.html">Questions</a></div>
@@ -184,7 +184,7 @@ for (const d of docs) {
   </article>
   <aside class="toc" aria-label="On this page">${toc.length > 1 ? `<div class="sec">On this page</div>${toc.map((t) => `<a href="#${t.id}">${esc(t.text)}</a>`).join('')}` : ''}</aside>
 </div>`;
-  writeFileSync(join(dist, 'docs', `${d.slug}.html`), layout({ title: d.slug === 'index' ? 'Docs' : d.title, description: d.summary ?? 'Hiltwright documentation.', nav: 'docs', root: '../', body, cls: 'docspage', scripts: ['assets/docs.js'] }));
+  writeFileSync(join(dist, 'docs', `${d.slug}.html`), layout({ title: d.slug === 'index' ? 'Docs' : d.title, description: d.summary ?? 'Hiltwright documentation.', nav: 'docs', root: '../', body, cls: `docspage doc-${d.slug}`, scripts: ['assets/docs.js'] }));
   // Search: one entry per section of each page.
   const parts = html.split(/(?=<h2 id=")/);
   for (const part of parts) {
@@ -197,6 +197,8 @@ writeFileSync(join(dist, 'docs/search.json'), JSON.stringify(search));
 
 // ---------- promo pages ----------
 // The home page's stage: one plane per theme. The first is in front; the rest stand as slices, in order.
+// A slice is a pointer shortcut only: the row of theme names is the one control a keyboard or a screen reader
+// meets, so the slices are out of the tab order and hidden from assistive technology.
 let slot = 0;
 // A theme with no painting shows its own app as its plane. Those are spread out, so no two stand side by side.
 const unpainted = themes.filter((t) => !paintings.has(t.id));
@@ -210,7 +212,7 @@ const planes = themes.map((t) => {
   const front = t.id === FIRST_THEME;
   const pic = paintings.get(t.id);
   const style = `${front ? '' : `--s:${slot++};`}background-image:url(${pic ? `assets/planes/${pic}` : `assets/themes/${t.id}.jpg`})`;
-  return `<button type="button" class="plane${front ? ' front' : ''}${pic ? '' : ' unpainted'}" data-theme="${t.id}" style="${style}" aria-label="Show the app in the ${esc(t.name)} theme"${front ? ' tabindex="-1" aria-hidden="true"' : ''}></button>`;
+  return `<button type="button" class="plane${front ? ' front' : ''}${pic ? '' : ' unpainted'}" data-theme="${t.id}" style="${style}" tabindex="-1" aria-hidden="true"></button>`;
 }).join('\n  ');
 const themeButtons = themes.map((t) => `<button type="button" role="radio" data-theme="${t.id}" aria-checked="${t.id === FIRST_THEME}" tabindex="${t.id === FIRST_THEME ? 0 : -1}" title="${esc(t.about)}">${esc(t.name)}</button>`).join('\n    ');
 const vars = { planes, themeButtons, themeCount: String(themes.length), sliceCount: String(themes.length - 1), firstTheme: FIRST_THEME, firstThemeName: esc(themes.find((t) => t.id === FIRST_THEME).name), version: VERSION, repo: REPO_URL, releases: RELEASES_URL, issues: ISSUES_URL, steps: String(tour.chapters.reduce((n, c) => n + c.steps.length, 0)), tour: JSON.stringify(tour).replace(/</g, '\\u003c') };
@@ -219,7 +221,8 @@ for (const f of readdirSync(join(here, 'src/pages')).filter((x) => x.endsWith('.
   const filled = body.replace(/\{\{(\w+)\}\}/g, (m, k) => (k === 'root' ? '' : vars[k] ?? m))
     // A feature row's picture is the one taken in its own theme (scripts/capture.mjs), named under the picture.
     .replace(/<figure class="frame">(<img [^>]*?)src="assets\/shots\/clean-(\d\d)\.png"([^>]*>)<\/figure>/g, (m, a, n, b) => (feature[n] ? `<figure class="frame">${a}src="assets/feature/${n}.jpg"${b}<figcaption>Shown in the ${esc(feature[n].name)} theme</figcaption></figure>` : m));
-  writeFileSync(join(dist, f), layout({ title: meta.title, description: meta.description, nav: meta.nav, root: '', body: filled, cls: meta.class ?? '', scripts: (meta.scripts ?? '').split(',').map((s) => s.trim()).filter(Boolean) }));
+  // The 404 page is served at any path, so its stylesheet, pictures and links start at the site's root.
+  writeFileSync(join(dist, f), layout({ title: meta.title, description: meta.description, nav: meta.nav, root: f === '404.html' ? '/' : '', body: filled, cls: meta.class ?? '', scripts: (meta.scripts ?? '').split(',').map((s) => s.trim()).filter(Boolean) }));
 }
 
 // ---------- check every local link and image points at something that was built ----------

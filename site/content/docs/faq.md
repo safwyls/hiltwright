@@ -38,7 +38,7 @@ It works on a Mac, from 0.2.0-beta.7: each release carries a disk image for Appl
 
 ## Windows warns me about the installer. Is that normal?
 
-Yes. Beta 1 is not signed, so Windows shows warnings such as "Windows protected your PC". Choose **More info**, then **Run anyway**. If Smart App Control is **On**, Windows blocks the installer and the app with no way to allow just one app. It has to be off as long as you use the beta. See [Install](install.html) and [Troubleshooting](troubleshooting.html).
+Yes. The beta is not signed, so Windows shows warnings such as "Windows protected your PC". Choose **More info**, then **Run anyway**. If Smart App Control is **On**, Windows blocks the installer and the app with no way to allow just one app. It has to be off as long as you use the beta. See [Install](install.html) and [Troubleshooting](troubleshooting.html).
 
 ## Where do sound fonts come from?
 
