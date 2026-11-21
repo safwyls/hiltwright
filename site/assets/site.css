@@ -372,6 +372,7 @@ kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--line2);border
   .path,.path.three,.cards.three,.doccards,.footgrid,.pager{grid-template-columns:1fr}
   .bd-stage{height:130px;padding:0 16px 0 10px}
   .bd-hilt{width:130px;margin-right:-17px}
+  .bd-glow{filter:blur(9px) saturate(1.3)}
   .bd-panel{padding:16px}
   .bd-field select{min-width:0;width:100%}
   .bd-field{flex:1 1 100%}

@@ -127,15 +127,20 @@ function mount(root: HTMLElement): void {
   // seconds after ignition. It starts moving only when they use a control.
   let still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let ready = false;
-  let w = 0, h = 0, dpr = 1;
+  const hilt = q<HTMLImageElement>('.bd-hilt');
+  let w = 0, h = 0, dpr = 1, bladeRadius = 11;
   function size(): void {
     dpr = Math.min(2, window.devicePixelRatio || 1);
     w = stage.clientWidth; h = stage.clientHeight;
+    // The blade is as thick as the hilt's emitter, so it shrinks with the hilt on a narrow screen. Before the
+    // hilt's picture has loaded it has no height, and the room's height stands in.
+    bladeRadius = Math.min(11, hilt.clientHeight > 0 ? hilt.clientHeight * 0.305 : h * 0.09);
     for (const c of [glow, core]) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
     // Sizing a canvas clears it, and a still blade has no next frame to bring it back.
     if (ready && still) draw(performance.now());
   }
   new ResizeObserver(size).observe(stage);
+  new ResizeObserver(size).observe(hilt);
   size();
 
   const gctx = glow.getContext('2d')!;
@@ -150,7 +155,7 @@ function mount(root: HTMLElement): void {
       img.data[i * 4 + 3] = Math.min(255, Math.round(tone(peak) * 1.4));
     }
     sctx.putImageData(img, 0, 0);
-    const W = w * dpr, H = h * dpr, rad = Math.min(11, h * 0.09) * dpr, cy = H / 2;
+    const W = w * dpr, H = h * dpr, rad = bladeRadius * dpr, cy = H / 2;
     gctx.clearRect(0, 0, W, H);
     gctx.imageSmoothingEnabled = true;
     gctx.drawImage(strip, 0, cy - rad * 2.2, W - rad, rad * 4.4);
