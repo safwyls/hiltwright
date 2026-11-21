@@ -136,6 +136,25 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
   };
 }
 
+/** The saber's presets as a list for the next install starts: what `presetDrift` later compares with. */
+export function presetBase(info: BoardInfo | null): { name: string; font: string }[] | undefined {
+  return info ? info.presets.map((p) => ({ name: p.name, font: p.font })) : undefined;
+}
+
+/**
+ * How many of the saber's presets have changed since the list for the next install was started from them (changed
+ * live, say), counted by place: a different name or font, or one added or removed. Null when there is no such list,
+ * it does not know what it started from, or nothing changed.
+ */
+export function presetDrift(model: SaberConfigModel | null | undefined, info: BoardInfo | null): number | null {
+  const base = model?.presetsFrom?.base;
+  if (!base || !info) return null;
+  const now = info.presets;
+  let n = Math.abs(now.length - base.length);
+  for (let i = 0; i < Math.min(now.length, base.length); i++) if (now[i].name.trim() !== base[i].name.trim() || now[i].font.trim() !== base[i].font.trim()) n++;
+  return n || null;
+}
+
 /**
  * The saber's installed firmware carries the staged presets: the same names, in the same order. Then they can be put
  * on the saber without another install ("Use the staged presets", safe-staged-install D3).

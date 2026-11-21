@@ -450,7 +450,7 @@ export const TOUR: TourChapter[] = [
         title: 'Your settings',
         target: 'settings-theme',
         text: [
-          'Your own preferences for Hiltwright, not about any one saber. Start with the theme: it changes how every page looks.',
+          'Your own preferences for Hiltwright, not about any one saber. Start with the theme: it sets the colours and textures of every page.',
         ],
       },
     ],

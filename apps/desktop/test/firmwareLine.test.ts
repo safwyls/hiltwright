@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { firmwareLine } from '../src/renderer/src/saberModel';
+import { firmwareLine, presetBase, presetDrift } from '../src/renderer/src/saberModel';
+import type { SaberConfigModel } from '@hiltwright/core';
 import type { BoardInfo } from '../src/renderer/src/board';
 
 const base: BoardInfo = {
@@ -28,5 +29,31 @@ describe('the firmware line in the bar along the bottom of the window', () => {
     expect(firmwareLine(null)).toBeNull();
     expect(firmwareLine({ ...base, version: null })).toBeNull();
     expect(firmwareLine({ ...base, version: { ...base.version!, version: '' } })).toBeNull();
+  });
+});
+
+describe('a list for the next install, and the saber changing after it was started', () => {
+  const saberHas = (list: [string, string][]): BoardInfo => ({ ...base, presets: list.map(([name, font]) => ({ name, font, track: '' })) as BoardInfo['presets'] });
+  const started = saberHas([['Kylo', 'Kylo;common'], ['Vader', 'Vader;common'], ['Rey', 'Rey;common']]);
+  const draft = (b: ReturnType<typeof presetBase> | null = presetBase(started)): SaberConfigModel => ({ presets: [], presetsFrom: { name: 'edits made here', at: '2026-11-21T10:00:00.000Z', ...(b ? { base: b } : {}) } } as unknown as SaberConfigModel);
+
+  it('remembers the saber\'s names and fonts as the list starts', () => {
+    expect(presetBase(started)).toEqual([{ name: 'Kylo', font: 'Kylo;common' }, { name: 'Vader', font: 'Vader;common' }, { name: 'Rey', font: 'Rey;common' }]);
+    expect(presetBase(null)).toBeUndefined();
+  });
+
+  it('sees nothing changed while the saber still has what the list started from', () => {
+    expect(presetDrift(draft(), started)).toBeNull();
+  });
+
+  it('counts the presets changed on the saber since: a new font, a rename, one added', () => {
+    expect(presetDrift(draft(), saberHas([['Kylo', 'Kylo2;common'], ['Vader', 'Vader;common'], ['Rey', 'Rey;common']]))).toBe(1);
+    expect(presetDrift(draft(), saberHas([['Kylo', 'Kylo;common'], ['Lord Vader', 'Vader;common'], ['Rey', 'Rey;common'], ['Ahsoka', 'Ahsoka;common']]))).toBe(2);
+  });
+
+  it('says nothing without a list, or for a list that does not know what it started from', () => {
+    expect(presetDrift(null, started)).toBeNull();
+    expect(presetDrift({ presets: [] } as unknown as SaberConfigModel, started)).toBeNull();
+    expect(presetDrift(draft(null), saberHas([['Other', 'X']]))).toBeNull();
   });
 });

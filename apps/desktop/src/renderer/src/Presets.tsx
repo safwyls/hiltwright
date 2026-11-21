@@ -1,11 +1,13 @@
 // Presets: the saber's list of presets, each a name, a sound font, a track, and a look for every blade with its
-// colours. One editor, two ways of applying a change:
-//   live    the saber is plugged in and its presets are the ones shown: the change is written to it now and shown as
-//           saved once the saber reads it back. A look the firmware does not carry yet is queued for the next build.
-//   staged  nothing is plugged in, or the list here has already diverged from the saber's: changes wait in the saber's
-//           model and replace its presets at the next install (a snapshot of the saber's own is kept first).
-// Preset sets save a whole list to reuse on another saber, or load one here.
-// A plugged-in saber that cannot read its SD card is shown read-only: ProffieOS saves presets on the card.
+// colours. One editor, mounted twice (docs/install-live-plan.md):
+//   install  Install › Presets. Always the list for the next install: changes wait in the saber's model and replace
+//            its presets when it is installed (a snapshot of the saber's own is kept first). Never needs the saber or its
+//            card. When the saber has changed since the list was started (live, say), it says so and offers to bring
+//            the saber's presets in. Preset sets are saved and loaded here.
+//   live     Live › Presets. Always the saber's own list, even while a list for the next install waits: each change is
+//            written to the saber now and shown as saved once it reads it back. Only styles its firmware carries can be
+//            chosen. Read-only while the saber is unplugged, has no readable card, or shares its card with this computer
+//            (ProffieOS saves presets on the card).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { STARTER_LOOKS, argInfo, bankFromSaber, bankLoadCheck, bankToModel, colorWordToHex, formatBuiltin, formatStyleArgs, hexToColorWord, lookSlots, parseStyleArgs, planRestore, registerLookSim, singleWords, starterLookFor, type BankLoadCheck, type LookDef, type PresetBank, type PresetRecord, type RestorePlan, type SaberConfigModel } from '@hiltwright/core';
@@ -22,29 +24,40 @@ import { FontPicker } from './FontPicker';
 import { Select } from './Select';
 import { joinFont, splitFont } from './presetFields';
 import { withSlotChoice } from './slotModel';
-import { withPresetRenamed } from './saberModel';
+import { draftModel, presetBase, presetDrift, withPresetRenamed } from './saberModel';
 
 const api = () => window.hiltwright;
 type ModelPreset = SaberConfigModel['presets'][number];
 const when = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 const clean = (name: string) => name.replace(/\s*\n\s*/g, ' ');
 
-export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'looks' | 'build' | 'wiring' | 'armory' | 'fonts' | 'library') => void }) {
-  const { saber, info, model, live } = ws;
-  const staged = !!model?.presetsFrom;
-  // Live: the saber's own list is what is shown, so each change goes to it at once. Staged edits win until installed.
-  const isLive = live && !staged && !!info;
-  // Plugged in, and the saber said it cannot read its card: nothing is sent, and nothing is staged instead (design D6).
-  const noCard = live && !!info?.sdMissing;
+type PresetsGo = (page: 'looks' | 'build' | 'wiring' | 'armory' | 'fonts' | 'library' | 'presets' | 'live-presets' | 'live-card') => void;
+
+export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; go: PresetsGo; mode: 'install' | 'live' }) {
+  const { saber, info, live } = ws;
+  const inLive = mode === 'live';
+  // A list for the next install is waiting (staged): Install shows and edits it; Live leaves it alone.
+  const staged = !!ws.model?.presetsFrom;
+  // Live always shows the saber's own list, so while a list for the next install waits, it is worked out without it.
+  const model = useMemo(() => {
+    if (!inLive || !staged || !info || !saber?.model) return ws.model;
+    const { presetsFrom: _waiting, ...own } = saber.model;
+    return draftModel(info, { ...saber, model: own });
+  }, [inLive, staged, info, saber, ws.model]);
+  // Live and plugged in: each change goes to the saber at once.
+  const isLive = inLive && live && !!info;
+  // Plugged in, and the saber said it cannot read its card: nothing is sent (design D6).
+  const noCard = isLive && !!info?.sdMissing;
   // Shared with this computer: the saber saves presets on that card, so nothing is sent until it is back (card-safety D2).
-  const sharedCard = live && board.card.shared;
-  const locked = noCard || sharedCard;
+  const sharedCard = isLive && board.card.shared;
+  // Live with nothing plugged in shows the saber as last read, and changes nothing.
+  const locked = noCard || sharedCard || (inLive && !isLive);
   const [ix, setIx] = useState(0);
   const [saved, setSaved] = useState<LookDef[]>([]);
   const [sets, setSets] = useState<PresetBank[]>([]);
   const [fonts, setFonts] = useState<string[]>([]);
   const [tracks, setTracks] = useState<string[]>([]);
-  const [side, setSide] = useState<'sets' | 'try' | 'history'>('sets');
+  const [side, setSide] = useState<'sets' | 'try' | 'history'>(inLive ? 'try' : 'sets');
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, setPending] = useState<Record<string, string>>({});
@@ -108,13 +121,18 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
   const curIx = Math.min(ix, Math.max(0, presets.length - 1));
   const liveRec = isLive ? info.presets[curIx] ?? null : null;
 
-  // ---- writing a change: to the saber when live, otherwise into the staged model ----
+  // ---- writing a change: to the saber in Live, into the list for the next install in Install ----
+  // A list started here remembers the saber's presets as they were, so a later change on the saber can be noticed.
+  const startList = (why: string) => ({ name: why, at: new Date().toISOString(), ...(presetBase(info) ? { base: presetBase(info) } : {}) });
   const stage = async (fn: (m: SaberConfigModel) => void, why = 'edits made here') => {
     const next = structuredClone(model);
     fn(next);
-    if (!next.presetsFrom) next.presetsFrom = { name: why, at: new Date().toISOString() };
+    if (!next.presetsFrom) next.presetsFrom = startList(why);
     await ws.saveModel(next);
   };
+  // What Live learns about the saber's own presets (a rename, a style in a slot) is kept with its model, unless a list
+  // for the next install is waiting there: that list is the owner's, and Live never changes it.
+  const keepLive = async (next: SaberConfigModel) => { if (!staged) await ws.saveModel(next); };
   const editPreset = async (patch: Partial<ModelPreset>, label: string) => {
     if (locked) return;
     if (isLive) {
@@ -122,7 +140,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
       const snapshot = model;
       const ok = await board.editPreset(patch, label);
       // A rename keeps the preset's chosen styles under its new name (design D2).
-      if (ok && patch.name !== undefined) await ws.saveModel(withPresetRenamed(snapshot, curIx, patch.name));
+      if (ok && patch.name !== undefined) await keepLive(withPresetRenamed(snapshot, curIx, patch.name));
       return;
     }
     await stage((m) => { Object.assign(m.presets[curIx], patch); });
@@ -130,20 +148,22 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
   const setLook = async (blade: number, look: LookDef | null, args: string | null) => {
     if (locked) return;
     const snapshot = model;
-    if (isLive && look && compiled.has(look.id) && saber.firmware) {
-      const slots = lookSlots(saber.firmware, look.id);
+    if (isLive) {
+      const slots = look && saber.firmware ? lookSlots(saber.firmware, look.id) : [];
       const slot = slots.find((s) => s.blade === blade) ?? slots[0];
-      if (slot) {
+      if (look && slot) {
         // Written, and on the saber with its colours: the slot now holds this style, and nothing is left to write (F37).
-        if (await board.setPresetStyles(curIx, { [blade]: formatBuiltin({ preset: slot.preset, blade: slot.blade, args }) }, `${look.name} → ${clean(cur?.name ?? '')}`)) await ws.saveModel(withSlotChoice(snapshot, curIx, blade, look, null));
+        if (await board.setPresetStyles(curIx, { [blade]: formatBuiltin({ preset: slot.preset, blade: slot.blade, args }) }, `${look.name} → ${clean(cur?.name ?? '')}`)) await keepLive(withSlotChoice(snapshot, curIx, blade, look, null));
         return;
       }
+      // Live changes only what the firmware carries; anything else goes on with an install.
+      setNote({ tone: 'amber', text: `${look ? `"${look.name}" is not in ${saber.name}'s firmware` : 'That style is not in the firmware'}, so it cannot be chosen live. Choose it in Install › Presets: it goes on with the next install.` });
+      return;
     }
-    // Not on the saber yet (or nothing plugged in): the model carries it to the next build, with its colours.
+    // Install: the model carries it to the next build, with its colours.
     const next = withSlotChoice(snapshot, curIx, blade, look, args);
-    if (!isLive && !next.presetsFrom) next.presetsFrom = { name: 'edits made here', at: new Date().toISOString() };
+    if (!next.presetsFrom) next.presetsFrom = startList('edits made here');
     await ws.saveModel(next);
-    if (isLive && look) setNote({ tone: 'amber', text: `"${look.name}" is not on ${saber.name} yet: it goes on with the next Build & Install.` });
   };
   const writeColour = (key: string, blade: number, look: LookDef, args: Map<number, string>, n: number, hex: string) => {
     const t = colourTimers.current.get(key);
@@ -164,23 +184,26 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
     writeColour(key, blade, look, args, n, hex);
   };
   const add = async () => {
+    if (locked) return;
     if (isLive) { await board.duplicatePreset(); return; }
     await stage((m) => { const src = m.presets[curIx]; m.presets.splice(curIx + 1, 0, src ? { ...structuredClone(src), name: `${src.name} copy` } : { name: `Preset ${m.presets.length + 1}`, font: 'common', track: '' }); });
     setIx(curIx + 1);
   };
   const remove = async () => {
     setConfirmDelete(false);
+    if (locked) return;
     if (isLive) { await board.deletePreset(); return; }
     await stage((m) => { m.presets.splice(curIx, 1); });
     setIx(Math.max(0, curIx - 1));
   };
   const move = async (to: number) => {
-    if (to < 0 || to >= presets.length) return;
+    if (to < 0 || to >= presets.length || locked) return;
     if (isLive) { await board.movePreset(to); return; }
     await stage((m) => { const [p] = m.presets.splice(curIx, 1); m.presets.splice(to, 0, p); });
     setIx(to);
   };
-  const select = (i: number) => { if (locked) return; if (isLive) void board.choosePreset(i); else setIx(i); };
+  // Live unplugged still lets each preset be looked at; plugged in, choosing one selects it on the saber.
+  const select = (i: number) => { if (isLive) { if (!locked) void board.choosePreset(i); } else setIx(i); };
 
   // ---- preset sets ----
   const saveAsSet = async () => {
@@ -197,11 +220,28 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
   const loadCheck: BankLoadCheck | null = loading ? bankLoadCheck(loading.bank, model, allLooks) : null;
   const loadSet = async (bank: PresetBank) => {
     setLoading(null);
-    const next = bankToModel(bank, model, allLooks);
+    const loaded = bankToModel(bank, model, allLooks);
+    // Counted from the saber as it was when the list first left it: an earlier list's starting point is kept.
+    const base = model.presetsFrom?.base ?? presetBase(info);
+    const next = { ...loaded, presetsFrom: { ...loaded.presetsFrom!, ...(base ? { base } : {}) } };
     await ws.saveModel(next);
     setIx(0);
     setNote({ tone: 'green', text: `"${bank.name}" is loaded: ${bank.presets.length} preset${bank.presets.length === 1 ? '' : 's'}, staged for the next install${live ? `, replacing what is on ${saber.name}` : ''}.` });
   };
+  // ---- the saber changed since the list for the next install was started (Install only) ----
+  const drift = !inLive && live ? presetDrift(model, info) : null;
+  // Bringing the saber's presets in keeps the owner's list as a preset set first, so nothing they made is lost.
+  const bringIn = async () => {
+    const name = `${saber.name}, my list before bringing in the saber's (${when(new Date().toISOString())})`;
+    const bank = bankFromSaber(name, presets.map((p) => ({ name: p.name, font: p.font, track: p.track, styles: model.blades.map((_b, k) => (p.looks?.[k] ? `builtin 0 ${k + 1}${p.lookArgs?.[k] ? ` ${p.lookArgs[k]}` : ''}` : '')), variation: 0 })), model.blades, { hash: '', os: '', at: '', looks: [], presets: presets.map((p) => ({ name: p.name, looks: model.blades.map((_b, k) => p.looks?.[k] ?? '') })) });
+    try { setSets(await api().banks.save(bank)); } catch (err) { setNote({ tone: 'red', text: `Your list could not be kept as a set, so the saber's presets were not brought in: ${String(err)}` }); return; }
+    const { presetsFrom: _drop, ...rest } = model;
+    await ws.saveModel(rest);
+    setIx(0);
+    setNote({ tone: 'green', text: `These are ${saber.name}'s presets now. Your earlier list is kept as the set "${name}".` });
+  };
+  // Keeping the list: it is now counted from the saber as it is, so the same change is not pointed out again.
+  const keepMine = async () => { if (model.presetsFrom) await ws.saveModel({ ...model, presetsFrom: { ...model.presetsFrom, ...(presetBase(info) ? { base: presetBase(info) } : {}) } }); };
 
   // ---- history: what a restore changes is worked out against the list as it is now, and shown first (F33) ----
   const showRestore = async (meta: SnapshotMeta) => {
@@ -213,8 +253,8 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
   const fontFolders = [...new Set([...fonts, ...(cur ? [splitFont(cur.font).folder] : [])])].filter(Boolean);
   const trackChoices = [...new Set(['', ...tracks, ...(cur ? [cur.track] : [])])];
   const cf = cur ? splitFont(cur.font) : { folder: '', extra: [], common: true };
-  // Read-only without a card: every control is off, as while a write is under way.
-  const busy = board.busy || locked;
+  // Read-only when locked: every control is off, as while a write to the saber is under way (Live only).
+  const busy = (isLive && board.busy) || locked;
   // The preset's font as the library knows it, and whether the saber's card has it (as last read).
   const libFont = library.find((f) => f.folder.toLowerCase() === cf.folder.toLowerCase()) ?? null;
   const cardFonts = info.fonts.length ? new Set(info.fonts) : null;
@@ -226,12 +266,25 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
         <FontPicker fonts={library} loading={!libraryRead} current={cf.folder} onCard={cardFonts} onClose={() => setPicking(false)} onManage={() => go('library')}
           onPick={(f) => { setPicking(false); void editPreset({ font: joinFont({ ...cf, folder: f.folder }) }, `Font → ${f.folder}`); }} />
       )}
-      {staged && (
-        <div className="note amber"><Icon name="info" /><span>{live ? `These ${presets.length} presets are staged (${model.presetsFrom!.name}, ${when(model.presetsFrom!.at)}) and will replace the ${info.presets.length} on ${saber.name} at the next install; a snapshot of the saber's own is kept first. ` : `These presets are staged (${model.presetsFrom!.name}, ${when(model.presetsFrom!.at)}) and go on with the next install. `}{live && <button type="button" className="holo" onClick={() => void dropStaged()}>Discard them and show the saber's own</button>}</span></div>
+      {/* Install: the list for the next install, and whether the saber has moved on since it was started. */}
+      {!inLive && staged && (
+        <div className="note amber"><Icon name="info" /><span>{live ? `These ${presets.length} presets are your list for the next install (${model.presetsFrom!.name}, ${when(model.presetsFrom!.at)}). They replace the ${info.presets.length} on ${saber.name} when it is installed; a snapshot of the saber's own is kept first. ` : `These presets are your list for the next install (${model.presetsFrom!.name}, ${when(model.presetsFrom!.at)}). `}<button type="button" className="holo" onClick={() => void dropStaged()}>Discard my changes</button></span></div>
       )}
-      {sharedCard && !noCard && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}><span>{saber.name}'s card is shared with this computer. Give it back on Fonts & SD first. Preset changes, and the preset in use, are saved on the card, so nothing is sent from here while it is shared.</span><span><button type="button" className="btn sm" onClick={() => go('fonts')}><span className="b"><span className="i"><Icon name="sd" />Go to Fonts &amp; SD</span></span></button></span></span></div>}
-      {noCard && <div className="note red"><Icon name="info" /><span>{saber.name} has no readable SD card. Preset changes, and the preset in use, are saved on the card, so nothing can be changed here until it is back in. Put the card back, then reconnect.</span></div>}
-      {!live && !staged && !saber.planned && <div className="note"><Icon name="info" /><span>{saber.name} is not plugged in. These are its presets as last read; changes are staged and go on with the next install.</span></div>}
+      {!inLive && drift !== null && (
+        <div className="note amber" role="alert"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
+          <span>{saber.name} has changed since this list was made: {drift} preset{drift === 1 ? '' : 's'} differ{drift === 1 ? 's' : ''}, changed on the saber itself. Installing this list replaces those changes.</span>
+          <span className="row" style={{ gap: 8 }}>
+            <button type="button" className="btn sm" onClick={() => void bringIn()}><span className="b"><span className="i"><Icon name="undo" />Bring in the saber's presets</span></span></button>
+            <button type="button" className="btn sm ghost" onClick={() => void keepMine()}><span className="b"><span className="i">Keep my list</span></span></button>
+          </span>
+        </span></div>
+      )}
+      {!inLive && !staged && !saber.planned && <div className="note"><Icon name="info" /><span>{live ? `These are ${saber.name}'s presets. ` : `These are ${saber.name}'s presets as last read. `}Changes here are kept for the next install and go on with it, with the card in the saber or in a reader.{live && <> To change the saber right now, use <button type="button" className="holo" onClick={() => go('live-presets')}>Live › Presets</button>.</>}</span></div>}
+      {/* Live: the saber as it is. */}
+      {inLive && !live && <div className="note"><Icon name="info" /><span>{saber.planned ? `${saber.name} has not been installed yet, so it has nothing to change live. Set its presets up in ` : `${saber.name} is not plugged in. These are its presets as last read. Plug it in to change them, or change them for the next install in `}<button type="button" className="holo" onClick={() => go('presets')}>Install › Presets</button>.</span></div>}
+      {inLive && live && staged && <div className="note"><Icon name="info" /><span>A list for the next install is waiting in <button type="button" className="holo" onClick={() => go('presets')}>Install › Presets</button>. Changes here go to {saber.name} now and leave that list as it is.</span></div>}
+      {sharedCard && !noCard && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}><span>{saber.name}'s card is shared with this computer. Give it back on Live › Card first. Preset changes, and the preset in use, are saved on the card, so nothing is sent from here while it is shared.</span><span><button type="button" className="btn sm" onClick={() => go('live-card')}><span className="b"><span className="i"><Icon name="sd" />Go to Live › Card</span></span></button></span></span></div>}
+      {noCard && <div className="note red"><Icon name="info" /><span className="col" style={{ gap: 8 }}><span>{saber.name} has no readable SD card. Preset changes, and the preset in use, are saved on the card, so nothing can be changed here until it is back in. Put the card back, then reconnect, or make the change for the next install instead.</span><span><button type="button" className="btn sm" onClick={() => go('presets')}><span className="b"><span className="i">Change them in Install › Presets</span></span></button></span></span></div>}
       {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : 'info'} /><span>{note.text}</span></div>}
 
       <div className="work" style={{ gridTemplateColumns: 'minmax(220px,280px) minmax(0,1fr) minmax(260px,320px)' }}>
@@ -262,7 +315,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }} aria-label="Preset editor">
           <div className="ph" style={{ flexWrap: 'wrap', rowGap: 8 }}><h2 className="ellip" style={{ minWidth: 0 }}>{cur ? clean(cur.name) || 'Unnamed' : 'No preset'}</h2>
             {/* A change that failed as the saber went away stays visible once the page shows the stored presets. */}
-            <div className="row" style={{ gap: 8, minWidth: 0, maxWidth: '100%', flex: '0 1 auto', flexWrap: 'wrap', justifyContent: 'flex-end' }} data-tour="presets-state">{noCard ? <span className="chip err"><Icon name="x" />No SD card</span> : sharedCard ? <span className="chip warn"><Icon name="sd" />Card shared</span> : isLive ? <SaveChip save={board.save} /> : <>{board.save.kind === 'failed' && <SaveChip save={board.save} />}{staged ? <span className="chip warn"><span className="dot" />Staged for install</span> : <span className="chip"><span className="dot" />Not plugged in</span>}</>}</div>
+            <div className="row" style={{ gap: 8, minWidth: 0, maxWidth: '100%', flex: '0 1 auto', flexWrap: 'wrap', justifyContent: 'flex-end' }} data-tour="presets-state">{!inLive ? (staged ? <span className="chip warn"><span className="dot" />Staged for install</span> : <span className="chip"><span className="dot" />No changes yet</span>) : noCard ? <span className="chip err"><Icon name="x" />No SD card</span> : sharedCard ? <span className="chip warn"><Icon name="sd" />Card shared</span> : isLive ? <SaveChip save={board.save} /> : <span className="chip"><span className="dot" />Not plugged in</span>}</div>
           </div>
           {cur && (
             <div className="pb col" style={{ gap: 16, overflowY: 'auto', overflowX: 'hidden' }}>
@@ -275,7 +328,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
                     <span className="hint ellip grow" title={libFont?.meta.notes || undefined}>
                       {cf.folder && (libFont ? <>{libFont.meta.name}{libFont.meta.maker ? ` by ${libFont.meta.maker}` : ''}</> : libraryRead ? 'Not in the font library' : 'Looking in the font library…')}
                       {fontOnCard === true && <span className="green"> · on the card</span>}
-                      {fontOnCard === false && <> · <span className="amber">not on the card</span>{libFont && <>, <button type="button" className="holo" onClick={() => go('fonts')}>copy it over</button></>}</>}
+                      {fontOnCard === false && <> · <span className="amber">not on the card</span>{libFont && <>, <button type="button" className="holo" onClick={() => go(inLive ? 'live-card' : 'fonts')}>copy it over</button></>}</>}
                     </span>
                     <button type="button" className="holo small nowrap" disabled={busy} title="Choose from the fonts in your font library" onClick={() => setPicking(true)}>Choose from library</button>
                   </div>
@@ -307,11 +360,12 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
                           <Select value={shownLook?.id ?? ''} disabled={busy} aria-label={`Style for blade ${k + 1}, ${label}`} onChange={(e) => void setLook(k + 1, lookById(e.target.value), null)}>
                             {/* "Saber's default" means no style chosen, which only a staged list can mean (F36). */}
                             {isLive ? <option value="" disabled>No style chosen</option> : <option value="">Saber's default (uses {starterLookFor(b.role).name})</option>}
-                            <optgroup label="Hiltwright">{choices.filter((l) => l.source === 'starter').map((l) => <option key={l.id} value={l.id}>{l.name}{compiled.has(l.id) ? '' : live ? ' (needs a build)' : ''}</option>)}</optgroup>
-                            {choices.some((l) => keptIds.has(l.id)) && <optgroup label="Only on this saber (removed from your styles)">{choices.filter((l) => keptIds.has(l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
-                            {choices.some((l) => l.source !== 'starter' && !keptIds.has(l.id)) && <optgroup label="Your styles">{choices.filter((l) => l.source !== 'starter' && !keptIds.has(l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}{l.by && l.by !== 'you' ? ` (${l.by})` : ''}{compiled.has(l.id) ? '' : live ? ' (needs a build)' : ''}</option>)}</optgroup>}
+                            {/* Live offers only what the firmware carries; Install marks what needs a build. */}
+                            <optgroup label="Hiltwright">{choices.filter((l) => l.source === 'starter').map((l) => <option key={l.id} value={l.id} disabled={inLive && !compiled.has(l.id)}>{l.name}{compiled.has(l.id) ? '' : inLive ? ' (not in the firmware)' : live ? ' (needs a build)' : ''}</option>)}</optgroup>
+                            {choices.some((l) => keptIds.has(l.id)) && <optgroup label="Only on this saber (removed from your styles)">{choices.filter((l) => keptIds.has(l.id)).map((l) => <option key={l.id} value={l.id} disabled={inLive && !compiled.has(l.id)}>{l.name}</option>)}</optgroup>}
+                            {choices.some((l) => l.source !== 'starter' && !keptIds.has(l.id)) && <optgroup label="Your styles">{choices.filter((l) => l.source !== 'starter' && !keptIds.has(l.id)).map((l) => <option key={l.id} value={l.id} disabled={inLive && !compiled.has(l.id)}>{l.name}{l.by && l.by !== 'you' ? ` (${l.by})` : ''}{compiled.has(l.id) ? '' : inLive ? ' (not in the firmware)' : live ? ' (needs a build)' : ''}</option>)}</optgroup>}
                           </Select></span>
-                        {shownLook && !onSaber && <span className="chip warn" title="Goes on with the next Build & Install"><Icon name="clock" />Queued</span>}
+                        {!inLive && shownLook && !onSaber && <span className="chip warn" title="Goes on with the next Build & Install"><Icon name="clock" />Queued</span>}
                         {shownLook && canSimulate(shownLook.id) && <div style={{ width: ROLE_META[b.role].kind === 'pixel' ? 150 : 24, flex: 'none' }}><BladePreview lookId={shownLook.id} args={args} leds={ROLE_META[b.role].kind === 'pixel' ? Math.min(60, Math.max(4, Math.round(b.pixels / 3))) : 1} dot={ROLE_META[b.role].kind !== 'pixel'} size="sm" /></div>}
                         {shownLook && canSimulate(shownLook.id) && <LookPreviewNote look={shownLook} compact />}
                       </div>
@@ -335,7 +389,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
                     </div>
                   );
                 })}
-                <span className="hint">{isLive ? 'Styles already on the saber switch at once; a style it does not carry yet is queued for the next Build & Install, and its colours are written right after.' : 'Colours are written to the saber after the install.'}</span>
+                <span className="hint">{inLive ? 'Styles in the saber\'s firmware switch at once, with their colours. Any other style is chosen in Install › Presets and goes on with the next install.' : 'Styles and their colours go on with the next install; a style the firmware does not carry yet is built in.'}</span>
               </div>
             </div>
           )}
@@ -343,11 +397,12 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
 
         <section className="panel fill" aria-label="Sets, try it and history" data-tour="presets-sets">
           <div className="tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={side === 'sets'} className={side === 'sets' ? 'on' : ''} onClick={() => setSide('sets')}><Icon name="copy" />Sets<span className="count">{sets.length}</span></button>
-            {isLive && <button type="button" role="tab" aria-selected={side === 'try'} className={side === 'try' ? 'on' : ''} onClick={() => setSide('try')}><Icon name="bolt" />Try it</button>}
-            {live && <button type="button" role="tab" aria-selected={side === 'history'} className={side === 'history' ? 'on' : ''} onClick={() => setSide('history')}><Icon name="clock" />History<span className="count">{board.snapshots.length}</span></button>}
+            {!inLive && <button type="button" role="tab" aria-selected={side === 'sets'} className={side === 'sets' ? 'on' : ''} onClick={() => setSide('sets')}><Icon name="copy" />Sets<span className="count">{sets.length}</span></button>}
+            {inLive && <button type="button" role="tab" aria-selected={side === 'try'} className={side === 'try' ? 'on' : ''} onClick={() => setSide('try')}><Icon name="bolt" />Try it</button>}
+            {inLive && <button type="button" role="tab" aria-selected={side === 'history'} className={side === 'history' ? 'on' : ''} onClick={() => setSide('history')}><Icon name="clock" />History<span className="count">{board.snapshots.length}</span></button>}
           </div>
-          {side === 'sets' && (
+          {inLive && !isLive && <div className="pb hint">Plug {saber.name} in to try its effects and to see the snapshots kept before each change.</div>}
+          {!inLive && side === 'sets' && (
             <>
               <div className="list" style={{ overflow: 'auto' }}>
                 {!setsRead && <LoadingSpace text="Reading your preset sets…" compact />}
@@ -384,7 +439,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
             </>
           )}
           {side === 'try' && isLive && <SaberControls board={board} bare />}
-          {side === 'history' && live && (
+          {side === 'history' && isLive && (
             <>
               <div className="list" style={{ overflow: 'auto' }}>
                 {board.snapshots.length === 0 && <div className="li hint" style={{ minHeight: 40 }}>No snapshots yet.</div>}

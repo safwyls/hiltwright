@@ -197,7 +197,6 @@ export function App() {
               {g.pages.map((p) => (
                 <a key={p.id} href="#" className={page === p.id ? 'on' : ''} aria-current={page === p.id ? 'page' : undefined} title={`Ctrl+${PAGES.indexOf(p) + 1}`} onClick={(e) => { e.preventDefault(); setPage(p.id, () => setStyleCreator(null)); }}>
                   {p.step ? <span className="stepn">{p.step}</span> : <Icon name={p.icon} />}<span>{p.title}</span>
-                  {p.id === 'presets' && ws.live && !ws.model?.presetsFrom && <span className="tier">live</span>}
                   {p.id === 'build' && (queued > 0 ? <span className="badge" title={`${queued} ${queued === 1 ? 'style is' : 'styles are'} waiting for a build`} aria-label={`${queued} queued`}>{queued}</span> : null)}
                 </a>
               ))}
@@ -231,7 +230,7 @@ export function App() {
           {faultPage === page && <FaultForDev />}
           {page === 'armory' ? <Armory board={board} ws={ws} go={go} />
             : page === 'wiring' ? <Wiring ws={ws} board={board} go={go} />
-            : page === 'presets' ? <Presets ws={ws} board={board} go={go} />
+            : page === 'presets' ? <Presets ws={ws} board={board} go={go} mode="install" />
             : page === 'fonts' ? <Fonts board={board} ws={ws} go={go} />
             : page === 'build' ? <Build ws={ws} board={board} go={go} />
             : page === 'looks' ? <Looks ws={ws} board={board} initialCreator={styleCreator} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} onEdit={(l) => { setEditingLook(l); setEditorOpen((n) => n + 1); setPage('editor'); }} onNew={() => { setEditingLook(null); setEditorOpen((n) => n + 1); setPage('editor'); }} />
@@ -241,7 +240,7 @@ export function App() {
             : page === 'library' ? <FontLibrary board={board} onDemo={(folder) => { setDemoFont(folder); setPage('demo'); }} />
             : page === 'contributors' ? <Contributors onFonts={() => setPage('library')} onLooks={(name) => { setStyleCreator(name); setPage('looks'); }} onDemo={() => setPage('demo')} />
             : page === 'demo' ? <Suspense fallback={<span className="hint row" style={{ gap: 14, padding: 24 }}><Loader />Opening the demo room…</span>}><Demo initialLook={demoLook} initialFont={demoFont} board={board} /></Suspense>
-            : page === 'live-presets' ? <Presets ws={ws} board={board} go={go} />
+            : page === 'live-presets' ? <Presets ws={ws} board={board} go={go} mode="live" />
             : page === 'live-card' ? <Fonts board={board} ws={ws} go={go} />
             : page === 'settings' ? <Settings touring={!!tour} />
             : page === 'about' ? <About updates={tour ? null : updates} />

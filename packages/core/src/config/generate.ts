@@ -90,7 +90,11 @@ export interface SaberConfigModel {
    */
   presets: { font: string; track: string; name: string; looks?: (string | null)[]; lookArgs?: (string | null)[] }[];
   /** Set when the presets came from a bank rather than the saber: the draft keeps them, and the install replaces the saber's own. */
-  presetsFrom?: { bank?: string; name: string; at: string };
+  presetsFrom?: {
+    bank?: string; name: string; at: string;
+    /** The saber's own presets (name and font) when this list was started, to tell later whether the saber changed since. */
+    base?: { name: string; font: string }[];
+  };
   /**
    * The owner's "I checked the wiring": when, and for which board and blade layout (a fingerprint). It counts only
    * while the layout still matches; see `wiringConfirmed` in ./wiring.
