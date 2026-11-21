@@ -65,8 +65,8 @@ export const TOUR: TourChapter[] = [
         title: 'Your sabers',
         target: 'armory-sabers',
         text: [
-          'Every saber Hiltwright has seen is remembered here, plugged in or not.',
-          'The one marked "Working on it" is the saber every step is about. To work on another, unplug this one and press "Work on it".',
+          'Every saber Hiltwright has seen is remembered here, plugged in or not. A saber you plug in is picked on its own.',
+          'The picked saber is the one the Install steps are about. Pick another at any time, even while one is plugged in.',
         ],
       },
       {
@@ -78,11 +78,11 @@ export const TOUR: TourChapter[] = [
         ],
       },
       {
-        title: 'Where the saber is up to',
+        title: 'Live, or a new setup',
         target: 'armory-progress',
         text: [
-          'The four steps, and how far this saber has got. A tick means the step is done; the bright one is next.',
-          'Press a step to go to it, or "Continue" to go to the next one.',
+          '"Adjust it live" changes a plugged-in saber at once. "Change its setup" shows the four Install steps and how far this saber has got.',
+          'A tick means a step is done; the bright one is next. Press a step to go to it.',
         ],
       },
     ],

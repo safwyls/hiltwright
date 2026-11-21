@@ -87,7 +87,9 @@ export function App() {
   const tourRef = useRef(tour); tourRef.current = tour;
   const exampleBoard = useMemo(() => tourBoard(real), [real.library, real.refreshLibrary, real.isPresetBlockEnd]); // eslint-disable-line react-hooks/exhaustive-deps
   const board: typeof real = tour ? exampleBoard : fake && import.meta.env.DEV && lib0 ? { ...real, status: 'connected', portName: 'FAKE', saber: lib0, info: { ...infoFromRecord(lib0), currentPreset: 0, battery: 3.91, volume: 1800 }, card: { shared: fake === 'shared', root: fake === 'shared' ? 'H:\\' : null } } : real;
+  // Install's pages work on the saber picked in the Armory; Live's on the saber plugged in (workspace.ts).
   const ws = useWorkspace(board);
+  const liveWs = useWorkspace(board, 'board');
   const [page, setPageNow] = useState<Page>('armory');
   // Bumped when the tour ends: every page opens afresh on the owner's own saber, with nothing of the example kept.
   const [epoch, setEpoch] = useState(0);
@@ -242,8 +244,8 @@ export function App() {
             : page === 'library' ? <FontLibrary board={board} onDemo={(folder) => { setDemoFont(folder); setPage('demo'); }} />
             : page === 'contributors' ? <Contributors onFonts={() => setPage('library')} onLooks={(name) => { setStyleCreator(name); setPage('looks'); }} onDemo={() => setPage('demo')} />
             : page === 'demo' ? <Suspense fallback={<span className="hint row" style={{ gap: 14, padding: 24 }}><Loader />Opening the demo room…</span>}><Demo initialLook={demoLook} initialFont={demoFont} board={board} /></Suspense>
-            : page === 'live-presets' ? <Presets ws={ws} board={board} go={go} mode="live" />
-            : page === 'live-card' ? <Fonts board={board} ws={ws} go={go} />
+            : page === 'live-presets' ? <Presets ws={liveWs} board={board} go={go} mode="live" />
+            : page === 'live-card' ? <Fonts board={board} ws={liveWs} go={go} />
             : page === 'settings' ? <Settings touring={!!tour} />
             : page === 'about' ? <About updates={tour ? null : updates} />
             : <Diagnostics board={board} />}
@@ -301,15 +303,17 @@ function StatusChip({ status, port }: { status: ReturnType<typeof useBoard>['sta
   }
 }
 
-/** The Armory: the sabers this computer knows, which one is being worked on, and how far along it is. */
+/**
+ * The Armory (docs/install-live-plan.md, variant D): the sabers this computer knows on the left, to pick from; the
+ * picked saber on the right with its two ways forward, each explained: adjust it live (plugged in, any firmware), or
+ * change its setup for the next install. A saber plugged in is picked on its own; another can be picked meanwhile.
+ */
 function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Workspace; go: (p: Page) => void }) {
   const { status, error } = board;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [planning, setPlanning] = useState(false);
   const [planName, setPlanName] = useState('');
-  // A plan made while a saber is plugged in: the plugged-in saber stays the working one, and this says so.
-  const [plannedAside, setPlannedAside] = useState<string | null>(null);
   // Why a new saber could not be started. Without this, a refusal looked like Start doing nothing (as it did from
   // 2026-09-27 until 0.2.0-beta.8, when a new plan was refused for not having chosen its board yet).
   const [planError, setPlanError] = useState<string | null>(null);
@@ -325,7 +329,7 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
       return;
     }
     setPlanning(false); setPlanName('');
-    if (ws.live) { setPlannedAside(rec.name); return; }
+    // Picked at once, even while another saber is plugged in: that one stays connected, for Live.
     ws.choose(rec.id); go('wiring');
   };
   // Stores that could not be read at start were kept aside (jsonStore.ts); say so until dismissed.
@@ -356,9 +360,21 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
   const cur = ws.saber;
   const plans = ws.plans;
   const adoptable = ws.live && cur && !cur.firmware && !cur.planned && plans.length > 0;
+  // The saber plugged in now, whichever is picked.
+  const plugged = status === 'connected' && board.saber ? board.saber : null;
+  const info = ws.live ? board.info : null;
+  const playing = info?.currentPreset != null ? info.presets[info.currentPreset] ?? null : null;
+  const fwLine = firmwareLine(ws.info, cur?.name);
+  // The panel to use now is the bright one: live while the picked saber is plugged in, its setup otherwise.
+  const door = (bright: boolean): React.CSSProperties => (bright ? { borderLeft: '3px solid var(--sel)', background: 'color-mix(in srgb,var(--sel) 5%,transparent)' } : {});
+  const fact = (icon: Parameters<typeof Icon>[0]['name'], k: string, v: string) => (
+    <div className="col" style={{ gap: 4, padding: '10px 12px', border: '1px solid var(--line2)', borderRadius: 'var(--r-field)', background: 'var(--field)', minWidth: 0 }}>
+      <span className="hint row" style={{ gap: 6 }}><span style={{ display: 'flex', width: 13 }}><Icon name={icon} /></span>{k}</span><b className="ellip" style={{ fontWeight: 600, fontSize: 13 }}>{v}</b>
+    </div>
+  );
 
   return (
-    <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) 420px' }}>
+    <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(400px,470px)' }}>
       <div className="col" style={{ gap: 16, minHeight: 0 }}>
         {problems.map((p) => (
           <div key={p.keptAs} className="note amber" role="alert"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
@@ -366,57 +382,22 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
             <span className="row" style={{ gap: 8 }}><button type="button" className="btn sm" onClick={() => void openFolder(p.place)}><span className="b"><span className="i">Open folder</span></span></button><button type="button" className="btn sm ghost" onClick={() => setProblems((ps) => ps.filter((x) => x !== p))}><span className="b"><span className="i">Dismiss</span></span></button></span>
           </span></div>
         ))}
-        <section className="panel" aria-label="Connection">
-          <div className="row" style={{ padding: '16px 18px', gap: 18 }}>
-            <span style={{ color: ws.live ? 'var(--holo)' : 'var(--mute)', display: 'flex', width: 28, height: 28 }}><Icon name="usb" /></span>
-            <div className="col grow" style={{ gap: 3 }}>
-              <h3>{ws.live ? `${cur?.name ?? 'A saber'} is plugged in` : status === 'connecting' ? 'Opening the port…' : status === 'reading' ? 'Reading the saber…' : status === 'error' ? 'Something went wrong' : 'Nothing plugged in'}</h3>
-              <div className="dim small">{ws.live && board.info?.version ? `ProffieOS ${board.info.version.version}, ${board.info.version.prop ?? 'unknown prop'}, ${board.info.version.buttons ?? '?'} buttons. Installed ${board.info.version.installed ?? '?'}.` : error ?? (status === 'no-port' ? 'No Proffieboard is granted to this app yet. Plug one in over a data cable and press Connect. Or set a saber up ahead and install when it arrives.' : 'Plug a saber in over a data cable and press Connect, or work on a remembered one below.')}</div>
-            </div>
-            {!ws.live && (status === 'no-port' || status === 'error' || status === 'idle') && <button type="button" className="btn pri" onClick={() => void board.connect(true)}><span className="b"><span className="i"><Icon name="usb" />Connect</span></span></button>}
-            {ws.live && <button type="button" className="btn sm ghost" onClick={() => void board.identify()}><span className="b"><span className="i"><Icon name="undo" />Read again</span></span></button>}
-          </div>
-          {ws.live && board.info && noBattery(board.info.battery) && <div className="note amber" style={{ margin: '0 18px 16px' }}><Icon name="battery" /><span>No battery detected: {cur?.name ?? 'this saber'} is running on USB power alone. It may pause for a moment when it plays sound or reads its card. If it does, Hiltwright reconnects to it on its own.</span></div>}
-          {ws.live && board.info && board.info.rejected.length > 0 && <div className="note amber" style={{ margin: '0 18px 16px' }}><Icon name="warn" /><span>This firmware does not know {board.info.rejected.join(', ')}. Hiltwright adapts to what the board supports.</span></div>}
-          {adoptable && !adopting && (
-            <div className="note amber" style={{ margin: '0 18px 16px' }}><Icon name="info" /><span>Is this a saber you set up ahead? {plans.map((p) => <button key={p.id} type="button" className="holo" style={{ marginRight: 10 }} onClick={() => setAdopting(p)}>It is "{p.name}"</button>)}Its wiring, presets and styles move onto this saber, ready to install.</span></div>
-          )}
-          {adoptable && adopting && cur && (
-            <div className="note amber" role="alertdialog" aria-label="Adopt a planned saber" style={{ margin: '0 18px 16px' }}><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
-              <span>Adopting "{adopting.name}" moves its wiring, prop, presets and styles onto {cur.name}. The next install replaces the styles compiled into {cur.name}'s current firmware, and the presets on its card will then be the plan's.</span>
-              {cur.model && <span>{cur.name} already has wiring and presets set up in Hiltwright. They will be replaced by the plan's.</span>}
-              <span className="row" style={{ gap: 8 }}>
-                <button type="button" className="btn sm pri" onClick={() => { const id = adopting.id; setAdopting(null); void board.adoptPlan(id); }}><span className="b"><span className="i">Adopt</span></span></button>
-                <button type="button" className="btn sm ghost" onClick={() => setAdopting(null)}><span className="b"><span className="i">Not now</span></span></button>
-              </span>
-            </span></div>
-          )}
-        </section>
-
-        <section className="panel" aria-label="Your sabers" style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }} data-tour="armory-sabers">
+        <section className="panel" aria-label="Your sabers" style={{ minHeight: 0, flex: 1, display: 'flex', flexDirection: 'column' }} data-tour="armory-sabers">
           <div className="ph"><h2>Your sabers</h2>
             {planning
-              ? <form className="row" style={{ gap: 6 }} onSubmit={(e) => { e.preventDefault(); void plan(); }}><span className="input sans" style={{ height: 30, width: 200 }}><input type="text" value={planName} autoFocus placeholder="Name the saber" aria-label="Name for the new saber" onChange={(e) => setPlanName(e.target.value)} /></span><button type="submit" className="btn sm pri"><span className="b"><span className="i">Start</span></span></button><button type="button" className="chip" onClick={() => setPlanning(false)}><Icon name="x" /></button></form>
+              ? <form className="row" style={{ gap: 6 }} onSubmit={(e) => { e.preventDefault(); void plan(); }}><span className="input sans" style={{ height: 30, width: 200 }}><input type="text" value={planName} autoFocus placeholder="Name the saber" aria-label="Name for the new saber" onChange={(e) => setPlanName(e.target.value)} /></span><button type="submit" className="btn sm pri"><span className="b"><span className="i">Start</span></span></button><button type="button" className="chip" aria-label="Do not start a new saber" onClick={() => setPlanning(false)}><Icon name="x" /></button></form>
               : <button type="button" className="btn sm pri" data-tour="armory-new" title="Set a saber up before it is plugged in: wiring, presets and styles, ready to install when it arrives" onClick={() => setPlanning(true)}><span className="b"><span className="i"><Icon name="plus" />New saber</span></span></button>}
           </div>
           {planError && planning && (
             <div className="note red" role="alert" style={{ margin: '12px 18px 0' }}><Icon name="warn" /><span>The new saber was not started: {planError}</span></div>
           )}
-          {plannedAside && cur && (
-            <div className="note" role="status" style={{ margin: '12px 18px 0' }}><Icon name="info" /><span className="col" style={{ gap: 8 }}>
-              <span>{plannedAside} is set up. {cur.name} is plugged in, so it stays the saber you are working on. Unplug it to work on {plannedAside}.</span>
-              <span><button type="button" className="btn sm ghost" onClick={() => setPlannedAside(null)}><span className="b"><span className="i">OK</span></span></button></span>
-            </span></div>
-          )}
-          <div className="list" style={{ overflow: 'auto' }}>
+          <div className="list" role="listbox" aria-label="Sabers to pick from" style={{ overflow: 'auto' }}>
             {ws.loading && <LoadingSpace text="Reading your sabers…" />}
             {!ws.loading && board.library.length === 0 && <div className="hint" style={{ padding: '14px 18px' }}>No sabers yet. Plug one in and it is remembered, or start a new one to set up ahead.</div>}
             {board.library.map((s, n) => {
-              const isCur = s.id === cur?.id; const plugged = ws.live && isCur;
+              const isCur = s.id === cur?.id; const isPlugged = plugged?.id === s.id;
               return (
-                <div key={s.id} className={`li ${isCur ? 'on' : ''}`} style={{ gap: 12, minHeight: 52 }}>
-                  <span className="n" aria-hidden="true">{n + 1}</span>
-                  <span style={{ color: 'var(--mute)', display: 'flex', width: 18 }} title={plugged ? 'Plugged in' : s.planned ? 'Set up ahead' : 'Not plugged in'}><Icon name={plugged ? 'usb' : s.planned ? 'gear' : 'blade'} /></span>
+                <div key={s.id} className={`li ${isCur ? 'on' : ''}`} style={{ gap: 10, minHeight: 62, ...(isCur ? { background: 'color-mix(in srgb,var(--sel) 8%,transparent)', boxShadow: 'inset 3px 0 0 var(--sel)' } : {}) }}>
                   {editing && isCur
                     ? <form className="row grow" style={{ gap: 8 }} onSubmit={(e) => { e.preventDefault(); void board.renameSaber(draft); setEditing(false); }}>
                         <span className="input sans grow" style={{ height: 32 }}><input type="text" value={draft} autoFocus onChange={(e) => setDraft(e.target.value)} aria-label="Saber name" /></span>
@@ -424,18 +405,24 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
                         <button type="button" className="btn sm ghost" onClick={() => setEditing(false)}><span className="b"><span className="i">Cancel</span></span></button>
                       </form>
                     : <>
-                        <span className="col grow" style={{ gap: 0, minWidth: 0 }} title={s.identity.configName ? `${s.identity.configName}, USB serial ${s.identity.usbSerial ?? 'unknown'}` : undefined}>
-                          <b className="ellip" style={{ fontWeight: 600 }}>{s.name}</b>
-                          <span className="hint ellip">{plugged ? 'plugged in' : s.planned ? `set up ahead · ${s.model?.presets.length ?? 0} presets · not seen yet` : `${s.identity.configName ?? '?'} · ${s.presets.length} presets · last seen ${new Date(s.lastSeen).toLocaleDateString()}`}</span>
-                        </span>
-                        {isCur ? <span className="chip"><span className="dot" style={{ background: 'currentColor' }} />Working on it</span> : <button type="button" className="btn sm" disabled={ws.live} title={ws.live ? 'Unplug the connected saber to work on another' : undefined} onClick={() => ws.choose(s.id)}><span className="b"><span className="i">Work on it</span></span></button>}
-                        {isCur && plugged && <button type="button" className="chip" onClick={() => { setDraft(s.name); setEditing(true); }}>Rename</button>}
-                        {s.id !== EXAMPLE_ID && (() => { const why = removeBlock(s, plugged ? s.id : null); return <button type="button" className="chip" disabled={!!why} title={why ?? (s.planned ? 'Remove this plan' : 'Remove this saber from the Armory')} aria-label={`Remove ${s.name}`} onClick={() => askRemove(s)}><Icon name="trash" /></button>; })()}
+                        <button type="button" role="option" aria-selected={isCur} className="row grow" style={{ gap: 12, minWidth: 0, alignSelf: 'stretch', textAlign: 'left' }} title={s.identity.configName ? `${s.identity.configName}, USB serial ${s.identity.usbSerial ?? 'unknown'}` : undefined} onClick={() => ws.choose(s.id)}>
+                          <span className="n" aria-hidden="true">{n + 1}</span>
+                          <span style={{ color: isPlugged ? 'var(--holo)' : 'var(--mute)', display: 'flex', width: 18, flex: 'none' }}><Icon name={isPlugged ? 'usb' : s.planned ? 'gear' : 'blade'} /></span>
+                          <span className="col grow" style={{ gap: 2, minWidth: 0 }}>
+                            <b className="ellip" style={{ fontWeight: 600 }}>{s.name}</b>
+                            <span className="hint ellip">{s.planned ? `set up ahead · ${s.model?.presets.length ?? 0} presets · not seen yet` : `${s.identity.configName ?? '?'} · ${s.presets.length} presets · last seen ${new Date(s.lastSeen).toLocaleDateString()}`}</span>
+                          </span>
+                          {isPlugged && <span className="chip live"><span className="dot" />Plugged in</span>}
+                          {s.planned && <span className="chip">Set up ahead</span>}
+                        </button>
+                        {isCur && isPlugged && <button type="button" className="chip" onClick={() => { setDraft(s.name); setEditing(true); }}>Rename</button>}
+                        {s.id !== EXAMPLE_ID && (() => { const why = removeBlock(s, isPlugged ? s.id : null); return <button type="button" className="chip" disabled={!!why} title={why ?? (s.planned ? 'Remove this plan' : 'Remove this saber from the Armory')} aria-label={`Remove ${s.name}`} onClick={() => askRemove(s)}><Icon name="trash" /></button>; })()}
                       </>}
                 </div>
               );
             })}
           </div>
+          <div className="hint" style={{ marginTop: 'auto', padding: '12px 18px', borderTop: '1px solid var(--line)' }}>{plugged ? 'Pick a saber to change its setup, even while another is plugged in.' : 'Plug a saber in over a data cable and it is picked here on its own. Or pick one to change its setup unplugged.'}</div>
         </section>
       </div>
 
@@ -460,29 +447,79 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
           </div>
         );
       })()}
-      <aside className="rail" aria-label="Progress" data-tour="armory-progress">
-        {!cur && ws.loading ? <LoadingSpace text="Reading your sabers…" compact /> : !cur ? (
-          <div className="stepc now"><div className="head"><b>Start here</b></div><span className="small dim">Plug a saber in, or press New saber to set one up ahead. Then the steps down the left take it from wiring to an installed board.</span></div>
+
+      <div className="col" style={{ gap: 14, minHeight: 0, overflow: 'auto' }} aria-label="The picked saber">
+        {!cur && ws.loading ? <section className="panel"><LoadingSpace text="Reading your sabers…" compact /></section> : !cur ? (
+          <section className="panel" style={door(true)}><div className="pb col" style={{ gap: 8 }}><h3>Start here</h3><span className="small dim">Plug a saber in over a data cable, or press New saber to set one up ahead. Then the Install steps take it from wiring to an installed board.</span></div></section>
         ) : (
           <>
-            <div className="row between" style={{ minHeight: 24 }}><b style={{ fontWeight: 600 }} className="ellip">{cur.name}</b><span className="hint">{ws.live ? 'plugged in' : cur.planned ? 'set up ahead' : 'unplugged'}</span></div>
-            <div className="inspect">
-              {steps.map((st, i) => {
-                const done = (st.step === 'wiring' && wiringConfirmed(ws.model)) || (st.step === 'fonts' && chosenFonts(ws.model).length > 0) || (st.step === 'presets' && !!ws.model?.presets.length) || (st.step === 'build' && !!cur.firmware && !queuedLookIds(ws.model ?? undefined, cur.firmware).length && !ws.model?.presetsFrom);
-                const now = st.step === next;
-                return (
-                  <button key={st.step} type="button" className={`insp ${done ? 'done' : now ? 'now' : ''}`} onClick={() => go(stepPage[st.step])}>
-                    <span className="box" aria-hidden="true">{done ? <Icon name="check" /> : i + 1}</span>
-                    <b>{stepTitle[st.step]}{done && <span className="sr"> (done)</span>}</b><span className="what" title={st.label}>{st.label}</span>
-                  </button>
-                );
-              })}
+            <div className="col" style={{ gap: 4, padding: '2px 4px' }}>
+              <div className="row" style={{ gap: 10, minWidth: 0 }}>
+                <h2 className="ellip" style={{ margin: 0, fontSize: 22, minWidth: 0 }}>{cur.name}</h2>
+                {ws.live ? <span className="chip live"><span className="dot" />Plugged in</span> : cur.planned ? <span className="chip">Set up ahead</span> : <span className="chip">Not plugged in</span>}
+                <span className="grow" />
+                {ws.live && <button type="button" className="btn sm ghost" onClick={() => void board.identify()}><span className="b"><span className="i"><Icon name="undo" />Read again</span></span></button>}
+              </div>
+              <span className="dim small" style={{ overflowWrap: 'anywhere' }}>{cur.planned ? 'Planned ahead: no firmware yet. Set it up below, and install it when the saber arrives.' : fwLine ? `${ws.live ? '' : 'Last read: '}${fwLine}` : 'Not read yet.'}</span>
+              {status === 'error' && error && <span className="small red">{error}</span>}
             </div>
-            <button type="button" className="btn pri full" onClick={() => go(stepPage[next])}><span className="b"><span className="i"><Icon name="chev" />Continue with {stepTitle[next]}</span></span></button>
-            <span className="hint">Styles are chosen on the Presets step; make and try new ones in the Workshop.</span>
+            {ws.live && board.info && noBattery(board.info.battery) && <div className="note amber"><Icon name="battery" /><span>No battery detected: {cur.name} is running on USB power alone. It may pause for a moment when it plays sound or reads its card. If it does, Hiltwright reconnects to it on its own.</span></div>}
+            {ws.live && board.info && board.info.rejected.length > 0 && <div className="note amber"><Icon name="warn" /><span>This firmware does not know {board.info.rejected.join(', ')}. Hiltwright adapts to what the board supports.</span></div>}
+            {adoptable && !adopting && (
+              <div className="note amber"><Icon name="info" /><span>Is this a saber you set up ahead? {plans.map((p) => <button key={p.id} type="button" className="holo" style={{ marginRight: 10 }} onClick={() => setAdopting(p)}>It is "{p.name}"</button>)}Its wiring, presets and styles move onto this saber, ready to install.</span></div>
+            )}
+            {adoptable && adopting && (
+              <div className="note amber" role="alertdialog" aria-label="Adopt a planned saber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
+                <span>Adopting "{adopting.name}" moves its wiring, prop, presets and styles onto {cur.name}. The next install replaces the styles compiled into {cur.name}'s current firmware, and the presets on its card will then be the plan's.</span>
+                {cur.model && <span>{cur.name} already has wiring and presets set up in Hiltwright. They will be replaced by the plan's.</span>}
+                <span className="row" style={{ gap: 8 }}>
+                  <button type="button" className="btn sm pri" onClick={() => { const id = adopting.id; setAdopting(null); void board.adoptPlan(id); }}><span className="b"><span className="i">Adopt</span></span></button>
+                  <button type="button" className="btn sm ghost" onClick={() => setAdopting(null)}><span className="b"><span className="i">Not now</span></span></button>
+                </span>
+              </span></div>
+            )}
+
+            <section className="panel" style={{ flex: 'none', ...door(ws.live), ...(ws.live ? {} : { opacity: 0.78 }) }} aria-label="Adjust it live" data-tour="armory-live">
+              <div className="col" style={{ gap: 14, padding: 20 }}>
+                <div className="row" style={{ gap: 12 }}><span style={{ display: 'flex', width: 24, height: 24, color: ws.live ? 'var(--holo)' : 'var(--dim)' }}><Icon name="bolt" /></span><h3 style={{ margin: 0 }}>Adjust it live</h3></div>
+                <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>{ws.live ? 'Change its presets, volume and colours on the saber itself. Each change takes effect at once; nothing is built or flashed. Works with any ProffieOS firmware.' : cur.planned ? 'A planned saber has no firmware yet, so there is nothing to adjust live.' : `Plug ${cur.name} in to change its presets, volume and colours on the saber itself.`}</p>
+                {ws.live && info && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8 }}>
+                    {fact('play', 'Playing', playing ? `Preset ${info.currentPreset! + 1} · ${playing.name.replace(/\s*\n\s*/g, ' ') || playing.font}` : 'Not known')}
+                    {fact('presets', 'Presets', `${info.presets.length} on the card`)}
+                    {fact('battery', 'Battery', batteryLabel(info.battery))}
+                    {fact('sd', 'Card', info.sdMissing ? 'not readable' : board.card.shared ? 'shared with this computer' : 'in the saber')}
+                  </div>
+                )}
+                {ws.live
+                  ? <button type="button" className="btn pri full" onClick={() => go('live-presets')}><span className="b"><span className="i"><Icon name="bolt" />Adjust it live</span></span></button>
+                  : !cur.planned && <button type="button" className="btn full" disabled><span className="b"><span className="i"><Icon name="usb" />Plug it in to adjust</span></span></button>}
+                {!ws.live && plugged && plugged.id !== cur.id && <span className="hint">{plugged.name} is plugged in. <button type="button" className="holo" onClick={() => ws.choose(plugged.id)}>Pick {plugged.name}</button> to adjust it live.</span>}
+              </div>
+            </section>
+
+            <section className="panel" style={{ flex: 'none', ...door(!ws.live) }} aria-label="Change its setup" data-tour="armory-progress">
+              <div className="col" style={{ gap: 14, padding: 20 }}>
+                <div className="row" style={{ gap: 12 }}><span style={{ display: 'flex', width: 24, height: 24, color: ws.live ? 'var(--dim)' : 'var(--holo)' }}><Icon name="build" /></span><h3 style={{ margin: 0 }}>Change its setup</h3></div>
+                <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>Wiring, fonts and presets for the next install. Nothing on the saber changes until you install it, with its card in a card reader for the copy.</p>
+                <div className="inspect">
+                  {steps.map((st, i) => {
+                    const done = (st.step === 'wiring' && wiringConfirmed(ws.model)) || (st.step === 'fonts' && chosenFonts(ws.model).length > 0) || (st.step === 'presets' && !!ws.model?.presets.length) || (st.step === 'build' && !!cur.firmware && !queuedLookIds(ws.model ?? undefined, cur.firmware).length && !ws.model?.presetsFrom);
+                    const now = st.step === next;
+                    return (
+                      <button key={st.step} type="button" className={`insp ${done ? 'done' : now ? 'now' : ''}`} onClick={() => go(stepPage[st.step])}>
+                        <span className="box" aria-hidden="true">{done ? <Icon name="check" /> : i + 1}</span>
+                        <b>{stepTitle[st.step]}{done && <span className="sr"> (done)</span>}</b><span className="what" title={st.label}>{st.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button type="button" className={`btn full ${ws.live ? '' : 'pri'}`} onClick={() => go(stepPage[next])}><span className="b"><span className="i"><Icon name="chev" />Continue with {stepTitle[next]}</span></span></button>
+              </div>
+            </section>
           </>
         )}
-      </aside>
+      </div>
     </div>
   );
 }

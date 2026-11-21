@@ -50,8 +50,12 @@ const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'presets' | 'looks' | 'armory' | 'wiring' | 'fonts' | 'live-card') => void }) {
   const { status } = board;
   // Frozen at connect time: the install deliberately drops the port, and the page must keep working through that.
-  const [snap, setSnap] = useState<{ info: NonNullable<Board['info']>; saber: NonNullable<Board['saber']> } | null>(null);
+  const [held, setSnap] = useState<{ info: NonNullable<Board['info']>; saber: NonNullable<Board['saber']> } | null>(null);
   useEffect(() => { if (board.status === 'connected' && board.info && board.saber) setSnap({ info: board.info, saber: board.saber }); }, [board.status, board.info, board.saber]);
+  // Only while the plugged-in saber is the one picked in the Armory: another saber's setup is never built for it,
+  // nor installed on it (docs/install-live-plan.md).
+  const snap = held && (!ws.saber || held.saber.id === ws.saber.id) ? held : null;
+  const otherPlugged = board.status === 'connected' && !!board.saber && !!ws.saber && board.saber.id !== ws.saber.id ? board.saber : null;
   const offline = !snap;
   const saber = snap ? board.library.find((s) => s.id === snap.saber.id) ?? snap.saber : ws.saber;
   const info = snap?.info ?? ws.info;
@@ -97,7 +101,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
       // The saber's own view: not while its card is shared, when the saber would be reading a card this computer has
       // (card-safety D2). The font list is read again here: the one from connecting is stale once fonts are copied.
       let own: { fonts: string[]; voice: VoicePackStatus | null; why: string | null; out: boolean } | null = null;
-      if (board.status === 'connected' && !board.card.shared) {
+      if (board.status === 'connected' && !board.card.shared && board.saber?.id === me.id) {
         try {
           const lf = await board.send('list_fonts', { idleMs: 700 });
           const cat = await board.send('cat common/voicepack.ini', { idleMs: 700 });
@@ -192,7 +196,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   }, [status]);
   // A shared card is given back first: an install restarts the saber with this computer still holding its card.
   const cardShared = status === 'connected' && board.card.shared;
-  const canInstall = (status === 'connected' || inBootloader) && !cardShared;
+  // Installed only on the picked saber: plugged in as itself, or a board in its bootloader (whose serial the install checks).
+  const canInstall = ((status === 'connected' && !otherPlugged) || inBootloader) && !cardShared;
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => { void api().toolchain.status().then(setTool).catch((err) => console.log(`[build] compiler status failed: ${String(err)}`)); }, []);
@@ -272,7 +277,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
     // Staged presets need the card's presets file gone, from wherever the card is (installFlow applyStagedPresets).
     card: (() => { const c = cardCheckRef.current; return c?.source === 'reader' ? { where: 'reader' as const, root: c.root, clearPresets: (root: string) => api().sd.clearPresets(root) } : c?.source === 'out' ? { where: 'out' as const } : { where: 'saber' as const }; })(),
   }), [board]);
-  const connectedNow = status === 'connected';
+  // Connected as the picked saber; another saber plugged in counts as nothing plugged in here.
+  const connectedNow = status === 'connected' && !otherPlugged;
   /** From a board sitting in its bootloader with a usable driver: which board, check, backup, write, wait, reconnect, record. */
   const writeFromBootloader = useCallback(async () => {
     if (!result || !saber) return;
@@ -648,7 +654,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
             </div>
           )}
           {cardShared && <div className="note amber"><Icon name="warn" /><span>{saber.name}'s card is shared with this computer. Give it back on Live › Card first: installing restarts the saber, and this computer must not be holding its card when it does. Putting back a backup waits for the same.</span></div>}
-          {step !== 'driver' && !busy && !(built && !confirmedWiring) && <span className="hint">{stale ? 'The setup changed after this build. Build again to install it.' : !built ? (confirmedWiring ? 'Build first.' : 'Build first. The wiring also needs confirming before anything is written.') : !canInstall ? (offline ? 'Plug the saber in to install. Everything up to here works without it.' : 'Reconnect the saber to install.') : inBootloader ? 'The board is in bootloader mode and ready to write.' : 'The whole flash is read to a backup file before anything is written.'}</span>}
+          {step !== 'driver' && !busy && !(built && !confirmedWiring) && <span className="hint">{stale ? 'The setup changed after this build. Build again to install it.' : !built ? (confirmedWiring ? 'Build first.' : 'Build first. The wiring also needs confirming before anything is written.') : !canInstall ? (otherPlugged ? `${otherPlugged.name} is plugged in, not ${saber.name}. Plug ${saber.name} in to install it.` : offline ? 'Plug the saber in to install. Everything up to here works without it.' : 'Reconnect the saber to install.') : inBootloader ? 'The board is in bootloader mode and ready to write.' : 'The whole flash is read to a backup file before anything is written.'}</span>}
         </div>
 
         {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : note.tone === 'red' ? 'x' : 'warn'} /><span className="col" style={{ gap: 8 }}><span>{note.text}</span>{(note.tone === 'red' || step === 'failed') && <SaveDiagnostics small />}</span></div>}
