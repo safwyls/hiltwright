@@ -288,7 +288,7 @@ describe('the shared card (card-safety D1, D2)', () => {
   it('a refused operation is not run, sends nothing, and fails with the reason', async () => {
     const saves: SaveState[] = [];
     const sent: string[] = [];
-    const reason = "Not sent: hotetest's card is shared with this computer. Give it back on Fonts & SD first.";
+    const reason = "Not sent: hotetest's card is shared with this computer. Give it back on Live › Card first.";
     const d: OpDeps<{ name: string }> = { client: () => ({ name: 'c' }), setBusy: () => undefined, setSave: (s) => saves.push(s), log: (_k, t) => sent.push(t), snapshot: async () => { sent.push('snapshot'); }, refuse: () => reason };
     let ran = false;
     expect(await runOperation(d, 'Select preset 2', async () => { ran = true; return { ok: true }; }, true)).toBe(false);

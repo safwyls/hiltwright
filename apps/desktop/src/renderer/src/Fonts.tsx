@@ -1,5 +1,7 @@
-// Fonts & SD: a ProffieOS card in a card reader. Lists fonts with the checks that catch the classic failures,
-// lists tracks, and copies a font folder from this computer onto the card after checking it.
+// Live › Card (formerly Fonts & SD): the saber's card shared over its USB, or a ProffieOS card in a card reader, for a
+// small fix. Lists fonts with the checks that catch the classic failures, lists tracks, sets up the voice pack, and
+// copies a font folder from this computer onto the card after checking it. Getting a card ready for an install is
+// Build & Install's card step.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FETT263_REQUIRED_VOICE_PACK, propFamily, copyAnywayQuestion, saberCanReadFileSystem, shouldAskBeforeCopy, type VoicePackStatus } from '@hiltwright/core';
@@ -16,6 +18,7 @@ import { ownedByText, ownerOfCard } from './cardOwner';
 import { cachedCards, cachedRead, lastCardRead, rememberCards, rememberRead } from './cardCache';
 import { Select } from './Select';
 import { duringWork } from './work';
+import { aboutTime, copySeconds } from './copyRate';
 import { DRIVE_WAIT_MS, giveCardBack, pickSaberDrive, plainDuration, shareCard, type Baseline, type GiveBackOutcome, type ShareDeps, type WaitProgress } from './cardShare';
 
 const api = () => window.hiltwright;
@@ -373,6 +376,8 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                 : live ? 'Put the card in a reader, or let the saber share it over USB: it stops playing while it does.' : 'Put the saber\'s SD card in a card reader, or plug the saber in and share its card over USB.'}
               {fett263Card && !voiceShort && !voiceOpen && voiceList.packs.length > 0 && !scanning && <> · <button type="button" className="holo" onClick={() => setVoiceOpen(true)}>Change the voice</button></>}
             </div>
+            {/* The saber's USB runs at USB 1.1 speed: said before a copy that way, not found out during it (install-live-plan). */}
+            {(shared || (live && !card)) && <div className="hint">Over the saber{'’'}s USB a typical 40 MB font takes {aboutTime(copySeconds(40_000_000, 'saber'))}; in a card reader, {aboutTime(copySeconds(40_000_000, 'reader'))}. Sharing suits a small fix. For more, use a card reader.</div>}
             {card && kind !== 'other' && (owner || (me && card.volumeSerial)) && <div className="small">
               {owner ? `${owner.saber.name}’s card (${ownedByText(owner.by)})` : 'Not known as any saber’s card yet'}
               {me && card.volumeSerial && (!owner || owner.saber.id !== me.id || owner.by === 'presets') && <> · <button type="button" className="holo" disabled={working} onClick={() => void setCardOwner(true)}>This is {me.name}{'’'}s card</button></>}

@@ -28,7 +28,7 @@ export function assertMaySend(command: string): void {
 /** Why a board operation may not run now: the tour, else the saber's card shared with this computer, else null. */
 export function operationRefusal(cardShared: boolean, saberName: string | null): string | null {
   if (locked) return TOUR_REFUSAL;
-  return cardShared ? `Not sent: ${saberName ?? 'the saber'}'s card is shared with this computer. Give it back on Fonts & SD first.` : null;
+  return cardShared ? `Not sent: ${saberName ?? 'the saber'}'s card is shared with this computer. Give it back on Live › Card first.` : null;
 }
 
 /** A connection attempt during the tour is held, and remembered so it can be made once the tour ends. */

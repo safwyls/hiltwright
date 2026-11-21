@@ -30,6 +30,8 @@ type Over = {
   compiled?: { font: string; track: string; name: string }[]; keepsOwn?: boolean; restartFails?: boolean;
   /** Its SD card is out (in a reader): it starts with its firmware's presets, there being no presets.ini to read. */
   cardOut?: boolean;
+  /** Its presets file went on the card trip before the install: it comes back with the compiled presets at once. */
+  clearedOnTrip?: boolean;
 };
 /** The saber read after a reconnect: the record for that serial, just seen, reporting what `comesBackAs` says. */
 const readBack = (serial: string | null | undefined, over: Over): SaberRecord | null => {
@@ -43,7 +45,7 @@ function world(boards: Board[], over: Over = {}) {
   const reports: InstallReport[] = [];
   let reached: SaberRecord | null = null;
   // The presets the saber reports, and whether its presets file has been removed.
-  let onSaber = [{ font: 'Old;common', track: '', styles: ['builtin 0 1'], name: 'Old', variation: 0 }];
+  let onSaber = over.clearedOnTrip && over.compiled ? over.compiled.map((c) => ({ ...c, styles: ['builtin 0 1'], variation: 0 })) : [{ font: 'Old;common', track: '', styles: ['builtin 0 1'], name: 'Old', variation: 0 }];
   let removed = false;
   const connectedSerial = over.connectedSerial ?? HOTE2;
   const usb = (): UsbState => {
@@ -653,6 +655,15 @@ describe('staged presets', () => {
     const note = await applyStagedPresets({ ...f.deps, card: { where: 'reader', root: 'E:\\', clearPresets: async () => { throw new Error('EPERM: write protected'); } } }, saberRec(), stagedModel, HOTE2);
     expect(staging(f)).toEqual([]);
     expect(note.text).toMatch(/could not be removed: EPERM: write protected/);
+  });
+
+  it('its presets file already went on the card trip: the saber reports the staged list, so it is settled with no restart', async () => {
+    const f = world([hote2()], { compiled: staged, clearedOnTrip: true });
+    await installSequence(f.deps, job());
+    expect(staging(f)).toEqual([]);
+    expect(f.extra().at(-1)).toEqual({ tone: 'green', text: 'Your staged presets are on the saber now; its previous presets were kept as a snapshot when the card was prepared.' });
+    const models = (f.deps.board.updateSaber as ReturnType<typeof vi.fn>).mock.calls.map((c) => (c[0] as { model?: SaberConfigModel }).model);
+    expect(models.at(-1)?.presetsFrom).toBeUndefined();
   });
 
   it('samePresets compares names and fonts in order', () => {

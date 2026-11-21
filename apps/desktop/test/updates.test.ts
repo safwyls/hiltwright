@@ -133,7 +133,7 @@ describe('Restart to update waits for what must not be cut short', () => {
     expect(restartRefusal({ work: ['restore'], cardShared: false })).toBe('Wait for Put back to finish, then restart to update.');
     expect(restartRefusal({ work: ['copy'], cardShared: false })).toBe('Wait for the copy to the card to finish, then restart to update.');
     expect(restartRefusal({ work: ['share'], cardShared: false })).toBe("Wait for the saber's card to be shared or given back, then restart to update.");
-    expect(restartRefusal({ work: [], cardShared: true })).toBe("Give the saber's card back on Fonts & SD first, then restart to update.");
+    expect(restartRefusal({ work: [], cardShared: true })).toBe("Give the saber's card back on Live › Card first, then restart to update.");
     // The install is named first: it is the one that matters most.
     expect(restartRefusal({ work: ['copy', 'build', 'install'], cardShared: true })).toBe('Wait for the firmware install to finish, then restart to update.');
   });
@@ -234,7 +234,7 @@ describe("main's updater", () => {
     await up.check(true); await up.download();
     expect(await up.install({ work: [], cardShared: false })).toEqual({ ok: false, text: 'Wait for the copy to the card to finish, then restart to update.' });
     mainWork = [];
-    expect((await up.install({ work: [], cardShared: true })).text).toBe("Give the saber's card back on Fonts & SD first, then restart to update.");
+    expect((await up.install({ work: [], cardShared: true })).text).toBe("Give the saber's card back on Live › Card first, then restart to update.");
     expect((await up.install({ work: ['restore'], cardShared: false })).text).toBe('Wait for Put back to finish, then restart to update.');
     expect(u.quitAndInstall).not.toHaveBeenCalled();
   });

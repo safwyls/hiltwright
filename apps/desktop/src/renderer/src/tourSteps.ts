@@ -190,10 +190,10 @@ export const TOUR: TourChapter[] = [
   {
     id: 'build', name: '4 Build & Install', page: 'build', steps: [
       {
-        title: 'Four steps to the saber',
+        title: 'Five steps to the saber',
         target: 'build-steps',
         text: [
-          'This turns the saber\'s wiring, presets and styles into firmware, and installs it.',
+          'This turns the saber\'s wiring, presets and styles into firmware, gets its card ready, and installs it.',
           'Each step turns green when it is done. The bright one is next.',
         ],
       },
@@ -211,6 +211,14 @@ export const TOUR: TourChapter[] = [
         text: [
           'Build makes the firmware. Queued styles are built in here.',
           'Hiltwright writes the settings file for you; you never have to read C++. The Config tab shows it, if you are curious.',
+        ],
+      },
+      {
+        title: 'The card, in one trip',
+        target: 'build-card',
+        text: [
+          'Take the SD card out of the saber and put it in a card reader. "Prepare the card" copies the fonts it lacks and readies it for your preset list.',
+          'Then put the card back and install. Sharing the card over the saber\'s USB works too, but is about 30 times slower.',
         ],
       },
       {

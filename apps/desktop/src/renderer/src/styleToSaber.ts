@@ -136,7 +136,7 @@ export function putInWords(plan: PutInPlan, names: { saber: string; preset: stri
         button: `Use it in ${preset}`, enabled: false,
         hint: plan.reason === 'no-card'
           ? `${saber} has no readable SD card, and presets are saved on the card, so nothing is sent. Put the card back, then reconnect.`
-          : `${saber}'s card is shared with this computer, and presets are saved on the card, so nothing is sent. Give it back on Fonts & SD first.`,
+          : `${saber}'s card is shared with this computer, and presets are saved on the card, so nothing is sent. Give it back on Live › Card first.`,
       };
     case 'already':
       return {

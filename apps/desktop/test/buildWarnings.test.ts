@@ -22,7 +22,7 @@ describe('build warnings', () => {
     expect(w.fonts).toEqual(['TeensySF', 'SmthJedi', 'SmthGrey', 'SmthFuzz', 'RgueCmdr', 'TthCrstl']);
     expect(w.text).toMatch(/^6 presets name fonts that are not on the card \(TeensySF, /);
     expect(w.text).toMatch(/"font directory not found"/);
-    expect(w.text).toMatch(/Fonts & SD/);
+    expect(w.text).toMatch(/Card step/);
     const v = voicePackVerdict('fett263', pack, null, presetsWithoutCommon(stock))!;
     expect(v.ok).toBe(false);
     expect(v.text).toMatch(/6 presets/);

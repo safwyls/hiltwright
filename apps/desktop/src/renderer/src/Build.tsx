@@ -1,13 +1,18 @@
-// Build & Install: the last step. The wiring (Wiring page) and presets (Presets page) live in the saber's model;
-// this page shows the config they make, builds it, and installs: backup → bootloader → write → verify.
+// Build & Install: the last step. The wiring (Wiring page), fonts (Fonts page) and presets (Presets page) live in the
+// saber's model; this page shows the config they make and builds it, prepares the card in one trip to a card reader
+// (the fonts it lacks, and the presets file when a new list is staged), then installs: backup → bootloader → write →
+// verify. Copying over the saber's own USB is the slow fallback (docs/install-live-plan.md).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FETT263_REQUIRED_VOICE_PACK, compareWiring, differenceText, parseList, presetsWithoutCommon, propFamily, wiringFromConfig, type ConfigWiring, sdFailureIn, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
-import { firmwareHasStaged, queuedLookIds } from './saberModel';
+import { firmwareHasStaged, presetDrift, queuedLookIds } from './saberModel';
+import { chosenFonts } from './saberFonts';
+import { aboutTime, copySeconds, recordCopy, type CopyRoute } from './copyRate';
+import { mb } from './FontLibrary';
 import { propLabel } from './Wiring';
 import { missingFontWarning } from './fontNeeds';
 import type { Workspace } from './workspace';
-import type { BackupInfo, BuildResult, CardInfo, JobEvent, ToolchainStatus } from '../../shared/api';
+import type { BackupInfo, BuildResult, CardInfo, JobEvent, LibraryFont, ToolchainStatus } from '../../shared/api';
 import { saberCardIn, type OwnedBy } from './cardOwner';
 import { cachedRead, rememberRead } from './cardCache';
 
@@ -35,6 +40,12 @@ const fmtGB = (b: number) => `${(b / 1073741824).toFixed(1)} GB`;
  * wiring and comes back to it: kept here, the build is shown again, as current or out of date (FW5).
  */
 const lastBuilds = new Map<string, { result: BuildResult; model: SaberConfigModel | null }>();
+/**
+ * Sabers whose card had its presets file removed on a card trip this session, for the staged list then being prepared
+ * (by its start time): the card step does not offer it again, and the install finds the list already in place.
+ */
+const presetsClearedFor = new Map<string, string>();
+const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
 export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'presets' | 'looks' | 'armory' | 'wiring' | 'fonts' | 'live-card') => void }) {
   const { status } = board;
@@ -132,6 +143,42 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
     if (!c?.volumeSerial || !saber) return;
     try { await api().library.linkCard(saber.id, { serial: c.volumeSerial, label: c.label }); await board.refreshLibrary(); setLinkNote(null); setLookAgain((n) => n + 1); }
     catch (err) { setLinkNote(`Could not remember the card: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
+  };
+  // ---- the card trip: everything the card needs, done in one go while it is in a reader (or shared over USB) ----
+  const [library, setLibrary] = useState<LibraryFont[]>([]);
+  useEffect(() => { void api().fontLibrary.list().then(setLibrary).catch(() => undefined); }, []);
+  const [prepping, setPrepping] = useState<string | null>(null);
+  const [prepNote, setPrepNote] = useState<InstallNote | null>(null);
+  useEffect(() => api().sd.onCopyProgress((p) => setPrepping((now) => (now ? `Copying ${p.name}: ${p.done} of ${p.total} files` : now))), []);
+  useEffect(() => { setPrepNote(null); }, [saber?.id]);
+  /** Copy the fonts the card lacks, remove its presets file for a staged list (a snapshot first), and remember the card. */
+  const prepareCard = async (work: { fonts: LibraryFont[]; clearPresets: boolean; link: boolean; route: CopyRoute }) => {
+    const c = cardCheckRef.current;
+    if (c?.source !== 'reader' || !saber || !model) return;
+    setPrepping('Getting the card ready…'); setPrepNote(null);
+    const done: string[] = [];
+    try {
+      // First: a card known only by its presets would not be known once its presets file goes.
+      if (work.link) { await linkReaderCard(); done.push(`remembered it as ${saber.name}'s card`); }
+      if (work.clearPresets && model.presetsFrom) {
+        // What the saber had, kept before its presets file goes: Live › Presets can put it back.
+        if (info?.presets.length) await api().snapshots.save(saber.id, 'Before install with staged presets', info.presets);
+        setPrepping('Removing the presets file…');
+        await api().sd.clearPresets(c.root);
+        presetsClearedFor.set(saber.id, model.presetsFrom.at);
+        done.push('removed its presets file, so it starts with your list after the install');
+      }
+      for (const f of work.fonts) {
+        setPrepping(`Copying ${f.folder}…`);
+        const t0 = Date.now();
+        await api().fontLibrary.copyToCard(f.folder, c.root, false);
+        recordCopy(work.route, f.bytes, Date.now() - t0);
+      }
+      if (work.fonts.length) done.push(`copied ${work.fonts.length === 1 ? work.fonts[0].folder : `${work.fonts.length} fonts`}`);
+      setPrepNote({ tone: 'green', text: `The card is ready: Hiltwright ${done.join(', ')}. ${work.route === 'saber' ? 'Give the card back on Live › Card' : 'Put the card back in the saber'}, plug the saber in, then install.` });
+    } catch (err) {
+      setPrepNote({ tone: 'red', text: `The card was not finished${done.length ? ` (it ${done.join(', ')})` : ''}: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}` });
+    } finally { setPrepping(null); setLookAgain((n) => n + 1); }
   };
   // Poll USB while disconnected so an install can proceed from a board that is already in its bootloader.
   const [inBootloader, setInBootloader] = useState(false);
@@ -414,7 +461,23 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   // A build is current only while the setup would still make the same config (FW5); changing it back makes it current again.
   const stale = !!result?.ok && !!preview && preview.hash !== result.configHash;
   const built = !!result?.ok && step !== 'building' && !stale;
-  const nowStep = !wiringOk ? 1 : !tool?.ready ? 2 : !built ? 3 : step === 'done' ? 0 : 4;
+  // What the card still needs. Its fonts are known from a reader or the saber reading it now, else as last read.
+  const inReader = cardCheck?.source === 'reader';
+  const sharedRoot = board.card.shared && inReader && cardCheck.root === board.card.root;
+  const route: CopyRoute = sharedRoot ? 'saber' : 'reader';
+  const onCardNow = cardCheck?.source === 'reader' || cardCheck?.source === 'saber' ? cardCheck.fonts : info.fonts.length ? info.fonts : null;
+  const libOf = (f: string) => library.find((l) => sameName(l.folder, f)) ?? null;
+  const chosen = chosenFonts(model);
+  const fontsToCopy = chosen.filter((f) => !(onCardNow ?? []).some((x) => sameName(x, f))).map(libOf).filter((l): l is LibraryFont => !!l);
+  // Said only when the card's fonts are known: a font not in the library may well be on a card not read yet.
+  const notInLibrary = onCardNow ? chosen.filter((f) => !libOf(f) && !onCardNow.some((x) => sameName(x, f))) : [];
+  const copyBytes = fontsToCopy.reduce((n, f) => n + f.bytes, 0);
+  const clearPresets = !!model?.presetsFrom && !saber.planned && presetsClearedFor.get(saber.id) !== model.presetsFrom.at;
+  const link = inReader && cardCheck.by === 'presets' && !!cardCheck.card.volumeSerial;
+  const cardWork = fontsToCopy.length > 0 || clearPresets;
+  const cardReady = !cardWork && !prepping;
+  const drift = presetDrift(model, info);
+  const nowStep = !wiringOk ? 1 : !tool?.ready ? 2 : !built ? 3 : cardWork ? 4 : step === 'done' ? 0 : 5;
   // An install armed for a build that has since gone out of date is disarmed.
   if (stale && armed) setArmed(false);
   // The presets that will be on the saber: the staged list when presets are staged, else the saber's own (both are model.presets).
@@ -507,8 +570,36 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
           <button type="button" className={`btn full ${nowStep === 3 ? 'pri' : ''}`} disabled={!canBuild} onClick={() => void build(true)}><span className="b"><span className="i">{step === 'building' ? <Loader size="sm" /> : <Icon name="build" />}{step === 'building' ? 'Building…' : built ? 'Build again' : 'Build firmware'}</span></span></button>
         </div>
 
-        <div className={`stepc ${step === 'done' ? 'done' : nowStep === 4 ? 'now' : ''}`} data-tour="build-install">
-          <div className="head"><span className="nbox">{step === 'done' ? <Icon name="check" /> : 4}</span><b>Install</b><span className="what">{step === 'backup' ? `backing up, ${elapsed} s` : step === 'writing' ? `writing, ${elapsed} s` : 'backup first, about two minutes'}</span></div>
+        <div className={`stepc ${cardReady ? 'done' : nowStep === 4 ? 'now' : ''}`} data-tour="build-card">
+          <div className="head"><span className="nbox">{cardReady ? <Icon name="check" /> : 4}</span><b>Card</b><span className="what">{prepping ? 'getting it ready' : cardWork ? (fontsToCopy.length ? `${fontsToCopy.length} font${fontsToCopy.length === 1 ? '' : 's'}, ${mb(copyBytes)}` : 'your preset list') : 'nothing to put on it'}</span></div>
+          {cardWork && (
+            <div className="col" style={{ gap: 4 }}>
+              {fontsToCopy.length > 0 && <span className="small">Copy {fontsToCopy.map((f) => f.folder).join(', ')}{onCardNow ? '' : ' (the card has not been read yet: fonts already on it are skipped)'}.</span>}
+              {clearPresets && <span className="small">Remove its presets file, so the saber starts with your list after the install. A snapshot of its own presets is kept first.</span>}
+            </div>
+          )}
+          {notInLibrary.length > 0 && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>{notInLibrary.join(', ')} {notInLibrary.length === 1 ? 'is' : 'are'} not in your font library, so {notInLibrary.length === 1 ? 'it' : 'they'} cannot be copied. <button type="button" className="holo" onClick={() => go('fonts')}>Fonts</button></span></div>}
+          {prepping && <span className="row small" style={{ gap: 10 }}><Loader size="sm" />{prepping}</span>}
+          {cardWork && !prepping && (inReader ? (
+            <>
+              <span className="hint" style={{ overflowWrap: 'anywhere' }}>{sharedRoot ? `The card is shared over ${saber.name}'s USB (${cardCheck.root}): slow, ${aboutTime(copySeconds(copyBytes, 'saber'))} for this.` : `The card is in a card reader (${cardCheck.root}): ${aboutTime(copySeconds(copyBytes, 'reader'))} for this.`}</span>
+              <button type="button" className={`btn full ${nowStep === 4 ? 'pri' : ''}`} disabled={busy} onClick={() => void prepareCard({ fonts: fontsToCopy, clearPresets, link, route })}><span className="b"><span className="i"><Icon name="sd" />Prepare the card</span></span></button>
+            </>
+          ) : (
+            <>
+              <span className="small">Take the SD card out of {saber.name} and put it in a card reader on this computer, then press Look again.</span>
+              {copyBytes > 0 && <span className="hint">{`About ${aboutTime(copySeconds(copyBytes, 'reader')).replace(/^about /, '')} in a card reader; ${aboutTime(copySeconds(copyBytes, 'saber'))} over the saber's own USB.`}</span>}
+              <span className="row" style={{ gap: 8 }}><button type="button" className="btn sm" disabled={cardChecking} onClick={() => setLookAgain((n) => n + 1)}><span className="b"><span className="i">{cardChecking ? <Loader size="sm" /> : <Icon name="undo" />}Look again</span></span></button></span>
+              <span className="hint">No card reader? Share the card over the saber{'’'}s USB on <button type="button" className="holo" onClick={() => go('live-card')}>Live › Card</button>, then come back here. It is much slower.</span>
+            </>
+          ))}
+          {prepNote && <div className={`note ${prepNote.tone}`} style={{ padding: '8px 10px' }}><Icon name={prepNote.tone === 'green' ? 'check' : 'warn'} /><span>{prepNote.text}</span></div>}
+        </div>
+
+        <div className={`stepc ${step === 'done' ? 'done' : nowStep === 5 ? 'now' : ''}`} data-tour="build-install">
+          <div className="head"><span className="nbox">{step === 'done' ? <Icon name="check" /> : 5}</span><b>Install</b><span className="what">{step === 'backup' ? `backing up, ${elapsed} s` : step === 'writing' ? `writing, ${elapsed} s` : 'backup first, about two minutes'}</span></div>
+          {/* The list for the next install would overwrite changes made on the saber since it was started (Live, say). */}
+          {drift !== null && step !== 'done' && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>{saber.name} has changed since your preset list was made: {drift} preset{drift === 1 ? '' : 's'} differ{drift === 1 ? 's' : ''}. Installing replaces those changes. <button type="button" className="holo" onClick={() => go('presets')}>Bring them in on Presets</button></span></div>}
           {(step === 'bootloader' || step === 'backup' || step === 'writing' || step === 'verifying') && (
             <div className="col" style={{ gap: 5 }} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(overall)} aria-label="Install progress">
               <div className="row between" style={{ alignItems: 'baseline' }}><span className="small">{phaseText}</span><span className="mono mute small">{Math.round(overall)}%</span></div>
@@ -549,14 +640,14 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
               <button type="button" className="btn sm full" onClick={() => go('wiring')}><span className="b"><span className="i"><Icon name="blade" />Look at the wiring</span></span></button>
             </div>
           ) : step === 'bootloader' || step === 'backup' || step === 'writing' || step === 'verifying' ? null : !armed ? (
-            <button type="button" className={`btn full ${nowStep === 4 ? 'warn' : ''}`} disabled={busy || step !== 'built' || stale || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>
+            <button type="button" className={`btn full ${nowStep === 5 ? 'warn' : ''}`} disabled={busy || step !== 'built' || stale || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>
           ) : (
             <div className="row" style={{ gap: 8 }}>
               <button type="button" className="btn danger grow" disabled={busy || stale} onClick={() => { setArmed(false); void install2(); }}><span className="b"><span className="i"><Icon name="bolt" />Yes, write the firmware</span></span></button>
               <button type="button" className="btn ghost" onClick={() => setArmed(false)}><span className="b"><span className="i">Cancel</span></span></button>
             </div>
           )}
-          {cardShared && <div className="note amber"><Icon name="warn" /><span>{saber.name}'s card is shared with this computer. Give it back on Fonts &amp; SD first: installing restarts the saber, and this computer must not be holding its card when it does. Putting back a backup waits for the same.</span></div>}
+          {cardShared && <div className="note amber"><Icon name="warn" /><span>{saber.name}'s card is shared with this computer. Give it back on Live › Card first: installing restarts the saber, and this computer must not be holding its card when it does. Putting back a backup waits for the same.</span></div>}
           {step !== 'driver' && !busy && !(built && !confirmedWiring) && <span className="hint">{stale ? 'The setup changed after this build. Build again to install it.' : !built ? (confirmedWiring ? 'Build first.' : 'Build first. The wiring also needs confirming before anything is written.') : !canInstall ? (offline ? 'Plug the saber in to install. Everything up to here works without it.' : 'Reconnect the saber to install.') : inBootloader ? 'The board is in bootloader mode and ready to write.' : 'The whole flash is read to a backup file before anything is written.'}</span>}
         </div>
 

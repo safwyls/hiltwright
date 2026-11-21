@@ -97,7 +97,7 @@ export function SaberControls({ board, bare }: { board: Board; bare?: boolean })
     <div className="pb col scroll" style={{ gap: 14 }}>
       {bare && state}
       {!connected && <span className="hint">Connect a saber to change its settings.</span>}
-      {shared && <div className="note amber"><Icon name="warn" /><span>{board.saber?.name ?? 'The saber'}'s card is shared with this computer. Give it back on Fonts & SD first. The saber keeps these settings, and plays its effects, from the card.</span></div>}
+      {shared && <div className="note amber"><Icon name="warn" /><span>{board.saber?.name ?? 'The saber'}'s card is shared with this computer. Give it back on Live › Card first. The saber keeps these settings, and plays its effects, from the card.</span></div>}
       {bare && effects}
       {connected && known.length === 0 && (reading || !Object.keys(values).length ? <LoadingSpace text="Reading the saber's settings…" compact /> : <span className="hint">This firmware does not answer the settings commands. Hiltwright firmware does.</span>)}
       {sliders}

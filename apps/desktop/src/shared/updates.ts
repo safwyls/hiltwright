@@ -146,7 +146,7 @@ const WAIT_FOR: [WorkKind, string][] = [
   ['share', "Wait for the saber's card to be shared or given back, then restart to update."],
   ['setup', 'Wait for the build tools to finish installing, then restart to update.'],
 ];
-const GIVE_CARD_BACK = "Give the saber's card back on Fonts & SD first, then restart to update.";
+const GIVE_CARD_BACK = "Give the saber's card back on Live › Card first, then restart to update.";
 
 /** Why Restart to update may not run now, as a plain sentence, or null when it may. */
 export function restartRefusal(f: BusyFacts): string | null {

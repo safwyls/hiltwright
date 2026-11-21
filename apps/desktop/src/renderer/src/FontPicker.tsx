@@ -77,7 +77,7 @@ export function FontPicker({ fonts, loading, current, onCard, onPick, onClose, o
                     </span>
                   </span>
                   {there === true && <span className="chip ok" title="Already on the saber's card"><Icon name="check" />On card</span>}
-                  {there === false && <span className="chip" title="Not on the saber's card as last read. Copy it over on Fonts & SD.">Not on card</span>}
+                  {there === false && <span className="chip" title="Not on the saber's card as last read. It is copied with the next install, or on Live › Card.">Not on card</span>}
                   {f.report.issues.length > 0 && <span className="chip warn" title={f.report.issues.map((i) => i.text).join('\n')}><Icon name="warn" />{f.report.issues.length}</span>}
                   {isCur
                     ? <span className="chip live"><span className="dot" />In use</span>
@@ -88,7 +88,7 @@ export function FontPicker({ fonts, loading, current, onCard, onPick, onClose, o
           </div>
         </div>
         <div className="row between" style={{ padding: '10px 18px', borderTop: '1px solid var(--line)', gap: 12 }}>
-          <span className="hint">{note ?? 'The preset names the font by its folder. A font must be on the card for the saber to play it; Fonts & SD copies it over.'}</span>
+          <span className="hint">{note ?? 'The preset names the font by its folder. A font must be on the card for the saber to play it; it is copied with the next install, or on Live › Card.'}</span>
           <button type="button" className="holo small nowrap" onClick={() => { close(); onManage(); }}>Manage the library</button>
         </div>
       </section>

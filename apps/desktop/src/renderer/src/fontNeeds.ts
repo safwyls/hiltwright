@@ -73,6 +73,6 @@ export function missingFontWarning(presets: { font: string }[], cardFonts: strin
   return {
     presets: n,
     fonts,
-    text: `${n} preset${n === 1 ? ' names' : 's name'} ${fonts.length === 1 ? 'a font' : 'fonts'} that ${fonts.length === 1 ? 'is' : 'are'} not on the card (${fonts.join(', ')}). The saber will say "font directory not found" for ${n === 1 ? 'it' : 'them'}. Copy ${fonts.length === 1 ? 'it' : 'them'} over on Fonts & SD, or choose another font on the Presets page.`,
+    text: `${n} preset${n === 1 ? ' names' : 's name'} ${fonts.length === 1 ? 'a font' : 'fonts'} that ${fonts.length === 1 ? 'is' : 'are'} not on the card (${fonts.join(', ')}). The saber will say "font directory not found" for ${n === 1 ? 'it' : 'them'}. Copy ${fonts.length === 1 ? 'it' : 'them'} onto the card in the Card step on this page, or choose another font on the Presets page.`,
   };
 }

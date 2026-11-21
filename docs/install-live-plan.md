@@ -161,6 +161,13 @@ One commit each, with tests; hidden-app checks as usual (no board connected duri
 - **Live keeps its own Card page** for small fixes; a one-font fix does not mean a reflash.
 - **Tools stays, split in two:** Settings for the owner's preferences (the theme picker moves there from About), and About for the app itself.
 
+## As built (2026-11-21)
+
+- **Step 4 kept its name, Build & Install.** Renaming it to "Card & Flash" meant rewording about 16 on-screen sentences, several of which read worse ("goes on with the next Card & Flash"), and the page still builds and installs. The card trip is a new Card step on it, between Build and Install.
+- **The card trip does:** link a card known only by its presets to the saber (first, since removing the presets file would lose that), keep a snapshot of the saber's presets and remove its presets file when a list is staged, and copy the chosen fonts the card lacks, timing each copy to correct the estimate.
+- **Not done yet:** setting up the voice pack in the same trip (the verdict links to Live › Card, which does it), and writing the `ProffieOS source/` config copy to the card (there is no call for writing files to a card yet).
+- **USB fallback:** share the card on Live › Card. Build & Install then sees the shared drive like a reader and prepares it the same way, with the slower estimate.
+
 ## Out of scope
 
 - Faster copies over USB. The board's USB speed is the limit; serial file transfer is slower still (`docs/04-paths.md`).

@@ -308,6 +308,15 @@ export async function applyStagedPresets(deps: Pick<InstallDeps, 'flash' | 'snap
   try {
     const own = board.currentPresets();
     if (!own) return keepStaged("The saber's presets could not be read, so they were not replaced.");
+    // Its presets file went when the card was prepared in a reader (Build & Install's card step, which kept the
+    // snapshot): the saber, with its card back, already starts with the staged list. Nothing to remove or restart.
+    if (card.where === 'saber' && samePresets(own, model.presets)) {
+      const { presetsFrom: _applied, ...settled } = model;
+      try { await board.updateSaber({ model: settled }, saber.id); } catch (err) {
+        return { tone: 'amber', text: `Your staged presets are on the saber now, but Hiltwright could not update its record of the saber: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}` };
+      }
+      return { tone: 'green', text: 'Your staged presets are on the saber now; its previous presets were kept as a snapshot when the card was prepared.' };
+    }
     try { await deps.snapshots.save(saber.id, 'Before install with staged presets', own); } catch {
       return keepStaged("A snapshot of the saber's presets could not be kept, so they were not replaced.");
     }
