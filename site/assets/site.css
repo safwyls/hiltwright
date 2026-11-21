@@ -368,7 +368,9 @@ kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--line2);border
   .anchor{display:none}
 }
 @media (max-width:560px){
-  .wrap{padding:0 16px}
+  /* Sides only: the walkthrough and the docs are wraps with their own space above and below, which a full
+     padding reset would take away. */
+  .wrap{padding-left:16px;padding-right:16px}
   .path,.path.three,.cards.three,.doccards,.footgrid,.pager{grid-template-columns:1fr}
   .bd-stage{height:130px;padding:0 16px 0 10px}
   .bd-hilt{width:130px;margin-right:-17px}
