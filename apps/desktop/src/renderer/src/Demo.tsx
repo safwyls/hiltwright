@@ -48,8 +48,13 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   const scene = useRef<DemoScene | null>(null);
   const [saved, setSaved] = useState<LookDef[]>([]);
   const LOOKS = useMemo(() => [...STARTERS, ...saved], [saved]);
-  useEffect(() => { void api().looks.list().then((ls) => setSaved(ls.filter((l) => registerLookSim(l)))); }, []);
-  const [lookId, setLookId] = useState(() => (initialLook && canSimulateLook(initialLook) ? initialLook : STARTERS[0].id));
+  // The owner's styles, read once. Until then a style of theirs asked for (initialLook) is kept, not swapped for a
+  // starter: the Blade tab waits, and the blade takes it once its simulation is registered.
+  const [savedRead, setSavedRead] = useState(false);
+  useEffect(() => { void api().looks.list().then((ls) => setSaved(ls.filter((l) => registerLookSim(l)))).catch(() => undefined).finally(() => setSavedRead(true)); }, []);
+  const [lookId, setLookId] = useState(() => initialLook || STARTERS[0].id);
+  // A style that is not there once everything is read (removed since) gives way to the first starter.
+  useEffect(() => { if (savedRead && !canSimulateLook(lookId)) setLookId(STARTERS[0].id); }, [savedRead]); // eslint-disable-line react-hooks/exhaustive-deps
   const [tried, setTried] = useState<Record<number, string>>({});
   // The staff blade has its own look and colours; the panel shows one blade at a time.
   const [staffLookId, setStaffLookId] = useState(() => { try { return localStorage.getItem('hiltwright.demo.staffLook') || ''; } catch { return ''; } });
@@ -68,7 +73,11 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   // A custom prop file behaves here as the stock prop it is a version of.
   const saberModel = board.saber?.model ?? board.library[0]?.model ?? null;
   const saberProp = saberModel ? propFamily(saberModel) : null;
-  const [propKey, setPropKey] = useState<string>(() => saberProp ?? 'fett263');
+  const [propKey, setPropKeyNow] = useState<string>(() => saberProp ?? 'fett263');
+  // The saber's prop follows it in once the saber list is read, unless the owner has chosen one here meanwhile.
+  const propChosen = useRef(false);
+  const setPropKey = (k: string) => { propChosen.current = true; setPropKeyNow(k); };
+  useEffect(() => { if (saberProp && !propChosen.current) setPropKeyNow(saberProp); }, [saberProp]);
   const prop = propBehaviour(propKey);
   useEffect(() => { scene.current?.setProp(prop); }, [prop]);
   const [motion, setMotion] = useState<Motion>({ swing: 0, tilt: 0, turn: 0, twist: 0, on: false });
@@ -206,6 +215,8 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   const [hiltKey, setHiltKey] = useState<string>('');
   // Nothing is saved until what was kept has been read, so the defaults never overwrite it.
   const [roomReady, setRoomReady] = useState(false);
+  // The read has finished, well or not: until then the scene controls and the hilt wait, rather than show defaults.
+  const [roomRead, setRoomRead] = useState(false);
   const [hiltNote, setHiltNote] = useState<string | null>(null);
   // The fit controls are for placing a hilt on the blade: shown when the owner loads a hilt of their own, folded away otherwise.
   const [fitOpen, setFitOpen] = useState(false);
@@ -245,6 +256,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
         if (moveNote) setHiltNote(moveNote);
         setRoomReady(true);
       } catch (err) { setHiltNote(`Could not read your hilts: ${errText(err)}`); }
+      setRoomRead(true);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Scene settings are saved a moment after the last change, and at once when the room closes.
@@ -276,7 +288,8 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   useEffect(() => {
     const room = scene.current;
     if (!room) return;
-    if (!hilt) { loaded.current = null; room.setHilt(null, DEFAULT_FIT); setHiltLength(null); return; }
+    // No hilt yet: the stand-in only once the room is read and the chosen hilt is really missing.
+    if (!hilt) { loaded.current = null; room.setHilt(null, DEFAULT_FIT); room.setHiltPending(!roomRead); setHiltLength(null); return; }
     let live = true;
     void (async () => {
       try {
@@ -293,7 +306,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     })();
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hilt?.key, hilt?.rev, hilt?.fit.flip, hilt?.fit.rollDeg, hilt?.fit.lengthCm, hilt?.fit.offsetXmm, hilt?.fit.offsetZmm, hilt?.fit.seatMm, hilt?.fit.staffSeatMm, hilt?.fit.tiltXDeg, hilt?.fit.tiltZDeg, hilt?.fit.axis, hilts.length]);
+  }, [hilt?.key, hilt?.rev, hilt?.fit.flip, hilt?.fit.rollDeg, hilt?.fit.lengthCm, hilt?.fit.offsetXmm, hilt?.fit.offsetZmm, hilt?.fit.seatMm, hilt?.fit.staffSeatMm, hilt?.fit.tiltXDeg, hilt?.fit.tiltZDeg, hilt?.fit.axis, hilts.length, roomRead]);
   /** Keep a loaded model. A taken name asks first; nothing is listed unless it was kept. */
   const addHilt = async (input: HiltInput, mode: HiltAddMode, note: string | null) => {
     try {
@@ -382,6 +395,8 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     let room: DemoScene;
     try { room = new DemoScene(el, canSimulateLook(lookId) ? lookId : STARTERS[0].id); } catch (err) { setFailed(String(err)); return; }
     scene.current = room;
+    // No stand-in hilt while the room's hilts are read (the hilt effect shows the right one, or the stand-in, then).
+    room.setHiltPending(true);
     // Dev aid: the room itself, for the website's picture of the hilt (site/scripts/hilt.mjs).
     if (import.meta.env.DEV) (window as unknown as { hiltwrightDemoScene?: DemoScene }).hiltwrightDemoScene = room;
     room.setControlMode(control);
@@ -458,9 +473,9 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { if (canSimulateLook(lookId)) { scene.current?.setLook(lookId, args); setHold(null); } }, [lookId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (canSimulateLook(lookId)) { scene.current?.setLook(lookId, args); setHold(null); } }, [lookId, savedRead]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { scene.current?.setArgs(args); }, [args]);
-  useEffect(() => { if (canSimulateLook(staffLook.id)) scene.current?.setLook(staffLook.id, staffArgs, 'staff'); }, [staffLook.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (canSimulateLook(staffLook.id)) scene.current?.setLook(staffLook.id, staffArgs, 'staff'); }, [staffLook.id, savedRead]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { scene.current?.setArgs(staffArgs, 'staff'); }, [staffArgs]);
   useEffect(() => { scene.current?.setLockup(hold); }, [hold]);
   useEffect(() => { if (!motion.on && hold) setHold(null); }, [motion.on, hold]);
@@ -480,7 +495,8 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
           ))}
         </div>
         <div className="pb col scroll" style={{ gap: 12, padding: 12, minHeight: 0 }}>
-          {tab === 'blade' && (() => {
+          {tab === 'blade' && !savedRead && (!LOOKS.some((l) => l.id === lookId) || (!!staffLookId && !LOOKS.some((l) => l.id === staffLookId))) && <LoadingSpace text="Reading your styles…" compact />}
+          {tab === 'blade' && (savedRead || (LOOKS.some((l) => l.id === lookId) && (!staffLookId || LOOKS.some((l) => l.id === staffLookId)))) && (() => {
             const staff = look3d.staff && bladeTab === 'staff';
             const cur = staff ? staffLook : look; const curId = staff ? staffLook.id : lookId; const curTried = staff ? staffTried : tried;
             const setId = staff ? (v: string) => { setStaffLookId(v); setStaffTried({}); } : (v: string) => { setLookId(v); setTried({}); };
@@ -646,9 +662,10 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
       <section className="panel" style={{ position: 'absolute', right: 20, bottom: 18, width: 280, maxHeight: 'calc(100% - 130px)', display: 'flex', flexDirection: 'column', background: 'color-mix(in srgb,var(--bg1) 92%,transparent)' }} aria-label="Scene" data-tour="demo-scene">
         <div className="row between" style={{ padding: '8px 12px', flex: 'none' }}>
           <button type="button" className="row" style={{ gap: 8 }} aria-expanded={sceneOpen} onClick={() => setSceneOpen((o) => !o)}><Icon name={sceneOpen ? 'down' : 'up'} /><b style={{ fontWeight: 600, fontSize: 13 }}>Scene</b></button>
-          {sceneOpen && <button type="button" className="holo small" onClick={() => setLook3d({ ...DEFAULT_SCENE })}>Reset</button>}
+          {sceneOpen && roomRead && <button type="button" className="holo small" onClick={() => setLook3d({ ...DEFAULT_SCENE })}>Reset</button>}
         </div>
-        {sceneOpen && (
+        {sceneOpen && !roomRead && <LoadingSpace text="Reading the room…" compact />}
+        {sceneOpen && roomRead && (
           <div className="col scroll" style={{ gap: 7, padding: '0 12px 12px', fontSize: 12, minHeight: 0 }}>
             <button type="button" className="row between" aria-expanded={lightOpen} onClick={() => setLightOpen((o) => !o)}><span className="label">Light</span><span style={{ display: 'flex', width: 14, height: 14, color: 'var(--mute)' }}><Icon name={lightOpen ? 'down' : 'chev'} /></span></button>
             {lightOpen && SLIDERS.map((sl) => (

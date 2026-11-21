@@ -399,6 +399,14 @@ export class DemoScene {
     return length;
   }
 
+  /**
+   * While the room's hilts are still being read: no hilt at all, rather than the stand-in, which is shown only when
+   * the chosen hilt turns out to be missing. A hilt loaded meanwhile shows as usual.
+   */
+  setHiltPending(pending: boolean): void {
+    this.builtInHilt.visible = !pending && !this.customHilt;
+  }
+
   // ---- what the page asks of the saber ----
 
   setLook(lookId: string, args: Map<number, string>, blade: 'main' | 'staff' = 'main'): void {
