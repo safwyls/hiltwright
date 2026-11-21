@@ -46,9 +46,9 @@ Pick a card and the panel on the right shows the style on a larger blade. It run
 - **Ability 1** and **Ability 2**, for special abilities.
 - **Swing**, **Tilt** and **Twist** sliders, or drag the little saber, to move the blade. Click the blade to land a blast where you click.
 
-Nothing here is sent to a saber. Sound is a stand-in, so a style that follows the hum shows a typical flicker, not an exact one. To hear a style with a real sound font, press **Demo room**.
+Nothing here is sent to a saber. Sound is a stand-in, so a style that follows the hum shows only a typical flicker. To hear a style with a real sound font, press **Demo room**.
 
-### When the preview is not the whole story
+### Where the preview is approximate
 
 Some styles are pasted or built from ProffieOS parts the preview does not fully model. Hiltwright says so, in one of these ways:
 
@@ -57,7 +57,7 @@ Some styles are pasted or built from ProffieOS parts the preview does not fully 
 
 On a smaller card, the same warnings appear as a **Preview approximate** or **Preview incomplete** chip.
 
-One known gap in the beta: on the built-in styles, drag and lightning block change with twist and blade angle on the saber, but not in the preview.
+On the built-in styles, drag and lightning block change with twist and blade angle on the saber. The preview in this beta does not show that change.
 
 If a style's code cannot be read at all, the preview is a flat bar in its main colour. If the computer cannot do WebGL (the graphics part of the preview), you get the same flat bar with a short explanation.
 

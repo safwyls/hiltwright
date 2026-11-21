@@ -12,7 +12,7 @@ The Style editor is where you make a style of your own. It has two ways to work,
 
 Use the **Simple** and **Full** tabs at the top, beside the style's name.
 
-- **Simple** builds a style from a few plain blocks. It covers a colour, a handful of effects and the ignition. It is the quickest way to a good result.
+- **Simple** builds a style from a few plain blocks. It covers a colour, a handful of effects and the ignition.
 - **Full** shows every ProffieOS layer, nested however you like. It reaches everything the official ProffieOS style editor does.
 
 You can open a Simple style in Full at any time: press **open this style in the full editor**. The copy in Full starts from what the Simple style makes. The two halves are kept separately, so changes in one are not copied back to the other.
@@ -72,8 +72,6 @@ Fix them and save again. If you know better, **save it as it is** saves anyway. 
 **Save as a style** adds your work to your Styles, ready for any preset. After the first save the button reads **Save changes**. The status beside the tabs reads **Not saved yet**, **Unsaved changes** or **Saved**.
 
 When it saves, a green note says it is in your Styles now. If sabers already have the old version in their plan, it says how many, and that a build is needed to reach the saber. There is a link to swing the style in the [Demo room](demo-room.html).
-
-A few more things to know:
 
 - Save writes the half you changed, Simple or Full. If you changed both, an amber note says which one is kept and that the other's changes are not.
 - **Undo** and **Redo** buttons work for both. Ctrl+Z undoes. Ctrl+Y or Ctrl+Shift+Z redoes.

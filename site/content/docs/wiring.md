@@ -79,7 +79,7 @@ This switch exists because a wrong power pin can damage hardware. Nothing is ins
 
 The confirmation belongs to the layout you checked. If you change the board or any blade, it turns off again. If you change it back, it comes back. A saber that was set up before this check existed asks you once: "Hiltwright now records which wiring you checked. Check it once more to go on."
 
-If the saber reports pixel blades when you plug it in, Hiltwright says so as a starting point, not as the wiring. Check each blade yourself.
+If the saber reports pixel blades when you plug it in, Hiltwright shows them as a starting point only. Check each blade yourself.
 
 ![The confirm switch and the Next step button](shots/tour-13.png)
 

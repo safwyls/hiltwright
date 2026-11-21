@@ -35,7 +35,7 @@ If the saber is not plugged in, the chip says "Not plugged in" and a note says "
 - **Track** is the music file, for example `tracks/name.wav`, or leave it blank for none.
 - **Also use common sounds** adds the `common` folder after the font. Presets using Fett263 buttons need it for the voice pack. If a preset names other folders too, they are listed as "Also uses" and kept as they are.
 
-A field is saved when you leave it or press Enter, not on every key, because a live edit is a write to the saber.
+A field is saved when you leave it or press Enter. Saving on every key would write to the saber each time.
 
 ![Name, font and track fields](shots/tour-17.png)
 

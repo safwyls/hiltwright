@@ -82,7 +82,7 @@ The open-source software that runs on a Proffieboard. It decides how the saber l
 The part of ProffieOS that decides what each button press does, such as ignite, change preset or enter edit mode. You choose it on the Wiring page, along with the number of buttons.
 
 ## Queued
-A style that is chosen for a preset but not in the firmware yet. It goes on with the next Build & Install. See [Styles](styles.html).
+A style chosen for a preset that the firmware does not hold yet. It goes on with the next Build & Install. See [Styles](styles.html).
 
 ## SD card
 The memory card in the saber. It holds the sound fonts, tracks and the `presets.ini` file. FAT32 is the format to use. A saber cannot read a card formatted exFAT or NTFS.

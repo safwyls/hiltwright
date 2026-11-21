@@ -82,4 +82,4 @@ The **Scene** panel in the bottom right shapes the room. **Reset** puts everythi
 
 The blade runs the same per-LED maths as the saber, so colours, timing and effects are close. The sound follows ProffieOS's own rules for sound fonts: the hum loops from ignition to retraction, ignition and retraction sounds chain as on the saber, clash, blast and stab layer on top, and lockups play their begin, loop and end sounds. Swings use the SmoothSwing method, or a whole swing sound each time the blade passes a swing speed for fonts without it. A font with drag sounds but no melt sounds plays drag for melt.
 
-It is a good guide, not a recording of the saber. Speakers, volume and the real hum differ. Parts of a style the preview models roughly are flagged under the style's description.
+It is a good guide to the saber. Speakers, volume and the real hum will still differ. Parts of a style the preview models roughly are flagged under the style's description.

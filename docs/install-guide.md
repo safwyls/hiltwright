@@ -56,7 +56,7 @@ To check:
 If yours is **On**, you have two choices:
 
 - Use another PC for this beta.
-- Turn Smart App Control off: on the same screen, choose **Off**. This lowers the protection of your PC for every app, not only Hiltwright. On current Windows 11 you can choose **On** again later; on older versions you cannot turn it back on without resetting Windows, so check that **On** can still be chosen on your PC, and read Microsoft's page first: https://support.microsoft.com/topic/what-is-smart-app-control-285ea03d-fa88-4d56-882e-6698afdb7003
+- Turn Smart App Control off: on the same screen, choose **Off**. This lowers the protection of your PC for every app. On current Windows 11 you can choose **On** again later; on older versions you cannot turn it back on without resetting Windows, so check that **On** can still be chosen on your PC, and read Microsoft's page first: https://support.microsoft.com/topic/what-is-smart-app-control-285ea03d-fa88-4d56-882e-6698afdb7003
 
 ![Smart App Control settings in Windows Security, with On, Evaluation and Off](images/smart-app-control.png)
 
@@ -104,7 +104,7 @@ Unsigned files are sometimes flagged by mistake. If Defender or another antiviru
 
 ## 7 Newer betas
 
-Coming from 0.2.0-beta.1 or 0.2.0-beta.2? Neither can update itself. Install this beta by hand, once: download the installer and run it, as in sections 1 and 2. It installs over the old one. Your sabers, styles, fonts and backups are kept.
+0.2.0-beta.1 and 0.2.0-beta.2 cannot update themselves. If you are on either, install this beta by hand, once: download the installer and run it, as in sections 1 and 2. It installs over the old one. Your sabers, styles, fonts and backups are kept.
 
 From 0.2.0-beta.3 on, Hiltwright looks for newer versions itself:
 

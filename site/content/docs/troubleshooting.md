@@ -88,7 +88,7 @@ This happens with the Fett263 prop when the voice pack is not on the card, is to
 
 ## Fonts show "Missing"
 
-On Fonts & SD, a font a preset names can show **Missing**. It means the font is not on the card, not in your [Font library](font-library.html) and not in a font pack. Add it to the library, then copy it to the card.
+On Fonts & SD, a font a preset names can show **Missing**. It means the font is missing from the card, from your [Font library](font-library.html) and from every font pack. Add it to the library, then copy it to the card.
 
 A font with issues in the library shows an amber or red chip. Open the font to read each issue. A font with no hum, or with both `clash1.wav` and `clsh01.wav` style names, is red and needs fixing before it will sound right.
 
@@ -96,10 +96,10 @@ If a card is formatted exFAT or NTFS, a saber cannot read it. Hiltwright warns b
 
 ## The preview differs from the blade
 
-The preview runs the same maths as the saber, but not everything is modelled.
+The preview runs the same maths as the saber. A few things are left unmodelled.
 
 - A note on a style says "The preview is only approximate for ..." or "The preview cannot show ... yet". Those parts may differ on the saber.
-- On the built-in styles, drag and lightning block change with twist and blade angle on the blade but not in the preview.
+- On the built-in styles, drag and lightning block change with twist and blade angle on the blade. The preview does not show that change.
 - Sound in the preview is a stand-in, so a style that follows the hum can flicker a little differently.
 - The number of LEDs matters. A longer or shorter blade changes how a style fills it. In the [Demo room](demo-room.html), set the blade length and strip density in the Scene panel.
 

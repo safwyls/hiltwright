@@ -73,7 +73,7 @@ The **Preset fonts** tab lists the font each preset names and where it is:
 - "On the card": nothing to do.
 - **Copy from library**: it is in your [font library](font-library.html). One click copies it.
 - **Copy to card**: it is one of the six free fonts that come with Hiltwright.
-- "Missing": not on the card, not in the library, not in a pack. Add it to the library and copy it, or choose another font on [Presets](presets.html).
+- "Missing": absent from the card, the library and every pack. Add it to the library and copy it, or choose another font on [Presets](presets.html).
 - With no card seen, you see "In library", "Ready to copy" or "Card not checked".
 
 **Copy all** copies every font that can be copied. The six free ProffieOS fonts are TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. Each shows its credit and licence, CC BY-SA 4.0. A copy is identical to the original folder.

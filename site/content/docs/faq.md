@@ -48,7 +48,7 @@ Hiltwright cannot build a font from raw sounds in this beta.
 
 ## Can I use Fett263 styles?
 
-Yes. On the [Styles](styles.html) page, press **Paste style code** and paste the whole block from the Fett263 style library, comments included. Say who made it. The credit stays with the style. Hiltwright never redistributes the library itself. You can also paste a style into the Full style editor to edit it.
+Yes. On the [Styles](styles.html) page, press **Paste style code** and paste the whole block from the Fett263 style library, comments included. Say who made it, and the credit stays with the style. Hiltwright never redistributes the library itself. You can also paste a style into the Full style editor to edit it.
 
 The preview may be only approximate for some parts of a pasted style. A note tells you which.
 

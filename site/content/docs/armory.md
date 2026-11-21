@@ -22,7 +22,7 @@ To rename the saber that is plugged in, press **Rename**, type the new name and 
 
 ## Plan a saber ahead
 
-No saber in your hands yet? Press **New saber**, type a name in "Name the saber" and press **Start**. If you leave the name blank, Hiltwright calls it "Saber 1", "Saber 2" and so on. You can then set up its wiring, presets and styles, ready to install. Planned sabers show "set up ahead" and "not seen yet".
+If you have no saber in your hands yet, press **New saber**, type a name in "Name the saber" and press **Start**. If you leave the name blank, Hiltwright calls it "Saber 1", "Saber 2" and so on. You can then set up its wiring, presets and styles, ready to install. Planned sabers show "set up ahead" and "not seen yet".
 
 If nothing is plugged in, the new plan becomes the saber you are working on and you land on Wiring. If a saber is plugged in, that one stays the working saber, and a note says so: unplug it to work on the plan.
 

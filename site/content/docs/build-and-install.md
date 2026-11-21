@@ -66,7 +66,7 @@ Install then does these things:
 
 One bar shows all of it. It takes about two minutes. **Leave the saber plugged in until it says Installed.** A good end reads "Installed and checked: the saber reports…". If it reports something else, the note tells you to put the backup back.
 
-> **Warning:** The saber could not restart into bootloader mode? Hold BOOT, tap RESET, release BOOT, then press Install again.
+> **Warning:** If the saber cannot restart into bootloader mode, hold BOOT, tap RESET, release BOOT, then press Install again.
 
 ![The Install step and its backup note](shots/tour-27.png)
 
@@ -94,6 +94,6 @@ Presets and fonts on the SD card are not touched.
 
 ## The Config tab
 
-The **Config** tab shows the settings file Hiltwright writes. You never have to read it. It is there if you are curious. It appears once the wiring is described.
+The **Config** tab shows the settings file Hiltwright writes, and appears once the wiring is described. You never have to read it; it is there if you are curious.
 
 Back to the [quick start](quick-start.html).
