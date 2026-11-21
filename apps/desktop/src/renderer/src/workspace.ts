@@ -24,6 +24,8 @@ export interface Workspace {
   saveModel: (next: SaberConfigModel) => Promise<void>;
   /** Sabers set up ahead of their hilt. */
   plans: SaberRecord[];
+  /** The saber list is still being read: no saber yet means "not read yet", so pages show a loader, not "no saber". */
+  loading: boolean;
 }
 
 export function useWorkspace(board: Board): Workspace {
@@ -35,7 +37,7 @@ export function useWorkspace(board: Board): Workspace {
   const model = useMemo(() => (saber && info ? draftModel(info, saber) : null), [saber, info]);
   useEffect(() => { setWorkingSaber(saber?.id ?? null); }, [saber?.id]);
   const saveModel = useCallback(async (next: SaberConfigModel) => { if (saber) await board.updateSaber({ model: next }, saber.id); }, [board, saber]);
-  return { saber, info, live, model, choose: setChosenId, saveModel, plans: board.library.filter((s) => s.planned) };
+  return { saber, info, live, model, choose: setChosenId, saveModel, plans: board.library.filter((s) => s.planned), loading: !live && !board.libraryLoaded };
 }
 
 /** A model for a saber that has no saved one yet: what draftModel would give, persisted so every page sees the same. */

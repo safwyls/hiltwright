@@ -10,7 +10,7 @@ import { XenoImport } from './XenoImport';
 import { fontsForPresets, packCredit } from './fontNeeds';
 import { FEATURES } from './features';
 import { Icon } from './Icon';
-import { Loader } from './Loader';
+import { Loader, LoadingSpace } from './Loader';
 import { cardKind, chooseCard, rememberCardChoice, rememberedCardChoice } from './cardChoice';
 import { ownedByText, ownerOfCard } from './cardOwner';
 import { cachedCards, cachedRead, lastCardRead, rememberCards, rememberRead } from './cardCache';
@@ -37,11 +37,14 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
   const [selected, setSelected] = useState<string | null>(null);
   const [voice, setVoice] = useState<VoicePackStatus | null>(() => lastCardRead()?.voice ?? null);
   const [library, setLibrary] = useState<LibraryFont[]>([]);
+  // Until the font library and the packs are read, where each preset's font is cannot be said.
+  const [libraryRead, setLibraryRead] = useState(false);
+  const [packsRead, setPacksRead] = useState(false);
   const [copyingNeeded, setCopyingNeeded] = useState<string | null>(null);
-  useEffect(() => { void api().fontLibrary.list().then(setLibrary).catch(() => setLibrary([])); }, []);
+  useEffect(() => { void api().fontLibrary.list().then(setLibrary).catch(() => setLibrary([])).finally(() => setLibraryRead(true)); }, []);
   // Fonts that ship with Hiltwright as packs, and may be copied to a card.
   const [packs, setPacks] = useState<PackInfo[]>([]);
-  useEffect(() => { void api().packs.list().then(setPacks).catch(() => setPacks([])); }, []);
+  useEffect(() => { void api().packs.list().then(setPacks).catch(() => setPacks([])).finally(() => setPacksRead(true)); }, []);
   // The saber's own card over USB. Hiltwright firmware carries a mass-storage interface, but ProffieOS only hands
   // the card over when asked ('sd 1'): the blade goes off, idle sounds stop, the card is released and Windows
   // mounts it as a drive. 'sd 0' takes it back. While the host has it, the saber cannot play from it.
@@ -302,7 +305,8 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
   const [voiceOpen, setVoiceOpen] = useState(false);
   const noVoices = { packs: [] as VoicePackChoice[], support: null, source: null, credit: null };
   const [voiceList, setVoiceList] = useState<{ packs: VoicePackChoice[]; support: string | null; source: string | null; credit: string | null }>(noVoices);
-  const loadVoices = () => api().sd.voicePacks().then(setVoiceList).catch(() => setVoiceList(noVoices));
+  const [voicesRead, setVoicesRead] = useState(false);
+  const loadVoices = () => api().sd.voicePacks().then(setVoiceList).catch(() => setVoiceList(noVoices)).finally(() => setVoicesRead(true));
   useEffect(() => { void loadVoices(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [voiceId, setVoiceId] = useState('');
   const voiceSel = voiceList.packs.find((p) => p.id === voiceId) ?? voiceList.packs.find((p) => p.have === 'bundled') ?? voiceList.packs[0] ?? null;
@@ -404,6 +408,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
           <span>{voiceShort
             ? `${!voice.ini && !voice.menuSounds ? 'This card has no voice pack' : !voice.menuSounds ? 'This card’s voice pack has no menu sounds (mnum)' : `This card has voice pack version ${voice.version ?? 1}`}, and the Fett263 controls need version ${FETT263_REQUIRED_VOICE_PACK}. Until it has one, the saber speaks a voice pack error on every preset change.`
             : 'Choose the voice the Fett263 controls speak their menus in.'} It goes in the card{'’'}s common folder, and anything it replaces is kept on this computer first.</span>
+          {!voicesRead && !pickedVoice && <span className="row" style={{ gap: 10 }}><Loader size="sm" /><span className="hint">Finding the voice packs…</span></span>}
           {pickedVoice
             ? <span><b style={{ fontWeight: 600 }}>{pickedVoice.name}</b>: version {pickedVoice.version}, {pickedVoice.files} files, {mb(pickedVoice.bytes)}.{pickedVoice.credit ? ` ${pickedVoice.credit}.` : ''}{pickedVoice.version < FETT263_REQUIRED_VOICE_PACK ? ` That is too old to stop the error: choose a version ${FETT263_REQUIRED_VOICE_PACK} pack.` : ''}</span>
             : voiceSel && <span className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
@@ -424,7 +429,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
               <button type="button" className="btn sm ghost" disabled={working} onClick={() => setPickedVoice(null)}><span className="b"><span className="i">Cancel</span></span></button>
             </> : <>
               {voiceSel && <button type="button" className="btn sm pri" disabled={working} onClick={() => void putVoicePack({ pack: voiceSel.id, name: voiceSel.name })}><span className="b"><span className="i"><Icon name="sd" />Put {voiceSel.name} on the card</span></span></button>}
-              <button type="button" className={`btn sm${voiceSel ? '' : ' pri'}`} disabled={working} onClick={() => void pickVoice()}><span className="b"><span className="i">{voiceSel ? 'Use a zip you downloaded…' : 'Choose a voice pack zip…'}</span></span></button>
+              <button type="button" className={`btn sm${voiceSel || !voicesRead ? '' : ' pri'}`} disabled={working} onClick={() => void pickVoice()}><span className="b"><span className="i">{voiceSel ? 'Use a zip you downloaded…' : 'Choose a voice pack zip…'}</span></span></button>
               {!voiceShort && <button type="button" className="btn sm ghost" disabled={working} onClick={() => setVoiceOpen(false)}><span className="b"><span className="i">Close</span></span></button>}
             </>}
           </span>
@@ -456,7 +461,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                   <td className="nowrap">{f.report.issues.length ? <span className={`chip ${f.report.issues.some((i) => i.kind === 'missing-hum') ? 'err' : 'warn'}`}><Icon name="warn" />{f.report.issues.length} issue{f.report.issues.length > 1 ? 's' : ''}</span> : <span className="chip ok"><Icon name="check" />Ready</span>}</td>
                 </tr>
               ))}
-              {fonts.length === 0 && <tr><td colSpan={3} className="hint">{card ? 'No font folders on this card.' : 'Nothing to show without a card.'}</td></tr>}
+              {fonts.length === 0 && <tr><td colSpan={3} className="hint">{scanning ? <LoadingSpace text={card ? 'Reading the fonts on the card…' : 'Looking for a card…'} /> : card ? 'No font folders on this card.' : 'Nothing to show without a card.'}</td></tr>}
             </tbody>
           </table>
           {issues.length > 0 && (
@@ -480,7 +485,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
           {tab === 'presets' && (
             <section aria-label="Fonts the presets use">
               <div className="ph"><h2>Fonts the presets use</h2>{card && copyable.length > 1 && <button type="button" className="btn sm pri" disabled={working} onClick={() => void copyNeeded(copyable)}><span className="b"><span className="i"><Icon name="sd" />Copy all {copyable.length}</span></span></button>}</div>
-              <div className="list">
+              {(!libraryRead || !packsRead || (scanning && !fonts.length)) ? <LoadingSpace text={scanning ? 'Reading the card…' : 'Looking in the font library…'} /> : <div className="list">
                 {needed.map((f) => {
                   const lib = inLibrary(f);
                   const pack = lib ? null : inPack(f);
@@ -495,8 +500,8 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                     </div>
                   );
                 })}
-              </div>
-              {card && needed.some((f) => !copyFrom(f) && !onCard(f)) && <div className="pb hint" style={{ paddingTop: 10 }}>A font marked missing has to reach the card before the saber can play that preset. <button type="button" className="holo" onClick={() => go('library')}>Add it to the Font library</button> and copy it from here, or choose another font for that preset on the Presets page.</div>}
+              </div>}
+              {libraryRead && packsRead && !scanning && card && needed.some((f) => !copyFrom(f) && !onCard(f)) && <div className="pb hint" style={{ paddingTop: 10 }}>A font marked missing has to reach the card before the saber can play that preset. <button type="button" className="holo" onClick={() => go('library')}>Add it to the Font library</button> and copy it from here, or choose another font for that preset on the Presets page.</div>}
             </section>
           )}
           {tab === 'add' && <>
@@ -535,7 +540,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                     <div key={effect} className="li" style={{ minHeight: 34 }}><span className="grow small">{effect}</span><span className="mono mute" style={{ fontSize: 11.5 }}>{v.poly ? `${v.poly} poly` : ''}{v.poly && v.mono ? ' · ' : ''}{v.mono ? `${v.mono} mono` : ''}</span></div>
                   ))
                 : tracks.map((t) => <div key={t.name} className="li" style={{ minHeight: 34 }}><span className="grow mono small">{t.name}</span><span className="mono mute" style={{ fontSize: 11.5 }}>{mb(t.size)}</span></div>)}
-              {!sel && tracks.length === 0 && <div className="li hint" style={{ minHeight: 34 }}>No tracks folder.</div>}
+              {!sel && tracks.length === 0 && (scanning ? <LoadingSpace text="Reading the card…" compact /> : <div className="li hint" style={{ minHeight: 34 }}>No tracks folder.</div>)}
             </div>
           </section>}
           </div>

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { STARTER_LOOKS, UNKNOWN_AUTHOR, analyzeStyleCode, creditOf, creditWords, pastedAuthor, registerLookSim, argInfo, hexToColorWord, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
-import { Loader } from './Loader';
+import { Loader, LoadingSpace } from './Loader';
 import { ContributorLogo, CreditCard, NOT_A_CONTRIBUTOR, useContributors } from './credits';
 import { BladePreview, canSimulate } from './BladePreview';
 import { installedLookIds, queuedLookIds } from './slotModel';
@@ -51,7 +51,9 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
   const [tried, setTried] = useState<Record<number, string>>({});
   useEffect(() => { setTried({}); }, [selectedId]);
 
-  useEffect(() => { void api().looks.list().then((ls) => { for (const l of ls) registerLookSim(l); setPasted(ls); }); }, []);
+  // Until the owner's styles are read, the gallery is not shown: it would show the starters alone, then jump.
+  const [pastedRead, setPastedRead] = useState(false);
+  useEffect(() => { void api().looks.list().then((ls) => { for (const l of ls) registerLookSim(l); setPasted(ls); }).finally(() => setPastedRead(true)); }, []);
   useEffect(() => {
     if (!pasting) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPasting(false); };
@@ -211,7 +213,8 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
             <button type="button" className="btn sm" onClick={() => setPasting(true)}><span className="b"><span className="i"><Icon name="import" />Paste style code</span></span></button>
           </div>
           <div className="scroll" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, alignContent: 'start', paddingRight: 4 }} data-tour="looks-grid">
-            {visible.map((l) => (
+            {!pastedRead && <div style={{ gridColumn: '1 / -1' }}><LoadingSpace text="Reading your styles…" /></div>}
+            {pastedRead && visible.map((l) => (
               <button key={l.id} type="button" className={`lookcard ${l.id === sel.id ? 'on' : ''}`} aria-pressed={l.id === sel.id} data-tour={stateOf(l.id) === 'queued' ? 'look-card-queued' : 'look-card'} onClick={() => { setSelectedId(l.id); setNote(null); }}>
                 <div style={{ padding: '8px 14px 0', width: '100%', boxSizing: 'border-box' }}>
                   <BladePreview lookId={l.id} fallbackColor={l.preview} dot={isDot(l)} size="sm" />
@@ -222,7 +225,7 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
                 </div>
               </button>
             ))}
-            {visible.length === 0 && <div className="hint" style={{ gridColumn: '1 / -1', padding: 20 }}>No styles match. Clear a filter, or paste one.</div>}
+            {pastedRead && visible.length === 0 && <div className="hint" style={{ gridColumn: '1 / -1', padding: 20 }}>No styles match. Clear a filter, or paste one.</div>}
           </div>
         </div>
 
@@ -295,7 +298,8 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
             {(sel.source === 'pasted' || sel.source === 'built') && confirmRemove !== sel.id && <button type="button" className="btn sm ghost" onClick={() => setConfirmRemove(sel.id)}><span className="b"><span className="i"><Icon name="trash" />Remove from library</span></span></button>}
           </div>
           <div className="col" style={{ gap: 8, padding: '12px 18px 14px', borderTop: '1px solid var(--line)', background: 'var(--bar)', flex: 'none' }} data-tour="looks-use">
-              {!connected && <span className="hint">No saber yet: start one in the Armory, and styles can be put into its presets before it is ever plugged in.</span>}
+              {!connected && ws.loading && <span className="row hint" style={{ gap: 10 }}><Loader size="sm" />Reading your sabers…</span>}
+              {!connected && !ws.loading && <span className="hint">No saber yet: start one in the Armory, and styles can be put into its presets before it is ever plugged in.</span>}
               {connected && model && (
                 <div className="row" style={{ gap: 8, alignItems: 'end' }}>
                   <label className="field grow"><span className="label">Preset</span><span className="input sans" style={{ height: 32 }}><span className="ellip">{presetName(preset)}</span><span className="caret"><Icon name="down" /></span>

@@ -6,6 +6,7 @@ import { STARTER_LOOKS, type LookDef } from '@hiltwright/core';
 import type { LibraryFont, PackInfo } from '../../shared/api';
 import { listHilts } from './hiltStore';
 import { Icon } from './Icon';
+import { LoadingSpace } from './Loader';
 import { ContributorLogo, CreditCard, NOT_A_CONTRIBUTOR, useContributors } from './credits';
 
 const api = () => window.hiltwright;
@@ -21,15 +22,19 @@ export function Contributors({ onFonts, onLooks, onDemo }: { onFonts: () => void
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // Everyone is shown once fonts, styles and hilts are all read: before that the list would grow and reorder.
+  const [read, setRead] = useState(0);
+  const done = () => setRead((n) => n + 1);
   useEffect(() => {
-    void api().fontLibrary.list().then(setFonts).catch(() => undefined);
-    void api().looks.list().then(setSaved).catch(() => undefined);
+    void api().fontLibrary.list().then(setFonts).catch(() => undefined).finally(done);
+    void api().looks.list().then(setSaved).catch(() => undefined).finally(done);
     // Hilts for the demo room: those in packs, credited by the pack, and those the owner loaded and credited.
     void api().packs.list().catch(() => [] as PackInfo[]).then(async (packs) => [packs, await listHilts(packs).catch(() => [])] as const).then(([packs, own]) => setHilts([
       ...packs.filter((p) => p.kind === 'hilt' && p.creator).map((p) => ({ name: p.name, creator: p.creator, licence: p.licence || null })),
       ...own.filter((h) => h.creator).map((h) => ({ name: h.name, creator: h.creator!, licence: null })),
-    ]));
+    ])).catch(() => undefined).finally(done);
   }, []);
+  const loading = read < 3;
 
   // Everyone credited somewhere, matched regardless of case; the spelling on their first font or look wins.
   const everyone = useMemo(() => {
@@ -50,23 +55,24 @@ export function Contributors({ onFonts, onLooks, onDemo }: { onFonts: () => void
   return (
     <div className="work" style={{ gridTemplateColumns: 'minmax(260px,360px) minmax(0,1fr)' }}>
       <section className="panel fill" aria-label="Contributors" data-tour="contributors-list">
-        <div className="ph"><h2>Contributors · {everyone.length}</h2>
+        <div className="ph"><h2>Contributors{loading ? '' : ` · ${everyone.length}`}</h2>
           <label className="input sans" style={{ width: 150, height: 30 }}><Icon name="search" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find" aria-label="Find a contributor" style={{ position: 'static', color: 'var(--text)' }} /></label>
         </div>
         <div className="list scroll grow" role="listbox" aria-label="Contributors">
-          {visible.map((p) => (
+          {loading && <LoadingSpace text="Gathering everyone credited…" />}
+          {!loading && visible.map((p) => (
             <button key={p.name} type="button" role="option" aria-selected={p === sel} className={`li click ${p === sel ? 'on' : ''}`} style={{ minHeight: 56 }} onClick={() => { setSelected(p.name); setNote(null); }}>
               <ContributorLogo name={p.name} logo={people.logoFor(p.name)} size={32} />
               <span className="col grow" style={{ gap: 0, minWidth: 0, textAlign: 'left' }}><b className="ellip" style={{ fontWeight: 600 }}>{p.name}</b><span className="hint ellip">{count(p)}</span></span>
               {people.urlFor(p.name) && <Icon name="link" style={{ width: 14, height: 14, color: 'var(--mute)', flex: 'none' }} />}
             </button>
           ))}
-          {everyone.length === 0 && <div className="li hint" style={{ minHeight: 60 }}>Nobody yet. Give a font a maker in the Font library, paste a style with its author, or credit a hilt in the demo room, and they appear here.</div>}
+          {!loading && everyone.length === 0 && <div className="li hint" style={{ minHeight: 60 }}>Nobody yet. Give a font a maker in the Font library, paste a style with its author, or credit a hilt in the demo room, and they appear here.</div>}
         </div>
         <div className="pb hint" style={{ borderTop: '1px solid var(--line)', padding: '10px 14px' }}>Names come from the maker on each font, the author on each style and the maker of each hilt. Spell them the same way and they are counted together.</div>
       </section>
 
-      {sel ? (
+      {loading ? <section className="panel fill"><LoadingSpace text="Reading fonts, styles and hilts…" /></section> : sel ? (
         <section className="panel fill" aria-label={`${sel.name}'s work`}>
           <div className="ph"><h2 className="ellip">{sel.name}</h2><span className="hint">{count(sel)}</span></div>
           <div className="pb col scroll" style={{ gap: 18 }}>

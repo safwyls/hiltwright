@@ -14,6 +14,7 @@ import { LookPreviewNote } from './PreviewNote';
 import { SaberControls } from './Controls';
 import type { Board } from './board';
 import { Icon } from './Icon';
+import { LoadingSpace } from './Loader';
 import { ROLE_META } from './hardwareModel';
 import type { Workspace } from './workspace';
 import type { LibraryFont, SnapshotMeta } from '../../shared/api';
@@ -59,9 +60,13 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
   const colourTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   useEffect(() => () => { for (const t of colourTimers.current.values()) clearTimeout(t); }, []);
 
+  // Until each is read, an empty list means "not read yet": nothing is called missing, removed or empty meanwhile.
+  const [savedRead, setSavedRead] = useState(false);
+  const [setsRead, setSetsRead] = useState(false);
+  const [libraryRead, setLibraryRead] = useState(false);
   useEffect(() => {
-    void api().looks.list().then((ls) => { for (const l of ls) registerLookSim(l); setSaved(ls); });
-    void api().banks.list().then(setSets);
+    void api().looks.list().then((ls) => { for (const l of ls) registerLookSim(l); setSaved(ls); }).finally(() => setSavedRead(true));
+    void api().banks.list().then(setSets).finally(() => setSetsRead(true));
     void (async () => {
       const f = new Set<string>(); const t = new Set<string>();
       for (const s of board.library) { for (const x of s.fonts) if (x !== 'common') f.add(x); for (const x of s.tracks) t.add(x); }
@@ -75,6 +80,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
           if (x.support.tracks) for (const tr of (await api().fontLibrary.detail(x.folder)).tracks) t.add(`${x.folder}/${tr.path}`);
         }
       } catch { /* library unreadable */ }
+      setLibraryRead(true);
       setFonts([...f].sort((a, b) => a.localeCompare(b))); setTracks([...t].sort());
     })();
   }, [saber?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -84,7 +90,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
 
   // Styles the saber's plan still carries after they were removed from the style library: they stay on this saber and
   // stay choosable here, or a preset using one would read as "Saber's default" while the plan installs the style (hote2, 2026-11-18).
-  const keptLooks = useMemo(() => (model?.looks ?? []).filter((l) => !saved.some((x) => x.id === l.id) && !STARTER_LOOKS.some((x) => x.id === l.id)), [model?.looks, saved]);
+  const keptLooks = useMemo(() => (savedRead ? (model?.looks ?? []).filter((l) => !saved.some((x) => x.id === l.id) && !STARTER_LOOKS.some((x) => x.id === l.id)) : []), [model?.looks, saved, savedRead]);
   const keptIds = useMemo(() => new Set(keptLooks.map((l) => l.id)), [keptLooks]);
   // Their previews need registering like the library's own.
   useEffect(() => { for (const l of keptLooks) registerLookSim(l); }, [keptLooks]);
@@ -92,6 +98,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
   const lookById = (id: string | null | undefined) => (id ? allLooks.find((l) => l.id === id) ?? null : null);
   const compiled = new Set((saber?.firmware?.looks ?? []).map((l) => l.id));
 
+  if (!saber && ws.loading) return <section className="panel fill"><LoadingSpace text="Reading your sabers…" /></section>;
   if (!saber || !model || !info) {
     return <section className="panel"><div className="pb col" style={{ gap: 6 }}><h3>No saber to set presets for yet</h3><span className="dim small">Plug a saber in, or start one in the Armory.</span><button type="button" className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={() => go('armory')}><span className="b"><span className="i">Go to the Armory</span></span></button></div></section>;
   }
@@ -216,7 +223,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
   return (
     <>
       {picking && cur && (
-        <FontPicker fonts={library} current={cf.folder} onCard={cardFonts} onClose={() => setPicking(false)} onManage={() => go('library')}
+        <FontPicker fonts={library} loading={!libraryRead} current={cf.folder} onCard={cardFonts} onClose={() => setPicking(false)} onManage={() => go('library')}
           onPick={(f) => { setPicking(false); void editPreset({ font: joinFont({ ...cf, folder: f.folder }) }, `Font → ${f.folder}`); }} />
       )}
       {staged && (
@@ -266,7 +273,7 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
                   {cf.extra.length > 0 && <span className="hint ellip" title="Other folders in this preset's font, kept as they are">Also uses: <span className="mono">{cf.extra.join(', ')}</span></span>}
                   <div className="row" style={{ gap: 8, minWidth: 0 }}>
                     <span className="hint ellip grow" title={libFont?.meta.notes || undefined}>
-                      {cf.folder && (libFont ? <>{libFont.meta.name}{libFont.meta.maker ? ` by ${libFont.meta.maker}` : ''}</> : 'Not in the font library')}
+                      {cf.folder && (libFont ? <>{libFont.meta.name}{libFont.meta.maker ? ` by ${libFont.meta.maker}` : ''}</> : libraryRead ? 'Not in the font library' : 'Looking in the font library…')}
                       {fontOnCard === true && <span className="green"> · on the card</span>}
                       {fontOnCard === false && <> · <span className="amber">not on the card</span>{libFont && <>, <button type="button" className="holo" onClick={() => go('fonts')}>copy it over</button></>}</>}
                     </span>
@@ -343,7 +350,8 @@ export function Presets({ ws, board, go }: { ws: Workspace; board: Board; go: (p
           {side === 'sets' && (
             <>
               <div className="list" style={{ overflow: 'auto' }}>
-                {sets.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>No sets yet. Save this list as one to reuse it on another saber, or to keep a copy.</div>}
+                {!setsRead && <LoadingSpace text="Reading your preset sets…" compact />}
+                {setsRead && sets.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>No sets yet. Save this list as one to reuse it on another saber, or to keep a copy.</div>}
                 {sets.map((s) => (
                   <div key={s.id} className="col" style={{ gap: 0 }}>
                     <div className="li" style={{ minHeight: 48, gap: 8 }}>

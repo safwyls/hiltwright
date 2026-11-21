@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PROPS, propFamily, SIMULATED_LOOKS, STARTER_LOOKS, argInfo, canSimulateLook, hexToColorWord, propBehaviour, registerLookSim, type LockupType, type LookDef } from '@hiltwright/core';
 import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
-import { Loader } from './Loader';
+import { Loader, LoadingSpace } from './Loader';
 import { DEFAULT_FIT, formatOf, meshFromPack, parseHilt, type HiltFit, type HiltFormat, type SideFile } from './hiltModel';
 import type { HiltAddMode, HiltInfo, HiltInput, PackInfo } from '../../shared/api';
 import { FontEngine } from './fontEngine';
@@ -100,9 +100,12 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     const next: Source[] = lib.length ? [{ kind: 'library', root: LIBRARY, label: `Font library (${lib.length})` }] : [];
     if (found.some((p) => p.kind === 'font' && p.allow.demoPlayback)) next.push({ kind: 'pack', root: 'packs', label: 'Hiltwright fonts' });
     setSources(next);
+    setSourcesRead(true);
     setSource((cur) => next.find((n) => n.root === cur?.root) ?? next[0] ?? null);
     return next;
   };
+  // Until the font sources are read, "no fonts to hand" would be a guess.
+  const [sourcesRead, setSourcesRead] = useState(false);
   /** The fonts a source holds, read straight from it (the `fonts` state follows the selected source a moment later). */
   const entriesOf = async (src: Source): Promise<{ name: string; path: string }[]> => src.kind === 'pack'
     ? (await api().packs.list().catch(() => [] as PackInfo[])).filter((p) => p.kind === 'font' && p.allow.demoPlayback).map((p) => ({ name: p.name, path: p.id }))
@@ -535,7 +538,9 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
             <>
               <div className="col" style={{ gap: 6 }}>
                 <span className="label">Fonts from</span>
-                {sources.length === 0
+                {!sourcesRead
+                  ? <span className="row hint" style={{ gap: 10 }}><Loader size="sm" />Finding your fonts…</span>
+                  : sources.length === 0
                   ? <span className="hint">No fonts to hand. <button type="button" className="holo" onClick={() => void addToLibrary()}>Add a font folder</button> to the Font library to hear it here.</span>
                   : (
                     <div className="row" style={{ gap: 6 }}>

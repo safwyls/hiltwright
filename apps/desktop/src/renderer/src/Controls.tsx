@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { wasRejected } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
+import { LoadingSpace } from './Loader';
 
 interface Setting { key: string; label: string; get: string; set: (v: number) => string; min: number; max: number; step: number; unit: string; show: (v: number) => string; hint: string }
 
@@ -27,8 +28,14 @@ export function SaberControls({ board, bare }: { board: Board; bare?: boolean })
   const [pending, setPending] = useState<Record<string, number>>({});
   const [on, setOn] = useState<boolean | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Reading the settings: until it ends, no answer means "not asked yet", not "this firmware cannot".
+  const [reading, setReading] = useState(false);
 
   const read = useCallback(async () => {
+    setReading(true);
+    try { await readNow(); } finally { setReading(false); }
+  }, [board]); // eslint-disable-line react-hooks/exhaustive-deps
+  const readNow = async () => {
     const next: Record<string, number | null> = {};
     for (const s of SETTINGS) {
       try {
@@ -39,7 +46,7 @@ export function SaberControls({ board, bare }: { board: Board; bare?: boolean })
     }
     setValues(next);
     try { const r = await board.send('get_on', { idleMs: 400 }); setOn(wasRejected(r.lines) ? null : r.lines.some((l) => l.trim() === '1')); } catch { setOn(null); }
-  }, [board]);
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (connected) void read(); else { setValues({}); setOn(null); } }, [connected]);
@@ -92,7 +99,7 @@ export function SaberControls({ board, bare }: { board: Board; bare?: boolean })
       {!connected && <span className="hint">Connect a saber to change its settings.</span>}
       {shared && <div className="note amber"><Icon name="warn" /><span>{board.saber?.name ?? 'The saber'}'s card is shared with this computer. Give it back on Fonts & SD first. The saber keeps these settings, and plays its effects, from the card.</span></div>}
       {bare && effects}
-      {connected && known.length === 0 && <span className="hint">This firmware does not answer the settings commands. Hiltwright firmware does.</span>}
+      {connected && known.length === 0 && (reading || !Object.keys(values).length ? <LoadingSpace text="Reading the saber's settings…" compact /> : <span className="hint">This firmware does not answer the settings commands. Hiltwright firmware does.</span>)}
       {sliders}
       {!bare && effects}
       {known.length > 0 && <span className="hint">The saber saves these itself once its speaker goes quiet, so they survive a restart.</span>}

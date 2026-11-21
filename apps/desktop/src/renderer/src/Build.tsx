@@ -16,7 +16,7 @@ type CardCheck = { source: 'reader'; root: string; by: OwnedBy; card: CardInfo; 
 import type { SaberConfigModel } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
-import { Loader } from './Loader';
+import { Loader, LoadingSpace } from './Loader';
 import { SaveDiagnostics } from './SaveDiagnostics';
 import { readTransfer } from './transfer';
 import { toolchainBlockers } from '../../shared/toolchainChecks';
@@ -74,11 +74,14 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   cardCheckRef.current = cardCheck;
   const [lookAgain, setLookAgain] = useState(0);
   const [cardConfig, setCardConfig] = useState<{ name: string; wiring: ConfigWiring } | null>(null);
+  // The card is being checked: what is known about the voice pack and fonts is not known yet, rather than missing.
+  const [cardChecking, setCardChecking] = useState(false);
   const [linkNote, setLinkNote] = useState<string | null>(null);
   useEffect(() => {
     const me = saber;
     if (!me) return;
     let live = true;
+    setCardChecking(true);
     void (async () => {
       // The saber's own view: not while its card is shared, when the saber would be reading a card this computer has
       // (card-safety D2). The font list is read again here: the one from connecting is stale once fonts are copied.
@@ -119,7 +122,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
       if (own?.out) { setCardCheck({ source: 'out' }); setVoice(null); setVoiceWhy(null); }
       else if (own) { setCardCheck({ source: 'saber', fonts: own.fonts }); setVoice(own.voice); setVoiceWhy(own.why); }
       else { setCardCheck(null); setVoice(null); setVoiceWhy(null); }
-    })();
+    })().finally(() => { if (live) setCardChecking(false); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board.status, board.saber?.id, board.card.shared, saber?.id, lookAgain]);
@@ -145,7 +148,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const canInstall = (status === 'connected' || inBootloader) && !cardShared;
   const [elapsed, setElapsed] = useState(0);
 
-  useEffect(() => { void api().toolchain.status().then(setTool); }, []);
+  useEffect(() => { void api().toolchain.status().then(setTool).catch((err) => console.log(`[build] compiler status failed: ${String(err)}`)); }, []);
   // Transfer progress from the flasher: percentage of the current read (backup) or write.
   const [xfer, setXfer] = useState<number | null>(null);
   useEffect(() => api().onJobEvent((e) => {
@@ -253,6 +256,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
 
   // Backups taken before each install, and the way back to any of them.
   const [backups, setBackups] = useState<BackupInfo[]>([]);
+  // Whether the backups were read for this saber: until then "none yet" would be a guess.
+  const [backupsFor, setBackupsFor] = useState<string | null>(null);
   const [restoreArmed, setRestoreArmed] = useState<string | null>(null);
   const saberId = saber?.id ?? null;
   const saberIdRef = useRef(saberId);
@@ -263,7 +268,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
     setResult(kept?.result ?? null); setBuiltModel(kept?.model ?? null);
     setStep((s) => (s === 'idle' || s === 'built' || s === 'failed' || s === 'done' ? (kept?.result.ok ? 'built' : 'idle') : s));
   }, [saberId]);
-  const loadBackups = useCallback(() => { if (saberId) void api().flash.listBackups(saberId).then(setBackups); }, [saberId]);
+  const loadBackups = useCallback(() => { if (saberId) void api().flash.listBackups(saberId).then(setBackups).finally(() => setBackupsFor(saberId)); }, [saberId]);
   useEffect(() => { loadBackups(); }, [loadBackups, step]);
   const restore = useCallback(async (b: BackupInfo) => {
     if (!saber) return;
@@ -365,7 +370,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
 
   const toolStep = (now: boolean) => (
     <div className={`stepc ${tool?.ready ? 'done' : now ? 'now' : ''}`} data-tour="build-compiler">
-      <div className="head"><span className="nbox">{tool?.ready ? <Icon name="check" /> : 2}</span><b>Compiler</b><span className="what">{tool?.ready ? `ProffieOS ${tool.proffieOSVersion ?? ''} ready` : installing ? `installing, ${installStarted ? Math.round((Date.now() - installStarted) / 1000) : 0} s` : 'one-time download'}</span></div>
+      <div className="head"><span className="nbox">{tool?.ready ? <Icon name="check" /> : 2}</span><b>Compiler</b><span className="what">{tool?.ready ? `ProffieOS ${tool.proffieOSVersion ?? ''} ready` : installing ? `installing, ${installStarted ? Math.round((Date.now() - installStarted) / 1000) : 0} s` : tool ? 'one-time download' : 'checking'}</span></div>
+      {!tool && <span className="row hint" style={{ gap: 10 }}><Loader size="sm" />Checking the compiler…</span>}
       {tool?.ready && <span className="hint">arduino-cli {tool.versions.cli} · board support {tool.versions.core} · ProffieOS {tool.versions.proffieOS}</span>}
       {tool?.open && (
         <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
@@ -394,6 +400,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
     </div>
   );
 
+  if (!saber && ws.loading) return <section className="panel fill"><LoadingSpace text="Reading your sabers…" /></section>;
   if (!info || !saber) {
     return (
       <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) 360px' }}>
@@ -434,7 +441,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
           ))}
         </div>
 
-        {tab === 'config' && <pre className="console grow scroll" style={{ margin: 0, border: 0 }}>{preview?.text ?? 'The config appears once the wiring is described.'}</pre>}
+        {tab === 'config' && (model && !preview ? <LoadingSpace text="Writing the config…" /> : <pre className="console grow scroll" style={{ margin: 0, border: 0 }}>{preview?.text ?? 'The config appears once the wiring is described.'}</pre>)}
         {tab === 'log' && (
           <div ref={logBox} className="console grow scroll" style={{ border: 0 }} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40; }}>
             {log.length === 0 ? <span className="mute">Build and install output appears here.</span> : log.map((e, i) => <div key={i}><span className="mute">{new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} {e.job}</span>  {e.line}</div>)}
@@ -443,7 +450,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
         {tab === 'backups' && (
           <>
             <div className="list scroll">
-              {backups.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>None yet. Every install reads the saber's whole firmware to a file first.</div>}
+              {backupsFor !== saberId && backups.length === 0 && <LoadingSpace text="Reading the backups…" compact />}
+              {backupsFor === saberId && backups.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>None yet. Every install reads the saber's whole firmware to a file first.</div>}
               {backups.map((b) => (
                 <div key={b.file} className="li" style={{ minHeight: 48, gap: 8 }}>
                   <span className="col grow" style={{ gap: 0 }}><span className="small">{new Date(b.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}, {b.label}</span><span className="hint mono" style={{ fontSize: 11 }}>{Math.round(b.bytes / 1024)} KB{b.valid ? '' : ', not a usable image'}</span></span>
@@ -571,8 +579,9 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
           <span>{saber.name}{'’'}s SD card is out of the saber. The font and voice pack checks run once it is back in the saber, or in a card reader on this computer.</span>
           <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => setLookAgain((n) => n + 1)}>Look again</button></span>
         </span></div>}
-        {fontWarn && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 6 }}><span>{fontWarn.text}</span><span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('fonts')}>Fonts &amp; SD</button><button type="button" className="holo" onClick={() => go('presets')}>Presets</button></span></span></div>}
-        {verdict && <div className={`note ${verdict.tone}`}><Icon name={verdict.ok ? 'check' : 'warn'} />{verdict.ok || !voice ? <span>{verdict.text}</span> : <span className="col" style={{ gap: 6 }}><span>{verdict.text}</span><span className="row" style={{ gap: 8 }}>
+        {fontWarn && !cardChecking && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 6 }}><span>{fontWarn.text}</span><span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('fonts')}>Fonts &amp; SD</button><button type="button" className="holo" onClick={() => go('presets')}>Presets</button></span></span></div>}
+        {cardChecking && <div className="note" style={{ alignItems: 'center' }}><Loader size="sm" /><span>Checking the saber{'’'}s card: its fonts and voice pack…</span></div>}
+        {verdict && !cardChecking && <div className={`note ${verdict.tone}`}><Icon name={verdict.ok ? 'check' : 'warn'} />{verdict.ok || !voice ? <span>{verdict.text}</span> : <span className="col" style={{ gap: 6 }}><span>{verdict.text}</span><span className="row" style={{ gap: 8 }}>
           {/* The pack itself is short: Fonts & SD can put one on the card. Otherwise it is presets leaving common out. */}
           {!voice.menuSounds || (voice.version ?? 0) < FETT263_REQUIRED_VOICE_PACK
             ? <button type="button" className="holo" onClick={() => go('fonts')}>Update it on Fonts &amp; SD</button>

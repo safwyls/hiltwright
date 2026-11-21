@@ -32,6 +32,7 @@ export function tourBoard(real: Pick<Board, 'library' | 'refreshLibrary' | 'isPr
     saber,
     // The owner's own sabers stay listed (read only), with the example first so the Armory shows it as the one worked on.
     library: [saber, ...real.library.filter((s) => s.id !== saber.id)],
+    libraryLoaded: true,
     lines: [],
     snapshots: [],
     save: { kind: 'idle' },

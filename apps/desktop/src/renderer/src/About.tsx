@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
+import { LoadingSpace } from './Loader';
 import { LICENCE_NAME, STYLE_STATEMENT, sourceUrl } from '../../shared/about';
 import type { LegalTexts } from '../../shared/about';
 import { UpdatesPanel, type UpdatesView } from './Updates';
@@ -65,6 +66,7 @@ export function About({ updates }: { updates: UpdatesView | null }) {
       )}
       {updates && <UpdatesPanel view={updates} />}
       {failed && <div className="note amber" role="alert"><Icon name="warn" /><span>The licence and notices could not be read from this install. They are in the Hiltwright source on GitHub.</span></div>}
+      {show && !legal && !failed && <section className="panel"><LoadingSpace text={show === 'licence' ? 'Reading the licence…' : 'Reading the notices…'} compact /></section>}
       {show && legal && (
         <section className="panel" aria-label={show === 'licence' ? 'Licence text' : 'Third-party notices'} style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="ph"><h2>{show === 'licence' ? 'Licence' : 'Third-party notices'}</h2></div>

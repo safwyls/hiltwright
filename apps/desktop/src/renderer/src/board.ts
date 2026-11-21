@@ -48,6 +48,8 @@ export function useBoard() {
   const [info, setInfo] = useState<BoardInfo | null>(null);
   const [saber, setSaber] = useState<SaberRecord | null>(null);
   const [library, setLibrary] = useState<SaberRecord[]>([]);
+  // Whether the saber list has been read once: until then an empty list means "not read yet", not "no sabers".
+  const [libraryLoaded, setLibraryLoaded] = useState(false);
   const [lines, setLines] = useState<ConsoleLine[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
   const [save, setSave] = useState<SaveState>({ kind: 'idle' });
@@ -118,7 +120,7 @@ export function useBoard() {
       setLibrary(list);
       const fresh = saberRef.current && list.find((s) => s.id === saberRef.current!.id);
       if (fresh) { saberRef.current = fresh; setSaber(fresh); }
-    } catch (err) { console.log(`[library] list failed: ${String(err)}`); }
+    } catch (err) { console.log(`[library] list failed: ${String(err)}`); } finally { setLibraryLoaded(true); }
   }, []);
 
   const refreshSnapshots = useCallback(async (saberId: string) => {
@@ -782,7 +784,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { card, cardShared, cardGivenBack, cardLostWhileShared, status, error, portName, info, saber, library, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, readSnapshot, restoreSnapshot, renameSaber, updateSaber, expectAfterInstall, reachNext, currentSaber, restartSaber, currentPresets, planSaber, adoptPlan, currentPresetNow, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
+  return { card, cardShared, cardGivenBack, cardLostWhileShared, status, error, portName, info, saber, library, libraryLoaded, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, readSnapshot, restoreSnapshot, renameSaber, updateSaber, expectAfterInstall, reachNext, currentSaber, restartSaber, currentPresets, planSaber, adoptPlan, currentPresetNow, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
 }
 
 export type Board = ReturnType<typeof useBoard>;

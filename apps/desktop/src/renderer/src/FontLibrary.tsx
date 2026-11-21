@@ -8,7 +8,7 @@ import type { CardInfo, FontLibraryStatus, FontSound, ImportResult, LibraryFont,
 import { copyAnywayQuestion, shouldAskBeforeCopy } from '@hiltwright/core';
 import { bulkHeadline, clickSelection, importSummary, type BulkLine } from '../../shared/fontBulk';
 import { Icon } from './Icon';
-import { Loader } from './Loader';
+import { Loader, LoadingSpace } from './Loader';
 import { ContributorLogo, useContributors } from './credits';
 import { chooseCard, rememberedCardChoice } from './cardChoice';
 import type { Board } from './board';
@@ -365,7 +365,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
               <thead><tr><th>Font</th><th className="col-maker">Maker</th><th>Supports</th><th>Size</th><th>Status</th></tr></thead>
               <tbody>
                 {groups.map((g) => (groupBy === 'none' ? g.fonts.map(row) : [groupHead(g), ...(folded.has(g.key) ? [] : g.fonts.map(row))]))}
-                {!loaded && <tr><td colSpan={5} className="hint" style={{ padding: 24 }}><span className="row" style={{ gap: 14 }}><Loader />Reading your fonts… the first look at a big library takes a few seconds.</span></td></tr>}
+                {!loaded && <tr><td colSpan={5} className="hint"><LoadingSpace text="Reading your fonts… the first look at a big library takes a few seconds." /></td></tr>}
                 {loaded && fonts.length === 0 && !status?.missing && <tr><td colSpan={5} className="hint" style={{ padding: 24 }}>No fonts yet. Add a font package as you downloaded it (.zip), or a font folder. They are copied into the library; your originals are left alone.</td></tr>}
                 {fonts.length > 0 && visible.length === 0 && <tr><td colSpan={5} className="hint">No fonts match. Clear a filter.</td></tr>}
               </tbody>
@@ -376,7 +376,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
           <div className="row wrap" style={{ gap: '8px 10px', padding: '10px 14px', borderTop: '1px solid var(--line)', background: 'var(--bar)' }}>
             <span className="small dim nowrap">Library folder</span>
             <span className="mono small ellip" style={{ flex: '1 1 150px', minWidth: 0 }} title={status?.root}>{status?.root ?? '…'}</span>
-            <span className="hint nowrap">{fonts.length} font{fonts.length === 1 ? '' : 's'} · {mb(fonts.reduce((a, f) => a + f.bytes, 0))}</span>
+            <span className="hint nowrap">{loaded ? `${fonts.length} font${fonts.length === 1 ? '' : 's'} · ${mb(fonts.reduce((a, f) => a + f.bytes, 0))}` : 'reading…'}</span>
             <button type="button" className="chip" disabled={busy || fonts.length === 0} title="Save every font, with its name, maker and notes, as one compressed, encrypted file to take to another computer" onClick={() => { setUnlock(null); setExporting({ folders: null, pass: '', again: '' }); }}>Export all…</button>
             <button type="button" className="chip" onClick={() => void api().fontLibrary.open()}>Open</button>
             <button type="button" className="chip" disabled={busy} onClick={() => void moveLibrary(false)}>Change…</button>
@@ -387,7 +387,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
 
       {multi ? <ManyFonts fonts={many} card={card} askCard={pick.ask} looking={looking} busy={busy} onCopy={(to) => void copyMany(many, to)} onRemove={() => void removeMany(many)} onExport={() => { setUnlock(null); setExporting({ folders: many.map((f) => f.folder), pass: '', again: '' }); }} onClear={clearMany} />
         : sel ? <FontDetail key={sel.folder} font={sel} detail={detail} card={card} askCard={pick.ask} looking={looking} player={player} onSetLogo={(m) => void setLogo(m)} onClearLogo={(m) => void clearLogo(m)} onDemo={onDemo} onChanged={onChanged} onExport={() => { setUnlock(null); setExporting({ folders: [sel.folder], pass: '', again: '' }); }} onRemoved={() => { player.stop(); void refresh(); }} />
-        : <section className="panel" data-tour="library-detail"><div className="pb hint">Pick a font to see and hear what is in it.</div></section>}
+        : <section className="panel" data-tour="library-detail">{loaded ? <div className="pb hint">Pick a font to see and hear what is in it.</div> : <LoadingSpace text="Reading your fonts…" />}</section>}
     </div>
   );
 }
@@ -545,7 +545,7 @@ function FontDetail({ font, detail, card, askCard, looking, player, onSetLogo, o
 
         <div className="col" style={{ gap: 0 }}>
           <div className="row between" style={{ marginBottom: 6 }}><span className="small" style={{ fontWeight: 600 }}>Sounds</span>{player.playing?.startsWith(`${font.folder}/`) && <button type="button" className="holo small" onClick={player.stop}>Stop</button>}</div>
-          {!detail && <span className="hint">Reading the font…</span>}
+          {!detail && <LoadingSpace text="Reading the font's sounds…" compact />}
           <div className="list" style={{ border: '1px solid var(--line)' }}>
             {groups.map(([effect, list]) => (
               <div key={effect} className="col" style={{ gap: 0, borderBottom: '1px solid var(--line)' }}>

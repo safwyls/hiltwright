@@ -6,7 +6,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { registerLookSim, wiringConfirmed, type LookDef } from '@hiltwright/core';
 import { useBoard } from './board';
 import { Icon } from './Icon';
-import { Loader } from './Loader';
+import { Loader, LoadingSpace } from './Loader';
 import { Logo } from './Logo';
 import { Presets } from './Presets';
 import { Fonts } from './Fonts';
@@ -209,8 +209,8 @@ export function App() {
         <div className="row" style={{ gap: 0, minWidth: 0 }}>
           <h1>{TITLE[page]}</h1>
           <div className="ident" data-tour="top-saber">
-            <b className="ellip">{ws.saber?.name ?? configName ?? 'No saber yet'}</b>
-            <span className="hint ellip">{info?.version ? `ProffieOS ${info.version.version}, ${info.version.prop ?? 'unknown prop'}, ${info.presets.length} presets` : ws.saber ? (ws.saber.planned ? 'planned ahead' : 'not plugged in') : 'plug one in, or plan one in the Armory'}</span>
+            <b className="ellip">{ws.saber?.name ?? configName ?? (ws.loading ? 'Reading your sabers…' : 'No saber yet')}</b>
+            <span className="hint ellip">{info?.version ? `ProffieOS ${info.version.version}, ${info.version.prop ?? 'unknown prop'}, ${info.presets.length} presets` : ws.saber ? (ws.saber.planned ? 'planned ahead' : 'not plugged in') : ws.loading ? '' : 'plug one in, or plan one in the Armory'}</span>
           </div>
         </div>
         <div className="row" style={{ gap: 12 }}>
@@ -386,7 +386,8 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
             </span></div>
           )}
           <div className="list" style={{ overflow: 'auto' }}>
-            {board.library.length === 0 && <div className="hint" style={{ padding: '14px 18px' }}>No sabers yet. Plug one in and it is remembered, or start a new one to set up ahead.</div>}
+            {ws.loading && <LoadingSpace text="Reading your sabers…" />}
+            {!ws.loading && board.library.length === 0 && <div className="hint" style={{ padding: '14px 18px' }}>No sabers yet. Plug one in and it is remembered, or start a new one to set up ahead.</div>}
             {board.library.map((s, n) => {
               const isCur = s.id === cur?.id; const plugged = ws.live && isCur;
               return (
@@ -437,7 +438,7 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
         );
       })()}
       <aside className="rail" aria-label="Progress" data-tour="armory-progress">
-        {!cur ? (
+        {!cur && ws.loading ? <LoadingSpace text="Reading your sabers…" compact /> : !cur ? (
           <div className="stepc now"><div className="head"><b>Start here</b></div><span className="small dim">Plug a saber in, or press New saber to set one up ahead. Then the steps down the left take it from wiring to an installed board.</span></div>
         ) : (
           <>

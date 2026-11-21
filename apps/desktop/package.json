@@ -17,6 +17,7 @@
     "test": "vitest run",
     "shots": "node scripts/shots.mjs",
     "icons": "electron scripts/icons.mjs",
+    "crystal": "electron scripts/crystal.mjs",
     "notices": "node scripts/notices.mjs"
   },
   "dependencies": {

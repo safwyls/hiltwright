@@ -4,14 +4,17 @@
 import { useMemo, useState } from 'react';
 import type { LibraryFont } from '../../shared/api';
 import { Icon } from './Icon';
+import { LoadingSpace } from './Loader';
 import { mb, useSoundPlayer } from './FontLibrary';
 import { ContributorLogo, useContributors } from './credits';
 
 const api = () => window.hiltwright;
 const TYPE: Record<LibraryFont['support']['type'], string> = { polyphonic: 'Polyphonic', monophonic: 'Monophonic', mixed: 'Mixed', unknown: 'Unknown' };
 
-export function FontPicker({ fonts, current, onCard, onPick, onClose, onManage }: {
+export function FontPicker({ fonts, loading, current, onCard, onPick, onClose, onManage }: {
   fonts: LibraryFont[];
+  /** The font library is still being read: an empty list is not an empty library yet. */
+  loading?: boolean;
   /** The folder the preset uses now. */
   current: string;
   /** Font folders on the saber's card as last read, or null when that is not known. */
@@ -53,7 +56,8 @@ export function FontPicker({ fonts, current, onCard, onPick, onClose, onManage }
         </div>
         <div className="scroll" style={{ minHeight: 0 }}>
           <div className="list">
-            {fonts.length === 0 && <div className="li hint" style={{ minHeight: 60 }}>The font library is empty. <button type="button" className="holo" onClick={() => { close(); onManage(); }}>Add fonts to it</button>, then choose them here.</div>}
+            {loading && fonts.length === 0 && <LoadingSpace text="Reading the font library…" compact />}
+            {!loading && fonts.length === 0 && <div className="li hint" style={{ minHeight: 60 }}>The font library is empty. <button type="button" className="holo" onClick={() => { close(); onManage(); }}>Add fonts to it</button>, then choose them here.</div>}
             {fonts.length > 0 && visible.length === 0 && <div className="li hint" style={{ minHeight: 44 }}>No fonts match.</div>}
             {visible.map((f) => {
               const isCur = f.folder.toLowerCase() === current.toLowerCase();

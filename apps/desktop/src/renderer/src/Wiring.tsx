@@ -10,7 +10,7 @@ import { HardwareEditor } from './Hardware';
 import { FEATURES } from './features';
 import type { Board } from './board';
 import { Icon } from './Icon';
-import { Loader } from './Loader';
+import { Loader, LoadingSpace } from './Loader';
 import type { Workspace } from './workspace';
 import { Select } from './Select';
 import { boardCorrection, boardSuggestion } from './saberModel';
@@ -101,10 +101,12 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
   // wiring here, can fill it in, and is remembered so Build & Install warns when they differ.
   const [config, setConfig] = useState<{ name: string; from: 'card' | 'file'; where: string | null; wiring: ConfigWiring } | null>(null);
   const [configNote, setConfigNote] = useState<string | null>(null);
+  const [configLooking, setConfigLooking] = useState(false);
   useEffect(() => {
     setConfig(null); setConfigNote(null);
     if (!saber) return;
     let live = true;
+    setConfigLooking(true);
     void (async () => {
       try {
         const look = await window.hiltwright.sd.look();
@@ -115,7 +117,7 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
           if (wiring && live) { setConfig({ name: f.name, from: 'card', where: own.card.root, wiring }); return; }
         }
       } catch (err) { console.log(`[wiring] looking for a config on the card failed: ${String(err)}`); }
-    })();
+    })().finally(() => { if (live) setConfigLooking(false); });
     return () => { live = false; };
   }, [saber?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const pickConfig = async () => {
@@ -143,6 +145,7 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
   };
   const checkAgainstConfig = () => { if (config) change({ wiringReference: referenceFrom(config.name, config.from, config.wiring) }); };
 
+  if (!saber && ws.loading) return <section className="panel fill"><LoadingSpace text="Reading your sabers…" /></section>;
   if (!saber || !info || !draft) {
     return <section className="panel"><div className="pb col" style={{ gap: 6 }}><h3>No saber to wire yet</h3><span className="dim small">Plug a saber in, or start one in the Armory, and describe its wiring here.</span> <button type="button" className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={() => go('armory')}><span className="b"><span className="i">Go to the Armory</span></span></button></div></section>;
   }
@@ -166,7 +169,8 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
           {!saber.planned && detected.length > 0 && !confirmed && (
             <div className="note"><Icon name="info" /><span>The saber reported {detected.length} pixel blade{detected.length === 1 ? '' : 's'} ({detected.join(', ')} px). That is a starting point, not the wiring: check each blade's data pin and power pins against what the installer wrote down.</span></div>
           )}
-          <div className="row wrap" style={{ gap: 14 }} data-tour="wiring-basics">
+          {/* Top-aligned: the board's hint under its control must not lift it above the others. */}
+          <div className="row wrap" style={{ gap: 14, alignItems: 'flex-start' }} data-tour="wiring-basics">
             <label className="field"><span className="label">Board</span>
               <div className="seg" role="radiogroup" aria-label="Proffieboard model" style={{ height: 32 }}>
                 {(['V2', 'V3'] as BoardModel[]).map((b) => <button key={b} type="button" role="radio" aria-checked={boardChosen && draft.board === b} className={boardChosen && draft.board === b ? 'on' : ''} style={{ height: 30 }} disabled={fromBootloader && draft.board !== b} title={fromBootloader && draft.board !== b ? `The saber's bootloader showed a Proffieboard ${draft.board}` : undefined} onClick={() => { if (!fromBootloader) change({ board: b, boardFrom: 'owner' }); }}>Proffieboard {b}</button>)}
@@ -220,6 +224,7 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
             );
           })() : (
             <div className="row wrap" style={{ gap: 8, alignItems: 'center' }}>
+              {configLooking && <span className="row hint small" style={{ gap: 8 }}><Loader size="sm" />Looking for the installer{'’'}s config on the card…</span>}
               {draft.wiringReference && (() => { const d = compareWiring(draft, draft.wiringReference); return <span className={`small${d.some((x) => x.danger) ? '' : ' hint'}`}>{d.length ? `Differs from ${draft.wiringReference.file}: ${d.map(differenceText).join('; ')}.` : `Matches ${draft.wiringReference.file}, the config builds are checked against.`}</span>; })()}
               <button type="button" className="btn sm ghost" onClick={() => void pickConfig()}><span className="b"><span className="i">Compare with a config file…</span></span></button>
               {configNote && <span className="small">{configNote}</span>}
