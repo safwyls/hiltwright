@@ -11,5 +11,5 @@
     "noEmit": true,
     "types": ["vite/client", "w3c-web-serial"]
   },
-  "include": ["src/renderer", "src/preload/api.d.ts", "src/shared", "test/draftModel.test.ts", "test/staged.test.ts", "test/fontEngine.test.ts", "test/tour.test.ts"]
+  "include": ["src/renderer", "src/preload/api.d.ts", "src/shared", "test/draftModel.test.ts", "test/staged.test.ts", "test/fontEngine.test.ts", "test/tour.test.ts", "test/firmwareLine.test.ts"]
 }

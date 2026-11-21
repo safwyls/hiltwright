@@ -71,7 +71,7 @@ select,input{font:inherit;color:inherit;accent-color:var(--sel)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 /* Shell */
-.app{height:100vh;min-width:1180px;display:grid;grid-template-columns:224px minmax(0,1fr);grid-template-rows:60px 1fr;background:var(--grain),var(--bg0);overflow:hidden;position:relative}
+.app{height:100vh;min-width:1180px;display:grid;grid-template-columns:224px minmax(0,1fr);grid-template-rows:60px 1fr 30px;background:var(--grain),var(--bg0);overflow:hidden;position:relative}
 /* The rail. */
 .side{grid-row:1/3;background:var(--rail);border-right:1px solid var(--rail-edge);display:flex;flex-direction:column}
 .brand{height:60px;display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid var(--line);color:var(--text);-webkit-app-region:drag}
@@ -98,8 +98,13 @@ select,input{font:inherit;color:inherit;accent-color:var(--sel)}
 .top button,.top select,.top input,.top a,.top .chip{-webkit-app-region:no-drag}
 /* The page behind the panels. */
 .main{padding:18px 24px;overflow:auto;position:relative;display:flex;flex-direction:column;gap:16px;min-height:0;background:var(--ground)}
-.status{grid-column:2;display:flex;align-items:center;gap:22px;padding:0 28px;border-top:1px solid var(--line);background:var(--grain),var(--bar);font-family:var(--mono);font-size:11.5px;color:var(--mute);white-space:nowrap;overflow:hidden}
+/* The bar along the bottom of the window, under the rail and the page: the tour, the saber worked on, its firmware, the version. */
+.status{grid-column:1/-1;grid-row:3;display:flex;align-items:stretch;min-width:0;border-top:1px solid var(--seam);background:var(--grain),var(--bar);font-family:var(--mono);font-size:11.5px;color:var(--mute);white-space:nowrap;overflow:hidden}
 .status b{color:var(--dim);font-weight:500}
+.status .st{display:flex;align-items:center;gap:8px;padding:0 14px;border-right:1px solid var(--line);min-width:0;flex:none}
+.status .st:last-child{border-right:0}
+.status .st.grow{flex:1}
+.status .st svg{width:14px;height:14px}
 
 h1{font-family:var(--h-font);font-size:22px;font-weight:var(--h-weight);font-style:var(--h-style);letter-spacing:calc(var(--h-track)*.5);text-transform:var(--h-case);margin:0;line-height:1.1;white-space:nowrap}
 h2{font-family:var(--h-font);font-size:15px;font-weight:var(--h-weight);font-style:var(--h-style);letter-spacing:var(--h-track);text-transform:var(--h-case);margin:0;color:var(--text);white-space:nowrap}
@@ -560,13 +565,11 @@ body.dragging-layer,body.dragging-layer *{cursor:grabbing!important;user-select:
 @media (prefers-reduced-motion:reduce){.tourspot,.tourcard{transition:none}}
 /* "Show me this page" in the top bar: in a narrow window, its icon only (its name is its label and tooltip). */
 @media (max-width:1300px){.tourchip .tct{display:none}.tourchip{padding:0 7px}}
-/* "Take the tour", at the foot of the sidebar. */
-.tourbtn{margin-top:auto;display:flex;align-items:center;gap:12px;height:40px;padding:0 22px;border-top:1px solid var(--line);color:var(--holo);font-weight:500;font-size:13.5px;letter-spacing:.02em;flex:none}
-.tourbtn svg{width:18px;height:18px;flex:none}
-/* In-app updates: the chip under the version in the sidebar footer (Updates.tsx). */
-/* A short window has no room below the nav for the chip: the nav rows close up while it shows. */
-@media (max-height:860px){.side.hasupd .nav a{height:29px}.side.hasupd .nav .sec{padding:7px 12px 3px}}
-.updchip{align-self:flex-start;max-width:100%;min-width:0;cursor:pointer;white-space:normal;height:auto;min-height:24px;padding:4px 10px;line-height:1.45;text-align:left;overflow-wrap:anywhere}.updchip .dot{flex:none}
+/* "Take the tour", at the left end of the bar along the bottom (as wide as the rail above it). */
+.tourbtn{display:flex;align-items:center;gap:10px;width:224px;padding:0 20px;border-right:1px solid var(--line);color:var(--holo);font-family:var(--body);font-weight:500;font-size:12.5px;letter-spacing:.02em;flex:none}
+.tourbtn svg{width:15px;height:15px;flex:none}
+/* In-app updates: the chip beside the version in the bar along the bottom (Updates.tsx). */
+.updchip{max-width:360px;min-width:0;cursor:pointer;height:20px;padding:0 9px;overflow:hidden;text-overflow:ellipsis}.updchip .dot{flex:none}.updchip>span:last-child{overflow:hidden;text-overflow:ellipsis}
 .tourbtn:hover:not(:disabled){color:var(--hi);background:var(--hover)}
 .tourbtn:disabled{opacity:.45}
 /* A short window: the sidebar's rows close up so its foot, with "Take the tour", stays on screen. */

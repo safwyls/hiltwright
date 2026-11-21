@@ -54,7 +54,7 @@ export const TOUR: TourChapter[] = [
         target: 'top-tour',
         text: [
           'On any page, press "Show me this page" to see just that part of this tour.',
-          '"Take the tour", at the bottom of the sidebar, starts it again from the beginning.',
+          '"Take the tour", at the bottom left of the window, starts it again from the beginning.',
         ],
       },
     ],

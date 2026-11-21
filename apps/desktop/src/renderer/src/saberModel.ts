@@ -27,6 +27,27 @@ export function infoFromRecord(rec: SaberRecord): BoardInfo {
   };
 }
 
+/**
+ * What the firmware says about itself, in full, for the bar along the bottom of the window:
+ * "ProffieOS v7.14 · fett263 · 2 buttons · 9 presets · hiltwright_kylo · installed Nov 20 2026".
+ * The config name is left out when it is just the saber's name, and the install date without its time of day, so the
+ * line fits. Null when nothing is known yet (a planned saber, or one never read).
+ */
+export function firmwareLine(info: BoardInfo | null, saberName?: string): string | null {
+  const v = info?.version;
+  if (!info || !v?.version) return null;
+  const config = v.config?.replace(/^config\//, '').replace(/\.h$/, '') || null;
+  const installed = v.installed?.replace(/\s+\d{1,2}:\d{2}(:\d{2})?\s*$/, '').trim() || null;
+  return [
+    `ProffieOS ${v.version}`,
+    v.prop,
+    v.buttons != null ? `${v.buttons} button${v.buttons === 1 ? '' : 's'}` : null,
+    `${info.presets.length} preset${info.presets.length === 1 ? '' : 's'}`,
+    config && config.toLowerCase() !== saberName?.trim().toLowerCase() ? config : null,
+    installed ? `installed ${installed}` : null,
+  ].filter(Boolean).join(' · ');
+}
+
 export function configNameFor(saber: SaberRecord): string {
   return `hiltwright_${saber.name.toLowerCase().replace(/^hiltwright[_ ]+/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'saber'}`;
 }

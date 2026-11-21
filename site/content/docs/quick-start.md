@@ -51,6 +51,6 @@ Press "Save diagnostics" on the Diagnostics page, or beside a failed build or in
 
 ## Take the in-app tour
 
-Hiltwright has a five-minute tour of every page, run on an example saber so nothing reaches a real one. Press "Take the tour" at the bottom of the sidebar, or "Show me this page" on any page.
+Hiltwright has a five-minute tour of every page, run on an example saber so nothing reaches a real one. Press "Take the tour" at the bottom left of the window, or "Show me this page" on any page.
 
 ![The sidebar steps: Wiring, Presets, Fonts and SD, Build and Install](shots/tour-03.png)

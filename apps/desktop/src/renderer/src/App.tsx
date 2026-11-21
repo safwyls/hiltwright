@@ -16,14 +16,13 @@ import { Wiring } from './Wiring';
 import { ErrorBoundary } from './ErrorBoundary';
 import { SaveDiagnostics } from './SaveDiagnostics';
 import { SaberControls } from './Controls';
-import { guessBlades, infoFromRecord, queuedLookIds } from './saberModel';
+import { firmwareLine, guessBlades, infoFromRecord, queuedLookIds } from './saberModel';
 import { usePendingLookColours } from './pendingColours';
 import { StyleEditor } from './StyleEditor';
 import { FontLibrary } from './FontLibrary';
 import { Contributors } from './Contributors';
 import { About } from './About';
 import { UpdateChip, useUpdates } from './Updates';
-import { chipText } from '../../shared/updates';
 import { QUICK_COMMANDS, destructiveReason } from './consoleCommands';
 import { flowStatus, nextStep, useWorkspace, type Workspace } from './workspace';
 import type { SaberRecord } from '../../shared/api';
@@ -181,7 +180,7 @@ export function App() {
 
   return (
     <div className="app">
-      <aside className={`side${!tour && chipText(updates.state) ? ' hasupd' : ''}`} aria-label="Primary">
+      <aside className="side" aria-label="Primary">
         <div className="brand"><Logo size={28} /><span className="wordmark">Hiltwright</span></div>
         <nav className="nav" aria-label="Sections">
           {NAV.map((g) => (
@@ -197,12 +196,6 @@ export function App() {
             </div>
           ))}
         </nav>
-        {ws.saber && <div className="col" style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', gap: 2 }}><span className="sec" style={{ padding: 0 }}>Working on</span><b className="ellip" style={{ fontWeight: 600, fontSize: 13 }}>{ws.saber.name}</b><span className="hint">{ws.live ? 'plugged in' : ws.saber.planned ? 'planned, not seen yet' : 'not plugged in'}</span></div>}
-        <button type="button" className="tourbtn" data-tour="side-tour" disabled={!!tour} onClick={() => startTour(0)}><Icon name="info" /><span>Take the tour</span></button>
-        <div className="col" style={{ padding: '14px 20px', borderTop: '1px solid var(--line)', gap: 8 }}>
-          <span className="mono mute" style={{ fontSize: 11 }}>Hiltwright {window.hiltwright?.appVersion ?? '?'} beta</span>
-          {!tour && <UpdateChip view={updates} onOpen={() => setPage('about')} />}
-        </div>
       </aside>
 
       <header className="top">
@@ -210,7 +203,7 @@ export function App() {
           <h1>{TITLE[page]}</h1>
           <div className="ident" data-tour="top-saber">
             <b className="ellip">{ws.saber?.name ?? configName ?? (ws.loading ? 'Reading your sabers…' : 'No saber yet')}</b>
-            <span className="hint ellip">{info?.version ? `ProffieOS ${info.version.version}, ${info.version.prop ?? 'unknown prop'}, ${info.presets.length} presets` : ws.saber ? (ws.saber.planned ? 'planned ahead' : 'not plugged in') : ws.loading ? '' : 'plug one in, or plan one in the Armory'}</span>
+            <span className="hint ellip">{ws.live ? 'plugged in' : ws.saber ? (ws.saber.planned ? 'planned ahead' : 'not plugged in') : ws.loading ? '' : 'plug one in, or plan one in the Armory'}</span>
           </div>
         </div>
         <div className="row" style={{ gap: 12 }}>
@@ -244,6 +237,24 @@ export function App() {
             : <Diagnostics board={board} />}
         </ErrorBoundary>}
       </main>
+      {/* The bar along the bottom: the tour, the saber worked on, what its firmware says in full, and this app's version. */}
+      <footer className="status" aria-label="Status">
+        <button type="button" className="tourbtn" data-tour="side-tour" disabled={!!tour} onClick={() => startTour(0)}><Icon name="info" /><span>Take the tour</span></button>
+        <span className="st" title={ws.saber ? `Working on ${ws.saber.name}` : undefined}>
+          <span style={{ display: 'flex', width: 14, color: ws.live ? 'var(--holo)' : 'var(--mute)' }}><Icon name={ws.live ? 'usb' : ws.saber?.planned ? 'gear' : 'blade'} /></span>
+          {ws.saber
+            ? <><span>Working on</span><b className="ellip" style={{ maxWidth: 220 }}>{ws.saber.name}</b><span>{ws.live ? 'plugged in' : ws.saber.planned ? 'planned, not seen yet' : 'not plugged in'}</span></>
+            : <span>{ws.loading ? 'Reading your sabers…' : 'No saber yet'}</span>}
+        </span>
+        {(() => {
+          const line = firmwareLine(ws.info, ws.saber?.name);
+          if (!line) return <span className="st grow" />;
+          const text = ws.live ? line : `Last read: ${line}`;
+          return <span className="st grow" title={text}><span className="ellip">{text}</span></span>;
+        })()}
+        {!tour && <span className="st"><UpdateChip view={updates} onOpen={() => setPage('about')} /></span>}
+        <span className="st">Hiltwright {window.hiltwright?.appVersion ?? '?'}</span>
+      </footer>
       {tour?.phase === 'on' && <Tour steps={TOUR_STEPS} index={tour.index} page={page} onIndex={(i) => setTour((t) => (t ? { ...t, index: i } : t))} onEnd={endTour} />}
       {offer && !tour && (
         <div className="dialog-back" role="presentation" onKeyDown={(e) => { if (e.key === 'Escape') answerOffer(false); }}>
@@ -258,7 +269,7 @@ export function App() {
                 <button type="button" className="btn sm ghost" onClick={() => answerOffer(false)}><span className="b"><span className="i">Not now</span></span></button>
                 <button type="button" className="btn sm pri" autoFocus onClick={() => answerOffer(true)}><span className="b"><span className="i">Take a five-minute tour</span></span></button>
               </div>
-              <span className="hint">You can take it later from "Take the tour" at the bottom of the sidebar.</span>
+              <span className="hint">You can take it later from "Take the tour" at the bottom left of the window.</span>
             </div>
           </section>
         </div>

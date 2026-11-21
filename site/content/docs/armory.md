@@ -14,7 +14,7 @@ Every saber Hiltwright has seen is listed, plugged in or not. Each row shows its
 
 The saber marked **Working on it** is the one every step is about. To work on another, unplug the current one and press **Work on it** beside the other. That button is grayed out while a saber is plugged in, and its tooltip says "Unplug the connected saber to work on another".
 
-The sidebar repeats this under "Working on", with one of three notes: "plugged in", "planned, not seen yet" or "not plugged in".
+The bar along the bottom of the window repeats this after "Working on", with one of three notes: "plugged in", "planned, not seen yet" or "not plugged in". Beside it is everything the saber's firmware reports about itself: the ProffieOS version, prop, buttons, presets, config name and install date. For a saber that is not plugged in, that line starts "Last read:".
 
 To rename the saber that is plugged in, press **Rename**, type the new name and press **Save**.
 
