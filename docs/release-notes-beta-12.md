@@ -32,7 +32,6 @@ Blade ID and the Xenopixel import are hidden behind one switch. The code stays i
 - Card formatting. A card formatter is not in this beta.
 - Code signing.
 - A supported macOS build, and Linux.
-- Building fonts from sounds.
 
 ## The macOS test build
 
@@ -60,7 +59,7 @@ The installer is unsigned, so Windows will warn you before it runs. If Smart App
 
 Install guide: https://github.com/safwyls/hiltwright/blob/v0.2.0-beta.12/docs/install-guide.md
 
-## Licence and source
+## License and source
 
 Hiltwright is licensed under GPL-3.0-or-later. The source for this build is at https://github.com/safwyls/hiltwright/tree/v0.2.0-beta.12
 

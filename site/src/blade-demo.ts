@@ -84,7 +84,7 @@ function mount(root: HTMLElement): void {
   COLOURS.forEach((c, i) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'bd-swatch'; b.title = c.name;
-    b.setAttribute('aria-label', `Base colour: ${c.name}`);
+    b.setAttribute('aria-label', `Base color: ${c.name}`);
     b.setAttribute('aria-pressed', String(i === 0));
     if (c.rgb) b.style.setProperty('--c', `rgb(${c.rgb.join(',')})`); else b.classList.add('own');
     b.addEventListener('click', () => {

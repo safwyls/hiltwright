@@ -2,51 +2,61 @@
   {
     "id": "station",
     "name": "Station",
-    "about": "Gloss black, with trooper green for what is selected and what comes next."
+    "about": "Gloss black, with trooper green for what is selected and what comes next.",
+    "accent": "#86dc5f"
   },
   {
     "id": "hull",
     "name": "Scorched hull",
-    "about": "Warm soot and worn paint, with enamel orange for what comes next."
+    "about": "Warm soot and worn paint, with enamel orange for what comes next.",
+    "accent": "#d9642b"
   },
   {
     "id": "hoth",
     "name": "Hoth",
-    "about": "A base cut into the ice: pale, cold and soft-edged, with flight-suit orange for what comes next."
+    "about": "A base cut into the ice: pale, cold and soft-edged, with flight-suit orange for what comes next.",
+    "accent": "#e8742a"
   },
   {
     "id": "ronin",
     "name": "Ronin",
-    "about": "An old black-and-white film: ink, grain and brush strokes, with red only for what is selected."
+    "about": "An old black-and-white film: ink, grain and brush strokes, with red only for what is selected.",
+    "accent": "#d8281d"
   },
   {
     "id": "ninth",
     "name": "The Ninth Jedi",
-    "about": "A temple above the mist at dusk: plum and slate, gold-framed, with lantern gold for what comes next."
+    "about": "A temple above the mist at dusk: plum and slate, gold-framed, with lantern gold for what comes next.",
+    "accent": "#f2a93e"
   },
   {
     "id": "coruscant",
     "name": "Coruscant at night",
-    "about": "The city planet from orbit: black glass, rounded shapes, city amber and the blue of its atmosphere."
+    "about": "The city planet from orbit: black glass, rounded shapes, city amber and the blue of its atmosphere.",
+    "accent": "#ffad42"
   },
   {
     "id": "crait",
     "name": "Crait",
-    "about": "White salt over red mineral: pale, sharp-cornered, with red showing under every edge."
+    "about": "White salt over red mineral: pale, sharp-cornered, with red showing under every edge.",
+    "accent": "#b8141e"
   },
   {
     "id": "naboo",
     "name": "Naboo",
-    "about": "A lake city in daylight: pale stone, arched panels, verdigris for what comes next and wisteria for what is selected."
+    "about": "A lake city in daylight: pale stone, arched panels, verdigris for what comes next and wisteria for what is selected.",
+    "accent": "#4fb8a3"
   },
   {
     "id": "kashyyyk",
     "name": "Kashyyyk",
-    "about": "A village in the giant trees: dark timber, hewn corners, moss green and lantern amber."
+    "about": "A village in the giant trees: dark timber, hewn corners, moss green and lantern amber.",
+    "accent": "#f0a030"
   },
   {
     "id": "original",
     "name": "Original",
-    "about": "The appearance Hiltwright first had: dark navy, cut-corner buttons and cyan."
+    "about": "The appearance Hiltwright first had: dark navy, cut-corner buttons and cyan.",
+    "accent": "#5fd3ff"
   }
 ]

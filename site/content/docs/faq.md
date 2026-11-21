@@ -44,7 +44,7 @@ Yes. The beta is not signed, so Windows shows warnings such as "Windows protecte
 
 You bring them. Fonts you buy or download go into the [Font library](font-library.html) as a `.zip` package or a folder. Six free ProffieOS fonts come with Hiltwright: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. They can be copied to a card from Fonts & SD.
 
-Hiltwright cannot build a font from raw sounds in this beta.
+Hiltwright does not build fonts from raw sounds.
 
 ## Can I use Fett263 styles?
 
@@ -62,7 +62,7 @@ No. **New saber** in the Armory sets one up ahead: wiring, presets and styles, r
 
 ## What is not in this beta?
 
-Card formatting, code signing, Linux, and building fonts from sounds are not in this beta. A couple of features are switched off for now and are not covered in these pages. Known gaps are tracked in the project's later list on GitHub.
+Card formatting, code signing and Linux are not in this beta. A couple of features are switched off for now and are not covered in these pages. Known gaps are tracked in the project's later list on GitHub.
 
 ## How do I report a problem or give feedback?
 

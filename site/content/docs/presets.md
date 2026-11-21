@@ -1,6 +1,6 @@
 ---
 title: Presets
-summary: Edit the saber's presets (font, track, style and colours), save sets of them, and undo changes from History.
+summary: Edit the saber's presets (font, track, style and colors), save sets of them, and undo changes from History.
 section: The saber path
 order: 3
 ---
@@ -41,13 +41,13 @@ A field is saved when you leave it or press Enter. Saving on every key would wri
 
 ## A style for each blade
 
-Each blade gets a style: its colour, flicker and effects. Choose it from the list for that blade. The list offers styles made for that kind of blade, in groups: "Hiltwright", "Your styles", and "Only on this saber (removed from your styles)" for styles the saber's plan still carries after you deleted them.
+Each blade gets a style: its color, flicker and effects. Choose it from the list for that blade. The list offers styles made for that kind of blade, in groups: "Hiltwright", "Your styles", and "Only on this saber (removed from your styles)" for styles the saber's plan still carries after you deleted them.
 
 - A style already in the saber's firmware switches at once.
 - **Queued** means the style is chosen but is not in the firmware yet. It goes on with the next Build & Install. In the list, such a style is marked "(needs a build)". A note says: "is not on (saber) yet: it goes on with the next Build & Install."
 - With staged presets, a blade with no choice shows "Saber's default" and uses a starter style for that kind of blade.
 
-Colour swatches under a style let you change its colours. A colour is written once the picker has been still for half a second, or when you leave it. **Style's own colours** puts the style's defaults back. **Browse and try styles** opens [Styles](styles.html).
+Color swatches under a style let you change its colors. A color is written once the picker has been still for half a second, or when you leave it. **Style's own colours** puts the style's defaults back. **Browse and try styles** opens [Styles](styles.html).
 
 ![The style choice for each blade, with a Queued marker](shots/tour-18.png)
 

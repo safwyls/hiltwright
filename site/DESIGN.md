@@ -1,21 +1,23 @@
 ---
 name: Hiltwright website
-description: Painted planes with the app on the nearest one; deep umber ground, cel-white lettering and marks, lamp amber for the primary action and for caution.
+description: A graphite bay with the app on show in each of its themes; cool white lettering and marks, one accent borrowed from the theme the visitor chose, amber for caution only.
 colors:
-  ground: "#17110c"
-  raised: "#211911"
-  well: "#0e0a07"
-  high: "#2c2218"
-  cel: "#f6efe2"
-  dim: "#d3c9b6"
-  mute: "#a99e86"
-  lamp: "#f2b23e"
-  lamp-hi: "#ffc960"
-  lamp-ink: "#231500"
+  ground: "#121416"
+  raised: "#1a1d20"
+  well: "#0a0b0d"
+  high: "#252a2e"
+  cel: "#eef1f3"
+  dim: "#c3c9ce"
+  mute: "#8f979e"
+  accent: "#b8141e"
+  accent-hi: "#c33a42"
+  accent-ink: "#fff6f4"
+  warn: "#f2b23e"
+  warn-hi: "#ffc960"
   good: "#a6d9a0"
   bad: "#ff9a86"
-  line: "rgba(246,239,226,.14)"
-  line-strong: "rgba(246,239,226,.32)"
+  line: "rgba(238,241,243,.14)"
+  line-strong: "rgba(238,241,243,.32)"
 typography:
   display:
     fontFamily: "Gloock, 'Iowan Old Style', Georgia, serif"
@@ -86,23 +88,23 @@ spacing:
   band: "104px"
 components:
   button:
-    backgroundColor: "rgba(23,17,12,.42)"
+    backgroundColor: "rgba(18,20,22,.42)"
     textColor: "{colors.cel}"
     rounded: "{rounded.pill}"
     padding: "11px 22px"
     height: "46px"
   button-hover:
-    backgroundColor: "rgba(246,239,226,.1)"
+    backgroundColor: "rgba(238,241,243,.1)"
     textColor: "{colors.cel}"
   button-primary:
-    backgroundColor: "{colors.lamp}"
-    textColor: "{colors.lamp-ink}"
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.accent-ink}"
     rounded: "{rounded.pill}"
     padding: "11px 22px"
     height: "46px"
   button-primary-hover:
-    backgroundColor: "{colors.lamp-hi}"
-    textColor: "{colors.lamp-ink}"
+    backgroundColor: "{colors.accent-hi}"
+    textColor: "{colors.accent-ink}"
   button-big:
     rounded: "{rounded.pill}"
     padding: "15px 30px"
@@ -112,10 +114,15 @@ components:
     rounded: "{rounded.pill}"
     padding: "8px 14px"
   nav-link-current:
-    backgroundColor: "rgba(246,239,226,.16)"
+    backgroundColor: "rgba(238,241,243,.16)"
     textColor: "{colors.cel}"
+  nav-download:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.accent-ink}"
+    rounded: "{rounded.pill}"
+    padding: "8px 18px"
   choice-pill:
-    backgroundColor: "rgba(14,10,7,.55)"
+    backgroundColor: "rgba(10,11,13,.55)"
     textColor: "{colors.cel}"
     rounded: "{rounded.pill}"
     padding: "8px 16px"
@@ -138,6 +145,10 @@ components:
   window:
     backgroundColor: "{colors.well}"
     rounded: "{rounded.window}"
+  deck-window:
+    backgroundColor: "{colors.well}"
+    rounded: "{rounded.window}"
+    width: "clamp(440px, 45vw, 720px)"
   panel:
     backgroundColor: "{colors.raised}"
     textColor: "{colors.cel}"
@@ -154,32 +165,33 @@ components:
 
 <!-- impeccable:design-map -->
 Name: Hiltwright website
-Colors: primary: lamp #f2b23e; secondary: good #a6d9a0; neutral: ground #17110c; primary: lamp-hi #ffc960; primary: lamp-ink #231500; secondary: bad #ff9a86; neutral: raised #211911 (+7 more in the sidecar)
+Colors: primary: accent #b8141e; secondary: warn #f2b23e; neutral: ground #121416; primary: accent-hi #c33a42; primary: accent-ink #fff6f4; secondary: warn-hi #ffc960; secondary: good #a6d9a0 (+9 more in the sidecar)
 Fonts: Gloock (display, headline, title, numeral); Hanken Grotesk (subhead, lede, body, label, fine); ui-monospace (mono)
 Spacing: gutter-narrow 16px, gutter 24px, control-gap 12px, column-gap 36px, split-gap 56px, band-compact 72px, band 104px
 Radius: xs 5px, sm 8px, window 10px, md 12px, lg 14px, pill 999px
-North Star: "Painted Planes"
+North Star: "The Graphite Bay"
 Rules:
-- The One Lamp Rule. A lamp-amber fill on a control means "this is the primary action here".
-- The Marks Are Cel Rule. Anything small that points, counts or tracks is cel, not lamp: link underlines, step dots, the focus ring, selection, the current-section highlight, progress and range controls.
-- The Warm Dark Rule. Every dark is umber and every light is cel.
-- The Amber Means Caution Too Rule. Warning surfaces (the download warning card, the docs warning callout) use the same lamp hue as an 8% tint with a 60% edge.
-- The Sentence Case Rule. Labels, table heads, nav group names and footer column labels are sentence case at weight 600 or 700 with no added tracking.
-- (+4 more)
+- The Accent Follows the Theme Rule. The site has no accent of its own.
+- The One Accent Fill Rule. An accent fill on a control means this is the primary action here.
+- (+8 more)
 Elevation:
-- Stage window: 0 34px 70px rgba(0,0,0,.62), 0 0 0 1px rgba(246,239,226,.22)
+- Deck front: 0 40px 80px rgba(0,0,0,.8), 0 10px 24px rgba(0,0,0,.55), 0 0 0 1px rgba(238,241,243,.36)
+- Deck back: 0 12px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(238,241,243,.26)
 - Window: 0 30px 60px rgba(0,0,0,.55), 0 0 0 1px var(--line2)
 - Inline shot: 0 18px 40px rgba(0,0,0,.45), 0 0 0 1px var(--line2)
 - Popover: 0 20px 50px rgba(0,0,0,.7)
-- Lamp lift: 0 8px 22px rgba(0,0,0,.4)
-- Cel shadow: text-shadow: 0 2px 24px rgba(0,0,0,.55)
+- Primary lift: 0 8px 22px rgba(0,0,0,.4)
+- Lettering shadow: text-shadow: 0 2px 24px rgba(0,0,0,.55)
 Don't:
-- Don't dress the site in any one app theme.
+- Don't take anything from the chosen theme but its accent.
+- Don't write an accent value into a rule, and don't assume the accent is red.
+- Don't spend the accent on anything but the primary action's fill, the skip link, the mark and the stage's indicator light: no accent underlines, dots, focus rings, progress bars or secondary buttons.
+- Don't use amber as an accent or give a warning a solid fill.
+- Don't bring back warm darks or cream lettering, and don't lay plain black over a painting where text sits.
 - Don't put the app in a device frame (laptop, monitor, browser chrome).
-- Don't use a painting as a small decorative tile on a neutral page; a painting is a whole surface or it is absent.
-- Don't spend lamp amber on anything but the primary action's fill and a warning's tint and edge: no amber underlines, dots, focus rings, progress bars or secondary buttons.
-- Don't introduce a second accent hue for actions, or grey neutrals, or plain black shades over text.
+- Don't use a painting as a small decorative tile; a painting is a whole surface or it is absent.
+- Don't put more than one sharp window on the deck, and don't put the deck's windows in the tab order.
 - Don't set uppercase, letter-spaced labels; the wordmark is the only one.
-- Don't embolden or italicise Gloock.
+- Don't embolden or italicize Gloock.
 - Don't box the ruled cards and steps, and don't put shadows on flat content.
 Full: .impeccable/design-full.md (read a section when you need its detail)

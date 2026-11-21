@@ -76,7 +76,7 @@ The **Preset fonts** tab lists the font each preset names and where it is:
 - "Missing": absent from the card, the library and every pack. Add it to the library and copy it, or choose another font on [Presets](presets.html).
 - With no card seen, you see "In library", "Ready to copy" or "Card not checked".
 
-**Copy all** copies every font that can be copied. The six free ProffieOS fonts are TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. Each shows its credit and licence, CC BY-SA 4.0. A copy is identical to the original folder.
+**Copy all** copies every font that can be copied. The six free ProffieOS fonts are TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. Each shows its credit and license, CC BY-SA 4.0. A copy is identical to the original folder.
 
 Progress shows as "Copying (font): 3 of 40 files". Afterwards: "Copied (fonts) to the card." If one fails, the note lists what was not copied and why.
 

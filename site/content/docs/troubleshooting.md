@@ -96,7 +96,7 @@ If a card is formatted exFAT or NTFS, a saber cannot read it. Hiltwright warns b
 
 ## The preview differs from the blade
 
-The preview runs the same maths as the saber. A few things are left unmodelled.
+The preview runs the same math as the saber. A few things are left unmodeled.
 
 - A note on a style says "The preview is only approximate for ..." or "The preview cannot show ... yet". Those parts may differ on the saber.
 - On the built-in styles, drag and lightning block change with twist and blade angle on the blade. The preview does not show that change.

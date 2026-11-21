@@ -25,7 +25,7 @@ Start here with every saber.
 | BC | |
 | ProffieOS default | |
 
-If a saber is plugged in and the board is not known, you can press **Check the board**. The saber restarts into bootloader mode for a few seconds, its flash size is read, and it comes straight back. Nothing is written. If the board was read from the saber at its last install, that choice is fixed and the other one is greyed out.
+If a saber is plugged in and the board is not known, you can press **Check the board**. The saber restarts into bootloader mode for a few seconds, its flash size is read, and it comes straight back. Nothing is written. If the board was read from the saber at its last install, that choice is fixed and the other one is grayed out.
 
 ![Board, buttons and prop file at the top of Wiring](shots/tour-10.png)
 
@@ -45,12 +45,12 @@ Each blade shows as a row with a tick, or a warning if it has a problem. Open on
 | Side blade | A quillon or second emitter |
 | Motor | Spins a crystal chamber component |
 
-**Built from.** For every role except Motor, choose "Pixel strip", "Single LED" or "Star LED". A star LED is a tri-colour LED on three power pins, red, green and blue in that order. A single LED uses one power pin.
+**Built from.** For every role except Motor, choose "Pixel strip", "Single LED" or "Star LED". A star LED is a tri-color LED on three power pins, red, green and blue in that order. A single LED uses one power pin.
 
 For a pixel strip you also set:
 
 - **Pixels**, the count.
-- **Colour order**, one of GRB, RGB, GRBW, RGBW, BGR or BRG. Check your strip's datasheet if colours come out wrong.
+- **Colour order**, one of GRB, RGB, GRBW, RGBW, BGR or BRG. Check your strip's datasheet if colors come out wrong.
 - **Strips on this wire.** Strips soldered to the same data wire show the same thing and cannot be controlled separately, so they count as one blade.
 
 **Wiring.** A pixel strip is either "Own data line" (its own wire and power pins) or "Continues another blade's wire" (the same strip, after another blade, sharing its power). A chained blade can also "Run the other way (reversed)". Single LEDs, star LEDs and motors only need power pins.
@@ -75,7 +75,7 @@ Hiltwright will not build while a problem is listed. The pins on a Proffieboard 
 
 Check every data pin and power pin against what the installer wrote down. Then turn on **I checked the wiring**.
 
-This switch exists because a wrong power pin can damage hardware. Nothing is installed until it is on. Until then the **Presets** button under "Next" is greyed out, and the Build & Install page shows "Confirm the wiring to unlock the install."
+This switch exists because a wrong power pin can damage hardware. Nothing is installed until it is on. Until then the **Presets** button under "Next" is grayed out, and the Build & Install page shows "Confirm the wiring to unlock the install."
 
 The confirmation belongs to the layout you checked. If you change the board or any blade, it turns off again. If you change it back, it comes back. A saber that was set up before this check existed asks you once: "Hiltwright now records which wiring you checked. Check it once more to go on."
 

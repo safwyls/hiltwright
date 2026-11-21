@@ -12,7 +12,7 @@ The Style editor is where you make a style of your own. It has two ways to work,
 
 Use the **Simple** and **Full** tabs at the top, beside the style's name.
 
-- **Simple** builds a style from a few plain blocks. It covers a colour, a handful of effects and the ignition.
+- **Simple** builds a style from a few plain blocks. It covers a color, a handful of effects and the ignition.
 - **Full** shows every ProffieOS layer, nested however you like. It reaches everything the official ProffieOS style editor does.
 
 You can open a Simple style in Full at any time: press **open this style in the full editor**. The copy in Full starts from what the Simple style makes. The two halves are kept separately, so changes in one are not copied back to the other.
@@ -21,11 +21,11 @@ You can open a Simple style in Full at any time: press **open this style in the 
 
 A Simple style is a stack, read from the bottom up.
 
-- **Blade** is what the blade does by itself, underneath everything. Choose Steady, Pulsing, Humming, Unstable, Fire, Energy flow, Two-tone, Rainbow, Lava lamp or Horizon. Each has its own colours and sliders.
+- **Blade** is what the blade does by itself, underneath everything. Choose Steady, Pulsing, Humming, Unstable, Fire, Energy flow, Two-tone, Rainbow, Lava lamp or Horizon. Each has its own colors and sliders.
 - **Effects** sit on top. The top one paints over the ones below, as in an image editor's layers. Press **Add an effect** to choose from Blaster deflect, Clash, Lockup, Drag, Lightning block, Stab, Swing flare, Emitter flare, Stardust, Core pulse and Hot tip. The arrows move an effect up or down the stack and the bin removes it.
 - **Ignition** is how the blade comes on: Wipe, Spark tip, From the middle, Fade or Instant. **Retraction** is how it goes out, with the same choices.
 
-Every colour in a Simple style is a live setting once the style is on a saber. You can change it on [Presets](presets.html) without a rebuild. The sliders are fixed into the style when it is built. If two colours share one live setting, an amber note names them.
+Every color in a Simple style is a live setting once the style is on a saber. You can change it on [Presets](presets.html) without a rebuild. The sliders are fixed into the style when it is built. If two colors share one live setting, an amber note names them.
 
 > **Note:** Ignition and retraction times are live settings on the saber (300 and 500 ms unless you change them on Presets), so they are not set in the editor.
 
@@ -41,7 +41,7 @@ On the left is the list of layers, with **Add** at the top and the reminder "Top
 
 Pick a layer and its card says in a sentence what it does. Most cards are split into three parts:
 
-- **What** is the colour or pattern the layer paints. You can use a plain colour or choose a pattern. A switch, **Changeable on Presets without a rebuild**, makes the colour a live setting, and a list lets you pick which one (base colour, clash colour, lockup colour and so on).
+- **What** is the color or pattern the layer paints. You can use a plain color or choose a pattern. A switch, **Changeable on Presets without a rebuild**, makes the color a live setting, and a list lets you pick which one (base color, clash color, lockup color and so on).
 - **Where** is the part of the blade it covers: **Whole blade**, **A spot**, **From the hilt** or **From the tip**. A spot has a **Position** (0% is the hilt, 100% the tip) and a **Width**. From the hilt and from the tip have a reach and a **Soft edge**. Whole blade has a **Strength**: 100% is solid.
 - **When** is when it shows: **Always**, **On an effect** or **During a lockup**. Choose which effect or lockup, and how it **Comes in** and **Goes out**.
 

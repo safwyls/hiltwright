@@ -12,7 +12,7 @@ The Demo room is a dark room with a saber in it. You pick a style and a sound fo
 
 The panel on the left has four tabs: **Blade**, **Sound**, **Saber** and **Help**.
 
-**Blade** holds the style. Pick one from **Hiltwright**, which are the built-in styles, or from **Your styles**, which are the ones you built or pasted. A short description sits under the name, with any preview warning. The **Colours** swatches change the style's colours for this session only: "Tried here only; the saber's own colours are set on Presets."
+**Blade** holds the style. Pick one from **Hiltwright**, which are the built-in styles, or from **Your styles**, which are the ones you built or pasted. A short description sits under the name, with any preview warning. The **Colours** swatches change the style's colors for this session only: "Tried here only; the saber's own colours are set on Presets."
 
 **Sound** holds the font. **Fonts from** lists where fonts can come from:
 
@@ -25,7 +25,7 @@ Pick a font and Hiltwright reads and decodes its sounds. When it is ready, the r
 
 ### From your saber
 
-When you have a saber in the Armory with presets, the **Blade** tab shows a section headed **From** and the saber's name, with a preset picker and **Load**. It sets the style, its colours and the font from that preset, as they are on the saber. On a staff hilt it loads the second blade too.
+When you have a saber in the Armory with presets, the **Blade** tab shows a section headed **From** and the saber's name, with a preset picker and **Load**. It sets the style, its colors and the font from that preset, as they are on the saber. On a staff hilt it loads the second blade too.
 
 If it cannot, it says why. For example, "Hiltwright cannot tell which style ... runs on blade ...", or that the style cannot be shown in the room yet. The blade keeps what it showed before. If the preset's font is not in the library, the note says so: "The font ... is not in the Font library. Add it there to hear it here."
 
@@ -75,11 +75,11 @@ To pose the blade exactly, open the **Saber** tab and use **Point the blade**. *
 The **Scene** panel in the bottom right shapes the room. **Reset** puts everything back.
 
 - **Light**: **Glow**, **Glow spread**, **Blade heat**, **Blade light**, **Room light** (all the way down, only the blade lights the scene) and **Haze**. There is also a **Floor grid** switch.
-- **Blade**: **Length** in inches, **Strip** (LEDs per metre of strip, which sets how many LEDs the style runs on), **Diameter**, **Blade shown when off**, and **Second blade (staff)** for a staff hilt.
+- **Blade**: **Length** in inches, **Strip** (LEDs per meter of strip, which sets how many LEDs the style runs on), **Diameter**, **Blade shown when off**, and **Second blade (staff)** for a staff hilt.
 - **Model**: **Hilt model** chooses the built-in hilt, one of yours, or one from a pack. You can load a `.glb`, `.obj` or `.stl` file of your own. Then **Fit and placement** controls let you set the hilt's length, turn, sideways shift, how deep the blade sits, and its lean. If the blade leaves the other end, switch **Blade at the other end**. **Copy fit** copies the numbers as text. Your hilts and the scene settings are kept between visits. A hilt can carry its maker's credit.
 
 ## How faithful is it
 
-The blade runs the same per-LED maths as the saber, so colours, timing and effects are close. The sound follows ProffieOS's own rules for sound fonts: the hum loops from ignition to retraction, ignition and retraction sounds chain as on the saber, clash, blast and stab layer on top, and lockups play their begin, loop and end sounds. Swings use the SmoothSwing method, or a whole swing sound each time the blade passes a swing speed for fonts without it. A font with drag sounds but no melt sounds plays drag for melt.
+The blade runs the same per-LED math as the saber, so colors, timing and effects are close. The sound follows ProffieOS's own rules for sound fonts: the hum loops from ignition to retraction, ignition and retraction sounds chain as on the saber, clash, blast and stab layer on top, and lockups play their begin, loop and end sounds. Swings use the SmoothSwing method, or a whole swing sound each time the blade passes a swing speed for fonts without it. A font with drag sounds but no melt sounds plays drag for melt.
 
 It is a good guide to the saber. Speakers, volume and the real hum will still differ. Parts of a style the preview models roughly are flagged under the style's description.

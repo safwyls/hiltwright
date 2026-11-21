@@ -9,22 +9,22 @@ related_targets: ["assets/site.css","build.mjs"]
 
 Scope: the whole public site: home, features, download, walkthrough, docs, 404. Mode: Persuade on the promo pages, Read on the docs and walkthrough.
 
-Audience and job: Proffieboard saber owners who do not want to write code. The visitor's one action is to download the beta. Proof on hand: the app in ten themes, the live blade simulator, the walkthrough, the docs. Constraints confirmed by the owner on 2026-11-19: the site must not wear any one app theme, it must show all of them through pictures, and the walkthrough pictures are retaken in Station.
+Audience and job: Proffieboard saber owners who do not want to write code. The visitor's one action is to download the beta. Proof on hand: the app in ten themes, the live blade simulator, the walkthrough, the docs. Constraints confirmed by the owner: the site must not wear any one app theme and shows all of them through pictures (2026-11-19); it must keep its distance from SaberBench's navy and cyan, and it should read as a sabersmith's bench aboard a ship, not a woodworker's shop (2026-11-20).
 
 ## Direction contract
 
-THESIS: The site is a stack of painted planes with the app on the nearest one. It refuses the dark product page with one screenshot beside the copy.
+THESIS: The site is a sabersmith's bench in a ship's bay, with the app laid out on it as a deck of ten windows. It refuses the single screenshot beside the copy, and it refuses a painting behind the app, because the app's own pages already show their paintings.
 
-OWN-WORLD: Deep umber ground (#17110c). The seven theme paintings are the major surfaces, never decoration on a neutral page. Lettering sits on a clear cel in front: Gloock for titles in warm cel white (#f6efe2), Hanken Grotesk for reading. One accent, lamp amber (#f2b23e), marks the primary action only. Controls are pill-shaped cel tabs with a painted edge; the app always appears as a floating window with a soft shadow, never in a device frame.
+OWN-WORLD: Graphite ground (#121416) with gunmetal steps, cool white lettering (#eef1f3), Gloock for titles and Hanken Grotesk for reading. Controls are pills with a hairline edge. One accent, which is not fixed: it is the accent of the theme the visitor has chosen, and it colours the primary action, the blade in the Hiltwright mark, the tab icon and the one indicator light in the hero backdrop. Amber means caution only. The app always appears as a floating window, never in a device frame. Theme paintings appear inside the windows, as clear bands in tall sections, and shaded behind page heads.
 
-STORY: The visitor sees ProffieOS set up without a compiler, sees the same app in ten different worlds, tries a blade, reads the four steps, and downloads the beta knowing its limits.
+STORY: The visitor sees ProffieOS set up with no code, sees the same app in ten themes and picks one, watches the site take that theme's colour, tries a blade, reads the four steps, and downloads the beta knowing who it is for.
 
-FIRST VIEWPORT: One painting fills the screen. The other themes stand at the right as slanted slices of their own paintings. The title, the lede and Get the beta sit on the left cel; the app window floats lower centre and shows the theme whose plane is in front. A row of ten theme names runs along the bottom.
+FIRST VIEWPORT: A dark, out-of-focus bench in a ship's bay fills the screen. The title, the lede and Get the beta sit on the left. On the right, ten app windows stand in a deck that steps up and to the right, the chosen theme sharp in front and the rest smaller, dimmer and softer. A row of ten theme names runs along the bottom. The deck opens on Crait.
 
-SIGNATURE INTERACTION: Rack focus. Choosing a theme (a slice or its name) blurs the front plane away, brings the chosen plane forward sharp, and swaps the app window to that theme. Motion grammar: planes drift at different speeds as the page scrolls; everything holds still under reduced motion.
+SIGNATURE INTERACTION: Choosing a theme, by its name, its window or the arrow keys, brings that window to the front of the deck, and the site's accent, its mark and the backdrop's indicator light change to that theme's colour and stay that way on every page. Motion grammar: windows slide and re-focus on one easing curve; the deck lifts as the page scrolls; everything holds still under reduced motion.
 
-FORM: Painted Planes, a dealt challenger (multiplane cel animation), chosen by the owner over the assigned direction. seed:8baa1ea7b4a2e89c
+FORM: The deck, chosen by the owner on 2026-11-20 over the earlier Painted Planes stage after the app window kept falling into its painted background. seed: none (pinned) "The deck"
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
-Unresolved: Hoth, Coruscant, Naboo and Kashyyyk paintings show film vehicles, insignia or characters; the owner accepted that for the app and chose this direction knowing it puts them on the public site.
+Unresolved: the Hoth, Coruscant, Naboo and Kashyyyk paintings show film vehicles, insignia or characters, which the owner accepted for the app and for the site. Choosing the Original theme turns the accent cyan, which edges back toward the look the site is meant to avoid. Three themes have amber or gold accents close to the caution amber. No finish review has been run on the deck, the graphite palette or the themed accent. The hero backdrop (assets/stage.webp) was generated by the owner in ChatGPT and carries no embedded provenance.

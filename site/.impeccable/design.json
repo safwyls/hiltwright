@@ -1,58 +1,61 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-20T00:00:00Z",
+  "generatedAt": "2026-11-20T12:00:00Z",
   "title": "Design System: Hiltwright website",
   "extensions": {
     "colorMeta": {
-      "ground": { "role": "neutral", "displayName": "Umber Ground", "canonical": "#17110c", "tonalRamp": ["oklch(15% 0.012 65)", "oklch(19% 0.015 65)", "oklch(28% 0.02 65)", "oklch(40% 0.025 68)", "oklch(55% 0.028 72)", "oklch(70% 0.026 78)", "oklch(84% 0.022 82)", "oklch(95% 0.015 85)"] },
-      "raised": { "role": "neutral", "displayName": "Raised Umber", "canonical": "#211911", "tonalRamp": ["oklch(15% 0.014 68)", "oklch(22% 0.018 68)", "oklch(30% 0.022 68)", "oklch(42% 0.026 70)", "oklch(56% 0.028 74)", "oklch(70% 0.026 78)", "oklch(84% 0.022 82)", "oklch(95% 0.015 85)"] },
-      "well": { "role": "neutral", "displayName": "Well", "canonical": "#0e0a07", "tonalRamp": ["oklch(14% 0.008 65)", "oklch(18% 0.012 65)", "oklch(26% 0.018 65)", "oklch(38% 0.022 68)", "oklch(52% 0.026 72)", "oklch(68% 0.025 78)", "oklch(83% 0.02 82)", "oklch(95% 0.014 85)"] },
-      "high": { "role": "neutral", "displayName": "High Umber", "canonical": "#2c2218", "tonalRamp": ["oklch(15% 0.014 70)", "oklch(26% 0.022 70)", "oklch(34% 0.026 70)", "oklch(45% 0.03 72)", "oklch(58% 0.03 75)", "oklch(72% 0.027 78)", "oklch(85% 0.022 82)", "oklch(95% 0.015 85)"] },
-      "cel": { "role": "neutral", "displayName": "Cel White", "canonical": "#f6efe2", "tonalRamp": ["oklch(16% 0.012 80)", "oklch(30% 0.018 82)", "oklch(45% 0.022 84)", "oklch(60% 0.024 85)", "oklch(74% 0.024 85)", "oklch(85% 0.022 85)", "oklch(92% 0.02 86)", "oklch(95.5% 0.018 86)"] },
-      "dim": { "role": "neutral", "displayName": "Dim Cel", "canonical": "#d3c9b6", "tonalRamp": ["oklch(16% 0.012 82)", "oklch(30% 0.02 84)", "oklch(45% 0.026 85)", "oklch(60% 0.03 86)", "oklch(72% 0.03 86)", "oklch(83% 0.028 86)", "oklch(90% 0.022 86)", "oklch(95% 0.016 86)"] },
-      "mute": { "role": "neutral", "displayName": "Mute", "canonical": "#a99e86", "tonalRamp": ["oklch(16% 0.014 85)", "oklch(30% 0.024 86)", "oklch(44% 0.032 87)", "oklch(57% 0.038 88)", "oklch(70% 0.04 88)", "oklch(81% 0.034 88)", "oklch(89% 0.026 88)", "oklch(95% 0.016 88)"] },
-      "lamp": { "role": "primary", "displayName": "Lamp Amber", "canonical": "#f2b23e", "tonalRamp": ["oklch(16% 0.035 70)", "oklch(30% 0.07 72)", "oklch(45% 0.105 74)", "oklch(60% 0.135 76)", "oklch(72% 0.15 78)", "oklch(80% 0.148 80)", "oklch(88% 0.1 84)", "oklch(95% 0.045 88)"] },
-      "lamp-hi": { "role": "primary", "displayName": "Lamp Highlight", "canonical": "#ffc960", "tonalRamp": ["oklch(16% 0.035 74)", "oklch(30% 0.07 76)", "oklch(45% 0.1 78)", "oklch(60% 0.13 80)", "oklch(74% 0.145 82)", "oklch(86% 0.14 84)", "oklch(91% 0.09 86)", "oklch(95% 0.045 88)"] },
-      "lamp-ink": { "role": "primary", "displayName": "Lamp Ink", "canonical": "#231500", "tonalRamp": ["oklch(15% 0.03 70)", "oklch(21% 0.045 72)", "oklch(32% 0.065 74)", "oklch(46% 0.09 76)", "oklch(60% 0.11 78)", "oklch(74% 0.1 80)", "oklch(86% 0.07 84)", "oklch(95% 0.035 88)"] },
+      "ground": { "role": "neutral", "displayName": "Graphite Ground", "canonical": "#121416", "tonalRamp": ["oklch(15% 0.004 250)", "oklch(19% 0.005 250)", "oklch(28% 0.007 250)", "oklch(40% 0.009 250)", "oklch(55% 0.01 250)", "oklch(70% 0.009 250)", "oklch(84% 0.007 250)", "oklch(95% 0.004 250)"] },
+      "raised": { "role": "neutral", "displayName": "Raised Graphite", "canonical": "#1a1d20", "tonalRamp": ["oklch(15% 0.005 250)", "oklch(23% 0.007 250)", "oklch(31% 0.008 250)", "oklch(43% 0.01 250)", "oklch(57% 0.011 250)", "oklch(71% 0.01 250)", "oklch(84% 0.007 250)", "oklch(95% 0.004 250)"] },
+      "well": { "role": "neutral", "displayName": "Well", "canonical": "#0a0b0d", "tonalRamp": ["oklch(14% 0.004 265)", "oklch(18% 0.005 265)", "oklch(26% 0.007 265)", "oklch(38% 0.009 262)", "oklch(52% 0.01 258)", "oklch(68% 0.009 254)", "oklch(83% 0.007 250)", "oklch(95% 0.004 250)"] },
+      "high": { "role": "neutral", "displayName": "High Graphite", "canonical": "#252a2e", "tonalRamp": ["oklch(15% 0.006 240)", "oklch(28% 0.01 240)", "oklch(36% 0.011 240)", "oklch(47% 0.012 240)", "oklch(60% 0.012 240)", "oklch(73% 0.01 240)", "oklch(85% 0.008 240)", "oklch(95% 0.004 240)"] },
+      "cel": { "role": "neutral", "displayName": "Cel White", "canonical": "#eef1f3", "tonalRamp": ["oklch(16% 0.004 240)", "oklch(30% 0.006 240)", "oklch(45% 0.007 240)", "oklch(60% 0.007 240)", "oklch(74% 0.006 240)", "oklch(85% 0.005 240)", "oklch(92% 0.004 240)", "oklch(95.5% 0.003 240)"] },
+      "dim": { "role": "neutral", "displayName": "Dim", "canonical": "#c3c9ce", "tonalRamp": ["oklch(16% 0.005 240)", "oklch(30% 0.008 240)", "oklch(45% 0.01 240)", "oklch(60% 0.011 240)", "oklch(72% 0.011 240)", "oklch(83% 0.009 240)", "oklch(90% 0.007 240)", "oklch(95% 0.004 240)"] },
+      "mute": { "role": "neutral", "displayName": "Mute", "canonical": "#8f979e", "tonalRamp": ["oklch(16% 0.006 240)", "oklch(30% 0.01 240)", "oklch(44% 0.013 240)", "oklch(57% 0.015 240)", "oklch(67% 0.015 240)", "oklch(79% 0.012 240)", "oklch(89% 0.008 240)", "oklch(95% 0.004 240)"] },
+      "accent": { "role": "primary", "displayName": "Theme Accent (fallback: deep blade red)", "canonical": "#b8141e", "tonalRamp": ["oklch(16% 0.05 25)", "oklch(28% 0.1 25)", "oklch(40% 0.15 25)", "oklch(50% 0.185 25)", "oklch(56% 0.2 25)", "oklch(68% 0.16 24)", "oklch(84% 0.08 22)", "oklch(95% 0.025 20)"] },
+      "accent-hi": { "role": "primary", "displayName": "Accent Highlight", "canonical": "#c33a42", "tonalRamp": ["oklch(16% 0.05 24)", "oklch(28% 0.1 24)", "oklch(42% 0.15 24)", "oklch(54% 0.185 24)", "oklch(62% 0.195 24)", "oklch(72% 0.15 23)", "oklch(86% 0.075 22)", "oklch(95% 0.025 20)"] },
+      "accent-ink": { "role": "primary", "displayName": "Accent Ink", "canonical": "#fff6f4", "tonalRamp": ["oklch(16% 0.02 30)", "oklch(30% 0.03 30)", "oklch(45% 0.035 30)", "oklch(60% 0.035 30)", "oklch(74% 0.03 30)", "oklch(86% 0.022 30)", "oklch(93% 0.015 30)", "oklch(97.5% 0.01 30)"] },
+      "warn": { "role": "secondary", "displayName": "Caution Amber", "canonical": "#f2b23e", "tonalRamp": ["oklch(16% 0.035 70)", "oklch(30% 0.07 72)", "oklch(45% 0.105 74)", "oklch(60% 0.135 76)", "oklch(72% 0.15 78)", "oklch(80% 0.148 80)", "oklch(88% 0.1 84)", "oklch(95% 0.045 88)"] },
+      "warn-hi": { "role": "secondary", "displayName": "Caution Highlight", "canonical": "#ffc960", "tonalRamp": ["oklch(16% 0.035 74)", "oklch(30% 0.07 76)", "oklch(45% 0.1 78)", "oklch(60% 0.13 80)", "oklch(74% 0.145 82)", "oklch(86% 0.14 84)", "oklch(91% 0.09 86)", "oklch(95% 0.045 88)"] },
       "good": { "role": "secondary", "displayName": "Leaf Green", "canonical": "#a6d9a0", "tonalRamp": ["oklch(16% 0.03 145)", "oklch(30% 0.06 145)", "oklch(45% 0.085 145)", "oklch(60% 0.105 145)", "oklch(72% 0.11 145)", "oklch(83% 0.1 145)", "oklch(90% 0.065 145)", "oklch(95% 0.035 145)"] },
       "bad": { "role": "secondary", "displayName": "Ember", "canonical": "#ff9a86", "tonalRamp": ["oklch(16% 0.04 30)", "oklch(30% 0.08 30)", "oklch(45% 0.12 30)", "oklch(60% 0.15 30)", "oklch(70% 0.15 30)", "oklch(78% 0.13 30)", "oklch(88% 0.07 30)", "oklch(95% 0.03 30)"] },
-      "line": { "role": "neutral", "displayName": "Line", "canonical": "rgba(246,239,226,.14)" },
-      "line-strong": { "role": "neutral", "displayName": "Strong Line", "canonical": "rgba(246,239,226,.32)" }
+      "line": { "role": "neutral", "displayName": "Line", "canonical": "rgba(238,241,243,.14)" },
+      "line-strong": { "role": "neutral", "displayName": "Strong Line", "canonical": "rgba(238,241,243,.32)" }
     },
     "typographyMeta": {
       "display": { "displayName": "Display", "purpose": "The h1 on the home stage. Page heads cap at 64px, docs at 48px." },
       "headline": { "displayName": "Headline", "purpose": "The h2 that opens a band." },
       "title": { "displayName": "Title", "purpose": "The heading beside a screenshot in a feature row; walkthrough step titles." },
-      "subhead": { "displayName": "Subhead", "purpose": "h3 in steps and ruled cards, in Hanken Grotesk 700." },
+      "subhead": { "displayName": "Subhead", "purpose": "h3 in steps and ruled cards, and the heading of a warning card, in Hanken Grotesk 700." },
       "lede": { "displayName": "Lede", "purpose": "The paragraph under a display title, max 60ch." },
       "body": { "displayName": "Body", "purpose": "Prose. 16.5px under 900px; 68ch on promo pages, 72ch in docs." },
       "label": { "displayName": "Label", "purpose": "Controls, nav links and small headings. Sentence case, weight 600." },
-      "fine": { "displayName": "Fine", "purpose": "Fine print, captions, counters, table heads, in Mute; Dim Cel on a page head or the stage, where it sits on a painting." },
-      "numeral": { "displayName": "Numeral", "purpose": "The step number in a travelled path." },
+      "fine": { "displayName": "Fine", "purpose": "Fine print, captions, counters, table heads, in Mute; Dim on a page head or the stage, where it sits on a painting." },
+      "numeral": { "displayName": "Numeral", "purpose": "The step number in a row of steps." },
       "mono": { "displayName": "Mono", "purpose": "Code and keyboard keys only." }
     },
     "shadows": [
-      { "name": "stage-window", "value": "0 34px 70px rgba(0,0,0,.62), 0 0 0 1px rgba(246,239,226,.22)", "purpose": "The app window on the home stage." },
-      { "name": "window", "value": "0 30px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(246,239,226,.32)", "purpose": "Screenshots in feature rows and the walkthrough; the blade demo at .5 alpha." },
-      { "name": "inline-shot", "value": "0 18px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(246,239,226,.32)", "purpose": "Pictures inside docs articles." },
-      { "name": "popover", "value": "0 20px 50px rgba(0,0,0,.7)", "purpose": "The docs search results." },
-      { "name": "lamp-lift", "value": "0 8px 22px rgba(0,0,0,.4)", "purpose": "Under a primary button, so it reads over a painting." },
-      { "name": "cel-title", "value": "0 2px 24px rgba(0,0,0,.55)", "purpose": "text-shadow on the stage title; smaller stage text uses 0 1px 10px at .7 and 0 1px 8px at .8." },
-      { "name": "shade-stage", "value": "linear-gradient(90deg, rgba(14,10,7,.93), rgba(14,10,7,.8) 36%, rgba(14,10,7,0) 64%), linear-gradient(0deg, rgba(14,10,7,.86), rgba(14,10,7,0) 26%), linear-gradient(180deg, rgba(14,10,7,.8), rgba(14,10,7,0) 150px)", "purpose": "Shade under the lettering, the theme names and the top bar on the front plane of the stage." },
-      { "name": "shade-stage-narrow", "value": "linear-gradient(180deg, rgba(14,10,7,.78), rgba(14,10,7,.7) 50%, rgba(14,10,7,.92))", "purpose": "The stage shade under 980px." },
-      { "name": "shade-pagehead", "value": "linear-gradient(90deg, rgba(14,10,7,.94), rgba(14,10,7,.7) 60%, rgba(14,10,7,.35))", "purpose": "Shade over a page head's painting." },
-      { "name": "shade-scene", "value": "linear-gradient(90deg, rgba(14,10,7,.92), rgba(14,10,7,.72) 55%, rgba(14,10,7,.5))", "purpose": "Shade over a painting behind a whole band." },
-      { "name": "shade-pagehead-narrow", "value": "linear-gradient(rgba(14,10,7,.78), rgba(14,10,7,.9))", "purpose": "The page head shade under 900px, where the lettering runs the full width." },
-      { "name": "shade-scene-narrow", "value": "linear-gradient(rgba(14,10,7,.8), rgba(14,10,7,.86))", "purpose": "The closing scene shade under 900px." }
+      { "name": "deck-front", "value": "0 40px 80px rgba(0,0,0,.8), 0 10px 24px rgba(0,0,0,.55), 0 0 0 1px rgba(238,241,243,.36)", "purpose": "The front window of the deck: a wide soft layer, a close dark layer and the brightest hairline on the site." },
+      { "name": "deck-back", "value": "0 12px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(238,241,243,.26)", "purpose": "Every window behind the front one on the deck." },
+      { "name": "window", "value": "0 30px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(238,241,243,.32)", "purpose": "Screenshots in feature rows and the walkthrough; the blade demo at .5 alpha." },
+      { "name": "inline-shot", "value": "0 18px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(238,241,243,.32)", "purpose": "Pictures inside docs articles." },
+      { "name": "popover", "value": "0 20px 50px rgba(0,0,0,.7)", "purpose": "The docs search results, with a 1px Strong Line border in place of the ring." },
+      { "name": "primary-lift", "value": "0 8px 22px rgba(0,0,0,.4)", "purpose": "Under a primary button, so it reads over a painting." },
+      { "name": "lettering-title", "value": "0 2px 24px rgba(0,0,0,.55)", "purpose": "text-shadow on the stage title; smaller stage text uses 0 1px 10px at .7 and 0 1px 8px at .8; the clear top bar's links use 0 1px 8px at .9." },
+      { "name": "shade-stage", "value": "linear-gradient(90deg, rgba(10,11,13,.45), rgba(10,11,13,.08) 46%, rgba(10,11,13,0)), linear-gradient(0deg, rgba(10,11,13,.8), rgba(10,11,13,0) 22%), linear-gradient(180deg, rgba(10,11,13,.5), rgba(10,11,13,0) 130px)", "purpose": "Shades over the stage backdrop: at the left for the lettering, at the foot for the theme names, at the head for the top bar." },
+      { "name": "shade-stage-narrow", "value": "linear-gradient(rgba(10,11,13,.72), rgba(10,11,13,.5) 55%, rgba(10,11,13,.8))", "purpose": "The stage shade under 980px." },
+      { "name": "shade-pagehead", "value": "linear-gradient(90deg, rgba(10,11,13,.94), rgba(10,11,13,.7) 60%, rgba(10,11,13,.35))", "purpose": "Shade over a page head's painting." },
+      { "name": "shade-scene", "value": "linear-gradient(90deg, rgba(10,11,13,.92), rgba(10,11,13,.72) 55%, rgba(10,11,13,.5))", "purpose": "Shade over the painting behind the closing band." },
+      { "name": "shade-pagehead-narrow", "value": "linear-gradient(rgba(10,11,13,.78), rgba(10,11,13,.9))", "purpose": "The page head shade under 900px, where the lettering runs the full width." },
+      { "name": "shade-scene-narrow", "value": "linear-gradient(rgba(10,11,13,.8), rgba(10,11,13,.86))", "purpose": "The closing band's shade under 900px." }
     ],
     "motion": [
-      { "name": "ease", "value": "cubic-bezier(.16,1,.3,1)", "purpose": "The one easing curve: plane changes and the button press." },
-      { "name": "rack", "value": ".9s cubic-bezier(.16,1,.3,1): blur(16px) brightness(.9) to blur(0) brightness(1), with clip-path re-seating over the same .9s", "purpose": "Rack focus when a theme plane comes to the front. A theme with no painting rests at blur(10px) brightness(.72) saturate(1.2) in front and blur(3px) brightness(1.1) as a slice." },
-      { "name": "window-swap", "value": "opacity .35s", "purpose": "The stage window fades out, changes picture, fades in when loaded." },
-      { "name": "state", "value": ".2s", "purpose": "Background, border and transform on controls; .25s for the progress bar; .3s for the top bar turning solid; .5s for slice brightness." },
-      { "name": "drift", "value": "scroll(root) 0 to 100svh: background-position shifts (slot + 2) * 14px", "purpose": "Planes drift at different speeds as the page scrolls, where scroll-driven animation is supported." },
-      { "name": "lift", "value": "scroll(root) 0 to 100svh: translateY(-60px)", "purpose": "The stage window rises as the page scrolls." },
-      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce", "purpose": "No rack, no drift, no lift, no transitions on planes or the window, no smooth scrolling." }
+      { "name": "ease", "value": "cubic-bezier(.16,1,.3,1)", "purpose": "The one easing curve: the deck's slide and the button press." },
+      { "name": "deck-slide", "value": "transform .7s cubic-bezier(.16,1,.3,1)", "purpose": "A deck window moving to its new place: translate(calc(var(--i) * 30px), calc(var(--i) * -44px)) scale(calc(1 - var(--i) * .035)). Under 980px the step is 9px, -13px and 3%." },
+      { "name": "deck-focus", "value": "filter .5s", "purpose": "A deck window's softness and brightness following its place: blur(min(2.4px, calc(var(--i) * .45px))) brightness(max(.5, calc(1 - var(--i) * .075))). Hover removes the filter." },
+      { "name": "deck-lift", "value": "scroll(root) 0 to 100svh: translateY(-60px)", "purpose": "The whole deck rises as the page scrolls, where scroll-driven animation is supported; not under 980px." },
+      { "name": "accent-change", "value": ".4s", "purpose": "The mark's blade (color) and the stage's hue layer (background-color) changing to a newly chosen accent." },
+      { "name": "state", "value": ".2s", "purpose": "Background, border and transform on controls; .25s for the progress bar; .3s for the home top bar turning solid." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce", "purpose": "No slide or filter transition on deck windows, no lift, no smooth scrolling." }
     ],
     "breakpoints": [
       { "name": "phone", "value": "560px" },
@@ -67,131 +70,131 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The lamp-filled pill, for the primary action only: Get the beta, Download. One per group of controls.",
-      "html": "<a class=\"ds-btn ds-btn-primary\" href=\"#\">Get the beta</a>",
-      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;text-decoration:none;color:var(--cel,#f6efe2);background:rgba(23,17,12,.42);border:1.5px solid var(--line2,rgba(246,239,226,.32));border-radius:999px;padding:11px 22px;min-height:46px;cursor:pointer;transition:background .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-btn:active{transform:translateY(1px)}.ds-btn:disabled{opacity:.4;cursor:default;pointer-events:none}.ds-btn:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px}.ds-btn-primary{background:var(--lamp,#f2b23e);color:var(--lamp-ink,#231500);border-color:var(--lamp,#f2b23e);box-shadow:0 8px 22px rgba(0,0,0,.4)}.ds-btn-primary:hover{background:var(--lamp-hi,#ffc960);border-color:var(--lamp-hi,#ffc960)}"
+      "description": "The accent-filled pill, for the primary action only: Get the beta, Download. One per group of controls. Its colors follow the chosen theme; the fallback shown here is the stylesheet's deep red.",
+      "html": "<a class='ds-btn ds-btn-primary' href='#'>Get the beta</a>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 16px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;text-decoration:none;color:var(--cel,#eef1f3);background:rgba(18,20,22,.42);border:1.5px solid var(--line2,rgba(238,241,243,.32));border-radius:999px;padding:11px 22px;min-height:46px;cursor:pointer;transition:background .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid var(--cel,#eef1f3);outline-offset:3px}.ds-btn-primary{background:var(--lamp,#b8141e);color:var(--lamp-ink,#fff6f4);border-color:var(--lamp,#b8141e);box-shadow:0 8px 22px rgba(0,0,0,.4)}.ds-btn-primary:hover{background:var(--lamp-hi,#c33a42);border-color:var(--lamp-hi,#c33a42)}"
     },
     {
-      "name": "Cel Tab Button",
+      "name": "Default Button",
       "kind": "button",
       "refersTo": "button",
-      "description": "The default button: a clear pill with a painted edge, shown here in the big size.",
-      "html": "<a class=\"ds-tab\" href=\"#\">Take the walkthrough</a>",
-      "css": ".ds-tab{display:inline-flex;align-items:center;justify-content:center;font:600 18px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;text-decoration:none;color:var(--cel,#f6efe2);background:rgba(23,17,12,.42);border:1.5px solid var(--line2,rgba(246,239,226,.32));border-radius:999px;padding:15px 30px;min-height:56px;cursor:pointer;transition:background .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-tab:hover{border-color:var(--cel,#f6efe2);background:rgba(246,239,226,.1)}.ds-tab:active{transform:translateY(1px)}.ds-tab:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px}"
-    },
-    {
-      "name": "Text Link",
-      "kind": "custom",
-      "description": "Links are cel with a half-strength cel underline; hover goes to pure white. Never amber.",
-      "html": "<p class=\"ds-prose\">Read the <a href=\"#\">install guide</a> first.</p>",
-      "css": ".ds-prose{font:400 17px/1.6 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#f6efe2);background:var(--ground,#17110c);padding:12px;margin:0}.ds-prose a{color:var(--cel,#f6efe2);text-decoration-color:rgba(246,239,226,.5);text-decoration-thickness:1.5px;text-underline-offset:4px}.ds-prose a:hover{color:#fff;text-decoration-color:#fff}.ds-prose a:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px;border-radius:4px}"
+      "description": "The default button: a clear pill with a white edge, shown here in the big size.",
+      "html": "<a class='ds-tab' href='#'>Take the walkthrough</a>",
+      "css": ".ds-tab{display:inline-flex;align-items:center;justify-content:center;font:600 18px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;text-decoration:none;color:var(--cel,#eef1f3);background:rgba(18,20,22,.42);border:1.5px solid var(--line2,rgba(238,241,243,.32));border-radius:999px;padding:15px 30px;min-height:56px;cursor:pointer;transition:background .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-tab:hover{border-color:var(--cel,#eef1f3);background:rgba(238,241,243,.1)}.ds-tab:active{transform:translateY(1px)}.ds-tab:focus-visible{outline:2px solid var(--cel,#eef1f3);outline-offset:3px}"
     },
     {
       "name": "Choice Pills",
       "kind": "chip",
       "refersTo": "choice-pill",
-      "description": "Theme names, jump links and chapters. The selected one inverts to cel white.",
-      "html": "<div class=\"ds-names\"><button class=\"ds-name\" aria-checked=\"true\">Ninth</button><button class=\"ds-name\" aria-checked=\"false\">Station</button><button class=\"ds-name\" aria-checked=\"false\">Hull</button></div>",
-      "css": ".ds-names{display:flex;gap:8px;background:var(--ground,#17110c);padding:12px}.ds-name{font:600 15px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#f6efe2);background:rgba(14,10,7,.55);border:1.5px solid var(--line2,rgba(246,239,226,.32));border-radius:999px;padding:8px 16px;min-height:40px;cursor:pointer;white-space:nowrap;transition:background .2s,border-color .2s}.ds-name:hover{border-color:var(--cel,#f6efe2)}.ds-name[aria-checked=true]{background:var(--cel,#f6efe2);color:var(--ground,#17110c);border-color:var(--cel,#f6efe2)}.ds-name:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px}"
+      "description": "Theme names, jump links and chapters. The selected one inverts to white.",
+      "html": "<div class='ds-names'><button class='ds-name' aria-checked='true'>Crait</button><button class='ds-name' aria-checked='false'>Station</button><button class='ds-name' aria-checked='false'>Naboo</button></div>",
+      "css": ".ds-names{display:flex;gap:8px;background:var(--ground,#121416);padding:12px}.ds-name{font:600 15px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#eef1f3);background:rgba(10,11,13,.55);border:1.5px solid var(--line2,rgba(238,241,243,.32));border-radius:999px;padding:8px 16px;min-height:40px;cursor:pointer;white-space:nowrap;transition:background .2s,border-color .2s}.ds-name:hover{border-color:var(--cel,#eef1f3)}.ds-name[aria-checked=true]{background:var(--cel,#eef1f3);color:var(--ground,#121416);border-color:var(--cel,#eef1f3)}.ds-name:focus-visible{outline:2px solid var(--cel,#eef1f3);outline-offset:3px}"
     },
     {
       "name": "Keys",
       "kind": "chip",
       "refersTo": "key",
-      "description": "Blade demo effect keys. A dashed edge means hold rather than tap; pressed inverts to cel.",
-      "html": "<div class=\"ds-keys\"><button class=\"ds-key\">Clash</button><button class=\"ds-key ds-key-hold\">Lockup</button></div>",
-      "css": ".ds-keys{display:flex;gap:8px;background:var(--raised,#211911);padding:12px}.ds-key{font:600 15px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#f6efe2);background:var(--well,#0e0a07);border:1.5px solid var(--line2,rgba(246,239,226,.32));border-radius:999px;padding:9px 16px;min-height:44px;cursor:pointer}.ds-key:hover{border-color:var(--cel,#f6efe2)}.ds-key:active{background:var(--cel,#f6efe2);color:var(--ground,#17110c);border-color:var(--cel,#f6efe2)}.ds-key-hold{border-style:dashed}.ds-key:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px}"
+      "description": "Blade demo effect keys. A dashed edge means hold, not tap; pressed inverts to white.",
+      "html": "<div class='ds-keys'><button class='ds-key'>Clash</button><button class='ds-key ds-key-hold'>Lockup</button></div>",
+      "css": ".ds-keys{display:flex;gap:8px;background:var(--raised,#1a1d20);padding:12px}.ds-key{font:600 15px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#eef1f3);background:var(--well,#0a0b0d);border:1.5px solid var(--line2,rgba(238,241,243,.32));border-radius:999px;padding:9px 16px;min-height:44px;cursor:pointer}.ds-key:hover{border-color:var(--cel,#eef1f3)}.ds-key:active{background:var(--cel,#eef1f3);color:var(--ground,#121416);border-color:var(--cel,#eef1f3)}.ds-key-hold{border-style:dashed}.ds-key:focus-visible{outline:2px solid var(--cel,#eef1f3);outline-offset:3px}"
     },
     {
       "name": "Top Bar",
       "kind": "nav",
       "refersTo": "nav-link",
-      "description": "Wordmark, pill links, and the lamp-filled Download link.",
-      "html": "<div class=\"ds-bar\"><span class=\"ds-brand\">Hiltwright</span><nav class=\"ds-nav\"><a href=\"#\" aria-current=\"page\">Features</a><a href=\"#\">Walkthrough</a><a href=\"#\">Docs</a><a class=\"ds-get\" href=\"#\">Download</a></nav></div>",
-      "css": ".ds-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px;padding:0 24px;background:rgba(23,17,12,.86);border-bottom:1px solid var(--line,rgba(246,239,226,.14));font-family:'Hanken Grotesk','Segoe UI',system-ui,sans-serif}.ds-brand{color:var(--cel,#f6efe2);font-weight:700;font-size:17px;letter-spacing:.2em;text-transform:uppercase}.ds-nav{display:flex;align-items:center;gap:2px}.ds-nav a{color:var(--cel,#f6efe2);text-decoration:none;font-weight:600;font-size:15.5px;padding:8px 14px;border-radius:999px}.ds-nav a:hover{background:rgba(246,239,226,.12)}.ds-nav a[aria-current=page]{background:rgba(246,239,226,.16)}.ds-nav a:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px}.ds-nav .ds-get{margin-left:8px;background:var(--lamp,#f2b23e);color:var(--lamp-ink,#231500);padding:8px 18px}.ds-nav .ds-get:hover{background:var(--lamp-hi,#ffc960)}"
+      "description": "The mark with its blade in the accent, the wordmark, pill links, and the accent-filled Download link.",
+      "html": "<div class='ds-bar'><span class='ds-brand'><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' width='30' height='30' aria-hidden='true' focusable='false'><defs><linearGradient id='steel-ds' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#868c92'/><stop offset='.45' stop-color='#d5dade'/><stop offset='1' stop-color='#868c92'/></linearGradient><linearGradient id='grip-ds' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#181a1d'/><stop offset='.5' stop-color='#363b40'/><stop offset='1' stop-color='#181a1d'/></linearGradient><linearGradient id='tile-ds' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#1b1e21'/><stop offset='1' stop-color='#101214'/></linearGradient><radialGradient id='halo-ds' cx='.62' cy='.38' r='.6'><stop offset='0' stop-color='currentColor' stop-opacity='.22'/><stop offset='1' stop-color='currentColor' stop-opacity='0'/></radialGradient><clipPath id='inside-ds'><path d='M52.46 6H250V203.54L203.54 250H6V52.46Z'/></clipPath></defs><path d='M44 0H256V212L212 256H0V44Z' fill='#4b5158'/><path d='M52.46 6H250V203.54L203.54 250H6V52.46Z' fill='url(#tile-ds)'/><path d='M52.46 6H250V203.54L203.54 250H6V52.46Z' fill='url(#halo-ds)'/><g clip-path='url(#inside-ds)'><g transform='translate(128 128) rotate(45) scale(1.12) translate(-128 -109.5)' fill='none'><path d='M128 104V-4' stroke='currentColor' stroke-opacity='.14' stroke-width='46' stroke-linecap='round'/><path d='M128 104V-4' stroke='currentColor' stroke-opacity='.28' stroke-width='31' stroke-linecap='round'/><path d='M128 104V-4' stroke='currentColor' stroke-width='18' stroke-linecap='round'/><path d='M128 100V0' stroke='#ffffff' stroke-width='7' stroke-linecap='round'/><path d='M110 102h36v8l-4 12h-28l-4-12z' fill='url(#steel-ds)'/><rect x='117' y='122' width='22' height='10' fill='#2a2e32'/><rect x='113' y='132' width='30' height='68' fill='url(#grip-ds)'/><rect x='113' y='142' width='30' height='4' fill='#868c92'/><rect x='113' y='154' width='30' height='4' fill='#868c92'/><rect x='113' y='166' width='30' height='4' fill='#868c92'/><rect x='113' y='178' width='30' height='4' fill='#868c92'/><rect x='113' y='190' width='30' height='4' fill='#868c92'/><rect x='143' y='146' width='7' height='14' fill='currentColor'/><path d='M111 200h34v22l-8 10h-18l-8-10z' fill='url(#steel-ds)'/></g></g><path d='M44 0L0 44M256 212L212 256' stroke='currentColor' stroke-width='7' stroke-linecap='square'/></svg>Hiltwright</span><nav class='ds-nav'><a href='#' aria-current='page'>Features</a><a href='#'>Walkthrough</a><a href='#'>Docs</a><a class='ds-get' href='#'>Download</a></nav></div>",
+      "css": ".ds-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px;padding:0 24px;background:rgba(18,20,22,.86);border-bottom:1px solid var(--line,rgba(238,241,243,.14));font-family:'Hanken Grotesk','Segoe UI',system-ui,sans-serif}.ds-brand{display:flex;align-items:center;gap:12px;color:var(--cel,#eef1f3);font-weight:700;font-size:17px;letter-spacing:.2em;text-transform:uppercase}.ds-brand svg{flex:none;width:30px;height:30px;color:var(--lamp,#b8141e);transition:color .4s}.ds-nav{display:flex;align-items:center;gap:2px}.ds-nav a{color:var(--cel,#eef1f3);text-decoration:none;font-weight:600;font-size:15.5px;padding:8px 14px;border-radius:999px}.ds-nav a:hover{background:rgba(238,241,243,.12)}.ds-nav a[aria-current=page]{background:rgba(238,241,243,.16)}.ds-nav a:focus-visible{outline:2px solid var(--cel,#eef1f3);outline-offset:3px}.ds-nav .ds-get{margin-left:8px;background:var(--lamp,#b8141e);color:var(--lamp-ink,#fff6f4);padding:8px 18px}.ds-nav .ds-get:hover{background:var(--lamp-hi,#c33a42)}"
     },
     {
       "name": "Search Field",
       "kind": "input",
       "refersTo": "field",
-      "description": "The docs search: a pill on the well colour.",
-      "html": "<input class=\"ds-search\" type=\"search\" placeholder=\"Search the docs\">",
-      "css": ".ds-search{width:100%;max-width:260px;font:400 16px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#f6efe2);background:var(--well,#0e0a07);border:1.5px solid var(--line2,rgba(246,239,226,.32));border-radius:999px;padding:9px 16px;min-height:44px}.ds-search::placeholder{color:var(--mute,#a99e86)}.ds-search:focus-visible{outline:2px solid var(--cel,#f6efe2);outline-offset:3px}"
+      "description": "The docs search: a pill on the Well color.",
+      "html": "<input class='ds-search' type='search' placeholder='Search the docs'>",
+      "css": ".ds-search{width:100%;max-width:260px;font:400 16px 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#eef1f3);background:var(--well,#0a0b0d);border:1.5px solid var(--line2,rgba(238,241,243,.32));border-radius:999px;padding:9px 16px;min-height:44px;caret-color:var(--cel,#eef1f3)}.ds-search::placeholder{color:var(--mute,#8f979e)}.ds-search:focus-visible{outline:2px solid var(--cel,#eef1f3);outline-offset:3px}"
     },
     {
-      "name": "Ruled Step",
+      "name": "Ruled Step with Text Link",
       "kind": "card",
-      "description": "A step in a travelled path: a rule with a cel dot at its start, a serif numeral, no box.",
-      "html": "<div class=\"ds-step\"><span class=\"ds-step-num\">1</span><h3>Wiring</h3><p>Choose the board, the buttons and the prop.</p></div>",
-      "css": ".ds-step{position:relative;max-width:260px;border-top:1.5px solid var(--line2,rgba(246,239,226,.32));padding:20px 0 0;margin-top:8px;font-family:'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#f6efe2)}.ds-step::before{content:'';position:absolute;left:0;top:-6px;width:11px;height:11px;border-radius:50%;background:var(--cel,#f6efe2)}.ds-step-num{display:block;font-family:Gloock,'Iowan Old Style',Georgia,serif;font-size:54px;line-height:1;margin-bottom:10px}.ds-step h3{font-size:20px;font-weight:700;line-height:1.3;margin:0 0 .5em}.ds-step p{color:var(--dim,#d3c9b6);font-size:16px;line-height:1.6;margin:0}"
+      "description": "A step in a row of steps: a rule with a white dot at its start, a serif numeral, no box. Its link shows how every text link is drawn: white with a half-strength white underline, pure white on hover, never the accent.",
+      "html": "<div class='ds-step'><span class='ds-step-num'>1</span><h3>Wiring</h3><p>Choose the board, the buttons and the prop file.</p><a href='#'>How Wiring works</a></div>",
+      "css": ".ds-step{position:relative;max-width:260px;border-top:1.5px solid var(--line2,rgba(238,241,243,.32));padding:20px 0 0;margin-top:8px;font-family:'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#eef1f3)}.ds-step::before{content:'';position:absolute;left:0;top:-6px;width:11px;height:11px;border-radius:50%;background:var(--cel,#eef1f3)}.ds-step-num{display:block;font-family:Gloock,'Iowan Old Style',Georgia,serif;font-size:54px;line-height:1;margin-bottom:10px}.ds-step h3{font-size:20px;font-weight:700;line-height:1.3;margin:0 0 .5em}.ds-step p{color:var(--dim,#c3c9ce);font-size:16px;line-height:1.6;margin:0 0 1em}.ds-step a{font-weight:600;font-size:17px;color:var(--cel,#eef1f3);text-decoration-color:rgba(238,241,243,.5);text-decoration-thickness:1.5px;text-underline-offset:4px}.ds-step a:hover{color:#fff;text-decoration-color:#fff}.ds-step a:focus-visible{outline:2px solid var(--cel,#eef1f3);outline-offset:3px;border-radius:4px}"
     },
     {
       "name": "Warning Callout",
       "kind": "card",
       "refersTo": "callout-warning",
-      "description": "Caution in docs and on the download page: lamp tint and edge, never a lamp fill.",
-      "html": "<div class=\"ds-warn\"><p><strong>Warning</strong>The installer is not signed, so Windows warns you.</p></div>",
-      "css": ".ds-warn{padding:16px 20px;border:1.5px solid rgba(242,178,62,.6);border-radius:12px;background:rgba(242,178,62,.08);font:400 17px/1.6 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#f6efe2)}.ds-warn p{margin:0}.ds-warn strong{margin-right:8px;color:var(--lamp-hi,#ffc960)}"
+      "description": "Caution in docs and on the download page: an amber tint and edge that do not follow the theme, never a solid fill.",
+      "html": "<div class='ds-warn'><p><strong>Warning</strong>The installer is not signed, so Windows warns you.</p></div>",
+      "css": ".ds-warn{padding:16px 20px;border:1.5px solid rgba(242,178,62,.6);border-radius:12px;background:rgba(242,178,62,.08);font:400 17px/1.6 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#eef1f3)}.ds-warn p{margin:0}.ds-warn strong{margin-right:8px;color:var(--warn-hi,#ffc960)}"
     },
     {
       "name": "Floating Window",
       "kind": "custom",
       "refersTo": "window",
-      "description": "How the app is always shown: rounded window, deep soft shadow, 1px cel hairline. Never a device frame. A feature picture carries a caption naming its theme.",
-      "html": "<figure class=\"ds-window\"><div class=\"ds-window-pic\"></div><figcaption>Shown in the Station theme</figcaption></figure>",
-      "css": ".ds-window{margin:24px;border-radius:10px;overflow:hidden;background:var(--well,#0e0a07);box-shadow:0 30px 60px rgba(0,0,0,.55),0 0 0 1px var(--line2,rgba(246,239,226,.32))}.ds-window-pic{aspect-ratio:1480/980;background:linear-gradient(160deg,var(--high,#2c2218),var(--well,#0e0a07))}.ds-window figcaption{font:600 14.5px/1.6 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--dim,#d3c9b6);background:var(--well,#0e0a07);padding:9px 14px;border-top:1px solid var(--line,rgba(246,239,226,.14))}"
+      "description": "How the app is always shown: rounded window, deep soft shadow, 1px white hairline. Never a device frame. A feature picture carries a caption naming its theme.",
+      "html": "<figure class='ds-window'><div class='ds-window-pic'></div><figcaption>Shown in the Station theme</figcaption></figure>",
+      "css": ".ds-window{margin:24px;border-radius:10px;overflow:hidden;background:var(--well,#0a0b0d);box-shadow:0 30px 60px rgba(0,0,0,.55),0 0 0 1px var(--line2,rgba(238,241,243,.32))}.ds-window-pic{aspect-ratio:1480/980;background:linear-gradient(160deg,var(--high,#252a2e),var(--well,#0a0b0d))}.ds-window figcaption{font:600 14.5px/1.6 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--dim,#c3c9ce);background:var(--well,#0a0b0d);padding:9px 14px;border-top:1px solid var(--line,rgba(238,241,243,.14))}"
     },
     {
-      "name": "Tick Panel",
-      "kind": "card",
-      "refersTo": "panel",
-      "description": "A panel of included items over a painting, with one quiet 'not yet' row.",
-      "html": "<ul class=\"ds-ticks\"><li>Build and install, with a backup first</li><li>Edit presets live on the saber</li><li class=\"ds-no\">Not yet: Linux, code signing, card formatting</li></ul>",
-      "css": ".ds-ticks{list-style:none;margin:0;padding:8px 26px;background:rgba(14,10,7,.72);border:1px solid var(--line2,rgba(246,239,226,.32));border-radius:14px;font:400 17px/1.6 'Hanken Grotesk','Segoe UI',system-ui,sans-serif;color:var(--cel,#f6efe2)}.ds-ticks li{position:relative;padding:11px 0 11px 30px;border-bottom:1px solid var(--line,rgba(246,239,226,.14))}.ds-ticks li:last-child{border-bottom:0}.ds-ticks li::before{content:'';position:absolute;left:4px;top:19px;width:12px;height:6px;border-left:2px solid var(--good,#a6d9a0);border-bottom:2px solid var(--good,#a6d9a0);transform:rotate(-45deg)}.ds-ticks .ds-no{color:var(--mute,#a99e86);font-size:15.5px}.ds-ticks .ds-no::before{border:0;width:12px;height:2px;background:var(--mute,#a99e86);transform:none;top:23px}"
+      "name": "Deck (sample of four)",
+      "kind": "custom",
+      "refersTo": "deck-window",
+      "description": "The home stage's deck, cut down to four windows with stand-in pictures: the front one sharp, each one behind a step up and to the right, smaller, dimmer and softer. The colored tab on each stands for that theme's accent. Hover brings a back window sharp. On the site, choosing a window re-deals the order.",
+      "html": "<div class='ds-deck'><button type='button' class='ds-pane ds-pane-front' style='--i:0;--p:#b8141e' tabindex='-1' aria-hidden='true'></button><button type='button' class='ds-pane' style='--i:1;--p:#86dc5f' tabindex='-1' aria-hidden='true'></button><button type='button' class='ds-pane' style='--i:2;--p:#4fb8a3' tabindex='-1' aria-hidden='true'></button><button type='button' class='ds-pane' style='--i:3;--p:#f2a93e' tabindex='-1' aria-hidden='true'></button></div>",
+      "css": ".ds-deck{position:relative;height:320px;overflow:hidden;background:var(--well,#0a0b0d)}.ds-pane{position:absolute;left:24px;bottom:24px;width:220px;aspect-ratio:1480/980;padding:0;border:0;border-radius:10px;overflow:hidden;background:linear-gradient(160deg,var(--high,#252a2e),var(--ground,#121416));cursor:pointer;transform-origin:0 100%;z-index:calc(20 - var(--i));transform:translate(calc(var(--i) * 30px),calc(var(--i) * -44px)) scale(calc(1 - var(--i) * .035));filter:blur(min(2.4px,calc(var(--i) * .45px))) brightness(max(.5,calc(1 - var(--i) * .075)));box-shadow:0 12px 30px rgba(0,0,0,.5),0 0 0 1px rgba(238,241,243,.26);transition:transform .7s cubic-bezier(.16,1,.3,1),filter .5s}.ds-pane::before{content:'';position:absolute;left:12px;top:12px;width:48px;height:8px;border-radius:999px;background:var(--p)}.ds-pane:hover{filter:none}.ds-pane-front{cursor:default;box-shadow:0 40px 80px rgba(0,0,0,.8),0 10px 24px rgba(0,0,0,.55),0 0 0 1px rgba(238,241,243,.36)}@media (prefers-reduced-motion:reduce){.ds-pane{transition:none}}"
     }
   ],
   "narrative": {
-    "northStar": "Painted Planes",
-    "overview": "The site is a multiplane animation stand. Background paintings are the large surfaces, lettering sits in front of them as if inked on a clear cel, and the app itself always appears as a floating window on the nearest plane. The ground between paintings is deep umber, warm and nearly black, so that a painting never has to compete with a neutral page: where there is no picture there is only dark, warm quiet.\n\nDensity is low on the promo pages (one idea per band, a picture beside most of them) and steady on the reading pages (docs and walkthrough), which drop the paintings below the page head and become a plain three-column reader on the same ground. Everything a visitor can press is a pill. Everything that shows the app is a rounded window with a soft, deep shadow and a hairline edge. Lamp amber is the single accent: it fills the primary action and tints a warning, and nothing else. Every small mark (underlines, dots, focus rings, progress) is cel.\n\nThe home stage is the system's one piece of theatre: one painting fills the screen, the other themes stand at the right as slanted slices of their own paintings, and choosing one racks focus to it. Other pages reuse the idea at rest: a page head or a closing band carries one painting, held back by a Well shade so the lettering reads, and a tall section opens with its painting as a clear band at full strength, with no lettering on it.",
+    "northStar": "The Graphite Bay",
+    "overview": "The site is a workshop bay in neutral graphite: a dark, even, colorless room where the app is the thing on show. It has no palette of its own beyond graphite and a cool white. All the color on a page comes from the app: from its ten themes shown as windows, from the theme paintings, and from one accent that the site borrows from whichever theme the visitor has chosen. Choose a theme on the home page and the primary buttons, the blade of the mark and the browser tab icon all take that theme's accent, on every page, until another is chosen.\n\nDensity is low on the promo pages (one idea per band, a picture beside most of them) and steady on the reading pages: the walkthrough keeps a painting only behind its page head, and the docs carry none and are a plain three-column reader on the same ground. Everything a visitor can press is a pill. Everything that shows the app is a rounded window with a soft, deep shadow and a hairline edge. The accent fills the primary action and nothing else, amber is kept for caution, and every small mark (underlines, dots, focus rings, progress) is cool white, so a page reads the same whichever theme lends the accent.\n\nThe home stage is the system's one piece of theater: a deck of ten app windows, one per theme, the chosen one sharp in front and the rest stepping up and to the right, each smaller, dimmer and softer. Behind the deck is a grayscale painting of a sabersmith's bench in a ship's bay, out of focus, whose one small indicator light takes the accent's hue. Elsewhere the theme paintings appear in two ways: shaded, behind a page head or the closing band, where lettering sits on them; and clear, as a full-bleed band at full strength with no lettering on it, in a tall section.",
     "keyCharacteristics": [
-      "Deep umber ground with three tonal steps (well, raised, high); no neutral grey anywhere.",
-      "Paintings are surfaces, not decoration: full-bleed, always under a Well shade where text sits on them.",
+      "Neutral graphite ground with three tonal steps (well, raised, high) and cool white lettering; no warm darks.",
+      "One accent, borrowed from the chosen theme and remembered across pages; a deep red when scripts are off.",
+      "Amber means caution only: the warning card and the warning callout.",
       "Gloock for titles at regular weight, Hanken Grotesk for everything read or pressed.",
-      "Pill controls with a 1.5px translucent cel edge; selected state inverts to cel white.",
-      "One accent, lamp amber: the primary action's fill and the caution tint. Links, dots, focus rings and progress are cel.",
-      "The app is shown as a floating window, never in a device frame.",
-      "Motion is focus and drift, and all of it stops under reduced motion."
+      "Pill controls with a 1.5px translucent white edge; the selected state inverts to white.",
+      "The app is shown as a floating window, never in a device frame; on the home stage, as a deck of ten.",
+      "Paintings are whole surfaces: shaded where lettering sits on them, clear where it does not.",
+      "Motion is the deck's slide and a lift on scroll; both stop under reduced motion."
     ],
     "rules": [
-      { "name": "The One Lamp Rule", "body": "A lamp-amber fill on a control means \"this is the primary action here\". A group of controls carries at most one. Everything else in the group is a clear cel tab.", "section": "colors" },
-      { "name": "The Marks Are Cel Rule", "body": "Anything small that points, counts or tracks is cel, not lamp: link underlines, step dots, the focus ring, selection, the current-section highlight, progress and range controls. If a mark is amber, it is competing with the download button.", "section": "colors" },
-      { "name": "The Warm Dark Rule", "body": "Every dark is umber and every light is cel. Shades over paintings are the Well colour at an alpha, never plain black over text; lines are cel white at an alpha, never grey.", "section": "colors" },
-      { "name": "The Amber Means Caution Too Rule", "body": "Warning surfaces (the download warning card, the docs warning callout) use the same lamp hue as an 8% tint with a 60% edge. The stylesheet's --warn is the same value as --lamp. This is a deliberate second job for the hue, the only one, and it widens the direction contract's \"primary action only\": the solid fill stays reserved for the action, the tint and edge mean caution. A warning never carries a lamp fill.", "section": "colors" },
+      { "name": "The Accent Follows the Theme Rule", "body": "The site has no accent of its own. It borrows the accent of the theme the visitor chose on the home deck: an inline script in the head of every page sets the accent, its hover and its ink before anything paints, from a table the build makes out of the themes' own accents. The choice is kept in localStorage under hw-theme and holds on every page. Never write an accent value into a rule; use the custom properties (--lamp, --lamp-hi, --lamp-ink), and never assume the accent is red, or light, or dark.", "section": "colors" },
+      { "name": "The One Accent Fill Rule", "body": "An accent fill on a control means this is the primary action here. A group of controls carries at most one. Everything else in the group is a clear pill with a white edge.", "section": "colors" },
+      { "name": "The Marks Are White Rule", "body": "Anything small that points, counts or tracks is Cel White, not the accent: link underlines, step dots, the focus ring, selection, the current-page and current-chapter highlight, progress and range controls. The accent changes with the theme; the marks must not.", "section": "colors" },
+      { "name": "The Graphite Rule", "body": "Every dark is graphite and every light is Cel White. Shades over paintings are the Well color at an alpha, lines are Cel White at an alpha (14% and 32%), and translucent fills on controls are Ground or Well at an alpha. No warm darks, and no tint of any theme in the ground.", "section": "colors" },
+      { "name": "The Amber Means Caution Rule", "body": "Amber is not an accent here. It appears only on warning surfaces (the download warning card, the docs warning callout), as an 8% tint with a 60% edge and a Caution Highlight label, and it does not change with the theme. A warning never carries a solid fill. Three themes (The Ninth Jedi, Coruscant at night, Kashyyyk) have amber accents of their own; when one is chosen, the accent is still only a solid fill on a control and caution is still only a tint and an edge.", "section": "colors" },
       { "name": "The Sentence Case Rule", "body": "Labels, table heads, nav group names and footer column labels are sentence case at weight 600 or 700 with no added tracking. The only uppercase, letter-spaced text on the site is the wordmark in the top bar and footer (700, 0.2em).", "section": "typography" },
       { "name": "The One Weight Serif Rule", "body": "Gloock is always 400. Emphasis in a title comes from size, never from a bolder or italic cut. Headings balance their line breaks (text-wrap: balance).", "section": "typography" },
-      { "name": "The Shade Before Text Rule", "body": "Lettering never sits directly on a painting. A linear shade in the Well colour runs from 92 to 94% at the text side to 35 to 50% at the far side (on the stage: 93%, 80% at 36%, clear by 64%, plus a foot and a head shade for the names and the top bar). A tall section does not put lettering on its painting at all: the painting is a clear band (clamp(240px, 48vh, 500px) high; clamp(180px, 34vh, 300px) under 900px) and the rows stand on Umber Ground below it. Under 980px the stage shade becomes vertical (78% to 70% to 92%). Under 900px, where lettering runs the full width, a page head and a closing scene also take an even shade (78% to 90% and 80% to 86%), and fine print on a page head steps up from Mute to Dim Cel.", "section": "elevation" },
-      { "name": "The Hairline With Every Shadow Rule", "body": "A floating window always pairs its soft shadow with a 1px cel-white ring. The ring, not the shadow, is what separates a dark screenshot from the dark ground.", "section": "elevation" },
-      { "name": "The Rack Focus Rule", "body": "Planes change by focus, not by sliding content: the incoming plane sharpens from a 16px blur over 0.9s on cubic-bezier(.16,1,.3,1) while slices re-seat, and the window cross-fades (0.35s). A theme with no painting comes to rest out of focus (10px blur, dimmed to 72%) because its plane is its own app capture and the sharp copy is in the window. On scroll, planes drift at different speeds and the stage window lifts 60px where scroll-driven animation is supported. State changes on controls take 0.2s. Under prefers-reduced-motion: reduce all of it holds still.", "section": "elevation" }
+      { "name": "The Shade Before Text Rule", "body": "Lettering never sits on a painting at full strength. Behind a page head a shade in the Well color runs from 94% at the text side to 35% at the far side; behind the closing band, from 92% to 50%. Under 900px, where lettering runs the full width, both become even shades from top to bottom (78% to 90%, and 80% to 86%). The stage backdrop is already gray and out of focus, so its shades are lighter: 45% at the left falling to clear, 80% at the foot under the theme names, 50% at the head under the top bar, and the lettering carries a soft dark shadow; under 980px it takes one vertical shade (72%, 50%, 80%). A tall section does not put lettering on its painting at all: the painting is a clear band and the rows stand on Graphite Ground below it.", "section": "elevation" },
+      { "name": "The Hairline With Every Shadow Rule", "body": "A floating window always pairs its soft shadow with a 1px Cel White ring (26% on a window back in the deck, 32% on a screenshot, 36% on the deck's front window). The ring, not the shadow, is what separates a dark screenshot from the dark ground.", "section": "elevation" },
+      { "name": "The One Sharp Window Rule", "body": "On the deck only the front window is sharp and at full brightness. Each window behind it sits 30px further right and 44px further up, 3.5% smaller, 7.5% dimmer (never below 50%) and 0.45px softer (never above 2.4px). Choosing a theme deals it to the front: its window slides forward over 0.7s on cubic-bezier(.16,1,.3,1) while the windows that stood in front of it each move one step back, and the blur and dimming follow over 0.5s. A window under the pointer comes sharp and bright, so it can be judged before it is chosen. Where scroll-driven animation is supported the whole deck lifts 60px over the first screen of scroll. Under prefers-reduced-motion: reduce the windows change places without the slide and the deck does not lift.", "section": "elevation" }
     ],
     "dos": [
-      "Do put a Well-coloured shade under any lettering that sits on a painting: heaviest on the text side. In a tall section keep lettering off the painting and show it as a clear band.",
-      "Do show the app as a floating window: 10px corners, deep soft shadow, 1px cel hairline.",
-      "Do make every pressable thing a pill with a 1.5px translucent cel edge, and show \"selected\" by inverting to Cel White with Umber Ground text.",
-      "Do keep one lamp-filled button per group of controls, with Lamp Ink text.",
-      "Do draw small marks in cel: link underlines (cel at 50%), step dots, the focus ring (2px Cel White, 3px offset), selection, progress.",
+      "Do take the accent from the custom properties (--lamp, --lamp-hi, --lamp-ink) and let the chosen theme set them; check a new surface with a light accent (Station green, Original cyan) and a dark one (Crait red).",
+      "Do keep one accent-filled button per group of controls, with Accent Ink text.",
+      "Do draw small marks in Cel White: link underlines (white at 50%), step dots, the focus ring (2px Cel White, 3px offset), selection, progress.",
+      "Do keep amber for caution: an 8% tint, a 60% edge and a Caution Highlight label.",
+      "Do put a Well-colored shade under any lettering that sits on a painting, heaviest on the text side. In a tall section keep lettering off the painting and show it as a clear band.",
+      "Do show the app as a floating window: 10px corners, deep soft shadow, 1px white hairline.",
+      "Do make every pressable thing a pill with a 1.5px translucent white edge, and show the selected state by inverting to Cel White with Graphite Ground text.",
       "Do caption a feature picture with the theme it is shown in.",
       "Do set titles in Gloock 400 and everything else in Hanken Grotesk; labels in sentence case at 600.",
       "Do separate flat content with rules (1.5px above a step or card, 1px between bands) and keep it shadowless.",
       "Do give every motion a still state under prefers-reduced-motion: reduce."
     ],
     "donts": [
-      "Don't dress the site in any one app theme. The themes appear as paintings and as captures inside windows, nothing else.",
+      "Don't take anything from the chosen theme but its accent. The ground stays graphite, and the shapes and type stay the site's own; the themes otherwise appear only as paintings and as captures inside windows.",
+      "Don't write an accent value into a rule, and don't assume the accent is red.",
+      "Don't spend the accent on anything but the primary action's fill, the skip link, the mark and the stage's indicator light: no accent underlines, dots, focus rings, progress bars or secondary buttons.",
+      "Don't use amber as an accent or give a warning a solid fill.",
+      "Don't bring back warm darks or cream lettering, and don't lay plain black over a painting where text sits.",
       "Don't put the app in a device frame (laptop, monitor, browser chrome).",
-      "Don't use a painting as a small decorative tile on a neutral page; a painting is a whole surface or it is absent.",
-      "Don't spend lamp amber on anything but the primary action's fill and a warning's tint and edge: no amber underlines, dots, focus rings, progress bars or secondary buttons.",
-      "Don't introduce a second accent hue for actions, or grey neutrals, or plain black shades over text.",
+      "Don't use a painting as a small decorative tile; a painting is a whole surface or it is absent.",
+      "Don't put more than one sharp window on the deck, and don't put the deck's windows in the tab order.",
       "Don't set uppercase, letter-spaced labels; the wordmark is the only one.",
-      "Don't embolden or italicise Gloock.",
+      "Don't embolden or italicize Gloock.",
       "Don't box the ruled cards and steps, and don't put shadows on flat content."
     ]
   }

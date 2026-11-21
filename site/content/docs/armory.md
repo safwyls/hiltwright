@@ -12,7 +12,7 @@ The Armory is the first page. Hiltwright remembers every saber it has seen, whet
 
 Every saber Hiltwright has seen is listed, plugged in or not. Each row shows its name and a line such as the saber's config name, its number of presets and when it was last seen.
 
-The saber marked **Working on it** is the one every step is about. To work on another, unplug the current one and press **Work on it** beside the other. That button is greyed out while a saber is plugged in, and its tooltip says "Unplug the connected saber to work on another".
+The saber marked **Working on it** is the one every step is about. To work on another, unplug the current one and press **Work on it** beside the other. That button is grayed out while a saber is plugged in, and its tooltip says "Unplug the connected saber to work on another".
 
 The sidebar repeats this under "Working on", with one of three notes: "plugged in", "planned, not seen yet" or "not plugged in".
 

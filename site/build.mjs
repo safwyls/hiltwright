@@ -29,8 +29,38 @@ const PLANES_DIR =join(repo, 'apps/desktop/src/renderer/src/assets/backdrops');
 const isPicture = (f) => /\.(jpe?g|webp|png)$/i.test(f);
 const paintings = new Map(readdirSync(PLANES_DIR).filter(isPicture).map((f) => [f.replace(/\.[^.]+$/, ''), f]));
 // The theme in front when the home page opens.
-const FIRST_THEME = 'ninth';
+const FIRST_THEME = 'crait';
 if (!themes.some((t) => t.id === FIRST_THEME)) throw new Error(`themes.json has no "${FIRST_THEME}" theme`);
+
+// The site's accent follows the theme the visitor chose on the home page's deck. For each theme: the accent, a
+// lighter one for hover, and whichever of light or dark lettering reads better on it.
+const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const lum = (hex) => { const [r, g, b] = rgb(hex).map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const contrast = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+const lighten = (hex, by) => `#${rgb(hex).map((v) => Math.round(v + (255 - v) * by).toString(16).padStart(2, '0')).join('')}`;
+const INK_LIGHT = '#fff6f4', INK_DARK = '#0a0b0d';
+const ACCENTS = Object.fromEntries(themes.map((t) => {
+  if (!/^#[0-9a-f]{6}$/i.test(t.accent ?? '')) throw new Error(`themes.json: the ${t.id} theme has no accent colour`);
+  return [t.id, [t.accent, lighten(t.accent, 0.16), contrast(t.accent, INK_LIGHT) >= contrast(t.accent, INK_DARK) ? INK_LIGHT : INK_DARK]];
+}));
+// Runs in the head of every page, before anything paints: the accent of the theme chosen last time, or the first.
+// It also redraws the browser tab's icon with its blade in that accent.
+const accentScript = () => `<script>(()=>{const A=${JSON.stringify(ACCENTS)},I=${JSON.stringify(FAVICON)},s=document.documentElement.style;const put=(id)=>{const a=A[id];if(!a)return false;s.setProperty('--lamp',a[0]);s.setProperty('--lamp-hi',a[1]);s.setProperty('--lamp-ink',a[2]);const l=document.querySelector('link[rel=icon]');if(l)l.href='data:image/svg+xml,'+encodeURIComponent(I.split('currentColor').join(a[0]));return true};let t=null;try{t=localStorage.getItem('hw-theme')}catch{}if(!put(t))put('${FIRST_THEME}');window.hwAccent=(id)=>{if(put(id))try{localStorage.setItem('hw-theme',id)}catch{}}})()</script>`;
+
+// The mark beside the wordmark: the app's own icon, redrawn in the site's graphite, with its blade in the accent
+// colour (currentColor), so it changes with the chosen theme. Each copy on a page gets its own ids.
+const ICON_SOURCE = read(join(repo, 'apps/desktop/src/renderer/src/assets/hiltwright-icon.svg'));
+const ICON_COLOURS = { '#f0873a': 'currentColor', '#e2b84a': 'currentColor', '#8a8274': '#868c92', '#d6cdb9': '#d5dade', '#1e1a15': '#181a1d', '#3d362c': '#363b40', '#1c1813': '#1b1e21', '#13100c': '#101214', '#5e5240': '#4b5158', '#30291f': '#2a2e32', '#fff6e2': '#ffffff' };
+for (const c of Object.keys(ICON_COLOURS)) if (!ICON_SOURCE.includes(c)) throw new Error(`hiltwright-icon.svg no longer uses ${c}: update ICON_COLOURS in build.mjs`);
+const icon = (suffix) => {
+  let svg = ICON_SOURCE.replace(/<title[^>]*>.*?<\/title>/, '').replace(/ role="img" aria-labelledby="t"/, ' aria-hidden="true" focusable="false"').replace(/ width="256" height="256"/, ' width="30" height="30"');
+  for (const [from, to] of Object.entries(ICON_COLOURS)) svg = svg.split(from).join(to);
+  for (const id of ['steel', 'grip', 'tile', 'halo', 'inside']) svg = svg.split(`id="${id}"`).join(`id="${id}-${suffix}"`).split(`url(#${id})`).join(`url(#${id}-${suffix})`);
+  return svg.replace(/\n\s*/g, '');
+};
+// The browser tab's icon: the same drawing at full size. The page's script fills in the accent; the file served
+// to a browser with scripts off carries the first theme's.
+const FAVICON = icon('tab').replace(' width="30" height="30"', ' width="256" height="256"').replace(' aria-hidden="true" focusable="false"', '');
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const slugify = (s) => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -62,7 +92,7 @@ function layout({ title, description, nav, root, body, cls = '', scripts = [] })
 <title>${esc(full)}</title>
 <meta name="description" content="${esc(description)}">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#17110c">
+<meta name="theme-color" content="#121416">
 <meta property="og:title" content="${esc(full)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:type" content="website">
@@ -70,12 +100,13 @@ function layout({ title, description, nav, root, body, cls = '', scripts = [] })
 <link rel="icon" type="image/svg+xml" href="${root}assets/brand/hiltwright-icon.svg">
 <link rel="preload" href="${root}assets/fonts/gloock-400-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${root}assets/site.css">
+${accentScript()}
 </head>
 <body class="${`${cls} p-${nav ?? 'none'}`.trim()}">
 <a class="skip" href="#main">Skip to the content</a>
 <header class="top">
   <div class="wrap bar">
-    <a class="brand" href="${root}index.html" aria-label="Hiltwright, home"><img src="${root}assets/brand/hiltwright-icon.svg" width="30" height="30" alt="">Hiltwright</a>
+    <a class="brand" href="${root}index.html" aria-label="Hiltwright, home">${icon('top')}Hiltwright</a>
     <button class="menu" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
     <nav id="nav" aria-label="Site">
       ${NAV.filter((n) => n.id !== 'download').map((n) => `<a href="${root}${n.href}"${n.id === nav ? ' aria-current="page"' : ''}>${n.label}</a>`).join('\n      ')}
@@ -90,12 +121,12 @@ ${body}
 <footer class="foot">
   <div class="wrap footgrid">
     <div>
-      <a class="brand" href="${root}index.html"><img src="${root}assets/brand/hiltwright-icon.svg" width="30" height="30" alt="">Hiltwright</a>
+      <a class="brand" href="${root}index.html">${icon('foot')}Hiltwright</a>
       <p>ProffieOS for people who never want to see a compiler. Version ${esc(VERSION)}, a beta for Windows and macOS.</p>
     </div>
     <div><p class="foot-h">Site</p><a href="${root}features.html">Features</a><a href="${root}walkthrough.html">Walkthrough</a><a href="${root}download.html">Download</a></div>
     <div><p class="foot-h">Docs</p><a href="${root}docs/install.html">Install guide</a><a href="${root}docs/quick-start.html">Quick start</a><a href="${root}docs/troubleshooting.html">Troubleshooting</a><a href="${root}docs/faq.html">Questions</a></div>
-    <div><p class="foot-h">Project</p><a href="${REPO_URL}">Source on GitHub</a><a href="${ISSUES_URL}">Report a problem</a><a href="${RELEASES_URL}">Releases</a><a href="${REPO_URL}/blob/main/LICENSE">Licence: GPL-3.0-or-later</a></div>
+    <div><p class="foot-h">Project</p><a href="${REPO_URL}">Source on GitHub</a><a href="${ISSUES_URL}">Report a problem</a><a href="${RELEASES_URL}">Releases</a><a href="${REPO_URL}/blob/main/LICENSE">License: GPL-3.0-or-later</a></div>
   </div>
   <div class="wrap legal">Hiltwright is an independent, open-source project. It is not affiliated with or endorsed by the ProffieOS project, any board or saber maker, or Lucasfilm Ltd. ProffieOS and Proffieboard are the work of Fredrik Hübinette. All other names belong to their owners.</div>
 </footer>
@@ -114,7 +145,7 @@ mkdirSync(join(dist, 'assets/img'), { recursive: true });
 cpSync(join(repo, 'docs/images/smart-app-control.png'), join(dist, 'assets/img/smart-app-control.png'));
 mkdirSync(join(dist, 'assets/planes'), { recursive: true });
 for (const f of paintings.values()) cpSync(join(PLANES_DIR, f), join(dist, 'assets/planes', f));
-cpSync(join(repo, 'apps/desktop/src/renderer/src/assets/hiltwright-icon.svg'), join(dist, 'assets/brand/hiltwright-icon.svg'));
+writeFileSync(join(dist, 'assets/brand/hiltwright-icon.svg'), FAVICON.split('currentColor').join(ACCENTS[FIRST_THEME][0]));
 for (const t of themes) if (!existsSync(join(here, 'assets/themes', `${t.id}.jpg`))) throw new Error(`no picture of the ${t.id} theme: run npm run capture`);
 writeFileSync(join(dist, '.nojekyll'), '');
 
@@ -196,26 +227,21 @@ for (const d of docs) {
 writeFileSync(join(dist, 'docs/search.json'), JSON.stringify(search));
 
 // ---------- promo pages ----------
-// The home page's stage: one plane per theme. The first is in front; the rest stand as slices, in order.
-// A slice is a pointer shortcut only: the row of theme names is the one control a keyboard or a screen reader
-// meets, so the slices are out of the tab order and hidden from assistive technology.
-let slot = 0;
-// A theme with no painting shows its own app as its plane. Those are spread out, so no two stand side by side.
+// The home page's stage: a deck of app windows, one per theme. The first is in front; the rest stand behind it in
+// order, each a step further back (--i). A card is a pointer shortcut only: the row of theme names is the one
+// control a keyboard or a screen reader meets, so the cards are out of the tab order and hidden from assistive
+// technology, and the deck as a whole is described once.
+// The themes with no painting are spread out, so the two plainest windows never stand next to each other.
 const unpainted = themes.filter((t) => !paintings.has(t.id));
 const painted = themes.filter((t) => paintings.has(t.id));
 const siteOrder = new Array(themes.length).fill(null);
 unpainted.forEach((t, i) => { siteOrder[unpainted.length > 1 ? Math.round((i * (themes.length - 1)) / (unpainted.length - 1)) : 0] = t; });
 for (const t of painted) siteOrder[siteOrder.indexOf(null)] = t;
-// The slices and the row of names use this one order, so a name and its slice sit in the same place in line.
 themes.splice(0, themes.length, ...siteOrder);
-const planes = themes.map((t) => {
-  const front = t.id === FIRST_THEME;
-  const pic = paintings.get(t.id);
-  const style = `${front ? '' : `--s:${slot++};`}background-image:url(${pic ? `assets/planes/${pic}` : `assets/themes/${t.id}.jpg`})`;
-  return `<button type="button" class="plane${front ? ' front' : ''}${pic ? '' : ' unpainted'}" data-theme="${t.id}" style="${style}" tabindex="-1" aria-hidden="true"></button>`;
-}).join('\n  ');
+const deckOrder = [themes.find((t) => t.id === FIRST_THEME), ...themes.filter((t) => t.id !== FIRST_THEME)];
+const deck = deckOrder.map((t, i) => `<button type="button" class="pane${i ? '' : ' front'}" data-theme="${t.id}" style="--i:${i}" tabindex="-1" aria-hidden="true"><img src="assets/themes/${t.id}.jpg" width="1480" height="980" alt=""${i ? ' decoding="async"' : ''}></button>`).join('\n    ');
 const themeButtons = themes.map((t) => `<button type="button" role="radio" data-theme="${t.id}" aria-checked="${t.id === FIRST_THEME}" tabindex="${t.id === FIRST_THEME ? 0 : -1}" title="${esc(t.about)}">${esc(t.name)}</button>`).join('\n    ');
-const vars = { planes, themeButtons, themeCount: String(themes.length), sliceCount: String(themes.length - 1), firstTheme: FIRST_THEME, firstThemeName: esc(themes.find((t) => t.id === FIRST_THEME).name), version: VERSION, repo: REPO_URL, releases: RELEASES_URL, issues: ISSUES_URL, steps: String(tour.chapters.reduce((n, c) => n + c.steps.length, 0)), tour: JSON.stringify(tour).replace(/</g, '\\u003c') };
+const vars = { deck, themeButtons, themeCount: String(themes.length), firstTheme: FIRST_THEME, firstThemeName: esc(themes.find((t) => t.id === FIRST_THEME).name), version: VERSION, repo: REPO_URL, releases: RELEASES_URL, issues: ISSUES_URL, steps: String(tour.chapters.reduce((n, c) => n + c.steps.length, 0)), tour: JSON.stringify(tour).replace(/</g, '\\u003c') };
 for (const f of readdirSync(join(here, 'src/pages')).filter((x) => x.endsWith('.html'))) {
   const { meta, body } = frontmatter(read(join(here, 'src/pages', f)));
   const filled = body.replace(/\{\{(\w+)\}\}/g, (m, k) => (k === 'root' ? '' : vars[k] ?? m))

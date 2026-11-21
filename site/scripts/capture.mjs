@@ -108,7 +108,7 @@ for (const [n, theme] of Object.entries(FEATURE)) {
 mkdirSync(featureDir, { recursive: true });
 writeFileSync(join(site, 'data/feature.json'), JSON.stringify(Object.fromEntries(Object.entries(FEATURE).map(([n, id]) => [pad(Number(n)), { id, name: THEMES.find((t) => t.id === id).name }])), null, 2) + '\n');
 shots.push({ file: join(base, 'reset.png'), js: `window.hiltwrightTheme(${JSON.stringify(DEFAULT_THEME)})` });
-writeFileSync(join(site, 'data/themes.json'), JSON.stringify(THEMES.map((t) => ({ id: t.id, name: t.name, about: t.about })), null, 2) + '\n');
+writeFileSync(join(site, 'data/themes.json'), JSON.stringify(THEMES.map((t) => ({ id: t.id, name: t.name, about: t.about, accent: t.swatch[2] })), null, 2) + '\n');
 env.HILTWRIGHT_SHOTS = JSON.stringify(shots);
 mkdirSync(outDir, { recursive: true });
 mkdirSync(themeDir, { recursive: true });

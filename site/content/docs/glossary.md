@@ -28,7 +28,7 @@ A folder named `common` on the SD card. It holds sounds shared by every preset, 
 The space inside a hilt, usually with a clear window, where a crystal sits. A Proffieboard can light it with its own LED and style.
 
 ## Data pin
-The board pin that carries the colour signal to a blade's LEDs. Check each data pin against what the installer wrote down before you install.
+The board pin that carries the color signal to a blade's LEDs. Check each data pin against what the installer wrote down before you install.
 
 ## DFU
 Short for device firmware upgrade. It is the bootloader mode a Proffieboard enters to accept new firmware. Hiltwright puts the board in it for you. If it does not, hold BOOT, tap RESET, then release BOOT.
@@ -58,7 +58,7 @@ An effect held while two blades are pressed together. The blade glows where they
 An effect held while the blade is pushed into a surface, as if melting through it. A font with a drag sound but no melt sound plays the drag sound.
 
 ## Pixel blade
-A blade made of LEDs that can each show their own colour, so styles can do more than light the whole blade one colour. Proffieboards drive pixel blades. Each LED strip has a data pin and gets its power from a power pin.
+A blade made of LEDs that can each show their own color, so styles can do more than light the whole blade one color. Proffieboards drive pixel blades. Each LED strip has a data pin and gets its power from a power pin.
 
 ## Polyphonic
 A sound font whose sounds can overlap, with numbered names such as `clsh01.wav`. The other kind, monophonic, plays one sound at a time with names such as `clash1.wav`. A font should not mix the two for the same effect.
@@ -100,7 +100,7 @@ Presets that are waiting in Hiltwright instead of being written to the saber. Wi
 An effect for thrusting the blade forward. The tip lights and the glow slides back.
 
 ## Style
-What a blade does: its colour, flicker, ignition and retraction, and how it reacts to clashes, swings and other effects. See [Styles](styles.html) and the [Style editor](style-editor.html).
+What a blade does: its color, flicker, ignition and retraction, and how it reacts to clashes, swings and other effects. See [Styles](styles.html) and the [Style editor](style-editor.html).
 
 ## Track
 A music file kept with a sound font, which a preset can play. A preset names it as the font's folder plus the file path.

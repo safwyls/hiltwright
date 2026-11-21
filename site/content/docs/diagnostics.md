@@ -81,9 +81,9 @@ Open the file and read it before you attach it. To report a problem, go to [gith
 
 ## About
 
-The **About** page, under Tools, shows the version you are running and the licence: GPL-3.0-or-later. It has **Show the licence** and **Show the third-party notices** buttons, and **Open the source**, which opens the source code of this exact build on GitHub. It also says that Hiltwright's own styles were composed from ProffieOS building blocks, taking ideas only from public style descriptions.
+The **About** page, under Tools, shows the version you are running and the license: GPL-3.0-or-later. It has **Show the licence** and **Show the third-party notices** buttons, and **Open the source**, which opens the source code of this exact build on GitHub. It also says that Hiltwright's own styles were composed from ProffieOS building blocks, taking ideas only from public style descriptions.
 
-![The About page with the version, licence and source link](shots/clean-46.png)
+![The About page with the version, license and source link](shots/clean-46.png)
 
 ### Updates
 

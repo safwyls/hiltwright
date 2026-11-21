@@ -1,37 +1,28 @@
-// The home page's stage: the theme paintings as planes. Choosing a theme, by its slice or its name, brings that
-// plane to the front and shows that theme in the app window. Without this script the first theme stays in front.
+// The home page's stage: a deck of app windows, one per theme. Choosing a theme, by its name or by its window,
+// brings that window to the front and moves the others one step back. Without this script the first theme stays
+// in front.
 (() => {
   const stage = document.querySelector('[data-stage]');
   if (!stage) return;
-  const planes = [...stage.querySelectorAll('.plane')];
+  const deck = stage.querySelector('.deck');
+  const cards = [...deck.querySelectorAll('.pane')];
   const names = [...stage.querySelectorAll('.stage-names button')];
-  const win = stage.querySelector('.stage-win');
-  const img = win.querySelector('img');
+  const card = (id) => cards.find((c) => c.dataset.theme === id);
   const label = (id) => names.find((b) => b.dataset.theme === id)?.textContent.trim() ?? id;
+  // The deck's order, front first, as the page was built.
+  let order = cards.slice().sort((a, b) => Number(a.style.getPropertyValue('--i')) - Number(b.style.getPropertyValue('--i'))).map((c) => c.dataset.theme);
 
   function show(id, focusName) {
-    const front = planes.find((p) => p.dataset.theme === id);
-    if (!front || front.classList.contains('front')) return;
-    // The other planes keep their order and close up into slices; the chosen one comes forward, sharpening.
-    let slot = 0;
-    for (const p of planes) {
-      const isFront = p === front;
-      p.classList.toggle('front', isFront);
-      p.classList.remove('racking');
-      if (!isFront) p.style.setProperty('--s', String(slot++));
-    }
-    void front.offsetWidth; // restart the focus pull
-    front.classList.add('racking');
+    if (!card(id) || order[0] === id) return;
+    order = [id, ...order.filter((t) => t !== id)];
+    order.forEach((t, i) => { const c = card(t); c.style.setProperty('--i', String(i)); c.classList.toggle('front', i === 0); });
+    // The site's accent and the blade of its mark follow the chosen theme, on this page and the next ones.
+    window.hwAccent?.(id);
+    deck.setAttribute('aria-label', `The Hiltwright app: the Armory page with an example saber plugged in, shown in the ${label(id)} theme`);
     for (const b of names) { const on = b.dataset.theme === id; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; if (on) { b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (focusName) b.focus(); } }
-    // The window: fade out, change the picture, fade in when it has loaded.
-    const src = `assets/themes/${id}.jpg`;
-    win.classList.add('swapping');
-    const next = new Image();
-    next.onload = next.onerror = () => { img.src = src; img.alt = `The Hiltwright app: the Armory page with an example saber plugged in, in the ${label(id)} theme`; win.classList.remove('swapping'); };
-    next.src = src;
   }
 
-  for (const p of planes) p.addEventListener('click', () => show(p.dataset.theme, false));
+  for (const c of cards) c.addEventListener('click', () => show(c.dataset.theme, false));
   names.forEach((b, i) => {
     b.addEventListener('click', () => show(b.dataset.theme, false));
     b.addEventListener('keydown', (e) => {
@@ -41,8 +32,11 @@
       show(names[(i + step + names.length) % names.length].dataset.theme, true);
     });
   });
-  // Have the other pictures ready, so a change is immediate.
-  window.addEventListener('load', () => { for (const b of names) new Image().src = `assets/themes/${b.dataset.theme}.jpg`; });
+
+  // A visitor who chose a theme before finds its window in front again.
+  let saved = null;
+  try { saved = localStorage.getItem('hw-theme'); } catch { /* storage is off: the first theme stays */ }
+  if (saved) show(saved, false);
 
   // The top bar is clear over the stage and solid once the page has moved.
   const top = document.querySelector('.top');
