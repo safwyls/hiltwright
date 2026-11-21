@@ -160,7 +160,7 @@ describe('the words of the tour', () => {
   });
 
   it('points only at data-tour targets that are in the app, and clicks only those', () => {
-    const named = (n: string) => sources.includes(`data-tour="${n}"`) || (/^nav-/.test(n) && sources.includes('data-tour={`nav-${g.section.toLowerCase()}`}'))
+    const named = (n: string) => sources.includes(`data-tour="${n}"`) || (/^nav-/.test(n) && sources.includes("data-tour={`nav-${g.section.toLowerCase() || 'top'}`}"))
       || (/^build-tab-/.test(n) && sources.includes('data-tour={`build-tab-${id}`}')) || (/^demo-tab-/.test(n) && sources.includes('data-tour={`demo-tab-${id}`}'))
       || (n === 'look-card-queued' && sources.includes("'look-card-queued'"));
     for (const s of steps) {

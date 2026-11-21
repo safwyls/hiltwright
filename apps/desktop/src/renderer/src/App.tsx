@@ -22,6 +22,7 @@ import { StyleEditor } from './StyleEditor';
 import { FontLibrary } from './FontLibrary';
 import { Contributors } from './Contributors';
 import { About } from './About';
+import { Settings } from './Settings';
 import { UpdateChip, useUpdates } from './Updates';
 import { QUICK_COMMANDS, destructiveReason } from './consoleCommands';
 import { flowStatus, nextStep, useWorkspace, type Workspace } from './workspace';
@@ -37,14 +38,21 @@ import { TOUR_OFFERED_KEY, restorePrefs, setTourLock, snapshotPrefs, takeHeldCon
 // three.js is only needed in the demo room, so it loads when that page is first opened.
 const Demo = lazy(() => import('./Demo').then((m) => ({ default: m.Demo })));
 
-type Page = 'armory' | 'wiring' | 'presets' | 'fonts' | 'build' | 'looks' | 'editor' | 'library' | 'contributors' | 'demo' | 'diag' | 'about';
+// The sidebar (docs/install-live-plan.md): the Armory on top, where a saber is picked; Install, the numbered steps that
+// set a saber up and flash it; Live, for adjusting a saber that is plugged in now; the Workshop; and Tools.
+type Page = 'armory' | 'wiring' | 'presets' | 'fonts' | 'build' | 'live-presets' | 'diag' | 'live-card' | 'looks' | 'editor' | 'library' | 'contributors' | 'demo' | 'settings' | 'about';
 const NAV: { section: string; pages: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name']; step?: number }[] }[] = [
-  { section: 'Saber', pages: [
-    { id: 'armory', title: 'Armory', icon: 'armory' },
+  { section: '', pages: [{ id: 'armory', title: 'Armory', icon: 'armory' }] },
+  { section: 'Install', pages: [
     { id: 'wiring', title: 'Wiring', icon: 'blade', step: 1 },
     { id: 'presets', title: 'Presets', icon: 'presets', step: 2 },
     { id: 'fonts', title: 'Fonts & SD', icon: 'fonts', step: 3 },
     { id: 'build', title: 'Build & Install', icon: 'build', step: 4 },
+  ] },
+  { section: 'Live', pages: [
+    { id: 'live-presets', title: 'Presets', icon: 'presets' },
+    { id: 'diag', title: 'Controls', icon: 'diag' },
+    { id: 'live-card', title: 'Card', icon: 'sd' },
   ] },
   { section: 'Workshop', pages: [
     { id: 'looks', title: 'Styles', icon: 'looks' },
@@ -53,10 +61,10 @@ const NAV: { section: string; pages: { id: Page; title: string; icon: Parameters
     { id: 'contributors', title: 'Contributors', icon: 'people' },
     { id: 'demo', title: 'Demo room', icon: 'play' },
   ] },
-  { section: 'Tools', pages: [{ id: 'diag', title: 'Diagnostics', icon: 'diag' }, { id: 'about', title: 'About', icon: 'info' }] },
+  { section: 'Tools', pages: [{ id: 'settings', title: 'Settings', icon: 'gear' }, { id: 'about', title: 'About', icon: 'info' }] },
 ];
 const PAGES = NAV.flatMap((g) => g.pages);
-const TITLE: Record<Page, string> = { armory: 'Armory', wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts & SD', build: 'Build & Install', looks: 'Styles', editor: 'Style editor', library: 'Font library', contributors: 'Contributors', demo: 'Demo room', diag: 'Diagnostics', about: 'About' };
+const TITLE: Record<Page, string> = { armory: 'Armory', wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts & SD', build: 'Build & Install', 'live-presets': 'Live presets', diag: 'Controls', 'live-card': 'Card', looks: 'Styles', editor: 'Style editor', library: 'Font library', contributors: 'Contributors', demo: 'Demo room', settings: 'Settings', about: 'About' };
 const TOUR_STEPS = flattenTour(TOUR);
 /**
  * The guided tour (Tour.tsx). 'starting': the page underneath has closed, and main is being told to refuse writes;
@@ -184,8 +192,8 @@ export function App() {
         <div className="brand"><Logo size={28} /><span className="wordmark">Hiltwright</span></div>
         <nav className="nav" aria-label="Sections">
           {NAV.map((g) => (
-            <div key={g.section} className="col" style={{ gap: 2 }} data-tour={`nav-${g.section.toLowerCase()}`}>
-              <span className="sec">{g.section}</span>
+            <div key={g.section} className="col" style={{ gap: 2 }} data-tour={`nav-${g.section.toLowerCase() || 'top'}`}>
+              {g.section && <span className="sec">{g.section}{g.section === 'Live' && ws.live && <span className="livedot" title={`${ws.saber?.name ?? 'A saber'} is plugged in`} />}</span>}
               {g.pages.map((p) => (
                 <a key={p.id} href="#" className={page === p.id ? 'on' : ''} aria-current={page === p.id ? 'page' : undefined} title={`Ctrl+${PAGES.indexOf(p) + 1}`} onClick={(e) => { e.preventDefault(); setPage(p.id, () => setStyleCreator(null)); }}>
                   {p.step ? <span className="stepn">{p.step}</span> : <Icon name={p.icon} />}<span>{p.title}</span>
@@ -233,6 +241,9 @@ export function App() {
             : page === 'library' ? <FontLibrary board={board} onDemo={(folder) => { setDemoFont(folder); setPage('demo'); }} />
             : page === 'contributors' ? <Contributors onFonts={() => setPage('library')} onLooks={(name) => { setStyleCreator(name); setPage('looks'); }} onDemo={() => setPage('demo')} />
             : page === 'demo' ? <Suspense fallback={<span className="hint row" style={{ gap: 14, padding: 24 }}><Loader />Opening the demo room…</span>}><Demo initialLook={demoLook} initialFont={demoFont} board={board} /></Suspense>
+            : page === 'live-presets' ? <Presets ws={ws} board={board} go={go} />
+            : page === 'live-card' ? <Fonts board={board} ws={ws} go={go} />
+            : page === 'settings' ? <Settings touring={!!tour} />
             : page === 'about' ? <About updates={tour ? null : updates} />
             : <Diagnostics board={board} />}
         </ErrorBoundary>}

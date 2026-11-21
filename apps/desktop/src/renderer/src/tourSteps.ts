@@ -27,10 +27,10 @@ export const TOUR: TourChapter[] = [
       },
       {
         title: 'From plan to installed saber',
-        target: 'nav-saber',
+        target: 'nav-install',
         text: [
-          'These numbered steps take a saber from a plan to an installed board: 1 Wiring, 2 Presets, 3 Fonts & SD, 4 Build & Install.',
-          'The Armory, above them, is where you choose which saber you are working on.',
+          'Install\'s numbered steps take a saber from a plan to an installed board: 1 Wiring, 2 Presets, 3 Fonts & SD, 4 Build & Install.',
+          'Live, below them, changes a saber that is plugged in now. The Armory, on top, is where you pick a saber.',
         ],
       },
       {
@@ -38,7 +38,7 @@ export const TOUR: TourChapter[] = [
         target: 'nav-workshop',
         text: [
           'The Workshop sits beside that path. Browse and build styles, keep your sound fonts, and try any of it in the demo room.',
-          'Tools, below, has Diagnostics for reporting a problem, and About.',
+          'Tools, below, has your Settings, such as the theme, and About.',
         ],
       },
       {
@@ -259,6 +259,49 @@ export const TOUR: TourChapter[] = [
     ],
   },
   {
+    id: 'live-presets', name: 'Live presets', page: 'live-presets', steps: [
+      {
+        title: 'Change a saber as it runs',
+        target: 'nav-live',
+        text: [
+          'Live is for a saber that is already installed and plugged in. Its presets change on the saber at once, with nothing built or flashed.',
+          'It works with any ProffieOS firmware, not only Hiltwright\'s.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'diag', name: 'Controls', page: 'diag', steps: [
+      {
+        title: 'Talk to the saber',
+        target: 'diag-console',
+        text: [
+          'With a saber plugged in, this page changes its volume and brightness, plays effects, and sends ProffieOS commands.',
+          'A command that restarts the saber or changes its files asks first.',
+        ],
+      },
+      {
+        title: 'Reporting a problem',
+        target: 'diag-save',
+        text: [
+          'Something went wrong? Press "Save diagnostics". It writes one file on this computer about what happened, and sends nothing.',
+          'Attach that file when you report the problem. The same button shows up when a build or install fails.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'live-card', name: 'Live card', page: 'live-card', steps: [
+      {
+        title: 'A small fix on the card',
+        target: 'nav-live',
+        text: [
+          'Share the saber\'s card over its USB cable for a small fix, such as one font. It is slow: a card reader is about 30 times faster.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'looks', name: 'Styles', page: 'looks', steps: [
       {
         title: 'Styles',
@@ -402,21 +445,12 @@ export const TOUR: TourChapter[] = [
     ],
   },
   {
-    id: 'diag', name: 'Diagnostics', page: 'diag', steps: [
+    id: 'settings', name: 'Settings', page: 'settings', steps: [
       {
-        title: 'Talk to the saber',
-        target: 'diag-console',
+        title: 'Your settings',
+        target: 'settings-theme',
         text: [
-          'With a saber plugged in, this page changes its volume and brightness, plays effects, and sends ProffieOS commands.',
-          'A command that restarts the saber or changes its files asks first.',
-        ],
-      },
-      {
-        title: 'Reporting a problem',
-        target: 'diag-save',
-        text: [
-          'Something went wrong? Press "Save diagnostics". It writes one file on this computer about what happened, and sends nothing.',
-          'Attach that file when you report the problem. The same button shows up when a build or install fails.',
+          'Your own preferences for Hiltwright, not about any one saber. Start with the theme: it changes how every page looks.',
         ],
       },
     ],

@@ -41,7 +41,9 @@ The Armory moves above the sections because it is where you choose between them 
 - Take the tour;
 - the saber being worked on, and whether it is plugged in;
 - the full ProffieOS line, which the title bar used to cut short;
-- Hiltwright's version, with the update chip beside it. Step 4 is renamed so the section does not read "Install › Build & Install".
+- Hiltwright's version, with the update chip beside it.
+
+Step 4 is renamed so the section does not read "Install › Build & Install".
 
 ## Install
 
