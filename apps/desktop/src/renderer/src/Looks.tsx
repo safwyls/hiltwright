@@ -3,7 +3,7 @@
 // "queued" when it is in the build model but not yet installed, and "new" otherwise.
 
 import { useEffect, useMemo, useState } from 'react';
-import { LOOK_FX, STARTER_LOOKS, UNKNOWN_AUTHOR, analyzeStyleCode, creditOf, creditWords, pastedAuthor, registerLookSim, argInfo, hexToColorWord, type BladeRole, type LookDef } from '@hiltwright/core';
+import { LOOK_FX, STARTER_LOOKS, UNKNOWN_AUTHOR, analyzeStyleCode, layoutStyleCode, creditOf, creditWords, pastedAuthor, registerLookSim, argInfo, hexToColorWord, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { Loader, LoadingSpace } from './Loader';
@@ -284,14 +284,13 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
             )}
 
             {sel.args.length === 0 && <span className="hint">Nothing in this style can be changed live.</span>}
-            {sel.source === 'pasted' && sel.header && <pre className="console" style={{ maxHeight: 110, margin: 0, fontSize: 11, flex: 'none' }}>{sel.header}</pre>}
             {(() => {
-              // What goes into the config for this style: the shared wrapper and alias for Hiltwright's own, then the
-              // preset-slot expression. A pasted style's header is shown above, and copied with it.
-              const code = [sel.usesFx ? LOOK_FX : null, sel.define ?? null, sel.code].filter(Boolean).join('\n\n');
+              // What goes into the config for this style: a pasted style's copyright header, the shared wrapper and
+              // alias for Hiltwright's own, then the preset-slot expression, laid out one argument a line where long.
+              const code = [sel.header, sel.usesFx ? LOOK_FX : null, sel.define ?? null, layoutStyleCode(sel.code)].filter(Boolean).join('\n\n');
               const open = codeOf === sel.id;
               const copy = () => {
-                void navigator.clipboard.writeText([sel.header, code].filter(Boolean).join('\n\n')).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
+                void navigator.clipboard.writeText(code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
               };
               return (
                 <div className="col" style={{ gap: 6, flex: 'none' }}>

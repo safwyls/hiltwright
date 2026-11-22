@@ -184,6 +184,46 @@ const NAMED_COLORS: Record<string, string> = {
 };
 
 /**
+ * Style code laid out for reading: one template argument per line, indented by depth, where a line would be long.
+ * Only whitespace is added; every other character is kept as written (StylePtr<...>() and all), so the result is the
+ * same C++. Code that already has its own line breaks, holds comments, or does not balance is returned as it is.
+ */
+export function layoutStyleCode(code: string): string {
+  const text = code.trim();
+  if (/\n/.test(text) || /\/[/*]/.test(text)) return text;
+  let i = 0;
+  interface Part { head: string; args: Part[] | null; tail: string }
+  const upTo = (stops: string) => { const from = i; while (i < text.length && !stops.includes(text[i])) i++; return text.slice(from, i).trim(); };
+  const part = (): Part => {
+    const head = upTo('<,>');
+    if (text[i] !== '<') return { head, args: null, tail: '' };
+    i++;
+    const args: Part[] = [];
+    if (text[i] === '>') i++;
+    else for (;;) {
+      args.push(part());
+      if (text[i] === ',') { i++; continue; }
+      if (text[i] === '>') { i++; break; }
+      throw new Error('unbalanced');
+    }
+    return { head, args, tail: upTo(',>') }; // what follows the closing >, such as StylePtr's ()
+  };
+  const print = (p: Part, depth: number): string => {
+    if (!p.args) return p.head;
+    const inner = p.args.map((a) => print(a, depth + 1));
+    const one = `${p.head}<${inner.join(',')}>${p.tail}`;
+    if (one.length < 70 && !inner.some((s) => s.includes('\n'))) return one;
+    const pad = '  '.repeat(depth + 1);
+    return `${p.head}<\n${inner.map((s) => pad + s).join(',\n')}>${p.tail}`;
+  };
+  try {
+    const root = part();
+    if (i < text.length) return text;
+    return print(root, 0);
+  } catch { return text; }
+}
+
+/**
  * Analyse pasted style code (typically from the Fett263 style library). Splits off the leading comment header,
  * finds the runtime arguments the style reads, and checks the shape is something a preset slot can hold.
  */

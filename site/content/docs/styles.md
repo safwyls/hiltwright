@@ -69,7 +69,7 @@ These colors are only tried on the preview. They go with the style when you put 
 
 ## The style's code
 
-**Show the code** opens the C++ that goes into your saber's configuration for this style. For Hiltwright's own styles, that includes the shared effects wrapper they build on. **Copy the style** copies it, with a pasted style's header. **Hide the code** closes it again, and so does picking another style.
+**Show the code** opens the C++ that goes into your saber's configuration for this style. A pasted style starts with its copyright header, as pasted. For Hiltwright's own styles, it includes the shared effects wrapper they build on. Code that came as one long line is shown one part per line, indented, so it can be read; nothing else in it changes. **Copy the style** copies what is shown. **Hide the code** closes it again, and so does picking another style.
 
 ## Put it on a preset
 

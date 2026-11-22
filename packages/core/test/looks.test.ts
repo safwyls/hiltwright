@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY_LOOKS, LOOK_FX, STARTER_LOOKS, analyzeStyleCode, creditOf, creditWords, pastedAuthor, withOrigin, lookFingerprint, scanStyleArgs, colorWordToHex, formatStyleArgs, generateConfig, hexToColorWord, lookAtSlot, lookSlots, parseStyleArgs, validateModel, type LookDef, type SaberConfigModel } from '../src';
+import { LIBRARY_LOOKS, LOOK_FX, STARTER_LOOKS, analyzeStyleCode, creditOf, creditWords, pastedAuthor, withOrigin, lookFingerprint, scanStyleArgs, colorWordToHex, formatStyleArgs, generateConfig, hexToColorWord, layoutStyleCode, lookAtSlot, lookSlots, parseStyleArgs, validateModel, type LookDef, type SaberConfigModel } from '../src';
 
 const FETT263 = `// Hiltwright test look (header laid out like a library block)
 // Copyright 2026 Hiltwright contributors
@@ -218,5 +218,22 @@ describe('who made a style', () => {
 
   it('credits every built-in style to Hiltwright, as the About statement does (ST40)', () => {
     expect(STARTER_LOOKS.every((l) => l.by === 'Hiltwright')).toBe(true);
+  });
+});
+
+describe('layoutStyleCode', () => {
+  const line = 'StylePtr<Layers<AudioFlicker<RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>,Mix<Int<10000>,Black,RgbArg<BASE_COLOR_ARG,Rgb<0,0,255>>>>,ResponsiveLockupL<Strobe<RgbArg<LOCKUP_COLOR_ARG,Rgb<255,255,255>>,Int<-1>,20,4>,TrInstant,TrFade<300>,SaberBase::LOCKUP_NORMAL>,InOutTrL<TrWipeX<IgnitionTime<300>>,TrWipeInX<RetractionTime<>>>>>()';
+  it('breaks a long one-line style by depth and keeps every other character', () => {
+    const out = layoutStyleCode(line);
+    expect(out.replace(/\s+/g, '')).toBe(line);
+    expect(out.split('\n')[0]).toBe('StylePtr<');
+    expect(out.endsWith('>()')).toBe(true);
+    expect(out).toContain('\n    ResponsiveLockupL<');
+  });
+  it('leaves short, multi-line, commented or unbalanced code as it is', () => {
+    expect(layoutStyleCode('StylePtr<Blue>()')).toBe('StylePtr<Blue>()');
+    expect(layoutStyleCode('StylePtr<Layers<\n  Blue,\n  Black>>()')).toBe('StylePtr<Layers<\n  Blue,\n  Black>>()');
+    expect(layoutStyleCode(`${line} // note`)).toBe(`${line} // note`);
+    expect(layoutStyleCode(line.slice(0, -4))).toBe(line.slice(0, -4));
   });
 });
