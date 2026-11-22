@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { wiringFromConfig, type ModelBlade } from '@hiltwright/core';
-import { bladeWords, importedBlades, referenceFrom } from '../src/renderer/src/wiringImport';
+import { bladeWords, boardDefinesDiffer, importedBlades, importedBoardDefines, referenceFrom } from '../src/renderer/src/wiringImport';
 
 const CONFIG = `#ifdef CONFIG_TOP
 #include "proffieboard_v2_config.h"
@@ -34,5 +34,19 @@ describe('importing wiring from a config', () => {
     expect(referenceFrom('SF_nihilus.h', 'card', w)).toMatchObject({ file: 'SF_nihilus.h', from: 'card', board: 'V2', buttons: 2, unreadable: [] });
     expect(bladeWords(w.blades[0])).toBe('132-pixel strip on bladePin, power bladePowerPin2 + bladePowerPin3 (GRB)');
     expect(bladeWords(w.blades[1])).toBe('LED on bladePowerPin5');
+  });
+
+  it("#14 takes the config's board settings, remembers all its defines, and a config without settings leaves none", () => {
+    const set = wiringFromConfig(CONFIG.replace('#define NUM_BUTTONS 2\n', '#define NUM_BUTTONS 2\n#define ORIENTATION ORIENTATION_USB_TOWARDS_BLADE\n#define FETT263_TWIST_ON\n'))!;
+    expect(importedBoardDefines(set)).toEqual({ boardDefines: ['ORIENTATION ORIENTATION_USB_TOWARDS_BLADE'] });
+    expect(referenceFrom('a.h', 'file', set).defines).toEqual(['ORIENTATION ORIENTATION_USB_TOWARDS_BLADE', 'FETT263_TWIST_ON']);
+    expect(boardDefinesDiffer({}, set)).toBe(true);
+    expect(boardDefinesDiffer({ boardDefines: ['ORIENTATION ORIENTATION_USB_TOWARDS_BLADE'] }, set)).toBe(false);
+    expect(importedBoardDefines(w)).toEqual({ boardDefines: undefined });
+    expect(boardDefinesDiffer({}, w)).toBe(false);
+  });
+
+  it('#16 puts a brightness limit in words', () => {
+    expect(bladeWords({ ...w.blades[0], dim: 20 })).toBe('132-pixel strip on bladePin, power bladePowerPin2 + bladePowerPin3 (GRB), limited to 20% brightness');
   });
 });

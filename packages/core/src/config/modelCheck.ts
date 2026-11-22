@@ -6,6 +6,7 @@
 // The rules are about form, not about wiring: whether the wiring is right is wiringProblems' job.
 
 import { BOARD_PINS } from './pinRules';
+import { defineName, isCarriedDefine } from './boardDefines';
 
 const BOARDS = ['V2', 'V3'];
 const BOARD_FROM = ['bootloader', 'firmware', 'owner'];
@@ -96,6 +97,10 @@ export function modelFormProblems(raw: unknown): string[] {
   // A define the app adds itself (prop options): `NAME` or `NAME value`, the name in capitals and the value one token.
   // Never a lower-case name, so a pin such as bladePin cannot be redefined, and never more than one line.
   if (m.extraDefines !== undefined && (!Array.isArray(m.extraDefines) || m.extraDefines.length > 40 || !m.extraDefines.every((d) => isStr(d) && /^[A-Z][A-Z0-9_]{0,60}( [A-Za-z0-9_.-]{1,60})?$/.test(d)))) out.push('An extra #define is not in the accepted form.');
+  // Board settings carried from the installer's config (issue #14): only the defines and values boardDefines.ts lists,
+  // each name once, so nothing else an imported or shared model holds is ever printed into CONFIG_TOP this way.
+  if (m.boardDefines !== undefined && (!Array.isArray(m.boardDefines) || !m.boardDefines.every(isCarriedDefine)
+    || new Set(m.boardDefines.map((d) => defineName(d as string))).size !== m.boardDefines.length)) out.push('A board setting from the installer\'s config is not one Hiltwright accepts.');
   if (!Array.isArray(m.blades) || m.blades.length > 16) out.push('The blades are not in the expected form.');
   else {
     const ids = new Set(m.blades.map((b) => (isObj(b) ? b.id : null)));
@@ -108,6 +113,8 @@ export function modelFormProblems(raw: unknown): string[] {
       if (!isInt(b.pixels, 1, 2048)) out.push(`${n}'s LED count must be a whole number from 1 to 2048.`);
       if (!isStr(b.order) || !/^([RGBWrgbw]{3,4})?$/.test(b.order)) out.push(`${n}'s colour order must be letters such as GRB or GRBW.`);
       if (b.parallel !== undefined && !isInt(b.parallel, 1, 16)) out.push(`${n}'s parallel strip count must be a whole number.`);
+      // Printed as DimBlade's percentage (issue #16): a plain number, above 0 and at most 100.
+      if (b.dim !== undefined && !(typeof b.dim === 'number' && Number.isFinite(b.dim) && b.dim > 0 && b.dim <= 100)) out.push(`${n}'s brightness limit must be a percentage above 0 and at most 100.`);
       if (!Array.isArray(b.extra) || !b.extra.every(isTemplateToken)) out.push(`${n} has extra strip settings Hiltwright does not accept.`);
       if (!Array.isArray(b.leds) || b.leds.length > 4 || !b.leds.every(isTemplateToken)) out.push(`${n} has LED types Hiltwright does not accept.`);
       const w = b.wiring;
@@ -115,7 +122,7 @@ export function modelFormProblems(raw: unknown): string[] {
       if (!isObj(w)) out.push(`${n}'s wiring is not in the expected form.`);
       else if (w.kind === 'own') { if (!pin(w.dataPin) || !Array.isArray(w.powerPins) || !w.powerPins.every(pin)) out.push(`${n} names a pin Proffieboards do not have.`); }
       else if (w.kind === 'chain') { if (!isStr(w.after) || !ids.has(w.after) || (w.reverse !== undefined && typeof w.reverse !== 'boolean') || (w.stride !== undefined && !isInt(w.stride, 1, 16))) out.push(`${n} continues a blade that is not there, or in a way Hiltwright does not accept.`); }
-      else if (w.kind === 'power') { if (!Array.isArray(w.pins) || !w.pins.every(pin)) out.push(`${n} names a pin Proffieboards do not have.`); }
+      else if (w.kind === 'power') { if (!Array.isArray(w.pins) || w.pins.length > 4 || !w.pins.every(pin)) out.push(`${n} names a pin Proffieboards do not have.`); }
       else out.push(`${n}'s wiring is not in the expected form.`);
     });
   }

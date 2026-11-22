@@ -9,6 +9,7 @@ import { quote } from './cpp';
 import { STARTER_LOOKS, starterLookFor, type FirmwareManifest, type LookDef } from '../looks';
 import { wiringProblems } from './pinRules';
 import { modelFormProblems } from './modelCheck';
+import { defineName } from './boardDefines';
 import { LIBRARY_LOOKS, LOOK_FX } from '../lookLibrary';
 
 export type Prop = 'fett263' | 'sa22c' | 'bc' | 'default' | 'custom';
@@ -123,7 +124,17 @@ export interface SaberConfigModel {
    * board, buttons and blades when the owner imported or compared it. Build & Flash warns when the wiring differs.
    * The generator ignores it.
    */
-  wiringReference?: { file: string; from: 'card' | 'file'; at: string; board: BoardModel | null; buttons: number | null; blades: BladeSpec[]; unreadable: { blade: number; text: string }[] };
+  wiringReference?: {
+    file: string; from: 'card' | 'file'; at: string; board: BoardModel | null; buttons: number | null; blades: BladeSpec[]; unreadable: { blade: number; text: string }[];
+    /** Its CONFIG_TOP defines (ConfigWiring.defines), for Build & Flash to name each one a build drops. Absent on references kept before issue #14. */
+    defines?: string[];
+  };
+  /**
+   * Board settings carried from the installer's config (issue #14): its orientation, blade detect, display, serial,
+   * volume and clash threshold, as `NAME` or `NAME value`, only from the list in boardDefines.ts. Each replaces
+   * Hiltwright's own define of that name.
+   */
+  boardDefines?: string[];
   /** Extra `#define` lines the caller wants, verbatim without the `#define`. */
   extraDefines?: string[];
   /** Hiltwright version, written into the header. */
@@ -318,6 +329,12 @@ export function generateConfig(m: SaberConfigModel): GeneratedConfig {
     defines.push('BLADE_ID_SCAN_MILLIS 1000', 'BLADE_ID_TIMES 15', 'BLADE_ID_STOP_SCAN_WHILE_IGNITED');
   }
   if (shared.length || swapping) defines.push('SHARED_POWER_PINS');
+  // The installer's board settings (issue #14). One with the name of a define already listed takes its place, so the
+  // installer's VOLUME or CLASH_THRESHOLD_G replaces Hiltwright's and nothing is defined twice.
+  for (const d of m.boardDefines ?? []) {
+    const at = defines.findIndex((x) => defineName(x) === defineName(d));
+    if (at >= 0) defines[at] = d; else defines.push(d);
+  }
   if (m.extraDefines) defines.push(...m.extraDefines);
 
   const slotLooks = m.presets.map((_p, pi) => m.blades.map((_b, bi) => lookForSlot(m, pi, bi)));

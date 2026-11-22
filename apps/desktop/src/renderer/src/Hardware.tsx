@@ -2,12 +2,12 @@
 // Produces core ModelBlades directly, so what the owner confirms is exactly what generateConfig compiles.
 
 import { useState, type CSSProperties } from 'react';
-import { chainRanges, type BladeVariant, type BoardModel, type ModelBlade } from '@hiltwright/core';
+import { chainRanges, chainRoots, type BladeVariant, type BoardModel, type ModelBlade } from '@hiltwright/core';
 import { Icon } from './Icon';
 import { Loader } from './Loader';
 import { BladeBar, Crystal, Hilt } from './Saber';
 
-import { KIND_LABEL, ROLES, ROLE_META, bladeSummary, dataPins, freeDataPins, kindOf, pinLabel, pinTable, powerOptions, powerPinsOf, withBladeCount, withKind, type Kind } from './hardwareModel';
+import { KIND_LABEL, ROLES, ROLE_META, bladeSummary, dataPins, freeDataPins, kindOf, pinLabel, pinTable, powerOptions, powerPinsOf, withBladeCount, withContinuation, withKind, type Kind } from './hardwareModel';
 import { Select } from './Select';
 
 export interface SwapProps {
@@ -76,7 +76,13 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                 <span style={{ fontWeight: 600, fontSize: 13.5 }}>{ROLE_META[b.role].label}</span>
                 <span className="hint grow ellip">{ROLE_META[b.role].hint}</span>
                 <button type="button" className="chip" aria-label="Collapse" onClick={() => setOpen(null)}><Icon name="up" /></button>
-                {blades.length > 1 && !locked && <button type="button" className="chip" onClick={() => { onChange(blades.filter((x) => x.id !== b.id).map((x) => (x.wiring.kind === 'chain' && x.wiring.after === b.id ? withKind({ ...x, wiring: { kind: 'own', dataPin: dataPins(board)[0], powerPins: ['bladePowerPin1'] } }, 'pixel', board) : x))); setOpen(null); }}><Icon name="trash" />Remove</button>}
+                {blades.length > 1 && !locked && <button type="button" className="chip" onClick={() => {
+                  // A blade that continued this one stays on the same strip when this one was itself a continuation
+                  // (a chain of a chain, issue #17); otherwise it gets a data line of its own.
+                  const root = chainRoots(blades).get(b.id);
+                  onChange(blades.filter((x) => x.id !== b.id).map((x) => (x.wiring.kind === 'chain' && x.wiring.after === b.id ? (root ? { ...x, wiring: { ...x.wiring, after: root } } : withKind({ ...x, wiring: { kind: 'own', dataPin: dataPins(board)[0], powerPins: ['bladePowerPin1'] } }, 'pixel', board)) : x)));
+                  setOpen(null);
+                }}><Icon name="trash" />Remove</button>}
               </div>
               <div className="col" style={{ padding: '12px 14px 14px', gap: 12 }}>
                 <div className="row wrap" style={{ gap: 16, alignItems: 'flex-start' }}>
@@ -90,7 +96,7 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                     <div className="col" style={{ gap: 6 }}>
                       <span className="label">Built from</span>
                       <div className="seg" role="radiogroup" aria-label="Type">
-                        {(['pixel', 'single', 'star'] as Kind[]).map((k) => <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} disabled={locked} onClick={() => set(b.id, withKind(b, k, board, othersPower(b.id)))}><Icon name={k === 'pixel' ? 'strip' : 'led'} />{KIND_LABEL[k]}</button>)}
+                        {(['pixel', 'single', 'star'] as Kind[]).map((k) => <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} disabled={locked} onClick={() => { if (kind !== k) set(b.id, withKind(b, k, board, othersPower(b.id))); }}><Icon name={k === 'pixel' ? 'strip' : 'led'} />{KIND_LABEL[k]}</button>)}
                       </div>
                     </div>
                   )}
@@ -107,6 +113,8 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                 {kind === 'star' && <span className="hint">A tri-colour star LED on three power pins, red, green and blue in that order. The resistor values are the stock ProffieOS examples; ask the installer if the colours look wrong.</span>}
                 {kind === 'single' && <span className="hint">One LED on one power pin. Shown white in previews; its style decides the brightness.</span>}
                 {kind === 'motor' && <span className="hint">Runs from one power pin at full power while its style is on.</span>}
+                {/* Read from the installer's config (issue #16); the build keeps it as DimBlade. */}
+                {b.dim !== undefined && <span className="hint">Brightness limited to {b.dim}%, as the installer{'’'}s config set it, often to spare the battery or keep the LEDs cool. Builds keep the limit.</span>}
 
                 <div className="col" style={{ gap: 8 }}>
                   <span className="label">Wiring</span>
@@ -116,7 +124,7 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                         <button type="button" className={`opt ${w.kind === 'own' ? 'on' : ''}`} role="radio" aria-checked={w.kind === 'own'} disabled={locked} onClick={() => w.kind !== 'own' && set(b.id, { wiring: { kind: 'own', dataPin: dataPins(board).find((p) => !pins.data.find((r) => r.pin === p)?.users.length) ?? dataPins(board)[0], powerPins: ['bladePowerPin1'] } })}>
                           <span className="radio" /><span className="col" style={{ gap: 2 }}><b style={{ fontWeight: 600, fontSize: 13 }}>Own data line</b><span className="hint">Its own wire and its own power pins.</span></span>
                         </button>
-                        <button type="button" className={`opt ${w.kind === 'chain' ? 'on' : ''}`} role="radio" aria-checked={w.kind === 'chain'} disabled={locked || parents.length === 0} style={parents.length === 0 ? { opacity: 0.5 } : undefined} onClick={() => parents[0] && w.kind !== 'chain' && set(b.id, { wiring: { kind: 'chain', after: parents[0].id }, order: '' })}>
+                        <button type="button" className={`opt ${w.kind === 'chain' ? 'on' : ''}`} role="radio" aria-checked={w.kind === 'chain'} disabled={locked || parents.length === 0} style={parents.length === 0 ? { opacity: 0.5 } : undefined} onClick={() => { if (parents[0] && w.kind !== 'chain') onChange(withContinuation(blades, b.id, parents[0].id)); }}>
                           <span className="radio" /><span className="col" style={{ gap: 2 }}><b style={{ fontWeight: 600, fontSize: 13 }}>Continues another blade's wire</b><span className="hint">{parents.length === 0 ? 'Needs another pixel blade on its own data line.' : w.kind === 'chain' && ranges.get(b.id) ? `Same strip: pixels ${ranges.get(b.id)!.first}–${ranges.get(b.id)!.last}, shares its power.` : 'Same strip, after that blade. Shares its power pins.'}</span></span>
                         </button>
                       </div>
@@ -135,7 +143,9 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                     </>
                   ) : (
                     <div className="grid3">
-                      {(w as { pins: string[] }).pins.map((pin, k) => (
+                      {/* Each pin stays in its LED slot (issue #15): an installer's config can leave a slot between two
+                          LEDs empty (-1), which is no pin to choose, so it is skipped and the others keep their places. */}
+                      {(w as { pins: string[] }).pins.map((pin, k) => pin === '-1' ? null : (
                         <label key={k} className="field"><span className="label">{kind === 'star' ? ['Red', 'Green', 'Blue'][k] : 'Power pin'}</span><span className="input sans"><span className="ellip">{pinLabel(board, pin)}</span><span className="caret"><Icon name="down" /></span>
                           <Select value={pin} disabled={locked} aria-label={kind === 'star' ? `${['Red', 'Green', 'Blue'][k]} power pin` : 'Power pin'} onChange={(e) => { const pinsNext = [...(w as { pins: string[] }).pins]; pinsNext[k] = e.target.value; set(b.id, { wiring: { kind: 'power', pins: pinsNext } }); }}>
                             {powerOptions(board).filter((o) => o.kind === 'fet' || kind === 'single').map((o) => <option key={o.pin} value={o.pin}>{o.label}{o.kind === 'pwm' ? ' · PWM, small LED only' : ''}</option>)}

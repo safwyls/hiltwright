@@ -21,6 +21,13 @@ describe('wiring confirmation', () => {
     expect(wiringConfirmed({ ...confirmed, blades: [main] })).toBe(false);
   });
 
+  it('#16 counts a brightness limit, and a blade without one keeps the fingerprint it always had', () => {
+    // Pinned: the fingerprint of a layout confirmed before limits were kept must not change on update.
+    expect(wiringFingerprint('V2', [main, crystal])).toBe('d479cc6fdbe9');
+    expect(wiringFingerprint('V2', [main, { ...crystal, dim: undefined }])).toBe(wiringFingerprint('V2', [main, crystal]));
+    expect(wiringConfirmed({ ...confirmed, blades: [main, { ...crystal, dim: 50 }] })).toBe(false);
+  });
+
   it('is withdrawn by a change of board', () => {
     expect(wiringConfirmed({ ...confirmed, board: 'V3' })).toBe(false);
   });

@@ -2,6 +2,7 @@
 // them, in the same words. Also the pins each board has, and what a blade is built from.
 
 import type { BoardModel, ModelBlade } from './generate';
+import { bladePowerPins, chainRoots } from './blades';
 
 export type BladeKind = 'pixel' | 'single' | 'star' | 'motor';
 export interface PowerOption { pin: string; label: string; kind: 'fet' | 'pwm' }
@@ -41,6 +42,7 @@ export function wiringProblems(blades: ModelBlade[], board: BoardModel): WiringP
   if (!blades.some((b) => b.role === 'main')) add('One blade must be the main blade.', [], []);
   const dataUsers = new Map<string, string[]>();
   const pwmUsers = new Map<string, string[]>();
+  const roots = chainRoots(blades);
   for (const b of blades) {
     const w = b.wiring;
     if (b.type === 'pixel' && b.pixels < 1) add(`${name(b.id)} needs a pixel count.`, [], [b.id]);
@@ -50,15 +52,13 @@ export function wiringProblems(blades: ModelBlade[], board: BoardModel): WiringP
       if (!pins.data.includes(w.dataPin)) add(`${name(b.id)} uses ${w.dataPin}, which the Proffieboard ${board} does not have.`, [w.dataPin], [b.id]);
     } else if (w.kind === 'chain') {
       const parent = blades.find((x) => x.id === w.after);
-      // Follow the chain to the strip that owns the data line.
-      let root: ModelBlade | undefined = parent;
-      const seen = new Set<string>([b.id]);
-      while (root && root.wiring.kind === 'chain' && !seen.has(root.id)) { seen.add(root.id); const next = (root.wiring as { after: string }).after; root = blades.find((x) => x.id === next); }
-      if (!parent || !root || root.wiring.kind !== 'own' || root.type !== 'pixel') add(`${name(b.id)} continues a blade that is not a pixel strip on its own data line.`, [], [b.id]);
+      // The strip that owns the data line, found the same way as strip length and LED ranges are (issue #17).
+      if (!parent || !roots.has(b.id)) add(`${name(b.id)} continues a blade that is not a pixel strip on its own data line.`, [], [b.id]);
       else if (index(parent.id) > index(b.id)) add(`${name(b.id)} continues ${name(parent.id)}, which comes after it. Move it below ${name(parent.id)}.`, [], [b.id, parent.id]);
     }
-    const power = w.kind === 'own' ? w.powerPins : w.kind === 'power' ? w.pins : [];
-    if (w.kind === 'power' && !w.pins.length) add(`${name(b.id)} needs a power pin.`, [], [b.id]);
+    // A simple blade's `-1` placeholders keep its pins in their LED slots (issue #15); they are not pins.
+    const power = bladePowerPins(b);
+    if (w.kind === 'power' && !power.length) add(`${name(b.id)} needs a power pin.`, [], [b.id]);
     for (const p of power) {
       const opt = pins.power.find((o) => o.pin === p);
       if (!opt) { add(`${name(b.id)} uses ${p}, which the Proffieboard ${board} does not have.`, [p], [b.id]); continue; }

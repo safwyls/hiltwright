@@ -29,6 +29,12 @@ describe('the working model', () => {
     expect(wiringConfirmed(m)).toBe(true);
   });
 
+  it("#14 keeps the board settings taken from the installer's config, so builds have them", () => {
+    const rec = plan({ ...saved, boardDefines: ['ORIENTATION ORIENTATION_USB_TOWARDS_BLADE'] });
+    expect(draftModel(infoFromRecord(rec), rec).boardDefines).toEqual(['ORIENTATION ORIENTATION_USB_TOWARDS_BLADE']);
+    expect(draftModel(infoFromRecord(plan(saved)), plan(saved)).boardDefines).toBeUndefined();
+  });
+
   it('shows no confirmation when none was given, or only the old timestamp', () => {
     expect(wiringConfirmed(draftModel(infoFromRecord(plan(saved)), plan(saved)))).toBe(false);
     const legacy = plan({ ...saved, wiringConfirmedAt: '2026-09-22T10:00:00.000Z' });

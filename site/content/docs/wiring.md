@@ -32,6 +32,24 @@ The saber's firmware does not say which pins its blades use: they are compiled i
 
 If the wiring here matches it, Wiring says so. If it differs, each difference is listed; a different pin or number of blades is shown in red, because a wrong pin can damage the board. **Use its wiring** fills in the blades, the buttons and the board from the config (a board read from the saber itself stays). **Check builds against it** keeps it as the reference: Build & Flash then warns before installing whenever the wiring here differs from it. Hiltwright reads the common blade forms (`WS281XBladePtr`, `WS2811BladePtr`, `SubBlade`, `SimpleBladePtr`); a blade written another way is named as not readable, so you check that one by hand. A config with several blade configurations (Blade ID) is read from its first.
 
+A `SimpleBladePtr` pairs each LED with the pin in the same place, so Hiltwright keeps every pin in its place, also when the installer left a place between two LEDs empty (`-1`). Such a blade shows only the pins it really uses.
+
+An installer can limit a blade's brightness with `DimBlade`, often to spare the battery or keep the LEDs cool. Hiltwright keeps that limit: the blade card says "Brightness limited to 20%", and builds keep it. A different limit, or none, is listed as a difference. A `DimBlade` whose limit is not a plain percentage is named as not readable.
+
+#### Its board settings
+
+A config also has settings of its own (its `#define` lines). Hiltwright writes its own settings for every build, but a few of the installer's describe how the hilt is built, and builds take those over with its wiring:
+
+| Setting | What it is |
+| --- | --- |
+| `ORIENTATION`, `ORIENTATION_ROTATION`, `INVERT_ORIENTATION` | How the board is mounted. Without it, gestures, twist, stab and blade angle use the wrong axes. |
+| `BLADE_DETECT_PIN` | A switch that tells when a blade is plugged in. |
+| `ENABLE_SSD1306`, `INCLUDE_SSD1306`, `OLED_FLIP_180`, `OLED_MIRRORED` | A small OLED display. |
+| `ENABLE_SERIAL` | A Bluetooth or serial module. |
+| `VOLUME`, `BOOT_VOLUME`, `CLASH_THRESHOLD_G` | The installer's volume and clash sensitivity, in place of Hiltwright's 1800 and 3.5. |
+
+Wiring lists which of the config's settings builds take over and which they leave out. **Use its wiring** takes them with the wiring; when the wiring already matches, **Use its board settings** takes only them, and the wiring confirmation stays. The settings taken are listed on Wiring, and **Leave them out** drops them again. Build & Flash names every setting of the installer's config that a build still leaves out.
+
 ### A custom prop file
 
 Choose **Custom prop file…** and pick the file. Hiltwright checks that it is a ProffieOS prop file (it has a `#define PROP_TYPE`) and keeps its own copy. The build puts it next to the props that come with ProffieOS, so it can include them, under a name of its own so none of them is replaced. **Choose another file…** swaps it, and choosing a stock prop and then Custom again goes back to the same file.
@@ -68,7 +86,7 @@ For a pixel strip you also set:
 - **Colour order**, one of GRB, RGB, GRBW, RGBW, BGR or BRG. Check your strip's datasheet if colors come out wrong.
 - **Strips on this wire.** Strips soldered to the same data wire show the same thing and cannot be controlled separately, so they count as one blade.
 
-**Wiring.** A pixel strip is either "Own data line" (its own wire and power pins) or "Continues another blade's wire" (the same strip, after another blade, sharing its power). A chained blade can also "Run the other way (reversed)". Single LEDs, star LEDs and motors only need power pins.
+**Wiring.** A pixel strip is either "Own data line" (its own wire and power pins) or "Continues another blade's wire" (the same strip, after another blade, sharing its power). A chained blade can also "Run the other way (reversed)". Blades on one strip take its pixels in blade order: the first blade, then each blade that continues it, so the strip is as long as all of them together. If you make a strip that another blade continues into a continuation itself, that other blade moves onto the same strip after it. Single LEDs, star LEDs and motors only need power pins.
 
 > **Note:** One blade must be the main blade. If none is, the pin table says "One blade must be the main blade."
 

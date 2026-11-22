@@ -17,7 +17,11 @@ function canonical(v: unknown): string {
   return JSON.stringify(v);
 }
 
-/** A fingerprint of the board and every blade exactly as stored. */
+/**
+ * A fingerprint of the board and every blade exactly as stored, so a blade's brightness limit (`dim`, issue #16)
+ * counts too. Fields left out are left out of the fingerprint, so a blade without a limit keeps the fingerprint it had
+ * before limits were kept, and its confirmation with it.
+ */
 export function wiringFingerprint(board: BoardModel, blades: ModelBlade[]): string {
   return contentHash(canonical({ board, blades }));
 }

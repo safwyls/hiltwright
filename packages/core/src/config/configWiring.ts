@@ -10,7 +10,8 @@ import type { BladeExpr } from './document';
 import type { BoardModel, SaberConfigModel, StockProp } from './generate';
 import { bladeTables, boardInclude, getDefine, parseConfig } from './parse';
 import { splitArgs } from './cpp';
-import { rowToBlades } from './blades';
+import { bladePowerPins, dimPercent, rowToBlades } from './blades';
+import { EVERY_BUILD_HAS, defineText } from './boardDefines';
 
 /** What a config file says about the hardware. */
 export interface ConfigWiring {
@@ -27,6 +28,12 @@ export interface ConfigWiring {
   rows: number;
   /** The prop it includes, and the stock prop that is when it is one. */
   prop: { include: string; stock: StockProp | null } | null;
+  /**
+   * Its CONFIG_TOP defines other than those every Hiltwright build has (issue #14), as `NAME` or `NAME value`: the
+   * board's orientation, a display, the volume, prop options. A build carries a few over (boardDefines.ts) and drops
+   * the rest, and Build & Flash names each one it drops.
+   */
+  defines: string[];
 }
 
 const ORDER_FLAGS: Record<string, number> = { WS2811_RGB: 0, WS2811_RBG: 1, WS2811_GRB: 2, WS2811_GBR: 3 };
@@ -92,20 +99,35 @@ export function wiringFromConfig(text: string): ConfigWiring | null {
   const propInc = /#ifdef\s+CONFIG_PROP\s*\n\s*#include\s+"([^"]+)"/.exec(text.replace(/\r\n/g, '\n'))?.[1] ?? null;
   const blades = row ? rowToBlades({ ...row, blades: row.blades.map(withDefaults) }, 'cfg') : [];
   const unreadable = (row?.blades ?? []).map((b, i) => ({ blade: i + 1, expr: withDefaults(b) }))
-    .filter(({ expr }) => expr.kind === 'raw' || (expr.kind === 'dim' && expr.inner.kind === 'raw') || (expr.kind === 'subblade' && expr.inner?.kind === 'raw'))
+    // A DimBlade whose limit is not a plain percentage (a macro, say) is not readable either: importing the blade
+    // without it would run it at full brightness (issue #16).
+    .filter(({ expr }) => expr.kind === 'raw' || (expr.kind === 'dim' && (expr.inner.kind === 'raw' || dimPercent(expr.factor) === null)) || (expr.kind === 'subblade' && expr.inner?.kind === 'raw'))
     .map(({ blade, expr }) => ({ blade, text: expr.raw.replace(/\s+/g, ' ').slice(0, 160) }));
   const propFile = propInc?.split('/').pop() ?? null;
+  const defines = (doc.top?.lines ?? []).flatMap((l) => (l.kind === 'define' && !EVERY_BUILD_HAS.includes(l.name) ? [defineText(l.name, l.value)] : []));
   return {
     board, buttons: num('NUM_BUTTONS'), numBlades: num('NUM_BLADES'), blades, unreadable, rows: table.rows.length,
     prop: propInc ? { include: propInc, stock: propFile ? STOCK_PROP_FILES[propFile] ?? null : null } : null,
+    defines: [...new Set(defines)],
   };
 }
 
 /** One way a saber's wiring differs from a config's. `danger`: a pin or blade count, which can damage a board. */
 export interface WiringDifference { blade: number | null; what: string; here: string; config: string; danger: boolean }
 
-const pinsOf = (b: BladeSpec): string[] => (b.wiring.kind === 'own' ? b.wiring.powerPins : b.wiring.kind === 'power' ? b.wiring.pins : []);
+const pinsOf = (b: BladeSpec): string[] => bladePowerPins(b);
 const sameSet = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
+/**
+ * A simple blade's pins slot by slot, as ProffieOS pairs them with its LEDs: the same pins in other slots light other
+ * LEDs (issue #15). Trailing empty slots say nothing, so they are left off.
+ */
+const slotPins = (b: BladeSpec): string[] => {
+  const pins = b.wiring.kind === 'power' ? [...b.wiring.pins] : [];
+  while (pins.length && pins[pins.length - 1] === '-1') pins.pop();
+  return pins;
+};
+const dimWords = (dim: number | undefined) => (dim === undefined ? 'none' : `${dim}%`);
+const slotWords = (pins: string[]) => pins.map((p) => (p === '-1' ? 'no pin' : p)).join(', ') || 'none';
 const describe = (b: BladeSpec | undefined) => !b ? 'none' : b.type === 'simple' ? 'LED' : b.wiring.kind === 'chain' ? 'part of the strip before it' : 'pixel strip';
 
 /** How a saber's model differs from what a config file describes, blade by blade. Empty when they agree. */
@@ -121,9 +143,13 @@ export function compareWiring(m: Pick<SaberConfigModel, 'board' | 'buttons' | 'b
     const a = m.blades[i]; const c = cfg.blades[i];
     if (describe(a) !== describe(c)) { out.push({ blade: i + 1, what: 'kind', here: describe(a), config: describe(c), danger: true }); continue; }
     if (a.wiring.kind === 'own' && c.wiring.kind === 'own' && a.wiring.dataPin !== c.wiring.dataPin) out.push({ blade: i + 1, what: 'data pin', here: a.wiring.dataPin, config: c.wiring.dataPin, danger: true });
-    if (!sameSet(pinsOf(a), pinsOf(c))) out.push({ blade: i + 1, what: 'power pins', here: pinsOf(a).join(', ') || 'none', config: pinsOf(c).join(', ') || 'none', danger: true });
+    if (a.type === 'simple' && c.type === 'simple') {
+      if (slotPins(a).join(',') !== slotPins(c).join(',')) out.push({ blade: i + 1, what: 'power pins', here: slotWords(slotPins(a)), config: slotWords(slotPins(c)), danger: true });
+    } else if (!sameSet(pinsOf(a), pinsOf(c))) out.push({ blade: i + 1, what: 'power pins', here: pinsOf(a).join(', ') || 'none', config: pinsOf(c).join(', ') || 'none', danger: true });
     if (a.type === 'pixel' && a.pixels !== c.pixels) out.push({ blade: i + 1, what: 'pixels', here: String(a.pixels), config: String(c.pixels), danger: false });
     if (a.type === 'pixel' && a.wiring.kind === 'own' && c.order && (a.order || 'GRB') !== c.order) out.push({ blade: i + 1, what: 'colour order', here: a.order || 'GRB', config: c.order, danger: false });
+    // The installer's DimBlade cap (issue #16): without it the blade runs at full brightness.
+    if ((a.dim ?? null) !== (c.dim ?? null)) out.push({ blade: i + 1, what: 'brightness limit', here: dimWords(a.dim), config: dimWords(c.dim), danger: false });
   }
   return out;
 }

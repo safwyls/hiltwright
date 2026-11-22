@@ -123,6 +123,8 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
     ...(saved?.customProp ? { customProp: saved.customProp } : {}),
     // The installer's config the wiring is checked against (Wiring, Build & Flash).
     ...(saved?.wiringReference ? { wiringReference: saved.wiringReference } : {}),
+    // Board settings taken from that config (issue #14): its orientation, display, volume and the like.
+    ...(saved?.boardDefines?.length ? { boardDefines: saved.boardDefines } : {}),
     blades,
     // Presets loaded from a bank stay as loaded until they have been installed; otherwise the saber's own are the truth.
     presets: saved?.presetsFrom ? saved.presets.map((p) => ({ ...p, ...(p.looks ? { looks: blades.map((_b, k) => p.looks?.[k] ?? null) } : {}), ...(p.lookArgs ? { lookArgs: blades.map((_b, k) => p.lookArgs?.[k] ?? null) } : {}) })) : info.presets.map((p, i) => {
