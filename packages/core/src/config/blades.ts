@@ -31,7 +31,8 @@ export function rowToBlades(row: BladeConfigRow, idPrefix = 'b'): BladeSpec[] {
     const id = `${idPrefix}${i + 1}`;
     if (expr.kind === 'ws281x') {
       push({ id, type: 'pixel', pixels: expr.leds, order: expr.order, extra: expr.extra, leds: [], parallel: 1, wiring: { kind: 'own', dataPin: expr.dataPin, powerPins: expr.powerPins } });
-      currentRoot = null;
+      // A strip on its own data line does not end the chain: in ProffieOS only a SubBlade given a strip starts a new
+      // one, so a NULL SubBlade after this still joins the earlier strip (blades/sub_blade.h, issue #35).
       return;
     }
     if (expr.kind === 'subblade') {

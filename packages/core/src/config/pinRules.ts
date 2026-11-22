@@ -43,6 +43,8 @@ export function wiringProblems(blades: ModelBlade[], board: BoardModel): WiringP
   const dataUsers = new Map<string, string[]>();
   const pwmUsers = new Map<string, string[]>();
   const roots = chainRoots(blades);
+  /** Strips other blades continue: each is written as a SubBlade with a strip of its own, which starts a new chain. */
+  const sharedStrips = new Set(roots.values());
   for (const b of blades) {
     const w = b.wiring;
     if (b.type === 'pixel' && b.pixels < 1) add(`${name(b.id)} needs a pixel count.`, [], [b.id]);
@@ -55,6 +57,14 @@ export function wiringProblems(blades: ModelBlade[], board: BoardModel): WiringP
       // The strip that owns the data line, found the same way as strip length and LED ranges are (issue #17).
       if (!parent || !roots.has(b.id)) add(`${name(b.id)} continues a blade that is not a pixel strip on its own data line.`, [], [b.id]);
       else if (index(parent.id) > index(b.id)) add(`${name(b.id)} continues ${name(parent.id)}, which comes after it. Move it below ${name(parent.id)}.`, [], [b.id, parent.id]);
+      else {
+        // ProffieOS joins a continuation to the most recent strip written with a SubBlade of its own, in blade order
+        // (blades/sub_blade.h), not to the one it names (issue #35). Blade numbers are fixed in every preset, so the
+        // config cannot reorder them: another shared strip starting in between is refused instead.
+        const root = roots.get(b.id)!;
+        const between = blades.slice(index(root) + 1, index(b.id)).find((x) => x.id !== root && sharedStrips.has(x.id));
+        if (between) add(`${name(b.id)} continues ${name(root)}, but ${name(between.id)} starts another shared strip between them. Move ${name(b.id)} above ${name(between.id)}, so it comes before that strip starts.`, [], [b.id, between.id]);
+      }
     }
     // A simple blade's `-1` placeholders keep its pins in their LED slots (issue #15); they are not pins.
     const power = bladePowerPins(b);
