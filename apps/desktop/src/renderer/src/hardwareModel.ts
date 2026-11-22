@@ -1,7 +1,7 @@
 // Pure model behind the hardware editor: pins per board, blade kinds, the pin table and its conflicts.
 // No React and no DOM here, so it is unit-tested directly (apps/desktop/test/hardware.test.ts).
 
-import { BOARD_PINS, bladeKind, chainRanges, sharedPowerPins, wiringProblems, type BladeKind, type BladeRole, type BoardModel, type ModelBlade, type PowerOption } from '@hiltwright/core';
+import { BOARD_PINS, bladeKind, bladePowerPins, chainRanges, sharedPowerPins, wiringProblems, type BladeKind, type BladeRole, type BoardModel, type ModelBlade, type PowerOption } from '@hiltwright/core';
 
 export type Kind = BladeKind;
 
@@ -34,8 +34,9 @@ const MOTOR_LEDS = ['CreeXPE2WhiteTemplate<550>', 'NoLED', 'NoLED', 'NoLED'];
 
 export const kindOf = (b: ModelBlade): Kind => bladeKind(b);
 
+/** The pins a blade uses, without the `-1` placeholders that keep a simple blade's pins in their LED slots (issue #15). */
 export function powerPinsOf(b: ModelBlade): string[] {
-  return b.wiring.kind === 'own' ? b.wiring.powerPins : b.wiring.kind === 'power' ? b.wiring.pins : [];
+  return bladePowerPins(b);
 }
 
 /** A fresh blade of a role, on the first free-looking pins. */
@@ -96,7 +97,7 @@ export function pinTable(blades: ModelBlade[], board: BoardModel): PinReport {
       const root = rootOf(b);
       if (root && root.wiring.kind === 'own' && root.type === 'pixel') data.find((r) => r.pin === (root.wiring as { dataPin: string }).dataPin)?.users.push(b.id);
     } else {
-      for (const p of b.wiring.pins) power.find((r) => r.pin === p)?.users.push(b.id);
+      for (const p of powerPinsOf(b)) power.find((r) => r.pin === p)?.users.push(b.id);
     }
   }
   // The problems are exactly the ones the build refuses, in the same words; their pins are marked in the table.
@@ -120,6 +121,6 @@ export function bladeSummary(blades: ModelBlade[], b: ModelBlade, board: BoardMo
     const w = b.wiring as { dataPin: string; powerPins: string[] };
     return `${b.pixels} px${b.parallel > 1 ? ` × ${b.parallel} strips` : ''} · ${w.dataPin} · ${w.powerPins.map((p) => pinLabel(board, p)).join(' + ')}`;
   }
-  const pins = (b.wiring as { pins: string[] }).pins.map((p) => pinLabel(board, p)).join(' + ');
+  const pins = powerPinsOf(b).map((p) => pinLabel(board, p)).join(' + ');
   return `${KIND_LABEL[kind]} · ${pins}`;
 }

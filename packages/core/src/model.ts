@@ -7,6 +7,10 @@ export type Board = 'V1' | 'V2' | 'V3' | 'unknown';
 export type Wiring =
   | { kind: 'own'; dataPin: string; powerPins: string[] }
   | { kind: 'chain'; after: string; reverse?: boolean; stride?: number }
+  /**
+   * A simple blade's pins in LED slot order: `pins[i]` drives `leds[i]`, and `-1` holds the place of a slot with no pin
+   * (issue #15). Slots after the last pin have none.
+   */
   | { kind: 'power'; pins: string[] };
 
 export type BladeType = 'pixel' | 'simple';

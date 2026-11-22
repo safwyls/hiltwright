@@ -90,7 +90,7 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                     <div className="col" style={{ gap: 6 }}>
                       <span className="label">Built from</span>
                       <div className="seg" role="radiogroup" aria-label="Type">
-                        {(['pixel', 'single', 'star'] as Kind[]).map((k) => <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} disabled={locked} onClick={() => set(b.id, withKind(b, k, board, othersPower(b.id)))}><Icon name={k === 'pixel' ? 'strip' : 'led'} />{KIND_LABEL[k]}</button>)}
+                        {(['pixel', 'single', 'star'] as Kind[]).map((k) => <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} disabled={locked} onClick={() => { if (kind !== k) set(b.id, withKind(b, k, board, othersPower(b.id))); }}><Icon name={k === 'pixel' ? 'strip' : 'led'} />{KIND_LABEL[k]}</button>)}
                       </div>
                     </div>
                   )}
@@ -135,7 +135,9 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                     </>
                   ) : (
                     <div className="grid3">
-                      {(w as { pins: string[] }).pins.map((pin, k) => (
+                      {/* Each pin stays in its LED slot (issue #15): an installer's config can leave a slot between two
+                          LEDs empty (-1), which is no pin to choose, so it is skipped and the others keep their places. */}
+                      {(w as { pins: string[] }).pins.map((pin, k) => pin === '-1' ? null : (
                         <label key={k} className="field"><span className="label">{kind === 'star' ? ['Red', 'Green', 'Blue'][k] : 'Power pin'}</span><span className="input sans"><span className="ellip">{pinLabel(board, pin)}</span><span className="caret"><Icon name="down" /></span>
                           <Select value={pin} disabled={locked} aria-label={kind === 'star' ? `${['Red', 'Green', 'Blue'][k]} power pin` : 'Power pin'} onChange={(e) => { const pinsNext = [...(w as { pins: string[] }).pins]; pinsNext[k] = e.target.value; set(b.id, { wiring: { kind: 'power', pins: pinsNext } }); }}>
                             {powerOptions(board).filter((o) => o.kind === 'fet' || kind === 'single').map((o) => <option key={o.pin} value={o.pin}>{o.label}{o.kind === 'pwm' ? ' · PWM, small LED only' : ''}</option>)}

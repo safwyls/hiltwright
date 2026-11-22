@@ -102,4 +102,11 @@ describe('the page and the build agree', () => {
     expect(freeDataPins('V3')).toEqual(['blade5Pin', 'blade6Pin', 'blade7Pin']);
     expect(freeDataPins('V2')).toEqual([]);
   });
+  it('#15 an imported LED with an empty slot between its pins: the placeholder is no pin in the table or the summary', () => {
+    const sparse: ModelBlade = { id: 'b2', role: 'accent', type: 'simple', pixels: 2, order: '', extra: [], leds: ['CreeXPE2WhiteTemplate<550>', 'NoLED', 'CreeXPE2BlueTemplate<240>', 'NoLED'], parallel: 1, wiring: { kind: 'power', pins: ['bladePowerPin4', '-1', 'bladePowerPin6'] } };
+    const t = pinTable([main, sparse], 'V3');
+    expect(t.problems).toEqual([]);
+    expect(t.power.filter((r) => r.users.includes('b2')).map((r) => r.pin)).toEqual(['bladePowerPin4', 'bladePowerPin6']);
+    expect(bladeSummary([main, sparse], sparse, 'V3')).toBe('Single LED · LED 4 + LED 6');
+  });
 });

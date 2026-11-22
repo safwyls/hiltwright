@@ -38,7 +38,10 @@ export function rowToBlades(row: BladeConfigRow, idPrefix = 'b'): BladeSpec[] {
       }
     }
     if (expr.kind === 'simple') {
-      const pins = expr.pins.filter((p) => p !== '-1');
+      // ProffieOS pairs each LED with the pin in the same slot, so a `-1` between two pins stays where it is (issue
+      // #15). Only trailing ones go: the editor's own layouts keep their pins first and their NoLED slots last.
+      const pins = [...expr.pins];
+      while (pins.length && pins[pins.length - 1] === '-1') pins.pop();
       out.push({ id, type: 'simple', pixels: expr.leds.filter((l) => l !== 'NoLED').length, order: '', extra: [], leds: expr.leds, parallel: 1, wiring: { kind: 'power', pins } });
       currentRoot = null;
       return;
@@ -81,6 +84,7 @@ export function bladesToExprs(blades: BladeSpec[]): BladeExpr[] {
     if (b.type === 'simple') {
       if (b.leds.length === 4 || b.leds.length === 0) {
         const leds = b.leds.length ? b.leds : ['NoLED', 'NoLED', 'NoLED', 'NoLED'];
+        // Pins stay in their slots, each beside its LED (issue #15); only the slots after the last pin are filled.
         const pins = [...(b.wiring.kind === 'power' ? b.wiring.pins : []), '-1', '-1', '-1', '-1'].slice(0, 4);
         return { kind: 'simple', leds, pins, raw: '' };
       }
@@ -114,12 +118,20 @@ export function configurationToRow(cfg: BladeConfiguration): BladeConfigRow {
   return row;
 }
 
+/**
+ * The power pins a blade really uses. A simple blade keeps its pins in LED slot order, with `-1` holding the place of a
+ * slot that has none (issue #15); those placeholders are no pin at all, so every wiring rule leaves them out.
+ */
+export function bladePowerPins(b: Pick<BladeSpec, 'wiring'>): string[] {
+  const pins = b.wiring.kind === 'own' ? b.wiring.powerPins : b.wiring.kind === 'power' ? b.wiring.pins : [];
+  return pins.filter((p) => p !== '-1');
+}
+
 /** Power pins that more than one independent strip or LED uses. Legal in ProffieOS with SHARED_POWER_PINS. */
 export function sharedPowerPins(blades: BladeSpec[]): string[] {
   const users = new Map<string, Set<string>>();
   for (const b of blades) {
-    const pins = b.wiring.kind === 'own' ? b.wiring.powerPins : b.wiring.kind === 'power' ? b.wiring.pins : [];
-    for (const p of pins) {
+    for (const p of bladePowerPins(b)) {
       if (!users.has(p)) users.set(p, new Set());
       users.get(p)!.add(b.id);
     }

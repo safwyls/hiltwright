@@ -2,6 +2,7 @@
 // them, in the same words. Also the pins each board has, and what a blade is built from.
 
 import type { BoardModel, ModelBlade } from './generate';
+import { bladePowerPins } from './blades';
 
 export type BladeKind = 'pixel' | 'single' | 'star' | 'motor';
 export interface PowerOption { pin: string; label: string; kind: 'fet' | 'pwm' }
@@ -57,8 +58,9 @@ export function wiringProblems(blades: ModelBlade[], board: BoardModel): WiringP
       if (!parent || !root || root.wiring.kind !== 'own' || root.type !== 'pixel') add(`${name(b.id)} continues a blade that is not a pixel strip on its own data line.`, [], [b.id]);
       else if (index(parent.id) > index(b.id)) add(`${name(b.id)} continues ${name(parent.id)}, which comes after it. Move it below ${name(parent.id)}.`, [], [b.id, parent.id]);
     }
-    const power = w.kind === 'own' ? w.powerPins : w.kind === 'power' ? w.pins : [];
-    if (w.kind === 'power' && !w.pins.length) add(`${name(b.id)} needs a power pin.`, [], [b.id]);
+    // A simple blade's `-1` placeholders keep its pins in their LED slots (issue #15); they are not pins.
+    const power = bladePowerPins(b);
+    if (w.kind === 'power' && !power.length) add(`${name(b.id)} needs a power pin.`, [], [b.id]);
     for (const p of power) {
       const opt = pins.power.find((o) => o.pin === p);
       if (!opt) { add(`${name(b.id)} uses ${p}, which the Proffieboard ${board} does not have.`, [p], [b.id]); continue; }

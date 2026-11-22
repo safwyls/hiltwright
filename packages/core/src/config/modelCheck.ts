@@ -115,7 +115,7 @@ export function modelFormProblems(raw: unknown): string[] {
       if (!isObj(w)) out.push(`${n}'s wiring is not in the expected form.`);
       else if (w.kind === 'own') { if (!pin(w.dataPin) || !Array.isArray(w.powerPins) || !w.powerPins.every(pin)) out.push(`${n} names a pin Proffieboards do not have.`); }
       else if (w.kind === 'chain') { if (!isStr(w.after) || !ids.has(w.after) || (w.reverse !== undefined && typeof w.reverse !== 'boolean') || (w.stride !== undefined && !isInt(w.stride, 1, 16))) out.push(`${n} continues a blade that is not there, or in a way Hiltwright does not accept.`); }
-      else if (w.kind === 'power') { if (!Array.isArray(w.pins) || !w.pins.every(pin)) out.push(`${n} names a pin Proffieboards do not have.`); }
+      else if (w.kind === 'power') { if (!Array.isArray(w.pins) || w.pins.length > 4 || !w.pins.every(pin)) out.push(`${n} names a pin Proffieboards do not have.`); }
       else out.push(`${n}'s wiring is not in the expected form.`);
     });
   }

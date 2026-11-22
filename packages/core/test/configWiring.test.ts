@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareWiring, differenceText, wiringFromConfig, type ModelBlade } from '../src';
+import { bladePowerPins, compareWiring, differenceText, generateConfig, validateModel, wiringFromConfig, wiringProblems, type ConfigWiring, type ModelBlade, type SaberConfigModel } from '../src';
 
 // The shape of an installer's config as found on a saber's card (Shadowfoil's SF_nihilus.h): their own prop and style
 // macros, which this reader need not understand to read the wiring.
@@ -86,5 +86,53 @@ describe('wiring from a config file', () => {
     expect(diffs.map((d) => [d.what, d.danger])).toEqual([['board', true], ['buttons', false], ['data pin', true], ['power pins', true], ['pixels', false], ['colour order', false]]);
     expect(differenceText(diffs[2])).toBe('Blade 1 data pin: blade2Pin here, bladePin in the config');
     expect(compareWiring({ board: 'V2', buttons: 1, blades: [strip('bladePin', ['bladePowerPin2', 'bladePowerPin3']), strip('blade2Pin', ['bladePowerPin4'])] }, cfg).map((d) => d.what)).toEqual(['number of blades']);
+  });
+});
+
+/** An installer's config with these blades in its one BladeConfig row (and NUM_BLADES to match). */
+const withBlades = (blades: string[], top = '') => `#ifdef CONFIG_TOP
+#include "proffieboard_v3_config.h"
+#define NUM_BLADES ${blades.length}
+#define NUM_BUTTONS 2
+${top}const unsigned int maxLedsPerStrip = 144;
+#endif
+#ifdef CONFIG_PRESETS
+Preset presets[] = { { "TeensySF", "tracks/venus.wav", ${blades.map(() => 'StylePtr<Blue>()').join(', ')}, "one"} };
+BladeConfig blades[] = {
+ { 0, ${blades.join(',\n   ')},
+   CONFIGARRAY(presets) },
+};
+#endif
+`;
+
+/** Import a config's wiring as the Wiring page does, generate a config from it, and read that config's wiring back. */
+function roundTrip(text: string): { model: SaberConfigModel; generated: string; back: ConfigWiring } {
+  const w = wiringFromConfig(text)!;
+  const model: SaberConfigModel = {
+    name: 'hiltwright_trip', board: 'V3', boardFrom: 'owner', buttons: 2, prop: 'fett263',
+    blades: w.blades.map((b, i) => ({ ...b, role: i === 0 ? 'main' : 'accent' })),
+    presets: [{ font: 'TeensySF', track: 'tracks/venus.wav', name: 'one' }],
+  };
+  expect(validateModel(model)).toEqual([]);
+  const generated = generateConfig(model).text;
+  return { model, generated, back: wiringFromConfig(generated)! };
+}
+
+describe("an installer's config, imported and built again", () => {
+  it('#15 keeps each simple LED on the pin in its own slot when a slot between them is empty', () => {
+    const sparse = 'SimpleBladePtr<CreeXPE2WhiteTemplate<550>, NoLED, CreeXPE2BlueTemplate<240>, NoLED, bladePowerPin4, -1, bladePowerPin6, -1>()';
+    const text = withBlades(['WS281XBladePtr<144, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3>>()', sparse]);
+    const w = wiringFromConfig(text)!;
+    expect(w.blades[1].wiring).toEqual({ kind: 'power', pins: ['bladePowerPin4', '-1', 'bladePowerPin6'] });
+    const { model, generated, back } = roundTrip(text);
+    expect(generated).toContain(sparse);
+    expect(compareWiring(model, w)).toEqual([]);
+    expect(back.blades[1].wiring).toEqual(w.blades[1].wiring);
+    // The same pins in other slots light other LEDs: that is a difference, even though the set of pins is the same.
+    const shifted = { ...model, blades: model.blades.map((b, i) => (i === 1 ? { ...b, wiring: { kind: 'power' as const, pins: ['bladePowerPin4', 'bladePowerPin6'] } } : b)) };
+    expect(compareWiring(shifted, w).map(differenceText)).toEqual(['Blade 2 power pins: bladePowerPin4, bladePowerPin6 here, bladePowerPin4, no pin, bladePowerPin6 in the config']);
+    // The placeholder is no pin: the wiring rules neither count it nor call it a pin the board lacks.
+    expect(wiringProblems(model.blades, 'V3')).toEqual([]);
+    expect(bladePowerPins(model.blades[1])).toEqual(['bladePowerPin4', 'bladePowerPin6']);
   });
 });

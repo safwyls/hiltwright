@@ -32,6 +32,8 @@ The saber's firmware does not say which pins its blades use: they are compiled i
 
 If the wiring here matches it, Wiring says so. If it differs, each difference is listed; a different pin or number of blades is shown in red, because a wrong pin can damage the board. **Use its wiring** fills in the blades, the buttons and the board from the config (a board read from the saber itself stays). **Check builds against it** keeps it as the reference: Build & Flash then warns before installing whenever the wiring here differs from it. Hiltwright reads the common blade forms (`WS281XBladePtr`, `WS2811BladePtr`, `SubBlade`, `SimpleBladePtr`); a blade written another way is named as not readable, so you check that one by hand. A config with several blade configurations (Blade ID) is read from its first.
 
+A `SimpleBladePtr` pairs each LED with the pin in the same place, so Hiltwright keeps every pin in its place, also when the installer left a place between two LEDs empty (`-1`). Such a blade shows only the pins it really uses.
+
 ### A custom prop file
 
 Choose **Custom prop file…** and pick the file. Hiltwright checks that it is a ProffieOS prop file (it has a `#define PROP_TYPE`) and keeps its own copy. The build puts it next to the props that come with ProffieOS, so it can include them, under a name of its own so none of them is replaced. **Choose another file…** swaps it, and choosing a stock prop and then Custom again goes back to the same file.

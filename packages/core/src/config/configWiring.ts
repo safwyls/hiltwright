@@ -10,7 +10,7 @@ import type { BladeExpr } from './document';
 import type { BoardModel, SaberConfigModel, StockProp } from './generate';
 import { bladeTables, boardInclude, getDefine, parseConfig } from './parse';
 import { splitArgs } from './cpp';
-import { rowToBlades } from './blades';
+import { bladePowerPins, rowToBlades } from './blades';
 
 /** What a config file says about the hardware. */
 export interface ConfigWiring {
@@ -104,8 +104,18 @@ export function wiringFromConfig(text: string): ConfigWiring | null {
 /** One way a saber's wiring differs from a config's. `danger`: a pin or blade count, which can damage a board. */
 export interface WiringDifference { blade: number | null; what: string; here: string; config: string; danger: boolean }
 
-const pinsOf = (b: BladeSpec): string[] => (b.wiring.kind === 'own' ? b.wiring.powerPins : b.wiring.kind === 'power' ? b.wiring.pins : []);
+const pinsOf = (b: BladeSpec): string[] => bladePowerPins(b);
 const sameSet = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',');
+/**
+ * A simple blade's pins slot by slot, as ProffieOS pairs them with its LEDs: the same pins in other slots light other
+ * LEDs (issue #15). Trailing empty slots say nothing, so they are left off.
+ */
+const slotPins = (b: BladeSpec): string[] => {
+  const pins = b.wiring.kind === 'power' ? [...b.wiring.pins] : [];
+  while (pins.length && pins[pins.length - 1] === '-1') pins.pop();
+  return pins;
+};
+const slotWords = (pins: string[]) => pins.map((p) => (p === '-1' ? 'no pin' : p)).join(', ') || 'none';
 const describe = (b: BladeSpec | undefined) => !b ? 'none' : b.type === 'simple' ? 'LED' : b.wiring.kind === 'chain' ? 'part of the strip before it' : 'pixel strip';
 
 /** How a saber's model differs from what a config file describes, blade by blade. Empty when they agree. */
@@ -121,7 +131,9 @@ export function compareWiring(m: Pick<SaberConfigModel, 'board' | 'buttons' | 'b
     const a = m.blades[i]; const c = cfg.blades[i];
     if (describe(a) !== describe(c)) { out.push({ blade: i + 1, what: 'kind', here: describe(a), config: describe(c), danger: true }); continue; }
     if (a.wiring.kind === 'own' && c.wiring.kind === 'own' && a.wiring.dataPin !== c.wiring.dataPin) out.push({ blade: i + 1, what: 'data pin', here: a.wiring.dataPin, config: c.wiring.dataPin, danger: true });
-    if (!sameSet(pinsOf(a), pinsOf(c))) out.push({ blade: i + 1, what: 'power pins', here: pinsOf(a).join(', ') || 'none', config: pinsOf(c).join(', ') || 'none', danger: true });
+    if (a.type === 'simple' && c.type === 'simple') {
+      if (slotPins(a).join(',') !== slotPins(c).join(',')) out.push({ blade: i + 1, what: 'power pins', here: slotWords(slotPins(a)), config: slotWords(slotPins(c)), danger: true });
+    } else if (!sameSet(pinsOf(a), pinsOf(c))) out.push({ blade: i + 1, what: 'power pins', here: pinsOf(a).join(', ') || 'none', config: pinsOf(c).join(', ') || 'none', danger: true });
     if (a.type === 'pixel' && a.pixels !== c.pixels) out.push({ blade: i + 1, what: 'pixels', here: String(a.pixels), config: String(c.pixels), danger: false });
     if (a.type === 'pixel' && a.wiring.kind === 'own' && c.order && (a.order || 'GRB') !== c.order) out.push({ blade: i + 1, what: 'colour order', here: a.order || 'GRB', config: c.order, danger: false });
   }
