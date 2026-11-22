@@ -297,7 +297,7 @@ export function readBase(n: Node): LayerCard {
 const WHERE_PARAM = /^(TOP|BOTTOM|SIZE\d?|LOCATION|POS(ITION)?|BUMP_.*|WIDTH|HUMP_.*|START|END)$/i;
 const BLADE_PARAM = /^(TOP|BOTTOM|SIZE\d?|LOCATION|POS(ITION)?|BUMP_.*|HUMP_WIDTH|START|END|ALPHA)$/i;
 const PARAM_LABELS: Record<string, string> = {
-  COLOR: 'Colour', TR1: 'Comes in', TR2: 'Goes out', BeginTr: 'Comes in', EndTr: 'Goes out', OutTr: 'Ignition', InTr: 'Retraction', OFF: 'When off', ALLOW_DISABLE: 'Can be switched off',
+  COLOR: 'Colour', TR1: 'Comes in', TR2: 'Goes out', BeginTr: 'Comes in', EndTr: 'Goes out', OutTr: 'Ignition', InTr: 'Retraction', OFF: 'When off', ALLOW_DISABLE: 'Power down when retracted',
   TOP: 'Position, pointing down', BOTTOM: 'Position, pointing up', SIZE: 'Size', CONDITION: 'Only while (1 is always)', EFFECT: 'Effect', LOCKUP_TYPE: 'Lockup', A: 'First colour', B: 'Second colour',
   'Mix.F': 'Mix by', 'Mix.B': 'Colour', 'StripesX.COLORS': 'Colour', 'Stripes.COLORS': 'Colour', 'StripesX.WIDTH': 'Stripe width', 'Gradient.COLORS': 'Colour', 'AudioFlicker.A': 'Quiet', 'AudioFlicker.B': 'Loud', 'ResponsiveDragL.SIZE1': 'Size, untwisted', 'ResponsiveDragL.SIZE2': 'Size, twisted', 'ResponsiveMeltL.SIZE1': 'Size, untwisted', 'ResponsiveMeltL.SIZE2': 'Size, twisted',
   'ResponsiveBlastL.SIZE': 'Wave width', 'ResponsiveBlastWaveL.SIZE': 'Wave width', 'ResponsiveBlastL.SPEED': 'Wave travel time', 'ResponsiveBlastWaveL.SPEED': 'Wave travel time', 'ResponsiveBlastL.FADE': 'Fade out', 'ResponsiveBlastWaveL.FADE': 'Fade out', WAVE_SIZE: 'Wave width', SPARK_SIZE: 'Spark width',
@@ -306,6 +306,11 @@ const PARAM_LABELS: Record<string, string> = {
 };
 export const paramLabel = (template: string, param: string): string =>
   PARAM_LABELS[`${template}.${param}`] ?? PARAM_LABELS[param] ?? param.toLowerCase().replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+// What a parameter does, where the label alone cannot say it (the catalogue's own docs are mostly empty).
+const PARAM_DOCS: Record<string, string> = {
+  // inout_helper.h: with ALLOW_DISABLE, an off, dark blade reports OPAQUE_BLACK_UNTIL_IGNITION and the saber cuts its power.
+  ALLOW_DISABLE: 'Saves battery: once the blade has retracted and its "When off" colour is black, the saber cuts power to its LEDs until the next ignition.',
+};
 
 /** Plain words for when a template's effect shows. */
 export function templateWhen(template: string, effect?: string): string {
@@ -332,7 +337,7 @@ function readTemplate(n: Node): LayerCard {
     const p = paramFor(e, i);
     if (!p) return { form: 'tree' }; // more arguments than the template takes: leave it as written
     const role: Role = p.kind === 'COLOR' ? 'what' : p.kind === 'TRANSITION' || p.kind === 'EFFECT' || p.kind === 'LOCKUP_TYPE' ? 'when' : WHERE_PARAM.test(p.name) ? 'where' : 'tuning';
-    slots.push({ i, path: [i], param: p.name, label: paramLabel(n.name, p.name), kind: p.kind, def: p.default, doc: p.doc, role, blade: BLADE_PARAM.test(p.name), present: i < n.args.length, extra: e.variadic && i >= fixed && n.args.length > fixed + 1 });
+    slots.push({ i, path: [i], param: p.name, label: paramLabel(n.name, p.name), kind: p.kind, def: p.default, doc: PARAM_DOCS[`${n.name}.${p.name}`] ?? PARAM_DOCS[p.name] ?? p.doc, role, blade: BLADE_PARAM.test(p.name), present: i < n.args.length, extra: e.variadic && i >= fixed && n.args.length > fixed + 1 });
   }
   const effectSlot = slots.find((s) => s.kind === 'EFFECT');
   return { form: 'template', template: n.name, slots, when: templateWhen(n.name, effectSlot ? (n.args[effectSlot.i]?.name ?? effectSlot.def ?? undefined) : undefined), pairs: readPairs(n, slots) };

@@ -77,7 +77,7 @@ describe('reading layers', () => {
     expect(clash.slots.map((s) => `${s.role}:${s.label}:${s.present}`)).toEqual(['what:Colour:true', 'when:Comes in:true', 'when:Goes out:true', 'where:Position, pointing down:false', 'where:Position, pointing up:false', 'where:Size:false']);
     expect(layerCue(tree.args[2], clash)).toEqual({ effect: 'EFFECT_CLASH' });
     const io = readLayer(tree.args[3]);
-    expect(io.form === 'template' && io.slots.map((s) => s.label)).toEqual(['Ignition', 'Retraction', 'When off', 'Can be switched off']);
+    expect(io.form === 'template' && io.slots.map((s) => s.label)).toEqual(['Ignition', 'Retraction', 'When off', 'Power down when retracted']);
     const base = readBase(tree.args[0]);
     expect(base.form === 'template' && base.slots.map((s) => s.label)).toEqual(['Quiet', 'Loud']);
   });
