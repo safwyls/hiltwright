@@ -186,11 +186,24 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
     if (!colourTimers.current.has(key)) return;
     writeColour(key, blade, look, args, n, hex);
   };
-  const add = async () => {
+  // Live: ProffieOS has duplicate_preset and no command that adds a fresh preset, so a new one there is a copy.
+  // Install edits the staged list, so it offers both: a fresh preset, or a copy of the selected one.
+  const duplicate = async () => {
     if (locked) return;
     if (isLive) { await board.duplicatePreset(); return; }
-    await stage((m) => { const src = m.presets[curIx]; m.presets.splice(curIx + 1, 0, src ? { ...structuredClone(src), name: `${src.name} copy` } : { name: `Preset ${m.presets.length + 1}`, font: 'common', track: '' }); });
+    await stage((m) => { const src = m.presets[curIx]; m.presets.splice(curIx + 1, 0, src ? { ...structuredClone(src), name: `${src.name} copy` } : freshPreset(m)); });
     setIx(curIx + 1);
+  };
+  /** A new preset after the selected one: the first font chosen on Install › Fonts, with common, and the default style. */
+  const freshPreset = (m: SaberConfigModel) => {
+    const first = chosenFonts(m)[0] ?? '';
+    return { name: `Preset ${m.presets.length + 1}`, font: joinFont({ folder: first, extra: [], common: true }), track: '' };
+  };
+  const addFresh = async () => {
+    if (locked) return;
+    const at = presets.length ? curIx + 1 : 0;
+    await stage((m) => { m.presets.splice(at, 0, freshPreset(m)); });
+    setIx(at);
   };
   const remove = async () => {
     setConfirmDelete(false);
@@ -309,7 +322,12 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
             ))}
           </div>
           <div className="row" style={{ marginTop: 'auto', padding: '10px 14px', borderTop: '1px solid var(--line)', gap: 6 }}>
-            <button type="button" className="btn sm" disabled={busy} onClick={() => void add()}><span className="b"><span className="i"><Icon name={presets.length ? 'copy' : 'plus'} />{presets.length ? 'Duplicate' : 'Add'}</span></span></button>
+            {inLive
+              ? <button type="button" className="btn sm" disabled={busy} onClick={() => void duplicate()}><span className="b"><span className="i"><Icon name="copy" />Duplicate</span></span></button>
+              : <>
+                  <button type="button" className="btn sm" disabled={busy} onClick={() => void addFresh()}><span className="b"><span className="i"><Icon name="plus" />Add</span></span></button>
+                  <button type="button" className="btn sm" disabled={busy || !presets.length} title={presets.length ? 'A copy of the selected preset, after it' : 'Add a preset first'} onClick={() => void duplicate()}><span className="b"><span className="i"><Icon name="copy" />Duplicate</span></span></button>
+                </>}
             {confirmDelete
               ? <button type="button" className="btn sm danger" disabled={busy || presets.length <= 1} onClick={() => void remove()}><span className="b"><span className="i"><Icon name="trash" />Really delete</span></span></button>
               : <button type="button" className="btn sm ghost" disabled={busy || presets.length <= 1} onClick={() => setConfirmDelete(true)}><span className="b"><span className="i"><Icon name="trash" />Delete</span></span></button>}

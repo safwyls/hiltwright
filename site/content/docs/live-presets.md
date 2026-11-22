@@ -24,7 +24,7 @@ Every control is off, with a note, when:
 
 ## What you can change
 
-The editor is the same as on Install › Presets: the preset list with its arrows, **Duplicate** and **Delete**, then name, font, track and a style for each blade. Colors are written once the picker has been still for half a second. The fields work as described on [Presets](presets.html).
+The editor is the same as on Install › Presets: the preset list with its arrows, **Duplicate** and **Delete**, then name, font, track and a style for each blade. There is no **Add** here: ProffieOS can copy a preset on the saber but has no command for a fresh one, so duplicate one and change it. Colors are written once the picker has been still for half a second. The fields work as described on [Presets](presets.html).
 
 One thing is different. Only styles that are already in the saber's firmware can be chosen here. A style that is not in the firmware has to be built in, so choose it in Install › Presets. It goes on with the next install.
 

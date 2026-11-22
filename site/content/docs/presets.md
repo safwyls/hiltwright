@@ -12,7 +12,7 @@ To change a saber that is already installed, with the saber plugged in, use [Liv
 
 ## The preset list
 
-Pick a preset in the list on the left to change it. The arrows move it up or down the list. **Duplicate** copies the current preset (a copy gets "copy" added to the name). **Delete** asks again with **Really delete**, and is off when only one preset is left. With an empty list the button reads **Add**.
+Pick a preset in the list on the left to change it. The arrows move it up or down the list. **Add** puts a new preset after the current one, with the first font you chose on [Fonts](fonts.html) and the `common` folder. **Duplicate** copies the current preset (a copy gets "copy" added to the name). **Delete** asks again with **Really delete**, and is off when only one preset is left. With an empty list the button reads **Add**.
 
 ## A list for the next install
 
