@@ -103,6 +103,10 @@ select,input{font:inherit;color:inherit;accent-color:var(--sel)}
 .panel.door .radio{width:16px;height:16px;border:1px solid var(--line2);border-radius:50%;flex:none;position:relative}
 .panel.door.on .radio{border-color:var(--sel)}
 .panel.door.on .radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--sel)}
+/* A heading inside a list, like the sidebar's section labels: the font picker's chosen fonts and the rest. */
+.listsec{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.16em;color:var(--mute);padding:12px 18px 6px;text-transform:uppercase}
+.listsec .count{font-family:var(--mono);letter-spacing:0;color:var(--dim)}
+.listsec::after{content:"";flex:1;height:1px;background:var(--line)}
 .nav .sec .livedot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex:none}
 .nav .sec::after{content:"";flex:1;height:1px;background:var(--line)}
 .nav .badge{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--amber);border:1px solid color-mix(in srgb,var(--amber) 50%,transparent);padding:1px 6px;letter-spacing:.04em}

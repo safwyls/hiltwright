@@ -165,7 +165,7 @@ export const TOUR: TourChapter[] = [
         title: 'Font and track',
         target: 'presets-fields',
         text: [
-          'Type the font\'s folder name as it is on the SD card, or press "Choose from library".',
+          'Click the sound font or the track to choose one: from your library with a quick listen, from the card, or a name you type.',
           'The line underneath says whether that font is on the card yet.',
         ],
       },

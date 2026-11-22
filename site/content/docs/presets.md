@@ -12,7 +12,7 @@ To change a saber that is already installed, with the saber plugged in, use [Liv
 
 ## The preset list
 
-Pick a preset in the list on the left to change it. The arrows move it up or down the list. **Add** puts a new preset after the current one, with the first font you chose on [Fonts](fonts.html) and the `common` folder. **Duplicate** copies the current preset (a copy gets "copy" added to the name). **Delete** asks again with **Really delete**, and is off when only one preset is left. With an empty list the button reads **Add**.
+Pick a preset in the list on the left to change it. The arrows move it up or down the list. **Add** puts a new preset after the current one, on a font you chose on [Fonts](fonts.html) that no preset uses yet, named after it, with the `common` folder. When every chosen font is in use, it takes the first one. **Duplicate** copies the current preset (a copy gets "copy" added to the name). The bin button at the end of that row deletes the current preset: it asks again with **Really delete** or **Cancel**. You can delete every preset to start over; Build & Flash asks for at least one before it builds. With an empty list the button reads **Add**.
 
 ## A list for the next install
 
@@ -34,8 +34,8 @@ Build & Flash repeats the warning before it installs.
 ## Name, font and track
 
 - **Name** is the preset's name.
-- **Sound font** is the font's folder name as it is on the SD card. The list offers the fonts you chose on [Fonts](fonts.html). Type a name, or press **Choose from library** to pick one from your font library, with a quick listen. The line underneath says whether the font is in the library. A font you name here is added to the saber's fonts.
-- **Track** is the music file, for example `tracks/name.wav`, or leave it blank for none.
+- **Sound font** is the font's folder name as it is on the SD card. Click it to open **Choose a sound font**: the fonts chosen on [Fonts](fonts.html) first, then the rest of your font library, each with a quick listen, then folders that are not in the library (on the card, or chosen but not in it). To use a folder that is in none of these, type its name in the search box and press **Use** beside it. A font picked from the rest of the library becomes one of the chosen. The line underneath says whether the font is in the library. A font you name here is added to the saber's fonts.
+- **Track** is the music file, for example `tracks/name.wav`. Click it to open **Choose a music track**: **No track**, then the tracks in the preset's font, the tracks on the saber's card as last read, and the tracks in your other library fonts. Library tracks have a quick listen. To use a path that is in none of these, type it in full, ending in `.wav`, and press **Use** beside it. A library font's tracks go onto the card with the font.
 - **Also use common sounds** adds the `common` folder after the font. Presets using Fett263 buttons need it for the voice pack. If a preset names other folders too, they are listed as "Also uses" and kept as they are.
 
 A field is saved when you leave it or press Enter.

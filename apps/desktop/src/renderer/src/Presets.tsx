@@ -22,6 +22,7 @@ import { ROLE_META } from './hardwareModel';
 import type { Workspace } from './workspace';
 import type { LibraryFont, SnapshotMeta } from '../../shared/api';
 import { FontPicker } from './FontPicker';
+import { TrackPicker } from './TrackPicker';
 import { Select } from './Select';
 import { joinFont, splitFont } from './presetFields';
 import { chosenFonts, withPresetFonts } from './saberFonts';
@@ -57,14 +58,13 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
   const [ix, setIx] = useState(0);
   const [saved, setSaved] = useState<LookDef[]>([]);
   const [sets, setSets] = useState<PresetBank[]>([]);
-  const [fonts, setFonts] = useState<string[]>([]);
-  const [tracks, setTracks] = useState<string[]>([]);
   const [side, setSide] = useState<'sets' | 'try' | 'history'>(inLive ? 'try' : 'sets');
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, setPending] = useState<Record<string, string>>({});
   const [library, setLibrary] = useState<LibraryFont[]>([]);
   const [picking, setPicking] = useState(false);
+  const [pickingTrack, setPickingTrack] = useState(false);
   // History: the snapshot whose restore is being looked at, with its presets.
   const [restoring, setRestoring] = useState<{ meta: SnapshotMeta; presets: PresetRecord[] } | null>(null);
   useEffect(() => { setRestoring(null); }, [saber?.id, live]);
@@ -82,22 +82,8 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
   useEffect(() => {
     void api().looks.list().then((ls) => { for (const l of ls) registerLookSim(l); setSaved(ls); }).finally(() => setSavedRead(true));
     void api().banks.list().then(setSets).finally(() => setSetsRead(true));
-    void (async () => {
-      const f = new Set<string>(); const t = new Set<string>();
-      for (const s of board.library) { for (const x of s.fonts) if (x !== 'common') f.add(x); for (const x of s.tracks) t.add(x); }
-      if (info) { for (const x of info.fonts) if (x !== 'common') f.add(x); for (const x of info.tracks) t.add(x); }
-      // Fonts in the library can be named before they are on the card; Fonts & SD copies them over.
-      try {
-        const lib = await fontLibraryList.load();
-        setLibrary(lib);
-        for (const x of lib) {
-          f.add(x.folder);
-          if (x.support.tracks) for (const tr of (await api().fontLibrary.detail(x.folder)).tracks) t.add(`${x.folder}/${tr.path}`);
-        }
-      } catch { /* library unreadable */ }
-      setLibraryRead(true);
-      setFonts([...f].sort((a, b) => a.localeCompare(b))); setTracks([...t].sort());
-    })();
+    // The font library, for the font and track pickers (the track picker reads the fonts' tracks when it opens).
+    void fontLibraryList.load().then(setLibrary, () => undefined).finally(() => setLibraryRead(true));
   }, [saber?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Live: the row the saber has selected is the one being edited.
   useEffect(() => { if (isLive && info?.currentPreset != null) setIx(info.currentPreset); }, [isLive, info?.currentPreset]);
@@ -194,11 +180,20 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
     await stage((m) => { const src = m.presets[curIx]; m.presets.splice(curIx + 1, 0, src ? { ...structuredClone(src), name: `${src.name} copy` } : freshPreset(m)); });
     setIx(curIx + 1);
   };
-  /** A new preset after the selected one: the first font chosen on Install › Fonts, with common, and the default style. */
+  /**
+   * A new preset, unlike a copy: on a font chosen on Install › Fonts that no preset uses yet, named after it, with common
+   * and the default style. With every chosen font in use already, the first one, named "Preset N".
+   */
   const freshPreset = (m: SaberConfigModel) => {
-    const first = chosenFonts(m)[0] ?? '';
-    return { name: `Preset ${m.presets.length + 1}`, font: joinFont({ folder: first, extra: [], common: true }), track: '' };
+    const chosen = chosenFonts(m);
+    const used = new Set(m.presets.map((p) => splitFont(p.font).folder.toLowerCase()));
+    const unused = chosen.find((f) => !used.has(f.toLowerCase()));
+    const folder = unused ?? chosen[0] ?? '';
+    return { name: unused ? unused.replace(/_/g, ' ') : `Preset ${m.presets.length + 1}`, font: joinFont({ folder, extra: [], common: true }), track: '' };
   };
+  // The saber itself needs a preset, so Live keeps one. Install's list may be emptied to start over: Build & Flash then
+  // asks for at least one preset before it builds.
+  const minPresets = inLive ? 1 : 0;
   const addFresh = async () => {
     if (locked) return;
     const at = presets.length ? curIx + 1 : 0;
@@ -266,9 +261,10 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
   const restorePlan = restoring ? planRestore(restoring.presets, info.presets) : null;
   const dropStaged = async () => { const { presetsFrom: _drop, ...rest } = model; await ws.saveModel(rest); setNote(null); };
 
-  // Install offers the fonts chosen for the saber first; Live, what is known to be on cards.
-  const fontFolders = [...new Set([...(inLive ? [] : chosenFonts(model)), ...fonts, ...(cur ? [splitFont(cur.font).folder] : [])])].filter(Boolean);
-  const trackChoices = [...new Set(['', ...tracks, ...(cur ? [cur.track] : [])])];
+  // The picker's folders beyond the library: this saber's card as last read, its chosen fonts, and the preset's own.
+  // Another saber's card says nothing about this one; a saber's "Failed to mount SD card." answer is no folder.
+  const fontFolders = [...new Set([...(inLive ? [] : chosenFonts(model)), ...info.fonts, ...(cur ? [splitFont(cur.font).folder] : [])])]
+    .filter((f) => f && f !== 'common' && !/^Failed to mount SD card/i.test(f.trim()));
   const cf = cur ? splitFont(cur.font) : { folder: '', extra: [], common: true };
   // Read-only when locked: every control is off, as while a write to the saber is under way (Live only).
   const busy = (isLive && board.busy) || locked;
@@ -279,9 +275,15 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
 
   return (
     <>
+      {pickingTrack && cur && (
+        <TrackPicker library={library} libraryRead={libraryRead} fontFolder={cf.folder} current={cur.track} onClose={() => setPickingTrack(false)}
+          cardTracks={info.tracks.filter((t) => /\.wav$/i.test(t.trim()))}
+          onPick={(track) => { setPickingTrack(false); void editPreset({ track }, `Track → ${track || 'none'}`); }} />
+      )}
       {picking && cur && (
-        <FontPicker fonts={library} loading={!libraryRead} current={cf.folder} onCard={cardFonts} onClose={() => setPicking(false)} onManage={() => go('library')}
-          onPick={(f) => { setPicking(false); void editPreset({ font: joinFont({ ...cf, folder: f.folder }) }, `Font → ${f.folder}`); }} />
+        <FontPicker fonts={library} loading={!libraryRead} current={cf.folder} onCard={cardFonts} chosen={inLive ? undefined : chosenFonts(model)} folders={fontFolders} onClose={() => setPicking(false)} onManage={() => go('library')}
+          onPick={(f) => { setPicking(false); void editPreset({ font: joinFont({ ...cf, folder: f.folder }) }, `Font → ${f.folder}`); }}
+          onPickFolder={(folder) => { setPicking(false); void editPreset({ font: joinFont({ ...cf, folder }) }, `Font → ${folder}`); }} />
       )}
       {/* Install: the list for the next install, and whether the saber has moved on since it was started. */}
       {!inLive && staged && (
@@ -321,16 +323,19 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
               </button>
             ))}
           </div>
+          {/* The list is narrow: Add and Duplicate keep their words, Delete is a small button like the arrows above, and
+              asking to delete takes the row over until it is answered. */}
           <div className="row" style={{ marginTop: 'auto', padding: '10px 14px', borderTop: '1px solid var(--line)', gap: 6 }}>
-            {inLive
-              ? <button type="button" className="btn sm" disabled={busy} onClick={() => void duplicate()}><span className="b"><span className="i"><Icon name="copy" />Duplicate</span></span></button>
-              : <>
-                  <button type="button" className="btn sm" disabled={busy} onClick={() => void addFresh()}><span className="b"><span className="i"><Icon name="plus" />Add</span></span></button>
-                  <button type="button" className="btn sm" disabled={busy || !presets.length} title={presets.length ? 'A copy of the selected preset, after it' : 'Add a preset first'} onClick={() => void duplicate()}><span className="b"><span className="i"><Icon name="copy" />Duplicate</span></span></button>
-                </>}
             {confirmDelete
-              ? <button type="button" className="btn sm danger" disabled={busy || presets.length <= 1} onClick={() => void remove()}><span className="b"><span className="i"><Icon name="trash" />Really delete</span></span></button>
-              : <button type="button" className="btn sm ghost" disabled={busy || presets.length <= 1} onClick={() => setConfirmDelete(true)}><span className="b"><span className="i"><Icon name="trash" />Delete</span></span></button>}
+              ? <>
+                  <button type="button" className="btn sm danger" disabled={busy || presets.length <= minPresets} onClick={() => void remove()}><span className="b"><span className="i"><Icon name="trash" />Really delete</span></span></button>
+                  <button type="button" className="btn sm ghost" disabled={busy} onClick={() => setConfirmDelete(false)}><span className="b"><span className="i">Cancel</span></span></button>
+                </>
+              : <>
+                  {!inLive && <button type="button" className="btn sm" disabled={busy} onClick={() => void addFresh()}><span className="b"><span className="i"><Icon name="plus" />Add</span></span></button>}
+                  <button type="button" className="btn sm" disabled={busy || !presets.length} title={presets.length ? 'A copy of the selected preset, after it' : 'Add a preset first'} onClick={() => void duplicate()}><span className="b"><span className="i"><Icon name="copy" />Duplicate</span></span></button>
+                  <button type="button" className="chip" style={{ marginLeft: 'auto' }} disabled={busy || presets.length <= minPresets} aria-label="Delete preset" title={presets.length <= minPresets ? (inLive ? 'The saber needs at least one preset' : 'No preset to delete') : 'Delete the selected preset'} onClick={() => setConfirmDelete(true)}><Icon name="trash" /></button>
+                </>}
           </div>
         </section>
 
@@ -344,18 +349,30 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
               <div className="grid2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))' }} data-tour="presets-fields">
                 <CommitField label="Name" value={cur.name} sync={board.save} disabled={busy} onCommit={(name) => void editPreset({ name }, 'Rename')} />
                 <div className="col" style={{ gap: 4, minWidth: 0 }}>
-                  <CommitField label="Sound font" value={cf.folder} sync={board.save} list="hw-fonts" choices={fontFolders} placeholder="Folder name on the card" disabled={busy} onCommit={(folder) => void editPreset({ font: joinFont({ ...cf, folder }) }, `Font → ${folder}`)} />
+                  {/* The font is chosen in the picker: library fonts with a listen, folders on the card, or a typed folder name. */}
+                  <div className="field">
+                    <span className="label">Sound font</span>
+                    <button type="button" className="input sans" disabled={busy} aria-label={`Sound font: ${cf.folder || 'none'}. Choose another`} onClick={() => setPicking(true)}
+                      style={{ width: '100%', textAlign: 'left', cursor: busy ? 'default' : 'pointer', font: 'inherit', color: 'var(--text)' }}>
+                      <span className={`ellip${cf.folder ? '' : ' hint'}`}>{cf.folder || 'Choose a font'}</span><span className="caret"><Icon name="down" /></span>
+                    </button>
+                  </div>
                   {cf.extra.length > 0 && <span className="hint ellip" title="Other folders in this preset's font, kept as they are">Also uses: <span className="mono">{cf.extra.join(', ')}</span></span>}
                   <div className="row" style={{ gap: 8, minWidth: 0 }}>
                     <span className="hint ellip grow" title={libFont?.meta.notes || undefined}>
                       {cf.folder && (libFont ? <>{libFont.meta.name}{libFont.meta.maker ? ` by ${libFont.meta.maker}` : ''}</> : libraryRead ? 'Not in the font library' : 'Looking in the font library…')}
                       {fontOnCard === true && <span className="green"> · on the card</span>}
                       {fontOnCard === false && <> · <span className="amber">not on the card</span>{libFont && (inLive ? <>, <button type="button" className="holo" onClick={() => go('live-card')}>copy it over</button></> : ', copied on the Card step')}</>}
-                    </span>
-                    <button type="button" className="holo small nowrap" disabled={busy} title="Choose from the fonts in your font library" onClick={() => setPicking(true)}>Choose from library</button>
-                  </div>
+                    </span>                  </div>
                 </div>
-                <CommitField label="Track" value={cur.track} sync={board.save} list="hw-tracks" choices={trackChoices.filter(Boolean)} placeholder="tracks/name.wav, or none" mono disabled={busy} onCommit={(track) => void editPreset({ track }, `Track → ${track || 'none'}`)} />
+                {/* The track is chosen in the picker: none, the font's own, the card's, other library fonts', or a typed path. */}
+                <div className="field">
+                  <span className="label">Track</span>
+                  <button type="button" className="input" disabled={busy} aria-label={`Track: ${cur.track || 'none'}. Choose another`} onClick={() => setPickingTrack(true)}
+                    style={{ width: '100%', textAlign: 'left', cursor: busy ? 'default' : 'pointer', font: 'inherit', color: 'var(--text)' }}>
+                    <span className={`ellip mono${cur.track ? '' : ' hint'}`}>{cur.track || 'No track'}</span><span className="caret"><Icon name="down" /></span>
+                  </button>
+                </div>
                 <label className="row" style={{ gap: 10, alignSelf: 'end', minHeight: 38, fontSize: 13, color: 'var(--dim)' }}>
                   <button type="button" className={`tog ${cf.common ? 'on' : ''}`} role="switch" aria-checked={cf.common} disabled={busy} aria-label="Also use the common folder" onClick={() => void editPreset({ font: joinFont({ ...cf, common: !cf.common }) }, cf.common ? 'Drop common fallback' : 'Add common fallback')}><i /></button>
                   Also use <span className="mono">common</span> sounds
