@@ -33,7 +33,7 @@ export const CLI_SHA256: Record<string, string> = {
 };
 export const PROFFIEOS_SHA256 = '454f2374960ab517b087cb63b438688bc4b5f4b4f2458335afca398d34938dae';
 /** Written into the ProffieOS folder after a verified unpack: what the tree is, so its version is read, not assumed. */
-const SOURCE_STAMP = '.hiltwright-source.json';
+export const SOURCE_STAMP = '.hiltwright-source.json';
 
 export interface ToolchainPaths {
   root: string;

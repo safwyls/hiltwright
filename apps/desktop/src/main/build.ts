@@ -1,12 +1,12 @@
 // Build engine: config.h from the model into a private ProffieOS copy, arduino-cli compile, size and error
 // reporting in plain language. Cache key is the config hash + OS tag + FQBN. Electron-free.
 
-import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, join, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { customPropFileName, generateConfig, validateModel, type GeneratedConfig, type SaberConfigModel, type SlotLines } from '@hiltwright/core';
 import { readCustomProp } from './customProps';
-import { PROFFIEOS_TAG, cliEnv, run, toolchainPaths, type Progress, type ToolchainPaths, ensureBuildRoot, userBuildRoot } from './toolchain';
+import { PROFFIEOS_TAG, SOURCE_STAMP, cliEnv, run, toolchainPaths, type Progress, type ToolchainPaths, ensureBuildRoot, userBuildRoot } from './toolchain';
 
 export const FQBN: Record<'V2' | 'V3', string> = {
   V2: 'proffieboard:stm32l4:ProffieboardV2-L433CC:usb=cdc_msc_webusb,dosfs=sdspi,speed=80,opt=os',
@@ -128,14 +128,30 @@ async function exists(p: string): Promise<boolean> {
   try { await stat(p); return true; } catch { return false; }
 }
 
-/** Copy the pinned OS tree once per saber (no .git), then only the config and the .ino change between builds. */
-async function prepareSketch(p: ToolchainPaths, saberDir: string, onLine: Progress): Promise<string> {
+/**
+ * Written into a saber's ProffieOS copy once the whole tree is there: the source stamp of the tree it was copied from
+ * (the toolchain's SOURCE_STAMP), or null for a toolchain that has none.
+ */
+const COPY_STAMP = '.hiltwright-copy.json';
+
+/**
+ * Copy the pinned OS tree once per saber (no .git), then only the config and the .ino change between builds. The copy
+ * is made again when it was taken from other source (a new pinned ProffieOS), or never finished (issue #19): a copy
+ * without its own stamp, written last, counts as cut short. It is made beside the old one and renamed into place.
+ */
+export async function prepareSketch(p: Pick<ToolchainPaths, 'osDir'>, saberDir: string, onLine: Progress): Promise<string> {
   const sketch = join(saberDir, 'ProffieOS');
-  if (!(await exists(join(sketch, 'ProffieOS.ino')))) {
-    onLine('preparing a private copy of ProffieOS');
-    await rm(sketch, { recursive: true, force: true });
-    await cp(p.osDir, sketch, { recursive: true, filter: (src) => !/[\\/]\.git([\\/]|$)/.test(src) });
-  }
+  const source = await readFile(join(p.osDir, SOURCE_STAMP), 'utf8').catch(() => null);
+  const want = JSON.stringify({ source });
+  const have = await readFile(join(sketch, COPY_STAMP), 'utf8').catch(() => null);
+  if (have === want && (await exists(join(sketch, 'ProffieOS.ino')))) return sketch;
+  onLine(have ? 'ProffieOS has changed: preparing a new private copy of it' : 'preparing a private copy of ProffieOS');
+  const tmp = `${sketch}.tmp`;
+  await rm(tmp, { recursive: true, force: true });
+  await cp(p.osDir, tmp, { recursive: true, filter: (src) => !/[\\/]\.git([\\/]|$)/.test(src) });
+  await writeFile(join(tmp, COPY_STAMP), want, 'utf8');
+  await rm(sketch, { recursive: true, force: true });
+  await rename(tmp, sketch);
   return sketch;
 }
 

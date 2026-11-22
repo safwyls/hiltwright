@@ -30,7 +30,7 @@ When ready, the step says "ProffieOS (version) ready".
 
 ## Build
 
-**Build firmware** needs the compiler, a confirmed wiring and no problems in the wiring. It takes about a minute. Queued styles are built in. The Log tab opens by itself and shows the output.
+**Build firmware** needs the compiler, a confirmed wiring and no problems in the wiring. It takes about a minute. Queued styles are built in. The Log tab opens by itself and shows the output. Each saber builds in its own copy of ProffieOS. When a Hiltwright update brings a new ProffieOS, the next build makes that copy again first, and the log says "ProffieOS has changed".
 
 If the wiring is not confirmed, the page says "Confirm the wiring on the Wiring page before building." See [Wiring](wiring.html).
 

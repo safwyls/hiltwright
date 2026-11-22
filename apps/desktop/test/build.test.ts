@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { analyzeStyleCode, generateConfig, validateModel, type LookDef, type ModelBlade, type SaberConfigModel } from '@hiltwright/core';
 import { newBlade, withKind } from '../src/renderer/src/hardwareModel';
-import { FLASH_BYTES, buildFirmware, configDefines, propRuleProblems, translateErrors } from '../src/main/build';
+import { FLASH_BYTES, buildFirmware, configDefines, prepareSketch, propRuleProblems, translateErrors } from '../src/main/build';
 import { toolchainPaths, toolchainStatus } from '../src/main/toolchain';
 import { importPropFile } from '../src/main/customProps';
 
@@ -46,6 +46,65 @@ describe('translateErrors', () => {
     expect(translateErrors("config.h:12:3: error: 'Layerz' was not declared in this scope")[0]).toMatch(/did not understand/);
     expect(translateErrors('C:/Users/x/AppData/Local/Hiltwright/toolchain/arduino-data/packages/proffieboard/tools/arm-none-eabi-gcc/14-2-rel1-xpack/arm-none-eabi/include/c++/14.2.1/system_error:41:10: fatal error: bits/error_constants.h: No such file or directory')[0]).toMatch(/its own files/);
     expect(translateErrors("arm-none-eabi-g++: fatal error: cannot execute 'cc1plus': CreateProcess: No such file or directory")[0]).toMatch(/its own files/);
+  });
+});
+
+// Issue #19: a saber's ProffieOS copy follows the toolchain's source, and a copy cut short is never taken as complete.
+describe('the private ProffieOS copy', () => {
+  const tree = async (dir: string, stamp: string | null, ino: string) => {
+    await mkdir(join(dir, 'props'), { recursive: true });
+    await writeFile(join(dir, 'ProffieOS.ino'), ino, 'utf8');
+    await writeFile(join(dir, 'props', 'saber_fett263_buttons.h'), `// ${ino}`, 'utf8');
+    if (stamp) await writeFile(join(dir, '.hiltwright-source.json'), stamp, 'utf8');
+  };
+
+  it('is copied once, kept while the source is the same, and copied again when the pinned source changes', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'hw-sketch-'));
+    const osDir = join(dir, 'os');
+    const saberDir = join(dir, 'saber');
+    await tree(osDir, JSON.stringify({ tag: 'v8.10', sha256: 'a' }), 'const char version[] = "v8.10";');
+    const lines: string[] = [];
+    const sketch = await prepareSketch({ osDir }, saberDir, (l) => lines.push(l));
+    expect(await readFile(join(sketch, 'ProffieOS.ino'), 'utf8')).toMatch(/v8\.10/);
+    // A build edits the copy (its CONFIG_FILE line); the same source keeps it.
+    await writeFile(join(sketch, 'ProffieOS.ino'), 'edited by a build', 'utf8');
+    await prepareSketch({ osDir }, saberDir, (l) => lines.push(l));
+    expect(await readFile(join(sketch, 'ProffieOS.ino'), 'utf8')).toBe('edited by a build');
+    expect(lines).toEqual(['preparing a private copy of ProffieOS']);
+    // A release pins a new ProffieOS: the toolchain unpacks it with a new stamp, and the copy follows.
+    await rm(osDir, { recursive: true, force: true });
+    await tree(osDir, JSON.stringify({ tag: 'v8.11', sha256: 'b' }), 'const char version[] = "v8.11";');
+    await prepareSketch({ osDir }, saberDir, (l) => lines.push(l));
+    expect(await readFile(join(sketch, 'ProffieOS.ino'), 'utf8')).toMatch(/v8\.11/);
+    expect(await readFile(join(sketch, 'props', 'saber_fett263_buttons.h'), 'utf8')).toMatch(/v8\.11/);
+    expect(lines.at(-1)).toBe('ProffieOS has changed: preparing a new private copy of it');
+    expect(await readdir(saberDir)).toEqual(['ProffieOS']);
+  });
+
+  it('a copy cut short (no stamp of its own, from before this fix or interrupted) is copied again', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'hw-sketch-'));
+    const osDir = join(dir, 'os');
+    const saberDir = join(dir, 'saber');
+    await tree(osDir, JSON.stringify({ tag: 'v8.10', sha256: 'a' }), 'whole');
+    // ProffieOS.ino sorts early, so a copy stopped part way has it, and the toolchain's stamp, but not every folder.
+    await tree(join(saberDir, 'ProffieOS'), JSON.stringify({ tag: 'v8.10', sha256: 'a' }), 'whole');
+    await rm(join(saberDir, 'ProffieOS', 'props'), { recursive: true, force: true });
+    // A leftover from a copy stopped before its rename is cleared, not used.
+    await tree(join(saberDir, 'ProffieOS.tmp'), null, 'half');
+    const sketch = await prepareSketch({ osDir }, saberDir, () => undefined);
+    expect(await readFile(join(sketch, 'props', 'saber_fett263_buttons.h'), 'utf8')).toBe('// whole');
+    expect(await readdir(saberDir)).toEqual(['ProffieOS']);
+  });
+
+  it('a toolchain with no source stamp: a complete copy is still kept between builds', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'hw-sketch-'));
+    const osDir = join(dir, 'os');
+    const saberDir = join(dir, 'saber');
+    await tree(osDir, null, 'unstamped');
+    const sketch = await prepareSketch({ osDir }, saberDir, () => undefined);
+    await writeFile(join(sketch, 'ProffieOS.ino'), 'edited by a build', 'utf8');
+    await prepareSketch({ osDir }, saberDir, () => undefined);
+    expect(await readFile(join(sketch, 'ProffieOS.ino'), 'utf8')).toBe('edited by a build');
   });
 });
 
