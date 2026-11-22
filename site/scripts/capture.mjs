@@ -3,7 +3,7 @@
 //   npm run capture            (in site/; needs the workspace installed at the repo root: npm ci)
 //
 // Writes site/assets/shots/tour-NN.png (each tour step, with its card), clean-NN.png (the same page with the tour
-// hidden, for the steps listed in CLEAN), site/assets/themes/<theme>.jpg and site/data/themes.json (the Armory in
+// hidden, for the steps listed in CLEAN), site/assets/themes/<theme>.jpg and site/data/themes.json (the Demo room in
 // every theme, and the themes' names) and site/data/tour.json (chapters, titles and text, from tourSteps.ts).
 //
 // It runs the app in development mode with the main process's development aids, as apps/desktop/scripts/shots.mjs
@@ -25,8 +25,8 @@ const W = 1480, H = 980;
 
 // Steps (counted from 1) that are also photographed without the tour over them.
 const CLEAN = [7, 11, 14, 16, 20, 22, 23, 27, 28, 29, 33, 35, 38, 40, 43, 44, 45, 46, 48, 49];
-// The step photographed once in every theme: the Armory, with the example saber.
-const THEME_STEP = 7;
+// The step photographed once in every theme, for the home page's hero: the Demo room, with a lit blade.
+const THEME_STEP = 45;
 // Steps photographed for the promo pages' feature rows, and the theme each is taken in.
 const FEATURE = { 7: 'kashyyyk', 11: 'hull', 14: 'hoth', 16: 'coruscant', 22: 'ronin', 23: 'naboo', 27: 'original', 28: 'hull', 33: 'ninth', 35: 'hoth', 38: 'station', 40: 'crait', 43: 'naboo', 45: 'crait' };
 
@@ -96,7 +96,7 @@ for (let k = 1; k <= COUNT; k++) {
   shots.push({ file: join(outDir, `tour-${pad(k)}.png`), js: step(`${HIDE} document.documentElement.classList.remove('site-clean'); window.hiltwrightTour(${k - 1})`) });
   if (CLEAN.includes(k)) shots.push({ file: join(outDir, `clean-${pad(k)}.png`), js: step("document.documentElement.classList.add('site-clean')", 300) });
 }
-// The same Armory in every theme, for the theme stage on the home page: site/assets/themes/<id>.jpg. The walkthrough
+// The same Demo room in every theme, for the theme stage on the home page: site/assets/themes/<id>.jpg. The walkthrough
 // above is taken in the default theme; the app is put back to it afterwards.
 const { THEMES, DEFAULT_THEME } = await import(pathToFileURL(join(desktop, 'src/shared/themes.ts')).href);
 const themeDir = join(site, 'assets/themes');
