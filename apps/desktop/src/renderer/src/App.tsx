@@ -27,7 +27,8 @@ import { About } from './About';
 import { Settings } from './Settings';
 import { UpdateChip, useUpdates } from './Updates';
 import { QUICK_COMMANDS, destructiveReason } from './consoleCommands';
-import { flowStatus, fontsMissingAsLastRead, nextStep, useWorkspace, type Workspace } from './workspace';
+import { flowStatus, fontsMissingAsLastRead, nextStep, starterModel, useWorkspace, type Workspace } from './workspace';
+import { fontLibraryList, packList } from './sharedLists';
 import type { SaberRecord } from '../../shared/api';
 import { batteryLabel, noBattery } from './battery';
 import { Tour, waitForStep } from './Tour';
@@ -345,6 +346,47 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
     // Picked at once, even while another saber is plugged in: that one stays connected, for Live.
     ws.choose(rec.id); go('wiring');
   };
+  // Sharing a saber's setup with another owner (saberShare.ts): a .hwsaber file out, or one in as a planned saber.
+  const [shareNote, setShareNote] = useState<{ tone: 'green' | 'amber' | 'red'; lines: string[] } | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const reason = (err: unknown) => String(err instanceof Error ? err.message : err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+  const listed = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+  // Fonts it names that this computer has neither in the font library nor among the fonts that come with Hiltwright.
+  const fontsNotHere = async (fonts: string[]) => {
+    const [lib, packs] = await Promise.all([fontLibraryList.load().catch(() => []), packList.load().catch(() => [])]);
+    const have = new Set([...lib.map((f) => f.folder), ...packs.filter((p) => p.kind === 'font').map((p) => p.name)].map((n) => n.toLowerCase()));
+    return fonts.filter((f) => !have.has(f.toLowerCase()));
+  };
+  const shareSaber = async (s: SaberRecord) => {
+    setShareNote(null); setSharing(true);
+    try {
+      // The plan as the Install pages show it: with the live presets while it is plugged in.
+      const model = s.id === ws.saber?.id && ws.model ? ws.model : starterModel(s);
+      const r = await window.hiltwright.library.exportShare(s.name, model);
+      if (!r) return;
+      setShareNote({ tone: 'green', lines: [
+        `${s.name} is saved as ${r.file.split(/[\\/]/).pop()}: ${r.presets} preset${r.presets === 1 ? '' : 's'}${r.styles ? `, ${r.styles} pasted or built style${r.styles === 1 ? '' : 's'}` : ''}${r.customProp ? `, and the prop file ${r.customProp}` : ''}. Anyone with Hiltwright can import it here, in the Armory.`,
+        r.fonts.length ? `Sound fonts are named in it, not carried. Whoever imports it needs ${listed(r.fonts)}.` : 'It names no sound fonts.',
+      ] });
+    } catch (err) { setShareNote({ tone: 'red', lines: [`${s.name} was not shared: ${reason(err)}`] }); } finally { setSharing(false); }
+  };
+  const importSaber = async () => {
+    setShareNote(null); setSharing(true);
+    try {
+      const r = await window.hiltwright.library.importShare();
+      if (!r) return;
+      await board.refreshLibrary();
+      ws.choose(r.saber.id);
+      const missing = await fontsNotHere(r.fonts);
+      const lines = [
+        `${r.saber.name} is imported as a saber set up ahead${r.from !== r.saber.name ? ` (shared as "${r.from}")` : ''}. Its presets are the list for its next flash${r.stylesAdded ? `, and ${r.stylesAdded} of its styles are now in your Styles` : ''}.`,
+        'Before you flash it, choose its board and check every pin on Wiring against your own hilt: a wrong pin can damage the board.',
+      ];
+      if (r.customProp) lines.push(r.propMissing ? `It builds with the prop file ${r.customProp}, which did not come with it. Choose that file on Wiring.` : `It builds with the prop file ${r.customProp}, which came with it. A prop file is code that goes into the firmware: flash it only if you trust where it came from.`);
+      if (missing.length) lines.push(`Not in your font library: ${listed(missing)}. Add ${missing.length === 1 ? 'it' : 'them'} before you get the card ready.`);
+      setShareNote({ tone: missing.length || r.propMissing || r.customProp ? 'amber' : 'green', lines });
+    } catch (err) { setShareNote({ tone: 'red', lines: [`The saber was not imported: ${reason(err)}`] }); } finally { setSharing(false); }
+  };
   // Stores that could not be read at start were kept aside (jsonStore.ts); say so until dismissed.
   const [problems, setProblems] = useState<Awaited<ReturnType<typeof window.hiltwright.app.storeProblems>>>([]);
   useEffect(() => { void window.hiltwright.app.storeProblems().then(setProblems, () => setProblems([])); }, []);
@@ -401,10 +443,19 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
           <div className="ph"><h2>Your sabers</h2>
             {planning
               ? <form className="row" style={{ gap: 6 }} onSubmit={(e) => { e.preventDefault(); void plan(); }}><span className="input sans" style={{ height: 30, width: 200 }}><input type="text" value={planName} autoFocus placeholder="Name the saber" aria-label="Name for the new saber" onChange={(e) => setPlanName(e.target.value)} /></span><button type="submit" className="btn sm pri"><span className="b"><span className="i">Start</span></span></button><button type="button" className="chip" aria-label="Do not start a new saber" onClick={() => setPlanning(false)}><Icon name="x" /></button></form>
-              : <button type="button" className="btn sm pri" data-tour="armory-new" title="Set a saber up before it is plugged in: wiring, presets and styles, ready to install when it arrives" onClick={() => setPlanning(true)}><span className="b"><span className="i"><Icon name="plus" />New saber</span></span></button>}
+              : <div className="row" style={{ gap: 6 }}>
+                  <button type="button" className="btn sm" disabled={sharing} title="Bring in a saber someone shared with you (.hwsaber): its wiring, prop, presets and styles, set up ahead" onClick={() => void importSaber()}><span className="b"><span className="i"><Icon name="import" />Import</span></span></button>
+                  <button type="button" className="btn sm pri" data-tour="armory-new" title="Set a saber up before it is plugged in: wiring, presets and styles, ready to install when it arrives" onClick={() => setPlanning(true)}><span className="b"><span className="i"><Icon name="plus" />New saber</span></span></button>
+                </div>}
           </div>
           {planError && planning && (
             <div className="note red" role="alert" style={{ margin: '12px 18px 0' }}><Icon name="warn" /><span>The new saber was not started: {planError}</span></div>
+          )}
+          {shareNote && (
+            <div className={`note ${shareNote.tone}`} role="status" style={{ margin: '12px 18px 0' }}><Icon name={shareNote.tone === 'green' ? 'check' : 'warn'} />
+              <span className="col grow" style={{ gap: 6 }}>{shareNote.lines.map((l) => <span key={l}>{l}</span>)}</span>
+              <button type="button" className="chip" aria-label="Dismiss" style={{ alignSelf: 'flex-start' }} onClick={() => setShareNote(null)}><Icon name="x" /></button>
+            </div>
           )}
           <div className="list" role="listbox" aria-label="Sabers to pick from" style={{ overflow: 'auto' }}>
             {ws.loading && <LoadingSpace text="Reading your sabers…" />}
@@ -431,6 +482,7 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
                           {s.planned && <span className="chip">Set up ahead</span>}
                         </button>
                         {isCur && isPlugged && <button type="button" className="chip" onClick={() => { setDraft(s.name); setEditing(true); }}>Rename</button>}
+                        {s.id !== EXAMPLE_ID && <button type="button" className="chip" disabled={sharing} title={`Share ${s.name}: save its setup as a file someone else can import (wiring, prop, presets, styles, and its fonts by name)`} aria-label={`Share ${s.name}`} onClick={() => void shareSaber(s)}><Icon name="export" />Share</button>}
                         {s.id !== EXAMPLE_ID && (() => { const why = removeBlock(s, isPlugged ? s.id : null); return <button type="button" className="chip" disabled={!!why} title={why ?? (s.planned ? 'Remove this plan' : 'Remove this saber from the Armory')} aria-label={`Remove ${s.name}`} onClick={() => askRemove(s)}><Icon name="trash" /></button>; })()}
                       </>}
                 </div>

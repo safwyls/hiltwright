@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { importPropFile, readCustomProp } from '../src/main/customProps';
+import { importPropFile, importPropText, readCustomProp } from '../src/main/customProps';
 
 const tmp = (p: string) => mkdtemp(join(tmpdir(), p));
 const PROP = '#ifndef PROPS_MY_BUTTONS_H\n#define PROPS_MY_BUTTONS_H\n#include "prop_base.h"\nclass MyButtons : public PropBase {};\n#endif\n#ifdef PROP_TYPE\n#undef PROP_TYPE\n#endif\n#define PROP_TYPE MyButtons\n';
@@ -44,5 +44,16 @@ describe('custom prop files', () => {
     await expect(readCustomProp(await tmp('hw-empty-'), cp)).rejects.toThrow(/not on this computer any more/);
     await writeFile(join(dir, `${cp.sha256}.h`), `${await readFile(join(dir, `${cp.sha256}.h`), 'utf8')}// edited\n`);
     await expect(readCustomProp(dir, cp)).rejects.toThrow(/has changed/);
+  });
+
+  it('a prop that came inside a shared saber is kept as a chosen file is, under the same hash', async () => {
+    const src = await tmp('hw-propsrc-'); const dir = await tmp('hw-props-');
+    await writeFile(join(src, 'my_buttons.h'), PROP);
+    const chosen = await importPropFile(join(src, 'my_buttons.h'), await tmp('hw-props-'));
+    const shared = await importPropText('C:\\Users\\sender\\props\\my_buttons.h', PROP, dir);
+    expect(shared).toEqual(chosen);
+    expect(await readCustomProp(dir, shared)).toBe(PROP);
+    await expect(importPropText('config.h', '#define NUM_BLADES 1\n', dir)).rejects.toThrow(/no "#define PROP_TYPE"/);
+    await expect(importPropText('blob.h', '#define PROP_TYPE X\u0000', dir)).rejects.toThrow(/not a text file/);
   });
 });

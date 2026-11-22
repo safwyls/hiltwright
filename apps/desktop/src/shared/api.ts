@@ -58,6 +58,11 @@ export interface SaberRecord {
   cards?: { serial: string; label: string | null; at: string }[];
 }
 
+/** A saber's setup written for someone else (saberShare.ts). */
+export interface SaberShareExported { file: string; presets: number; styles: number; fonts: string[]; customProp: string | null }
+/** A shared saber brought in as a planned one. `propMissing`: it names a custom prop file but does not carry it. */
+export interface SaberShareImported { saber: SaberRecord; from: string; app: string; stylesAdded: number; fonts: string[]; customProp: string | null; propMissing: boolean }
+
 /** A change to a remembered saber. `presets`: its presets as last read, kept up to date by live edits (preset-editor-fixes D5). */
 export interface SaberPatch { model?: SaberConfigModel | null; firmware?: FirmwareManifest | null; presets?: PresetRecord[] }
 
@@ -306,6 +311,10 @@ export interface HiltwrightApi {
     plan(name: string, model: SaberConfigModel): Promise<SaberRecord>;
     /** The connected saber takes over a plan's model, and the plan is dropped. */
     adopt(plannedId: string, targetId: string): Promise<SaberRecord>;
+    /** Save a saber's setup as a .hwsaber file for someone else (asks where). Null when the owner cancels. */
+    exportShare(name: string, model: SaberConfigModel): Promise<SaberShareExported | null>;
+    /** Import a .hwsaber file (asks which) as a planned saber. Null when the owner cancels. */
+    importShare(): Promise<SaberShareImported | null>;
     /** Remember what this saber's bootloader showed at an install: its serial and flash size (256 KB or 512 KB only). */
     noteBootloader(id: string, seen: { serial: string | null; flashBytes: number }): Promise<SaberRecord>;
     /** This SD card (by volume serial number) is the saber's own; any other saber holding it lets it go. */

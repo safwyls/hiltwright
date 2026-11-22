@@ -46,6 +46,30 @@ Press **Adopt** to go ahead, or **Not now** to leave it.
 
 > **Note:** Adopting changes nothing on the saber itself. Everything reaches the saber at the next Build & Flash.
 
+## Share a saber's setup
+
+Set a saber up once and give the setup to someone else, so they can flash their own hilt from it.
+
+**Share**, on each saber's line in Your sabers, saves the setup as a `.hwsaber` file, wherever you choose. The file holds:
+
+- the board, buttons, prop and blades;
+- the presets, each with its font, track, name, styles and colors;
+- the pasted or built styles those presets use;
+- the fonts chosen on Install › Fonts, and the voice pack;
+- a custom prop file, if the saber builds with one.
+
+It leaves out what belongs to your hilt and your computer: the saber's serial number, its SD cards, its firmware record, your "I checked the wiring", and where your installer's config file is. **Sound fonts are named, not carried.** They are large, and many cannot be passed on, so whoever imports the file needs the fonts themselves. After you share, the Armory lists the fonts it names.
+
+**Import**, beside **New saber**, brings a `.hwsaber` file in as a saber set up ahead. If you already have a saber by that name, it gets "(2)" after it. Then:
+
+- Its presets are the list for its next flash.
+- Styles you do not have yet are added to your [Styles](styles.html).
+- The Armory lists any fonts it uses that are not in your font library or among the fonts that come with Hiltwright.
+- Its board and wiring are not taken on trust. Choose the board and check every pin on [Wiring](wiring.html) against your own hilt before you flash: a wrong pin can damage the board.
+- A custom prop file that came with it is kept and used. A prop file is code that goes into the firmware, so flash it only if you trust where it came from.
+
+When your saber is plugged in, match it to the imported plan as above.
+
 ## The connection panel
 
 At the top of the page, one panel says what is connected:

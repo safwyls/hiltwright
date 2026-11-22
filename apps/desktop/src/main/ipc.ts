@@ -4,7 +4,7 @@ import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
 import { arch, release, version as osVersion } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { generateConfig, isBank, isStyleDoc, isTreeDoc, validateModel, wiringFingerprint, type PresetBank, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
+import { SABER_SHARE_EXTENSION, SABER_SHARE_MAX_BYTES, generateConfig, importedModel, isBank, isStyleDoc, isTreeDoc, makeSaberShare, readSaberShare, shareFonts, shareStylesToAdd, validateModel, wiringFingerprint, type PresetBank, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { planProblems } from './planCheck';
 import { LooksStore, cleanLook, looksPath } from './looksStore';
@@ -13,7 +13,7 @@ import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
 import { lookUpWanted, portHolders, proffieSerials } from './usb';
 import { activeWant, wantSerial } from './serialGate';
-import { stat as statFile } from 'node:fs/promises';
+import { readFile, rename, stat as statFile, writeFile } from 'node:fs/promises';
 import { checkFontDir, clearPresetsFiles, copyFont, findConfigFiles, listFonts, listTracks, lookForCards, mountedRoots, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
 import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
@@ -25,7 +25,7 @@ import { ContributorStore, cleanUrl, type CarriedContributor } from './contribut
 import { HiltStore } from './hilts';
 import type { HiltInput, LegacyHilts } from '../shared/api';
 import { buildFirmware } from './build';
-import { customPropsDir, importPropFile } from './customProps';
+import { customPropsDir, importPropFile, importPropText, readCustomProp } from './customProps';
 import { cleanFirmware, hexMap } from './firmwareRecord';
 import { insideFolder } from './paths';
 import { legalDir, readLegal } from './legal';
@@ -405,6 +405,51 @@ export function registerIpc(): void {
   handle('hilts:import', async () => {
     const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePaths: [process.env.HILTWRIGHT_DIALOG_FILE] } : await openDialog('hilts', { title: 'Import hilts', properties: ['openFile'], filters: [{ name: 'Hiltwright hilt export', extensions: ['zip'] }] });
     return r.canceled || !r.filePaths[0] ? null : hilts.importFrom(r.filePaths[0]);
+  });
+  // A saber's setup as a file for another owner (saberShare.ts): exported from the Armory, imported as a planned saber.
+  handle('library:exportShare', async (_e, name: unknown, m: unknown) => {
+    const saberName = str(name, 80);
+    const model = m as SaberConfigModel;
+    const fileStem = saberName.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim() || 'Saber';
+    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePath: process.env.HILTWRIGHT_DIALOG_FILE } : await dialog.showSaveDialog({ title: `Share ${saberName}`, defaultPath: join(dialogFolders.start('saberShare') ?? app.getPath('documents'), `${fileStem}.${SABER_SHARE_EXTENSION}`), filters: [{ name: 'Hiltwright saber', extensions: [SABER_SHARE_EXTENSION] }] });
+    if (r.canceled || !r.filePath) return null;
+    if (!process.env.HILTWRIGHT_DIALOG_FILE) await dialogFolders.remember('saberShare', r.filePath);
+    const propText = model?.prop === 'custom' && model.customProp ? await readCustomProp(customPropsDir(userData), model.customProp) : undefined;
+    const share = makeSaberShare(saberName, model, app.getVersion(), propText);
+    readSaberShare(JSON.parse(JSON.stringify(share))); // the same check an import makes: a damaged plan is never written
+    await writeFile(`${r.filePath}.part`, JSON.stringify(share, null, 2), 'utf8');
+    await rename(`${r.filePath}.part`, r.filePath);
+    console.log(`[share] exported ${saberName}: ${share.model.presets.length} presets, ${share.model.looks?.length ?? 0} styles${propText ? ', a custom prop' : ''}`);
+    return { file: r.filePath, presets: share.model.presets.length, styles: share.model.looks?.length ?? 0, fonts: shareFonts(share.model), customProp: share.model.customProp?.file ?? null };
+  });
+  handle('library:importShare', async () => {
+    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePaths: [process.env.HILTWRIGHT_DIALOG_FILE] } : await openDialog('saberShare', { title: 'Import a saber', properties: ['openFile'], filters: [{ name: 'Hiltwright saber', extensions: [SABER_SHARE_EXTENSION] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    const file = r.filePaths[0];
+    if ((await statFile(file)).size > SABER_SHARE_MAX_BYTES) throw new Error(`${basename(file)} is far bigger than a shared saber should be.`);
+    let raw: unknown;
+    try { raw = JSON.parse(await readFile(file, 'utf8')); } catch { throw new Error(`${basename(file)} is not a saber shared from Hiltwright.`); }
+    const share = readSaberShare(raw);
+    const sabers = await library.list();
+    const taken = sabers.flatMap((s) => [s.model?.name, s.identity.configName]).filter((n): n is string => typeof n === 'string');
+    let model = importedModel(share, taken, basename(file));
+    // Each style is checked as a saved one is; one that fails is left out, and its presets get the blade's starter.
+    model = { ...model, looks: (model.looks ?? []).map((l) => cleanLook(l)).filter((l): l is LookDef => !!l) };
+    let propMissing = false;
+    if (model.customProp) {
+      if (share.customPropText !== undefined) model = { ...model, customProp: await importPropText(model.customProp.file, share.customPropText, customPropsDir(userData)) };
+      else propMissing = true;
+    }
+    const errors = planProblems(model);
+    if (errors.length) throw new Error(`${basename(file)} could not be imported: ${errors[0]}`);
+    const added = shareStylesToAdd(model, await looksStore.list());
+    for (const l of added) await looksStore.add(l);
+    const names = new Set(sabers.map((s) => s.name.toLowerCase()));
+    let name = share.name;
+    for (let n = 2; names.has(name.toLowerCase()); n++) name = `${share.name} (${n})`;
+    const saber = await library.plan(name, model);
+    console.log(`[share] imported ${share.name} as ${name}: ${model.presets.length} presets, ${added.length} styles added${model.customProp ? `, prop ${model.customProp.file}` : ''}`);
+    return { saber, from: share.name, app: share.app, stylesAdded: added.length, fonts: shareFonts(model), customProp: model.customProp?.file ?? null, propMissing };
   });
   // Packs: encrypted hilts and fonts. Payloads are decrypted here and handed over in memory, never as files.
   handle('packs:list', () => listPacks());

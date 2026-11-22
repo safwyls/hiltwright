@@ -33,6 +33,22 @@ export async function importPropFile(file: string, dir: string): Promise<CustomP
   return { file: name, sha256: hash, propType, like };
 }
 
+/** Keep a prop file's text that came inside a shared saber (saberShare.ts), checked as a file chosen on Wiring is. */
+export async function importPropText(name: string, text: string, dir: string): Promise<CustomProp> {
+  const file = basename(name.replace(/\\/g, '/')) || 'prop.h';
+  const data = Buffer.from(text, 'utf8');
+  if (data.length > MAX_PROP_BYTES) throw new Error(`The prop file ${file} it carries is far bigger than a prop file should be.`);
+  if (text.includes('\0')) throw new Error(`The prop file ${file} it carries is not a text file.`);
+  const { propType, like } = inspectPropText(text);
+  if (!propType) throw new Error(`The prop file ${file} it carries has no "#define PROP_TYPE", so it is not a ProffieOS prop file.`);
+  const hash = sha256(data);
+  await mkdir(dir, { recursive: true });
+  const kept = join(dir, `${hash}.h`);
+  try { await stat(kept); } catch { await writeFile(`${kept}.part`, data); await rename(`${kept}.part`, kept); }
+  console.log(`[props] kept ${file} from a shared saber (${propType}) as ${hash.slice(0, 12)}`);
+  return { file, sha256: hash, propType, like };
+}
+
 /** The text of a custom prop the model names, checked against its hash. */
 export async function readCustomProp(dir: string, cp: CustomProp): Promise<string> {
   if (!/^[0-9a-f]{64}$/.test(cp.sha256)) throw new Error('The custom prop file is not recorded properly. Choose it again on the Wiring page.');

@@ -20,6 +20,7 @@ const P: Record<string, string> = {
   minus: '<path d="M5 12h14"/>',
   shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
   import: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/>',
+  export: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 20h16"/>',
   eject: '<path d="M5 15l7-8 7 8z"/><path d="M5 19h14"/>',
   copy: '<rect x="9" y="9" width="11" height="11"/><path d="M5 15V4h11"/>',
   bolt: '<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>',
