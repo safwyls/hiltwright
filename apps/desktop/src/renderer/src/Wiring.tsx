@@ -3,10 +3,10 @@
 // it is changed; Build & Flash compiles from it.
 
 import { useEffect, useRef, useState } from 'react';
-import { compareWiring, differenceText, parseId, wiringConfirmed, wiringFromConfig, withWiringConfirmation, type BladeVariant, type BoardModel, type ConfigWiring, type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
+import { carriedDefines, compareWiring, differenceText, parseId, wiringConfirmed, wiringFromConfig, withWiringConfirmation, type BladeVariant, type BoardModel, type ConfigWiring, type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
 import { saberCardIn } from './cardOwner';
 import { sharedLook } from './cardCache';
-import { bladeWords, importedBlades, referenceFrom } from './wiringImport';
+import { bladeWords, boardDefinesDiffer, importedBlades, importedBoardDefines, referenceFrom } from './wiringImport';
 import { HardwareEditor } from './Hardware';
 import { FEATURES } from './features';
 import type { Board } from './board';
@@ -36,7 +36,7 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
   const [draft, setDraft] = useState<SaberConfigModel | null>(model);
   const pending = useRef<{ t: ReturnType<typeof setTimeout>; next: SaberConfigModel } | null>(null);
   // What this page edits, as last loaded or saved here: a model that differs from it was changed elsewhere.
-  const wiringOf = (m: SaberConfigModel) => JSON.stringify({ board: m.board, boardFrom: m.boardFrom ?? null, buttons: m.buttons, prop: m.prop, customProp: m.customProp ?? null, blades: m.blades, bladeId: m.bladeId ?? null });
+  const wiringOf = (m: SaberConfigModel) => JSON.stringify({ board: m.board, boardFrom: m.boardFrom ?? null, buttons: m.buttons, prop: m.prop, customProp: m.customProp ?? null, blades: m.blades, bladeId: m.bladeId ?? null, boardDefines: m.boardDefines ?? null });
   const known = useRef<string | null>(model ? wiringOf(model) : null);
   const [outside, setOutside] = useState<string | null>(null);
   // Checking the board: the saber visits its bootloader for its flash size and comes straight back (design D8).
@@ -141,10 +141,14 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
       blades: importedBlades(w, draft.blades),
       ...(keepBoard ? {} : { board: w.board!, boardFrom: 'owner' as const }),
       ...(w.buttons === 1 || w.buttons === 2 || w.buttons === 3 ? { buttons: w.buttons } : {}),
+      // Its orientation, display, volume and the like (issue #14): builds would drop them otherwise.
+      ...importedBoardDefines(w),
       wiringReference: referenceFrom(config.name, config.from, w),
     });
     setConfigNote(keepBoard && w.board && w.board !== draft.board ? `The board stays a Proffieboard ${draft.board}: that was read from the saber itself, and the config says ${w.board}.` : null);
   };
+  /** Only the config's board settings (issue #14), for wiring that already matches it: the blades, and so the wiring confirmation, stay. */
+  const useConfigSettings = () => { if (config) change({ ...importedBoardDefines(config.wiring), wiringReference: referenceFrom(config.name, config.from, config.wiring) }); };
   const checkAgainstConfig = () => { if (config) change({ wiringReference: referenceFrom(config.name, config.from, config.wiring) }); };
 
   if (!saber && ws.loading) return <section className="panel fill"><LoadingSpace text="Reading your sabers…" /></section>;
@@ -212,11 +216,21 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
                 {w.unreadable.length > 0 && <span className="small">Hiltwright cannot read {w.unreadable.map((u) => `blade ${u.blade}`).join(', ')} ({w.unreadable[0].text}). Check {w.unreadable.length === 1 ? 'its' : 'their'} pins against the config by hand.</span>}
                 {w.rows > 1 && <span className="small">It has {w.rows} blade configurations (Blade ID); this is the first.</span>}
                 {w.prop && !w.prop.stock && draft.prop !== 'custom' && <span className="small">It uses the prop {w.prop.include.split('/').pop()}. If you have that file, choose it above as a custom prop file.</span>}
+                {/* Its own settings (issue #14): a few describe the hilt and are carried into builds, the rest are not. */}
+                {w.defines.length > 0 && (() => {
+                  const carried = carriedDefines(w.defines);
+                  const left = w.defines.filter((d) => !carried.includes(d));
+                  return <>
+                    {carried.length > 0 && <span className="small">Its board settings, which builds take over with its wiring: <span className="mono">{carried.join(', ')}</span>.</span>}
+                    {left.length > 0 && <span className="small">Its other settings are Hiltwright{'’'}s to choose, so builds leave them out: <span className="mono">{left.join(', ')}</span>.</span>}
+                  </>;
+                })()}
                 {diffs.length === 0
                   ? <span>The wiring here matches it.{kept ? '' : ' Check builds against it, so Build & Flash warns if the wiring here ever changes from it.'}</span>
                   : <span className="col" style={{ gap: 2 }}><span>{danger ? 'The wiring here differs from it. A wrong pin can damage the board:' : 'The wiring here differs from it:'}</span>{diffs.map((d) => <span key={`${d.blade}-${d.what}`} className="small">{differenceText(d)}</span>)}</span>}
                 <span className="row wrap" style={{ gap: 8 }}>
                   {diffs.length > 0 && w.unreadable.length === 0 && <button type="button" className="btn sm pri" onClick={useConfigWiring}><span className="b"><span className="i">Use its wiring</span></span></button>}
+                  {diffs.length === 0 && w.unreadable.length === 0 && boardDefinesDiffer(draft, w) && <button type="button" className="btn sm pri" onClick={useConfigSettings}><span className="b"><span className="i">Use its board settings</span></span></button>}
                   {!kept && <button type="button" className="btn sm" onClick={checkAgainstConfig}><span className="b"><span className="i">Check builds against it</span></span></button>}
                   {kept && <span className="hint small">Builds are checked against it.</span>}
                   <button type="button" className="btn sm ghost" onClick={() => void pickConfig()}><span className="b"><span className="i">Another config file…</span></span></button>
@@ -231,6 +245,12 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
               <button type="button" className="btn sm ghost" onClick={() => void pickConfig()}><span className="b"><span className="i">Compare with a config file…</span></span></button>
               {configNote && <span className="small">{configNote}</span>}
             </div>
+          )}
+          {(draft.boardDefines?.length ?? 0) > 0 && (
+            <div className="note"><Icon name="info" /><span className="col" style={{ gap: 6 }}>
+              <span>Builds include these settings from {draft.wiringReference?.file ?? 'the installer’s config'}, which describe how this hilt is built: <span className="mono">{draft.boardDefines!.join(', ')}</span>.</span>
+              <span className="row"><button type="button" className="btn sm ghost" onClick={() => change({ boardDefines: undefined })}><span className="b"><span className="i">Leave them out</span></span></button></span>
+            </span></div>
           )}
           {!boardChosen && (
             <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bladePowerPins, chainRanges, chainRoots, compareWiring, stripLength, differenceText, generateConfig, validateModel, wiringFromConfig, wiringProblems, type ConfigWiring, type ModelBlade, type SaberConfigModel } from '../src';
+import { bladePowerPins, carriedDefines, chainRanges, chainRoots, compareWiring, droppedDefineText, droppedDefines, stripLength, topDefines, differenceText, generateConfig, validateModel, wiringFromConfig, wiringProblems, type ConfigWiring, type ModelBlade, type SaberConfigModel } from '../src';
 
 // The shape of an installer's config as found on a saber's card (Shadowfoil's SF_nihilus.h): their own prop and style
 // macros, which this reader need not understand to read the wiring.
@@ -184,6 +184,54 @@ describe("an installer's config, imported and built again", () => {
     const loop = [blades[0], px('b', 20, { kind: 'chain', after: 'c' }), px('c', 30, { kind: 'chain', after: 'b' })];
     expect(chainRoots(loop).size).toBe(0);
     expect(wiringProblems(loop, 'V3').map((p) => p.message)).toContain('Blade 2 continues a blade that is not a pixel strip on its own data line.');
+  });
+
+  it("#14 carries the installer's board settings into the build, and names every define the build still leaves out", () => {
+    const strip144 = 'WS281XBladePtr<144, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3>>()';
+    const text = withBlades([strip144], [
+      '#define ORIENTATION ORIENTATION_USB_TOWARDS_BLADE',
+      '#define ORIENTATION_ROTATION 0, 20, 0',
+      '#define BLADE_DETECT_PIN blade4Pin',
+      '#define ENABLE_SSD1306',
+      '#define VOLUME 1000 // quieter for a small speaker',
+      '#define CLASH_THRESHOLD_G 2.5',
+      '#define ENABLE_AUDIO',
+      '#define FETT263_TWIST_ON',
+      '#define ORIENTATION ORIENTATION_TOP_TOWARDS_BLADE /* the board was turned later */',
+      '',
+    ].join('\n'));
+    const w = wiringFromConfig(text)!;
+    // What every Hiltwright build has (ENABLE_AUDIO, the counts) is not the config's own.
+    expect(w.defines).toEqual(['ORIENTATION ORIENTATION_USB_TOWARDS_BLADE', 'ORIENTATION_ROTATION 0,20,0', 'BLADE_DETECT_PIN blade4Pin', 'ENABLE_SSD1306', 'VOLUME 1000', 'CLASH_THRESHOLD_G 2.5', 'FETT263_TWIST_ON', 'ORIENTATION ORIENTATION_TOP_TOWARDS_BLADE']);
+    // The last ORIENTATION wins, as in C++; the prop option is not a board setting.
+    const carried = carriedDefines(w.defines);
+    expect(carried).toEqual(['ORIENTATION ORIENTATION_TOP_TOWARDS_BLADE', 'ORIENTATION_ROTATION 0,20,0', 'BLADE_DETECT_PIN blade4Pin', 'ENABLE_SSD1306', 'VOLUME 1000', 'CLASH_THRESHOLD_G 2.5']);
+
+    const { model } = roundTrip(text);
+    // Without them a build drops each one, and says what it has instead.
+    const plain = generateConfig(model).text;
+    expect(droppedDefines(plain, w.defines).map(droppedDefineText)).toEqual([
+      'ORIENTATION ORIENTATION_USB_TOWARDS_BLADE', 'ORIENTATION_ROTATION 0,20,0', 'BLADE_DETECT_PIN blade4Pin', 'ENABLE_SSD1306',
+      'VOLUME 1000 (the build has VOLUME 1800)', 'CLASH_THRESHOLD_G 2.5 (the build has CLASH_THRESHOLD_G 3.5)', 'FETT263_TWIST_ON', 'ORIENTATION ORIENTATION_TOP_TOWARDS_BLADE']);
+
+    const withSettings = { ...model, boardDefines: carried };
+    expect(validateModel(withSettings)).toEqual([]);
+    const built = generateConfig(withSettings).text;
+    const top = topDefines(built);
+    // The installer's volume and clash threshold take the place of Hiltwright's: each is defined once.
+    expect(top.filter((d) => d.startsWith('VOLUME'))).toEqual(['VOLUME 1000']);
+    expect(top.filter((d) => d.startsWith('CLASH_THRESHOLD_G'))).toEqual(['CLASH_THRESHOLD_G 2.5']);
+    expect(built).toContain('#define ORIENTATION_ROTATION 0,20,0\n');
+    expect(built).toContain('#define ORIENTATION ORIENTATION_TOP_TOWARDS_BLADE\n');
+    // Left out now: the prop option, and the ORIENTATION a later line replaced in the installer's own config.
+    expect(droppedDefines(built, w.defines).map((d) => d.define)).toEqual(['ORIENTATION ORIENTATION_USB_TOWARDS_BLADE', 'FETT263_TWIST_ON']);
+  });
+
+  it('#14 every define a config says every build has is in a generated config', () => {
+    const { generated } = roundTrip(withBlades(['WS281XBladePtr<144, bladePin, Color8::GRB, PowerPINS<bladePowerPin2>>()']));
+    const names = topDefines(generated).map((d) => d.split(' ')[0]);
+    for (const n of ['NUM_BLADES', 'NUM_BUTTONS', 'ENABLE_AUDIO', 'ENABLE_MOTION', 'ENABLE_WS2811', 'ENABLE_SD', 'SAVE_STATE', 'COLOR_CHANGE_DIRECT', 'ENABLE_ALL_EDIT_OPTIONS']) expect(names).toContain(n);
+    expect(wiringFromConfig(generated)!.defines.some((d) => d.startsWith('ENABLE_AUDIO'))).toBe(false);
   });
 
   it('#16 a DimBlade whose limit is not a plain percentage is not readable, rather than imported at full brightness', () => {

@@ -1,7 +1,7 @@
 // Turning a config file's wiring (core configWiring.ts) into the Wiring page's blades, and describing it in words.
 // Kept apart from React so it can be tested under node.
 
-import { bladePowerPins, type BladeRole, type ConfigWiring, type ModelBlade, type SaberConfigModel } from '@hiltwright/core';
+import { bladePowerPins, carriedDefines, type BladeRole, type ConfigWiring, type ModelBlade, type SaberConfigModel } from '@hiltwright/core';
 
 /**
  * The config's blades as the Wiring page keeps them. Roles are not in a config: with the same number of blades the
@@ -14,7 +14,21 @@ export function importedBlades(cfg: Pick<ConfigWiring, 'blades'>, current: Model
 
 /** What the model remembers of the config, for Build & Flash to check against later. */
 export function referenceFrom(name: string, from: 'card' | 'file', cfg: ConfigWiring): NonNullable<SaberConfigModel['wiringReference']> {
-  return { file: name, from, at: new Date().toISOString(), board: cfg.board, buttons: cfg.buttons, blades: cfg.blades, unreadable: cfg.unreadable };
+  return { file: name, from, at: new Date().toISOString(), board: cfg.board, buttons: cfg.buttons, blades: cfg.blades, unreadable: cfg.unreadable, defines: cfg.defines };
+}
+
+/**
+ * The board settings a build takes from the config (issue #14), as a model patch: its orientation, display, volume
+ * and the like. None: the field goes, so a config without them leaves Hiltwright's defaults.
+ */
+export function importedBoardDefines(cfg: Pick<ConfigWiring, 'defines'>): Pick<SaberConfigModel, 'boardDefines'> {
+  const carried = carriedDefines(cfg.defines);
+  return { boardDefines: carried.length ? carried : undefined };
+}
+
+/** True when the model's board settings are not the ones a build would take from this config. */
+export function boardDefinesDiffer(m: Pick<SaberConfigModel, 'boardDefines'>, cfg: Pick<ConfigWiring, 'defines'>): boolean {
+  return (m.boardDefines ?? []).join('\n') !== carriedDefines(cfg.defines).join('\n');
 }
 
 /** One blade in words: "144-pixel strip on bladePin, power bladePowerPin2 + bladePowerPin3 (GRB)". */

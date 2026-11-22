@@ -34,6 +34,11 @@ describe('the form of a saber model (issue #5)', () => {
 
   it('refuses extra #define lines and a custom prop name that is not a file name', () => {
     expect(modelFormProblems({ ...good(), extraDefines: ['FETT263_TWIST_ON', 'ORIENTATION ORIENTATION_USB_TOWARDS_BLADE'] })).toEqual([]);
+    // #14 board settings from the installer's config: only the listed defines, with values of their kind, each once.
+    const settings = (boardDefines: unknown) => modelFormProblems({ ...good(), boardDefines });
+    expect(settings(['ORIENTATION ORIENTATION_USB_TOWARDS_BLADE', 'ORIENTATION_ROTATION 0,-20,0', 'BLADE_DETECT_PIN blade4Pin', 'ENABLE_SSD1306', 'VOLUME 1000', 'CLASH_THRESHOLD_G 2.5'])).toEqual([]);
+    for (const bad of [['NUM_BLADES 4'], ['FETT263_TWIST_ON'], ['ORIENTATION bladePin'], ['VOLUME loud'], ['ENABLE_SSD1306 1'], ['VOLUME 1000\n#define bladePin blade4Pin'], ['VOLUME 1000', 'VOLUME 900'], 'VOLUME 1000'])
+      expect(settings(bad)).toEqual(["A board setting from the installer's config is not one Hiltwright accepts."]);
     // #16 a brightness limit is printed as DimBlade's percentage: a plain number above 0 and at most 100.
     const dimmed = (dim: unknown) => modelFormProblems({ ...good(), blades: good().blades.map((b) => ({ ...b, dim })) });
     expect(dimmed(20)).toEqual([]);

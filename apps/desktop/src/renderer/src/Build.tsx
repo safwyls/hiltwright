@@ -3,7 +3,7 @@
 // Install › Card, cardTrip.ts), then flashes: backup → bootloader → write → verify (docs/install-live-plan.md).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FETT263_REQUIRED_VOICE_PACK, compareWiring, differenceText, presetsWithoutCommon, propFamily, voicePackVerdict, wiringConfirmed, withWiringConfirmation } from '@hiltwright/core';
+import { FETT263_REQUIRED_VOICE_PACK, compareWiring, differenceText, droppedDefineText, droppedDefines, presetsWithoutCommon, propFamily, voicePackVerdict, wiringConfirmed, withWiringConfirmation } from '@hiltwright/core';
 import { firmwareHasStaged, presetDrift, queuedLookIds } from './saberModel';
 import { mb } from './FontLibrary';
 import { propLabel } from './Wiring';
@@ -375,6 +375,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const pinRef = model?.wiringReference ? { name: model.wiringReference.file, wiring: model.wiringReference } : cardConfig;
   const pinDiffs = model && pinRef ? compareWiring(model, pinRef.wiring) : [];
   const pinDanger = pinDiffs.some((d) => d.danger);
+  // The installer's defines this build leaves out (issue #14), against the config the build would write.
+  const droppedDefs = pinRef?.wiring.defines && preview?.text ? droppedDefines(preview.text, pinRef.wiring.defines) : [];
   const canBuild = !busy && !!tool?.ready && !!model && !preview?.errors.length;
 
   return (
@@ -523,6 +525,11 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
         {pinRef && pinDiffs.length > 0 && <div className={`note ${pinDanger ? 'red' : 'amber'}`}><Icon name="warn" /><span className="col" style={{ gap: 6 }}>
           <span>{pinDanger ? `The wiring differs from ${pinRef.name}, the installer's config. A wrong pin can damage the board: check these before installing.` : `The wiring differs from ${pinRef.name}, the installer's config:`}</span>
           {pinDiffs.map((d) => <span key={`${d.blade}-${d.what}`} className="small">{differenceText(d)}</span>)}
+          <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('wiring')}>Wiring</button></span>
+        </span></div>}
+        {pinRef && droppedDefs.length > 0 && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 6 }}>
+          <span>This build leaves out {droppedDefs.length === 1 ? 'a setting' : `${droppedDefs.length} settings`} from {pinRef.name}, the installer{'’'}s config. Check that the saber does not need {droppedDefs.length === 1 ? 'it' : 'them'}:</span>
+          {droppedDefs.map((d) => <span key={d.define} className="small mono">{droppedDefineText(d)}</span>)}
           <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('wiring')}>Wiring</button></span>
         </span></div>}
         {cardCheck?.source === 'reader' && <div className="note"><Icon name="sd" /><span className="col" style={{ gap: 6 }}>

@@ -6,6 +6,7 @@
 // The rules are about form, not about wiring: whether the wiring is right is wiringProblems' job.
 
 import { BOARD_PINS } from './pinRules';
+import { defineName, isCarriedDefine } from './boardDefines';
 
 const BOARDS = ['V2', 'V3'];
 const BOARD_FROM = ['bootloader', 'firmware', 'owner'];
@@ -96,6 +97,10 @@ export function modelFormProblems(raw: unknown): string[] {
   // A define the app adds itself (prop options): `NAME` or `NAME value`, the name in capitals and the value one token.
   // Never a lower-case name, so a pin such as bladePin cannot be redefined, and never more than one line.
   if (m.extraDefines !== undefined && (!Array.isArray(m.extraDefines) || m.extraDefines.length > 40 || !m.extraDefines.every((d) => isStr(d) && /^[A-Z][A-Z0-9_]{0,60}( [A-Za-z0-9_.-]{1,60})?$/.test(d)))) out.push('An extra #define is not in the accepted form.');
+  // Board settings carried from the installer's config (issue #14): only the defines and values boardDefines.ts lists,
+  // each name once, so nothing else an imported or shared model holds is ever printed into CONFIG_TOP this way.
+  if (m.boardDefines !== undefined && (!Array.isArray(m.boardDefines) || !m.boardDefines.every(isCarriedDefine)
+    || new Set(m.boardDefines.map((d) => defineName(d as string))).size !== m.boardDefines.length)) out.push('A board setting from the installer\'s config is not one Hiltwright accepts.');
   if (!Array.isArray(m.blades) || m.blades.length > 16) out.push('The blades are not in the expected form.');
   else {
     const ids = new Set(m.blades.map((b) => (isObj(b) ? b.id : null)));

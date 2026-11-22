@@ -11,6 +11,7 @@ import type { BoardModel, SaberConfigModel, StockProp } from './generate';
 import { bladeTables, boardInclude, getDefine, parseConfig } from './parse';
 import { splitArgs } from './cpp';
 import { bladePowerPins, dimPercent, rowToBlades } from './blades';
+import { EVERY_BUILD_HAS, defineText } from './boardDefines';
 
 /** What a config file says about the hardware. */
 export interface ConfigWiring {
@@ -27,6 +28,12 @@ export interface ConfigWiring {
   rows: number;
   /** The prop it includes, and the stock prop that is when it is one. */
   prop: { include: string; stock: StockProp | null } | null;
+  /**
+   * Its CONFIG_TOP defines other than those every Hiltwright build has (issue #14), as `NAME` or `NAME value`: the
+   * board's orientation, a display, the volume, prop options. A build carries a few over (boardDefines.ts) and drops
+   * the rest, and Build & Flash names each one it drops.
+   */
+  defines: string[];
 }
 
 const ORDER_FLAGS: Record<string, number> = { WS2811_RGB: 0, WS2811_RBG: 1, WS2811_GRB: 2, WS2811_GBR: 3 };
@@ -97,9 +104,11 @@ export function wiringFromConfig(text: string): ConfigWiring | null {
     .filter(({ expr }) => expr.kind === 'raw' || (expr.kind === 'dim' && (expr.inner.kind === 'raw' || dimPercent(expr.factor) === null)) || (expr.kind === 'subblade' && expr.inner?.kind === 'raw'))
     .map(({ blade, expr }) => ({ blade, text: expr.raw.replace(/\s+/g, ' ').slice(0, 160) }));
   const propFile = propInc?.split('/').pop() ?? null;
+  const defines = (doc.top?.lines ?? []).flatMap((l) => (l.kind === 'define' && !EVERY_BUILD_HAS.includes(l.name) ? [defineText(l.name, l.value)] : []));
   return {
     board, buttons: num('NUM_BUTTONS'), numBlades: num('NUM_BLADES'), blades, unreadable, rows: table.rows.length,
     prop: propInc ? { include: propInc, stock: propFile ? STOCK_PROP_FILES[propFile] ?? null : null } : null,
+    defines: [...new Set(defines)],
   };
 }
 

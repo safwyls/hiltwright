@@ -36,6 +36,20 @@ A `SimpleBladePtr` pairs each LED with the pin in the same place, so Hiltwright 
 
 An installer can limit a blade's brightness with `DimBlade`, often to spare the battery or keep the LEDs cool. Hiltwright keeps that limit: the blade card says "Brightness limited to 20%", and builds keep it. A different limit, or none, is listed as a difference. A `DimBlade` whose limit is not a plain percentage is named as not readable.
 
+#### Its board settings
+
+A config also has settings of its own (its `#define` lines). Hiltwright writes its own settings for every build, but a few of the installer's describe how the hilt is built, and builds take those over with its wiring:
+
+| Setting | What it is |
+| --- | --- |
+| `ORIENTATION`, `ORIENTATION_ROTATION`, `INVERT_ORIENTATION` | How the board is mounted. Without it, gestures, twist, stab and blade angle use the wrong axes. |
+| `BLADE_DETECT_PIN` | A switch that tells when a blade is plugged in. |
+| `ENABLE_SSD1306`, `INCLUDE_SSD1306`, `OLED_FLIP_180`, `OLED_MIRRORED` | A small OLED display. |
+| `ENABLE_SERIAL` | A Bluetooth or serial module. |
+| `VOLUME`, `BOOT_VOLUME`, `CLASH_THRESHOLD_G` | The installer's volume and clash sensitivity, in place of Hiltwright's 1800 and 3.5. |
+
+Wiring lists which of the config's settings builds take over and which they leave out. **Use its wiring** takes them with the wiring; when the wiring already matches, **Use its board settings** takes only them, and the wiring confirmation stays. The settings taken are listed on Wiring, and **Leave them out** drops them again. Build & Flash names every setting of the installer's config that a build still leaves out.
+
 ### A custom prop file
 
 Choose **Custom prop file…** and pick the file. Hiltwright checks that it is a ProffieOS prop file (it has a `#define PROP_TYPE`) and keeps its own copy. The build puts it next to the props that come with ProffieOS, so it can include them, under a name of its own so none of them is replaced. **Choose another file…** swaps it, and choosing a stock prop and then Custom again goes back to the same file.
