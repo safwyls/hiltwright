@@ -8,7 +8,15 @@
 // Look again always reads afresh.
 
 import type { VoicePackStatus } from '@hiltwright/core';
-import type { CardInfo, DriveLook, FontEntry, HiltwrightApi } from '../../shared/api';
+import type { CardInfo, DriveLook, FontEntry, HiltwrightApi, MountedDrive } from '../../shared/api';
+
+/**
+ * The drives mounted (sd.mounted), as one text to compare between two asks: each root with the volume in it, so a
+ * card swapped for another at the same drive letter changes it too (issue #9), not only a card put in or taken out.
+ */
+export function drivesKey(drives: MountedDrive[]): string {
+  return drives.map((d) => `${d.root}=${d.volumeId ?? ''}`).join('|');
+}
 
 export interface CardRead {
   root: string;

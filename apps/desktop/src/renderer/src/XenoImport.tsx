@@ -37,7 +37,7 @@ export function XenoImport({ card, board, onChanged }: { card: CardInfo | null; 
     let copied = 0;
     await duringWork('copy', async () => { for (const f of source.fonts.filter((x) => chosen.has(x.path) && results[x.path] !== 'copied')) {
       setProgress(`Converting ${f.name}…`);
-      try { await api().importer.xenoFont(f.path, card.root, f.folder, false); results[f.path] = 'copied'; copied++; } catch (err) {
+      try { await api().importer.xenoFont(f.path, card.root, f.folder, false, card.volumeId); results[f.path] = 'copied'; copied++; } catch (err) {
         results[f.path] = /already on the card/.test(String(err)) ? 'exists' : 'failed';
         console.log(`[import] ${f.name}: ${String(err)}`);
       }

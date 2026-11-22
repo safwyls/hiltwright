@@ -30,6 +30,8 @@ If a font you chose is not in your font library, the note says so and links to F
 
 Whatever the voice pack replaces is kept on this computer, and the note says where.
 
+Hiltwright writes only to the card it read. If you swap the card in the reader for another one (another saber's, say) before the work is done, it stops and says "The card in E: is not the one Hiltwright read. Look again." Nothing is copied to the other card, and its presets file stays. Hiltwright also notices the swap by itself within a few seconds and reads the new card.
+
 > **Note:** No card reader? With the saber plugged in, press **Share the saber's card**. The trip then works on the shared card the same way, but it is much slower. Give the card back before you flash.
 
 Next: [Build & Flash](build-and-install.html).

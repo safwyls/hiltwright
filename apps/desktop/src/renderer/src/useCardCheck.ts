@@ -8,7 +8,7 @@ import { parseList, sdFailureIn, voicePackFromSerial, wiringFromConfig, type Con
 import type { CardInfo, SaberRecord } from '../../shared/api';
 import type { Board } from './board';
 import { saberCardIn, type OwnedBy } from './cardOwner';
-import { sharedLook, sharedRead } from './cardCache';
+import { drivesKey, sharedLook, sharedRead } from './cardCache';
 
 const api = () => window.hiltwright;
 const DRIVE_POLL_MS = 2500;
@@ -97,8 +97,9 @@ export function useCardCheck(board: Board, saber: SaberRecord | null) {
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board.status, board.saber?.id, board.card.shared, saber?.id, lookAgain]);
-  // A card put in a reader, or taken out, is looked at by itself: the drives mounted are asked every few seconds (a
-  // cheap check), and a change starts a full look. Not while the window is hidden.
+  // A card put in a reader, taken out, or swapped for another at the same letter, is looked at by itself: the drives
+  // mounted are asked every few seconds (a cheap check), each with the volume in it (issue #9), and a change starts a
+  // full look. Not while the window is hidden; a swap made meanwhile is still seen at the next tick.
   // `drives` counts the changes, for a page that reads cards its own way (the Card page) and looks again on it.
   const [drives, setDrives] = useState(0);
   useEffect(() => {
@@ -108,7 +109,7 @@ export function useCardCheck(board: Board, saber: SaberRecord | null) {
       if (asking || document.hidden) return;
       asking = true;
       try {
-        const now = (await api().sd.mounted()).join('|');
+        const now = drivesKey(await api().sd.mounted());
         if (last !== null && now !== last) { setDrives((n) => n + 1); setLookAgain((n) => n + 1); }
         last = now;
       } catch { /* asked again next time */ } finally { asking = false; }

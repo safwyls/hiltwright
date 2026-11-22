@@ -165,7 +165,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
     report: (r) => { if (r.xfer !== undefined) setXfer(r.xfer); if (r.step) setStep(r.step); if (r.note !== undefined) setNote(r.note); if (r.notes !== undefined) setNotes(r.notes); },
     sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
     // Staged presets need the card's presets file gone, from wherever the card is (installFlow applyStagedPresets).
-    card: (() => { const c = cardCheckRef.current; return c?.source === 'reader' ? { where: 'reader' as const, root: c.root, clearPresets: (root: string, saberId: string) => api().sd.clearPresets(root, saberId) } : c?.source === 'out' ? { where: 'out' as const } : { where: 'saber' as const }; })(),
+    // With the volume that was read, so a card swapped into that reader by then keeps its presets file (issue #9).
+    card: (() => { const c = cardCheckRef.current; return c?.source === 'reader' ? { where: 'reader' as const, root: c.root, clearPresets: (root: string, saberId: string) => api().sd.clearPresets(root, saberId, c.card.volumeId) } : c?.source === 'out' ? { where: 'out' as const } : { where: 'saber' as const }; })(),
   }), [board]);
   // Connected as the picked saber; another saber plugged in counts as nothing plugged in here.
   const connectedNow = status === 'connected' && !otherPlugged;

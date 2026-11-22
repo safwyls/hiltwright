@@ -88,11 +88,19 @@ export interface CardInfo {
   empty: boolean;
   /** The volume serial number Windows reports (8 hex digits), unchanged until the card is formatted; null elsewhere. */
   volumeSerial: string | null;
+  /**
+   * The volume that was in the drive at this look (8 or more hex digits; the volume serial on Windows). Writes pass
+   * it back, and are refused if the drive holds another card by then (issue #9). Missing only in tests' made-up cards.
+   */
+  volumeId?: string | null;
   /** The font and name of each preset in its presets.ini, or null when it has none. */
   presets: { font: string; name: string }[] | null;
   /** How many times this app has written to it since it started: what was read from it is current while this holds. */
   writes: number;
 }
+
+/** A drive mounted now, and the volume in it, so a card swapped for another at the same letter is noticed (issue #9). */
+export interface MountedDrive { root: string; volumeId: string | null }
 
 /**
  * One look for drives (`sd.look`): the cards found, or that Windows did not answer the drive list in time or the
@@ -353,8 +361,8 @@ export interface HiltwrightApi {
     locate(): Promise<CardInfo[]>;
     /** The same look as `locate`, saying when Windows did not answer instead of returning an empty list. */
     look(): Promise<DriveLook>;
-    /** The drives mounted now, by root: cheap, to notice a card put in a reader or taken out without a full look. */
-    mounted(): Promise<string[]>;
+    /** The drives mounted now, by root, with the volume in each: cheap, to notice a card put in, taken out or swapped without a full look. */
+    mounted(): Promise<MountedDrive[]>;
     listFonts(root: string): Promise<FontEntry[]>;
     /** Flush and dismount the card's volume, as 'Safely remove' does. Before the saber takes its card back. */
     eject(root: string): Promise<{ ok: boolean; detail: string }>;
@@ -370,8 +378,9 @@ export interface HiltwrightApi {
     /**
      * Remove presets.ini and presets.tmp from a known card (staged presets installed while the card is in a reader).
      * The card's own files are kept first, in this saber's data folder and as a snapshot; nothing is removed if they cannot be.
+     * `volumeId` (from the look, CardInfo.volumeId): refused if the drive holds another card by then. The same for every write below.
      */
-    clearPresets(root: string, saberId: string): Promise<string[]>;
+    clearPresets(root: string, saberId: string, volumeId?: string | null): Promise<string[]>;
     /** Config files (.h with a BladeConfig) at the top of a known card or in its config folder, with their text. */
     configFiles(root: string): Promise<{ name: string; text: string }[]>;
     /** Ask for a config file on this computer and read it; null when the owner cancels. */
@@ -387,11 +396,11 @@ export interface HiltwrightApi {
      * not have it), or the `file` of a picked zip. What it replaces is copied to this computer first (`backup`). Copy
      * progress comes through onCopyProgress, download progress through onVoicePackDownload.
      */
-    installVoicePack(root: string, source: { pack: string } | { file: string }): Promise<{ status: VoicePackStatus; backup: string | null; replaced: number }>;
+    installVoicePack(root: string, source: { pack: string } | { file: string }, volumeId?: string | null): Promise<{ status: VoicePackStatus; backup: string | null; replaced: number }>;
     onVoicePackDownload(cb: (p: { name: string; got: number; total: number }) => void): () => void;
     /** Ask the user for a font folder on this computer and check it without copying. */
     pickFont(): Promise<FontEntry | null>;
-    copyFont(src: string, root: string, replace: boolean): Promise<FontEntry>;
+    copyFont(src: string, root: string, replace: boolean, volumeId?: string | null): Promise<FontEntry>;
     /** Files copied so far for a copy onto the card, from Fonts & SD or the font library (card-safety D5). */
     onCopyProgress(cb: (p: { name: string; done: number; total: number }) => void): () => void;
   };
@@ -408,7 +417,8 @@ export interface HiltwrightApi {
     readSound(folder: string, path: string): Promise<ArrayBuffer>;
     /** The playable sounds, for the demo room's font engine. Progress arrives through sd.onReadFontProgress. */
     readFont(folder: string): Promise<FontSounds>;
-    copyToCard(folder: string, root: string, replace: boolean): Promise<FontEntry>;
+    /** `volumeId`: as for sd.clearPresets, the card the page read; refused if the drive holds another by then. */
+    copyToCard(folder: string, root: string, replace: boolean, volumeId?: string | null): Promise<FontEntry>;
     /** Ask for .zip packages, or for folders, and copy the fonts found in them into the library. Null when cancelled. */
     addZip(): Promise<ImportResult | null>;
     addFolder(): Promise<ImportResult | null>;
@@ -472,14 +482,14 @@ export interface HiltwrightApi {
     mesh(id: string): Promise<PackMesh>;
     font(id: string): Promise<FontSounds>;
     /** Copy a font pack's folder to the card at `root`, all or nothing. Refused unless the pack allows copying to a card. */
-    copyFontToCard(packId: string, root: string, opts: { replace: boolean }): Promise<FontEntry>;
+    copyFontToCard(packId: string, root: string, opts: { replace: boolean; volumeId?: string | null }): Promise<FontEntry>;
   };
   /** Bring fonts over from another board's SD card. The source is only read. */
   importer: {
     /** Ask for a Xenopixel card folder and list the fonts on it. Null when cancelled. */
     pickXeno(): Promise<{ root: string; fonts: XenoFontInfo[] } | null>;
     /** Convert one listed font onto the ProffieOS card at `root`, as folder `folder`. */
-    xenoFont(src: string, root: string, folder: string, replace: boolean): Promise<FontEntry>;
+    xenoFont(src: string, root: string, folder: string, replace: boolean, volumeId?: string | null): Promise<FontEntry>;
   };
   toolchain: {
     status(): Promise<ToolchainStatus>;
