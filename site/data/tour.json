@@ -27,8 +27,8 @@
           "n": 3,
           "title": "From plan to installed saber",
           "text": [
-            "These numbered steps take a saber from a plan to an installed board: 1 Wiring, 2 Presets, 3 Fonts & SD, 4 Build & Install.",
-            "The Armory, above them, is where you choose which saber you are working on."
+            "Install's numbered steps take a saber from a plan to an installed board: 1 Wiring, 2 Fonts, 3 Presets, 4 Card, 5 Build & Flash.",
+            "Live, below them, changes a saber that is plugged in now. The Armory, on top, is where you pick a saber."
           ],
           "shot": "tour-03.png"
         },
@@ -37,7 +37,7 @@
           "title": "The Workshop and Tools",
           "text": [
             "The Workshop sits beside that path. Browse and build styles, keep your sound fonts, and try any of it in the demo room.",
-            "Tools, below, has Diagnostics for reporting a problem, and About."
+            "Tools, below, has your Settings, such as the theme, and About."
           ],
           "shot": "tour-04.png"
         },
@@ -55,7 +55,7 @@
           "title": "Help on every page",
           "text": [
             "On any page, press \"Show me this page\" to see just that part of this tour.",
-            "\"Take the tour\", at the bottom of the sidebar, starts it again from the beginning."
+            "\"Take the tour\", at the bottom left of the window, starts it again from the beginning."
           ],
           "shot": "tour-06.png"
         }
@@ -70,8 +70,8 @@
           "n": 7,
           "title": "Your sabers",
           "text": [
-            "Every saber Hiltwright has seen is remembered here, plugged in or not.",
-            "The one marked \"Working on it\" is the saber every step is about. To work on another, unplug this one and press \"Work on it\"."
+            "Every saber Hiltwright has seen is remembered here, plugged in or not. A saber you plug in is picked on its own.",
+            "The picked saber is the one the Install steps are about. Pick another at any time, even while one is plugged in."
           ],
           "shot": "tour-07.png"
         },
@@ -86,10 +86,10 @@
         },
         {
           "n": 9,
-          "title": "Where the saber is up to",
+          "title": "Live, or a new setup",
           "text": [
-            "The four steps, and how far this saber has got. A tick means the step is done; the bright one is next.",
-            "Press a step to go to it, or \"Continue\" to go to the next one."
+            "\"Adjust it live\" changes a plugged-in saber at once. \"Change its setup\" shows the five Install steps and how far this saber has got.",
+            "A tick means a step is done; the bright one is next. Press a step to go to it."
           ],
           "shot": "tour-09.png"
         }
@@ -139,158 +139,221 @@
       ]
     },
     {
-      "id": "presets",
-      "name": "2 Presets",
-      "page": "presets",
+      "id": "fonts",
+      "name": "2 Fonts",
+      "page": "fonts",
       "steps": [
         {
           "n": 14,
-          "title": "Presets",
+          "title": "Fonts for this saber",
           "text": [
-            "A preset is one setup you switch to with the buttons: a sound font, a music track, and a style for each blade.",
-            "Pick a preset in the list to change it. The arrows move it up or down the list."
+            "Choose the sound fonts this saber will carry. They are copied onto its card on the Card step.",
+            "No card or saber is needed for this. Every font a preset names is on this list too."
           ],
           "shot": "tour-14.png"
         },
         {
           "n": 15,
-          "title": "Live on the saber",
+          "title": "Your font library",
           "text": [
-            "\"Live on the saber\" means the saber is plugged in. A change is written to it at once, and shows as saved when the saber reads it back.",
-            "With the example saber, nothing is written."
+            "Fonts come from your font library. Add a downloaded font package or a font folder here, and it is chosen at once.",
+            "Six free ProffieOS fonts come with Hiltwright: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl."
           ],
           "shot": "tour-15.png"
-        },
+        }
+      ]
+    },
+    {
+      "id": "presets",
+      "name": "3 Presets",
+      "page": "presets",
+      "steps": [
         {
           "n": 16,
-          "title": "Staged for the next install",
+          "title": "Presets",
           "text": [
-            "With no saber plugged in, changes are \"staged\" instead. They wait in Hiltwright and replace the saber's presets at the next Build & Install.",
-            "A copy of the saber's own presets is kept first, so they can be put back."
+            "A preset is one setup you switch to with the buttons: a sound font, a music track, and a style for each blade.",
+            "Pick a preset in the list to change it. The arrows move it up or down the list."
           ],
           "shot": "tour-16.png"
         },
         {
           "n": 17,
-          "title": "Font and track",
+          "title": "Kept for the next install",
           "text": [
-            "Type the font's folder name as it is on the SD card, or press \"Choose from library\".",
-            "The line underneath says whether that font is on the card yet."
+            "Changes here are \"staged\": they wait in Hiltwright and replace the saber's presets at the next flash. A copy of the saber's own is kept first.",
+            "To change a plugged-in saber right away, use Live › Presets instead."
           ],
           "shot": "tour-17.png"
         },
         {
           "n": 18,
-          "title": "A style for each blade",
+          "title": "Font and track",
           "text": [
-            "Each blade gets a style: its colour, flicker and effects. A style already in the saber's firmware switches at once.",
-            "\"Queued\" means the style is chosen but not in the firmware yet. It goes on with the next Build & Install."
+            "Type the font's folder name as it is on the SD card, or press \"Choose from library\".",
+            "The line underneath says whether that font is on the card yet."
           ],
           "shot": "tour-18.png"
         },
         {
           "n": 19,
+          "title": "A style for each blade",
+          "text": [
+            "Each blade gets a style: its colour, flicker and effects. A style already in the saber's firmware switches at once.",
+            "\"Queued\" means the style is chosen but not in the firmware yet. It goes on with the next Build & Flash."
+          ],
+          "shot": "tour-19.png"
+        },
+        {
+          "n": 20,
           "title": "Preset sets",
           "text": [
             "A set is a saved copy of a whole preset list. Save one to reuse it on another saber, or to keep a copy.",
             "Loading a set stages it: it replaces this saber's presets at the next install."
           ],
-          "shot": "tour-19.png"
+          "shot": "tour-20.png"
         }
       ]
     },
     {
-      "id": "fonts",
-      "name": "3 Fonts & SD",
-      "page": "fonts",
+      "id": "card",
+      "name": "4 Card",
+      "page": "card",
       "steps": [
         {
-          "n": 20,
-          "title": "The SD card",
-          "text": [
-            "Sound fonts live on the saber's SD card. Hiltwright copies them there in one of two ways.",
-            "Put the card in a card reader, or press \"Share the saber's card\" and the saber lends its card over USB. The card shown is the one this computer can see."
-          ],
-          "shot": "tour-20.png"
-        },
-        {
           "n": 21,
-          "title": "Fonts on the card",
+          "title": "The card, in one trip",
           "text": [
-            "Every font folder on the card, checked for the usual faults, such as a missing hum or mixed sound files.",
-            "\"Ready\" means the saber should play it. Pick a font to see its sounds."
+            "Take the SD card out of the saber and put it in a card reader: it is found by itself. \"Prepare the card\" copies the fonts it lacks, puts on the voice pack and readies it for your preset list.",
+            "Sharing the card over the saber's USB works too, but is about 30 times slower."
           ],
           "shot": "tour-21.png"
         },
         {
           "n": 22,
-          "title": "Fonts the presets use",
+          "title": "Everything else on the card",
           "text": [
-            "The font each preset names, and whether it is on the card. A missing one can be copied from your Font library in one click.",
-            "Six free ProffieOS fonts come with Hiltwright, ready to copy: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl."
+            "The same page is under Live, for a quick fix on a saber that is already flashed. Here it works on the saber picked in the Armory."
           ],
           "shot": "tour-22.png"
-        },
-        {
-          "n": 23,
-          "title": "Add a font from this computer",
-          "text": [
-            "\"Choose folder\" copies a font folder from this computer to the card.",
-            "Hiltwright checks the files first, and never changes your original."
-          ],
-          "shot": "tour-23.png"
         }
       ]
     },
     {
       "id": "build",
-      "name": "4 Build & Install",
+      "name": "5 Build & Flash",
       "page": "build",
       "steps": [
         {
-          "n": 24,
+          "n": 23,
           "title": "Four steps to the saber",
           "text": [
-            "This turns the saber's wiring, presets and styles into firmware, and installs it.",
+            "This turns the saber's wiring, presets and styles into firmware, and flashes it onto the saber. The Card line says whether its card is ready.",
             "Each step turns green when it is done. The bright one is next."
           ],
-          "shot": "tour-24.png"
+          "shot": "tour-23.png"
         },
         {
-          "n": 25,
+          "n": 24,
           "title": "The compiler",
           "text": [
             "The first build needs the compiler: a one-time download of about 360 MB, into Hiltwright's own folder.",
             "After that, a build takes about a minute, and nothing more is downloaded."
           ],
-          "shot": "tour-25.png"
+          "shot": "tour-24.png"
         },
         {
-          "n": 26,
+          "n": 25,
           "title": "Build",
           "text": [
             "Build makes the firmware. Queued styles are built in here.",
             "Hiltwright writes the settings file for you; you never have to read C++. The Config tab shows it, if you are curious."
           ],
+          "shot": "tour-25.png"
+        },
+        {
+          "n": 26,
+          "title": "Flash, with a backup first",
+          "text": [
+            "Flash reads the saber's whole firmware into a backup file first. Then it writes the new firmware, and waits for the saber to start again.",
+            "Leave the saber plugged in until it says Installed. Windows asks once for a driver the first time."
+          ],
           "shot": "tour-26.png"
         },
         {
           "n": 27,
-          "title": "Install, with a backup first",
-          "text": [
-            "Install reads the saber's whole firmware into a backup file first. Then it writes the new firmware, and waits for the saber to start again.",
-            "Leave the saber plugged in until it says Installed. Windows asks once for a driver the first time."
-          ],
-          "shot": "tour-27.png"
-        },
-        {
-          "n": 28,
           "title": "Putting the old firmware back",
           "text": [
             "Every backup is kept here. \"Put back\" writes one onto the saber exactly as it was, to undo an install.",
             "Presets and fonts on the SD card are not touched."
           ],
+          "shot": "tour-27.png"
+        }
+      ]
+    },
+    {
+      "id": "live-presets",
+      "name": "Live presets",
+      "page": "live-presets",
+      "steps": [
+        {
+          "n": 28,
+          "title": "Change a saber as it runs",
+          "text": [
+            "Live is for a saber that is already installed and plugged in. Its presets change on the saber at once, with nothing built or flashed.",
+            "\"Live on the saber\" means a change is written to it now, and shows as saved when the saber reads it back. It works with any ProffieOS firmware."
+          ],
           "shot": "tour-28.png"
+        }
+      ]
+    },
+    {
+      "id": "diag",
+      "name": "Controls",
+      "page": "diag",
+      "steps": [
+        {
+          "n": 29,
+          "title": "Talk to the saber",
+          "text": [
+            "With a saber plugged in, this page changes its volume and brightness, plays effects, and sends ProffieOS commands.",
+            "A command that restarts the saber or changes its files asks first."
+          ],
+          "shot": "tour-29.png"
+        },
+        {
+          "n": 30,
+          "title": "Reporting a problem",
+          "text": [
+            "Something went wrong? Press \"Save diagnostics\". It writes one file on this computer about what happened, and sends nothing.",
+            "Attach that file when you report the problem. The same button shows up when a build or install fails."
+          ],
+          "shot": "tour-30.png"
+        }
+      ]
+    },
+    {
+      "id": "live-card",
+      "name": "Live card",
+      "page": "live-card",
+      "steps": [
+        {
+          "n": 31,
+          "title": "A small fix on the card",
+          "text": [
+            "\"Share the saber's card\" lends it over the USB cable for a small fix, such as one font. It is slow: a card reader is about 30 times faster.",
+            "The card shown is the one this computer can see, shared or in a reader."
+          ],
+          "shot": "tour-31.png"
+        },
+        {
+          "n": 32,
+          "title": "Fonts on the card",
+          "text": [
+            "Every font folder on the card, checked for the usual faults, such as a missing hum or mixed sound files.",
+            "\"Ready\" means the saber should play it. Pick a font to see its sounds."
+          ],
+          "shot": "tour-32.png"
         }
       ]
     },
@@ -300,48 +363,48 @@
       "page": "looks",
       "steps": [
         {
-          "n": 29,
+          "n": 33,
           "title": "Styles",
           "text": [
             "A style is what a blade does: its colour, flicker, ignition, and how it reacts to clashes and swings.",
             "Hiltwright's own styles are here, with any you build or paste."
           ],
-          "shot": "tour-29.png"
+          "shot": "tour-33.png"
         },
         {
-          "n": 30,
+          "n": 34,
           "title": "On the saber, queued, or needs a build",
           "text": [
             "\"On the saber\": in its firmware now. \"Queued\": chosen for a preset, and goes on with the next build.",
             "\"Needs a build\": not in the saber's firmware yet, so a build is needed before the saber can use it."
           ],
-          "shot": "tour-30.png"
+          "shot": "tour-34.png"
         },
         {
-          "n": 31,
+          "n": 35,
           "title": "Try it first",
           "text": [
             "The preview runs the same maths as the saber. Try other colours here; nothing is sent.",
             "The colours you try go with the style when you put it on a preset."
           ],
-          "shot": "tour-31.png"
+          "shot": "tour-35.png"
         },
         {
-          "n": 32,
+          "n": 36,
           "title": "Put it on a preset",
           "text": [
             "Choose a preset and a blade, then put the style in.",
             "If the saber's firmware has it, it switches at once. If not, it is queued for the next build."
           ],
-          "shot": "tour-32.png"
+          "shot": "tour-36.png"
         },
         {
-          "n": 33,
+          "n": 37,
           "title": "Make your own",
           "text": [
             "\"Build a style\" opens the Style editor. \"Paste style code\", beside it, takes a style from the Fett263 style library or anywhere else, with its credit."
           ],
-          "shot": "tour-33.png"
+          "shot": "tour-37.png"
         }
       ]
     },
@@ -351,40 +414,40 @@
       "page": "editor",
       "steps": [
         {
-          "n": 34,
+          "n": 38,
           "title": "Simple or Full",
           "text": [
             "Simple builds a style from a few plain blocks. Full shows every ProffieOS layer, nested however you like.",
             "You can open a Simple style in Full at any time."
           ],
-          "shot": "tour-34.png"
+          "shot": "tour-38.png"
         },
         {
-          "n": 35,
+          "n": 39,
           "title": "Simple: blocks",
           "text": [
             "A blade underneath, effects stacked on top (the top one paints over the rest), then the ignition and retraction.",
             "Each block has its own colours and sliders."
           ],
-          "shot": "tour-35.png"
+          "shot": "tour-39.png"
         },
         {
-          "n": 36,
+          "n": 40,
           "title": "Full: every layer",
           "text": [
             "Pick a layer on the left, then say what it shows, where on the blade and when.",
             "When the preview can show part of a style only roughly, a note says it is approximate. That part may differ a little on the saber."
           ],
-          "shot": "tour-36.png"
+          "shot": "tour-40.png"
         },
         {
-          "n": 37,
+          "n": 41,
           "title": "Watch it, then save it",
           "text": [
             "The blade here shows the style as you change it.",
             "\"Save as a style\" adds it to your Styles, ready for any preset. Saving is off during the tour."
           ],
-          "shot": "tour-37.png"
+          "shot": "tour-41.png"
         }
       ]
     },
@@ -394,22 +457,22 @@
       "page": "library",
       "steps": [
         {
-          "n": 38,
+          "n": 42,
           "title": "Your font library",
           "text": [
             "Your sound fonts, kept in one place on this computer. Add a font package as you downloaded it (.zip), or a font folder.",
             "They are copied in; your originals are left alone. These are your own fonts, not the example saber's."
           ],
-          "shot": "tour-38.png"
+          "shot": "tour-42.png"
         },
         {
-          "n": 39,
+          "n": 43,
           "title": "One font up close",
           "text": [
             "Pick a font to play its sounds, note who made it, and copy it to a card.",
             "\"Demo room\" lets you hear it on a blade."
           ],
-          "shot": "tour-39.png"
+          "shot": "tour-43.png"
         }
       ]
     },
@@ -419,13 +482,13 @@
       "page": "contributors",
       "steps": [
         {
-          "n": 40,
+          "n": 44,
           "title": "Who made what",
           "text": [
             "Everyone whose work you use: font makers, style authors and hilt makers, each with a logo and a link.",
             "Names come from the fonts, styles and hilts themselves. Spell a name the same way and its work is counted together."
           ],
-          "shot": "tour-40.png"
+          "shot": "tour-44.png"
         }
       ]
     },
@@ -435,55 +498,45 @@
       "page": "demo",
       "steps": [
         {
-          "n": 41,
+          "n": 45,
           "title": "Try before you install",
           "text": [
             "Try any style with any font on a saber in a dark room, before it goes near a real one.",
             "Choose the style on the Blade tab and a font on the Sound tab."
           ],
-          "shot": "tour-41.png"
+          "shot": "tour-45.png"
         },
         {
-          "n": 42,
+          "n": 46,
           "title": "Swing it",
           "text": [
             "Ignite with Space or a double-click. Drag to swing, and scroll to twist the hilt.",
             "Clash, blast, lockup and the rest are here, each with its key. Press ? to see every control."
           ],
-          "shot": "tour-42.png"
+          "shot": "tour-46.png"
         },
         {
-          "n": 43,
+          "n": 47,
           "title": "The scene",
           "text": [
             "Set the light, the blade's length and thickness, and the hilt model."
           ],
-          "shot": "tour-43.png"
+          "shot": "tour-47.png"
         }
       ]
     },
     {
-      "id": "diag",
-      "name": "Diagnostics",
-      "page": "diag",
+      "id": "settings",
+      "name": "Settings",
+      "page": "settings",
       "steps": [
         {
-          "n": 44,
-          "title": "Talk to the saber",
+          "n": 48,
+          "title": "Your settings",
           "text": [
-            "With a saber plugged in, this page changes its volume and brightness, plays effects, and sends ProffieOS commands.",
-            "A command that restarts the saber or changes its files asks first."
+            "Your own preferences for Hiltwright, not about any one saber. Start with the theme: it sets the colours and textures of every page."
           ],
-          "shot": "tour-44.png"
-        },
-        {
-          "n": 45,
-          "title": "Reporting a problem",
-          "text": [
-            "Something went wrong? Press \"Save diagnostics\". It writes one file on this computer about what happened, and sends nothing.",
-            "Attach that file when you report the problem. The same button shows up when a build or install fails."
-          ],
-          "shot": "tour-45.png"
+          "shot": "tour-48.png"
         }
       ]
     },
@@ -493,21 +546,21 @@
       "page": "about",
       "steps": [
         {
-          "n": 46,
+          "n": 49,
           "title": "About",
           "text": [
             "The version you are running, the licence, and a link to the source of this exact build."
           ],
-          "shot": "tour-46.png"
+          "shot": "tour-49.png"
         },
         {
-          "n": 47,
+          "n": 50,
           "title": "That is the tour",
           "text": [
             "Your own sabers are back when you press Finish. Start in the Armory: plug a saber in, or press \"New saber\" to plan one.",
             "\"Show me this page\" and \"Take the tour\" are there whenever you need them."
           ],
-          "shot": "tour-47.png"
+          "shot": "tour-50.png"
         }
       ]
     }
@@ -516,20 +569,22 @@
     7,
     11,
     14,
-    19,
+    16,
     20,
     22,
-    24,
+    23,
+    27,
     28,
     29,
-    31,
-    34,
-    36,
-    39,
+    33,
+    35,
+    38,
     40,
-    41,
-    42,
+    43,
     44,
-    46
+    45,
+    46,
+    48,
+    49
   ]
 }

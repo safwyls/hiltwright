@@ -40,7 +40,7 @@ If the build fails, the problem is listed in red. Press **Save diagnostics** to 
 
 If you change the setup after a build, the step says "out of date" with "The setup changed after this build. Build again to install it." Build again. Changing it back makes the build current again.
 
-![The Build step with the flash meter](shots/tour-26.png)
+![The Build step with the flash meter](shots/tour-25.png)
 
 ## Before you install
 
@@ -70,7 +70,7 @@ One bar shows all of it. It takes about two minutes. **Leave the saber plugged i
 
 > **Warning:** If the saber cannot restart into bootloader mode, hold BOOT, tap RESET, release BOOT, then press Flash again.
 
-![The Install step and its backup note](shots/tour-27.png)
+![The Flash step and its backup note](shots/tour-26.png)
 
 ## The driver prompt
 
@@ -92,7 +92,7 @@ Press **Put back**, then **Yes, put it back**. It writes that backup onto the sa
 
 Presets and fonts on the SD card are not touched.
 
-![The Backups tab with Put back](shots/clean-28.png)
+![The Backups tab with Put back](shots/clean-27.png)
 
 ## The Config tab
 

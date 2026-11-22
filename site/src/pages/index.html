@@ -63,13 +63,15 @@ scripts: assets/stage.js, assets/blade-demo.js
 
 <section class="band alt">
   <div class="wrap">
-    <h2>The install broken down for you, in four steps.</h2>
-    <ol class="path">
-      <li><span class="num">1</span><h3>Wiring</h3><p>Choose the board, the buttons and the prop file. Specify which pins each blade uses. Hiltwright checks for problems and writes the config.</p><a href="docs/wiring.html">How Wiring works</a></li>
-      <li><span class="num">2</span><h3>Presets</h3><p>Select a sound font and a style for each blade. Change them live while the saber is plugged in or preview them in the demo room.</p><a href="docs/presets.html">How Presets work</a></li>
-      <li><span class="num">3</span><h3>Fonts &amp; SD</h3><p>Copy fonts to the card through a reader, or let the saber share its SD card over USB. Every font is validated for missing files and misconfiguration.</p><a href="docs/fonts-and-sd.html">How Fonts &amp; SD works</a></li>
-      <li><span class="num">4</span><h3>Build &amp; Install</h3><p>With a single click you can build the firmware in about a minute. Hiltwright's install process backs up the saber's existing firmware first, then writes the new firmware.</p><a href="docs/build-and-install.html">How Build &amp; Install works</a></li>
+    <h2>The install broken down for you, in five steps.</h2>
+    <ol class="path five">
+      <li><span class="num">1</span><h3>Wiring</h3><p>Choose the board, the buttons and the prop file. Specify which pins each blade uses. Hiltwright checks them, against the installer's config file when you have one, and writes the config.</p><a href="docs/wiring.html">How Wiring works</a></li>
+      <li><span class="num">2</span><h3>Fonts</h3><p>Choose the sound fonts the saber carries from your font library, and the voice its menus speak in. Every font is checked for missing files and misconfiguration.</p><a href="docs/fonts.html">How Fonts work</a></li>
+      <li><span class="num">3</span><h3>Presets</h3><p>Give each preset a font, a track and a style for each blade, and preview them in the demo room. The list waits in Hiltwright until the flash.</p><a href="docs/presets.html">How Presets work</a></li>
+      <li><span class="num">4</span><h3>Card</h3><p>Put the SD card in a card reader and get it ready in one go: the fonts it lacks, the voice pack, and room for your new preset list. A card reader is about 30 times faster than the saber's own USB.</p><a href="docs/card.html">How Card works</a></li>
+      <li><span class="num">5</span><h3>Build &amp; Flash</h3><p>With a single click you can build the firmware in about a minute. Hiltwright backs up the saber's existing firmware first, then writes the new firmware.</p><a href="docs/build-and-install.html">How Build &amp; Flash works</a></li>
     </ol>
+    <p class="after">Already flashed? <a href="docs/live-presets.html">Live</a> changes a plugged-in saber's presets, controls and card at once, with nothing built.</p>
   </div>
 </section>
 
@@ -82,7 +84,7 @@ scripts: assets/stage.js, assets/blade-demo.js
       <p>If you already have a style you like, paste its code, from the Fett263 style library or anywhere else, and Hiltwright will maintain the credit when it builds the firmware.</p>
       <a class="more" href="features.html#styles">More about styles</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-31.png" width="1480" height="980" alt="The Styles page: a grid of blade styles with previews, and one style open with effect buttons and color pickers"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-35.png" width="1480" height="980" alt="The Styles page: a grid of blade styles with previews, and one style open with effect buttons and color pickers"></figure>
   </div>
   <div class="wrap feature flip">
     <div>
@@ -91,7 +93,7 @@ scripts: assets/stage.js, assets/blade-demo.js
       <p>The blade next to the editor shows the live style as you modify it.</p>
       <a class="more" href="features.html#style-editor">More about the editor</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-36.png" width="1480" height="980" alt="The Style editor in Full mode: layers on the left, a What, Where and When card, and a live blade preview"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-40.png" width="1480" height="980" alt="The Style editor in Full mode: layers on the left, a What, Where and When card, and a live blade preview"></figure>
   </div>
   <div class="wrap feature">
     <div>
@@ -100,7 +102,7 @@ scripts: assets/stage.js, assets/blade-demo.js
       <p>Hiltwright will automatically download and install the necessary compiler behind the scenes. You never need to open Arduino or read a config file, unless you want to.</p>
       <a class="more" href="features.html#build-install">More about installing</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-24.png" width="1480" height="980" alt="The Build and Install page: four steps, each turning green when it is done"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-23.png" width="1480" height="980" alt="The Build and Flash page: four steps and a Card line, each turning green when it is done"></figure>
   </div>
 </section>
 

@@ -187,6 +187,9 @@ p{margin:0 0 1em}
 /* The four steps: one line travelled left to right */
 .path{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0 36px;counter-reset:step}
 .path.three{grid-template-columns:repeat(3,1fr);margin-bottom:36px}
+.path.five{grid-template-columns:repeat(5,1fr);gap:0 28px}
+.path+.after{margin:32px 0 0;color:var(--dim);font-size:16px}
+.path+.after a{font-weight:600}
 .path li{border-top:1.5px solid var(--line2);padding:20px 0 0;position:relative;display:flex;flex-direction:column;align-items:flex-start}
 .path li>a{margin-top:auto}
 .path li::before{content:"";position:absolute;left:0;top:-6px;width:11px;height:11px;border-radius:50%;background:var(--cel)}
@@ -356,7 +359,7 @@ kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--line2);border
   .docnav nav a{padding:10px 14px}
   .feature,.feature.flip,.two,.dl,.beta{grid-template-columns:1fr;gap:28px}
   .feature.flip>div{order:0}
-  .path,.path.three,.cards.three{grid-template-columns:1fr 1fr;gap:28px 28px}
+  .path,.path.three,.path.five,.cards.three{grid-template-columns:1fr 1fr;gap:28px 28px}
   .footgrid{grid-template-columns:1fr 1fr}
   .wt{grid-template-columns:1fr;padding-top:24px}
   .wt-chapters{position:static;flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:6px;scrollbar-width:none}
@@ -371,7 +374,7 @@ kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--line2);border
   /* Sides only: the walkthrough and the docs are wraps with their own space above and below, which a full
      padding reset would take away. */
   .wrap{padding-left:16px;padding-right:16px}
-  .path,.path.three,.cards.three,.doccards,.footgrid,.pager{grid-template-columns:1fr}
+  .path,.path.three,.path.five,.cards.three,.doccards,.footgrid,.pager{grid-template-columns:1fr}
   .bd-stage{height:130px;padding:0 16px 0 10px}
   .bd-hilt{width:130px;margin-right:-17px}
   .bd-glow{filter:blur(9px) saturate(1.3)}

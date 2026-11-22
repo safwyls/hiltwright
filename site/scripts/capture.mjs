@@ -24,11 +24,11 @@ const outDir = join(site, 'assets/shots');
 const W = 1480, H = 980;
 
 // Steps (counted from 1) that are also photographed without the tour over them.
-const CLEAN = [7, 11, 14, 19, 20, 22, 24, 28, 29, 31, 34, 36, 39, 40, 41, 42, 44, 46];
+const CLEAN = [7, 11, 14, 16, 20, 22, 23, 27, 28, 29, 33, 35, 38, 40, 43, 44, 45, 46, 48, 49];
 // The step photographed once in every theme: the Armory, with the example saber.
 const THEME_STEP = 7;
 // Steps photographed for the promo pages' feature rows, and the theme each is taken in.
-const FEATURE = { 7: 'kashyyyk', 11: 'hull', 14: 'coruscant', 22: 'ronin', 24: 'naboo', 28: 'original', 29: 'ninth', 31: 'hoth', 34: 'station', 36: 'crait', 39: 'naboo', 41: 'crait' };
+const FEATURE = { 7: 'kashyyyk', 11: 'hull', 14: 'hoth', 16: 'coruscant', 22: 'ronin', 23: 'naboo', 27: 'original', 28: 'hull', 33: 'ninth', 35: 'hoth', 38: 'station', 40: 'crait', 43: 'naboo', 45: 'crait' };
 
 // The tour's words: tourSteps.ts only imports a type, so Node can load it with its types stripped.
 const { TOUR } = await import(pathToFileURL(join(desktop, 'src/renderer/src/tourSteps.ts')).href);
@@ -69,6 +69,11 @@ fonts.forEach((f, i) => {
 });
 writeFileSync(join(fontLibrary, 'hiltwright-fonts.json'), JSON.stringify(index));
 fonts.slice(0, 7).forEach((f) => makeFont(card, f));
+// The example saber's own fonts and a version 2 voice pack, so the card shown beside it reads as its card.
+for (const f of ['SmthJedi', 'SmthGrey', 'SmthFuzz', 'RgueCmdr', 'TeensySF', 'TthCrstl']) makeFont(card, f);
+mkdirSync(join(card, 'common', 'mnum'), { recursive: true });
+writeFileSync(join(card, 'common', 'voicepack.ini'), 'voice_pack_version=2\n');
+for (let i = 1; i <= 3; i++) writeFileSync(join(card, 'common', 'mnum', `mnum${i}.wav`), wav(0.2));
 mkdirSync(join(card, 'tracks'), { recursive: true });
 for (const t of ['duel.wav', 'march.wav', 'sunset.wav']) writeFileSync(join(card, 'tracks', t), wav(1));
 writeFileSync(join(card, 'presets.ini'), '');

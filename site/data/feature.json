@@ -4,6 +4,10 @@
     "name": "Scorched hull"
   },
   "14": {
+    "id": "hoth",
+    "name": "Hoth"
+  },
+  "16": {
     "id": "coruscant",
     "name": "Coruscant at night"
   },
@@ -11,35 +15,39 @@
     "id": "ronin",
     "name": "Ronin"
   },
-  "24": {
+  "23": {
     "id": "naboo",
     "name": "Naboo"
   },
-  "28": {
+  "27": {
     "id": "original",
     "name": "Original"
   },
-  "29": {
+  "28": {
+    "id": "hull",
+    "name": "Scorched hull"
+  },
+  "33": {
     "id": "ninth",
     "name": "The Ninth Jedi"
   },
-  "31": {
+  "35": {
     "id": "hoth",
     "name": "Hoth"
   },
-  "34": {
+  "38": {
     "id": "station",
     "name": "Station"
   },
-  "36": {
+  "40": {
     "id": "crait",
     "name": "Crait"
   },
-  "39": {
+  "43": {
     "id": "naboo",
     "name": "Naboo"
   },
-  "41": {
+  "45": {
     "id": "crait",
     "name": "Crait"
   },

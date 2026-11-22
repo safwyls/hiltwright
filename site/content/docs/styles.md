@@ -6,7 +6,7 @@ order: 1
 ---
 A style is what a blade does: its color, its flicker, how it ignites and retracts, and how it reacts to clashes and swings. The Styles page is where you browse them, try them, and put them on your saber's presets. It sits in the Workshop, beside the [Style editor](style-editor.html), the [Font library](font-library.html) and the [Demo room](demo-room.html).
 
-![The Styles page: a grid of style cards, each with a small blade preview](shots/clean-29.png)
+![The Styles page: a grid of style cards, each with a small blade preview](shots/clean-33.png)
 
 ## What is on the page
 

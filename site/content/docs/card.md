@@ -10,6 +10,8 @@ The same page is under Live as [Live › Card](fonts-and-sd.html), for a quick f
 
 ## The card, in one trip
 
+![Install › Card: what the card needs before the flash, above the fonts on the card](shots/clean-22.png)
+
 Do this with the card out of the saber, in a card reader. A card reader is about 30 times faster than the saber's own USB. In a test, one font took about 4 seconds in a reader and about 120 seconds over the saber's USB.
 
 1. Take the SD card out of the saber and put it in a card reader on this computer. Hiltwright notices it by itself within a few seconds. If it does not, press **Look again**.

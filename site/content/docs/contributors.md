@@ -6,7 +6,7 @@ order: 5
 ---
 Sound fonts, styles and hilt models are other people's work. The Contributors page gathers everyone you use in one list, with what of theirs is in your library. It is how Hiltwright keeps credit attached to the work.
 
-![The Contributors page: a list of makers on the left, one maker's fonts and styles on the right](shots/clean-40.png)
+![The Contributors page: a list of makers on the left, one maker's fonts and styles on the right](shots/clean-44.png)
 
 ## Who is listed
 

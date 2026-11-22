@@ -6,7 +6,7 @@ order: 4
 ---
 The Demo room is a dark room with a saber in it. You pick a style and a sound font, ignite the saber, swing it, clash it and hold lockups. It is the place to decide whether a style and a font belong together, without installing anything.
 
-![The Demo room: a lit saber in a dark room, with the saber panel on the left and the controls along the bottom](shots/clean-41.png)
+![The Demo room: a lit saber in a dark room, with the saber panel on the left and the controls along the bottom](shots/clean-45.png)
 
 ## Choosing a style and a font
 

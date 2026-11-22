@@ -12,11 +12,13 @@ Settings has a **Theme** panel. Choose one of the themes to change how every pag
 
 > **Note:** While the guided tour runs, nothing is saved, so the themes are shown but cannot be chosen. Pick one after the tour.
 
+![The Settings page with its themes](shots/clean-48.png)
+
 ## About
 
 The **About** page shows the version you are running and the license: GPL-3.0-or-later. It has **Show the licence** and **Show the third-party notices** buttons, and **Open the source**, which opens the source code of this exact build on GitHub. It also says that Hiltwright's own styles were composed from ProffieOS building blocks, taking ideas only from public style descriptions.
 
-![The About page with the version, license and source link](shots/clean-46.png)
+![The About page with the version, license and source link](shots/clean-49.png)
 
 The version is also at the bottom right of the window, in the bar along the bottom, with the update chip beside it.
 

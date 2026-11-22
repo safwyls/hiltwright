@@ -8,7 +8,7 @@ Step 3 is Presets. A preset is one setup you switch to with the buttons: a sound
 
 To change a saber that is already installed, with the saber plugged in, use [Live › Presets](live-presets.html). It writes each change to the saber at once.
 
-![The preset list with the move arrows](shots/tour-14.png)
+![The preset list with the move arrows](shots/tour-16.png)
 
 ## The preset list
 
@@ -40,7 +40,7 @@ Build & Flash repeats the warning before it installs.
 
 A field is saved when you leave it or press Enter.
 
-![Name, font and track fields](shots/tour-17.png)
+![Name, font and track fields](shots/tour-18.png)
 
 ## A style for each blade
 
@@ -51,7 +51,7 @@ Each blade gets a style: its color, flicker and effects. Choose it from the list
 
 Color swatches under a style let you change its colors. A color is saved once the picker has been still for half a second, or when you leave it. **Style's own colours** puts the style's defaults back. **Browse and try styles** opens [Styles](styles.html).
 
-![The style choice for each blade, with a Queued marker](shots/tour-18.png)
+![The style choice for each blade, with a Queued marker](shots/tour-19.png)
 
 ## Preset sets
 
@@ -65,6 +65,6 @@ Before a load, Hiltwright shows what it would do:
 
 A clean set loads at once.
 
-![The Sets panel with saved sets](shots/clean-19.png)
+![The Sets panel with saved sets](shots/clean-20.png)
 
 Next: [Card](card.html).

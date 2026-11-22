@@ -8,6 +8,8 @@ Step 2 is Fonts. Here you choose which sound fonts the saber will carry. You pic
 
 ## Choose the fonts
 
+![Install › Fonts: the fonts chosen for the saber, the font library, and the voice pack](shots/clean-14.png)
+
 The page has two lists. On the left is **Fonts for (saber)**, the fonts this saber will carry. On the right is your **Font library**, with an **Add** button beside each font.
 
 Each chosen font shows where it stands:

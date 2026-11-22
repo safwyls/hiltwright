@@ -6,7 +6,7 @@ order: 3
 ---
 A sound font is the set of sounds a saber plays: hum, ignition, retraction, swings, clashes and so on. The Font library keeps your fonts in one folder on this computer. Once a font is added here you can name it in a preset, hear it in the [Demo room](demo-room.html), and copy it to a card, all without hunting for the files again.
 
-![The Font library with a list of fonts and one font open on the right](shots/clean-39.png)
+![The Font library with a list of fonts and one font open on the right](shots/clean-43.png)
 
 ## Adding fonts
 

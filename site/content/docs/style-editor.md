@@ -6,7 +6,7 @@ order: 2
 ---
 The Style editor is where you make a style of your own. It has two ways to work, **Simple** and **Full**, and a live blade beside it so you can see each change as you make it. You reach it from **Build a style** on the [Styles](styles.html) page, or from **Edit the layers** on a style you built.
 
-![The Style editor in Simple mode, with the block stack on the left and the live blade on the right](shots/clean-34.png)
+![The Style editor in Simple mode, with the block stack on the left and the live blade on the right](shots/clean-38.png)
 
 ## Simple or Full
 
@@ -31,7 +31,7 @@ Every color in a Simple style is a live setting once the style is on a saber. Yo
 
 ## Full: every layer
 
-![The Style editor in Full mode, with the layer list on the left and one layer's card open](shots/clean-36.png)
+![The Style editor in Full mode, with the layer list on the left and one layer's card open](shots/clean-40.png)
 
 On the left is the list of layers, with **Add** at the top and the reminder "Top paints over the ones below." The bottom layer is the blade itself, and the ignition and retraction layer stays pinned at the top. Those two cannot be moved, hidden or removed.
 

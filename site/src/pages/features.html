@@ -1,12 +1,12 @@
 ---
 title: Features
-description: What every page of Hiltwright does: wiring, presets, fonts and the SD card, build and install, styles, the style editor, the font library and the demo room.
+description: What every page of Hiltwright does: wiring, fonts, presets, the SD card, build and flash, live changes, styles, the style editor, the font library and the demo room.
 nav: features
 ---
 <section class="pagehead">
   <div class="wrap">
     <h1>Everything between a bare board and a finished saber.</h1>
-    <p class="lede">Hiltwright has two halves. The saber path takes one saber from a plan to installed firmware. The workshop is where you browse, build and try styles and fonts for any saber.</p>
+    <p class="lede">Hiltwright has three parts. Install takes one saber from a plan to flashed firmware. Live changes a flashed saber that is plugged in, at once. The workshop is where you browse, build and try styles and fonts for any saber.</p>
     <nav class="jump" aria-label="On this page">
       <a href="#saber-path">The saber path</a><a href="#workshop">The workshop</a><a href="#safety">Safety</a><a href="#not-yet">Not in the beta</a>
     </nav>
@@ -15,22 +15,22 @@ nav: features
 
 <section class="band scene deep s-crait" id="saber-path">
   <div class="wrap">
-    <h2>One saber, four numbered steps.</h2>
+    <h2>One saber, five numbered steps.</h2>
   </div>
   <div class="pic" aria-hidden="true"></div>
 
   <div class="wrap feature" id="armory">
     <div>
       <h3>Armory</h3>
-      <p>Every saber Hiltwright has seen is remembered, plugged in or not. Choose the one you are working on and see how far it has got.</p>
+      <p>Every saber Hiltwright has seen is remembered, plugged in or not. Pick the one you are working on, then adjust it live or change its setup.</p>
       <ul class="points">
         <li>Plug a saber in with a USB data cable and it connects by itself.</li>
-        <li>"New saber" plans one ahead: wiring, presets and styles, ready to install.</li>
-        <li>When the real saber is plugged in, Hiltwright asks whether it is the one you planned.</li>
+        <li>"Change its setup" shows the five Install steps and how far this saber has got.</li>
+        <li>"New saber" plans one ahead: wiring, fonts, presets and styles, ready to flash. When the real saber is plugged in, Hiltwright asks whether it is the one you planned.</li>
       </ul>
       <a class="more" href="docs/armory.html">Armory in the docs</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-07.png" width="1480" height="980" alt="The Armory: a list of remembered sabers and the four steps for the one being worked on"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-07.png" width="1480" height="980" alt="The Armory: a list of remembered sabers, and for the one picked, Adjust it live and Change its setup with its five steps"></figure>
   </div>
 
   <div class="wrap feature flip" id="wiring">
@@ -47,49 +47,77 @@ nav: features
     <figure class="frame"><img loading="lazy" src="assets/shots/clean-11.png" width="1480" height="980" alt="The Wiring page: board, buttons and prop at the top, then the blades and the pin table"></figure>
   </div>
 
-  <div class="wrap feature" id="presets">
+  <div class="wrap feature" id="fonts">
     <div>
-      <h3>2 Presets</h3>
+      <h3>2 Fonts</h3>
+      <p>Choose the sound fonts the saber will carry, from your font library. Nothing is copied yet: that happens on the Card step.</p>
+      <ul class="points">
+        <li>Add a font package as you downloaded it, or a folder. Your originals are never changed.</li>
+        <li>Each chosen font says whether the card already has it, as last read.</li>
+        <li>With the Fett263 controls, choose the voice its menus speak in. A card whose voice pack is missing, too old or mixed with an older one is pointed out.</li>
+        <li>Six free ProffieOS fonts come with Hiltwright.</li>
+      </ul>
+      <a class="more" href="docs/fonts.html">Fonts in the docs</a>
+    </div>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-14.png" width="1480" height="980" alt="Install › Fonts: the fonts chosen for the saber on the left, the font library on the right, and the voice pack below"></figure>
+  </div>
+
+  <div class="wrap feature flip" id="presets">
+    <div>
+      <h3>3 Presets</h3>
       <p>A preset is one setup you switch to with the buttons: a sound font, a music track and a style for each blade.</p>
       <ul class="points">
-        <li>With the saber plugged in, a change is written at once and shows as saved when the saber reads it back.</li>
-        <li>With no saber plugged in, changes are staged and go on at the next install.</li>
+        <li>The list waits in Hiltwright and goes on at the next flash. A copy of the saber's own presets is kept first.</li>
+        <li>If the saber was changed since your list was made, Hiltwright says so and offers to bring its presets in.</li>
         <li>Save a whole preset list as a set, and load it on another saber.</li>
-        <li>History lists what changed. Undo the newest change, or restore an older one.</li>
       </ul>
       <a class="more" href="docs/presets.html">Presets in the docs</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-14.png" width="1480" height="980" alt="The Presets page: the preset list on the left, and one preset's font, track and blade styles on the right"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-16.png" width="1480" height="980" alt="The Presets page: the preset list on the left, and one preset's font, track and blade styles on the right"></figure>
   </div>
 
-  <div class="wrap feature flip" id="fonts-sd">
+  <div class="wrap feature" id="card">
     <div>
-      <h3>3 Fonts &amp; SD</h3>
-      <p>Sound fonts live on the saber's SD card. Hiltwright copies them there and checks them.</p>
+      <h3>4 Card</h3>
+      <p>Sound fonts live on the saber's SD card. Put the card in a card reader and Hiltwright gets it ready in one go.</p>
       <ul class="points">
-        <li>Use a card reader, or press "Share the saber's card" and the saber lends its card over USB.</li>
+        <li>A card reader is about 30 times faster than the saber's own USB, which runs at USB 1.1 speed. The card is found as soon as it is in.</li>
+        <li>"Prepare the card" copies the chosen fonts it lacks, puts the voice pack on, and removes the old presets file so the new list takes effect.</li>
         <li>Every font on the card is checked for the usual faults, such as a missing hum.</li>
-        <li>A font a preset names but the card lacks can be copied from your library in one click.</li>
-        <li>Six free ProffieOS fonts come with Hiltwright, ready to copy.</li>
+        <li>No card reader? "Share the saber's card" lends it over USB, more slowly.</li>
       </ul>
-      <a class="more" href="docs/fonts-and-sd.html">Fonts &amp; SD in the docs</a>
+      <a class="more" href="docs/card.html">Card in the docs</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-22.png" width="1480" height="980" alt="The Fonts and SD page: fonts on the card with their verdicts, and the fonts the presets use"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-22.png" width="1480" height="980" alt="Install › Card: what the card needs before the flash, and the fonts on the card with their verdicts"></figure>
   </div>
 
-  <div class="wrap feature" id="build-install">
+  <div class="wrap feature flip" id="build-install">
     <div>
-      <h3>4 Build &amp; Install</h3>
-      <p>This turns the wiring, presets and styles into firmware, and installs it over USB.</p>
+      <h3>5 Build &amp; Flash</h3>
+      <p>This turns the wiring, presets and styles into firmware, and flashes it over USB.</p>
       <ul class="points">
         <li>The compiler is a one-time download of about 360 MB. After that a build takes about a minute.</li>
-        <li>Install reads the saber's whole firmware into a backup file first.</li>
+        <li>The flash reads the saber's whole firmware into a backup file first.</li>
         <li>Every backup is kept. "Put back" writes one onto the saber exactly as it was.</li>
         <li>If a step fails, "Save diagnostics" writes one file to attach to a report.</li>
       </ul>
-      <a class="more" href="docs/build-and-install.html">Build &amp; Install in the docs</a>
+      <a class="more" href="docs/build-and-install.html">Build &amp; Flash in the docs</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-28.png" width="1480" height="980" alt="Build and Install with the Backups tab open, listing firmware backups that can be put back"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-27.png" width="1480" height="980" alt="Build and Flash with the Backups tab open, listing firmware backups that can be put back"></figure>
+  </div>
+
+  <div class="wrap feature" id="live">
+    <div>
+      <h3>Live</h3>
+      <p>For a saber that is already flashed and plugged in. Changes are written to the saber at once, with nothing built, and it works with any ProffieOS firmware.</p>
+      <ul class="points">
+        <li>Presets: change a font, a colour or a name, and see it saved when the saber reads it back. History undoes a change.</li>
+        <li>Controls: volume, brightness, effects and ProffieOS commands.</li>
+        <li>Card: a quick fix on the saber's card, such as one font or the voice pack.</li>
+      </ul>
+      <a class="more" href="docs/live-presets.html">Live in the docs</a>
+    </div>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-28.png" width="1480" height="980" alt="Live › Presets: the saber's own preset list, changed on the saber as you edit"></figure>
   </div>
 </section>
 
@@ -111,7 +139,7 @@ nav: features
       </ul>
       <a class="more" href="docs/styles.html">Styles in the docs</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-29.png" width="1480" height="980" alt="The Styles page: a searchable grid of blade styles, each with a preview"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-33.png" width="1480" height="980" alt="The Styles page: a searchable grid of blade styles, each with a preview"></figure>
   </div>
 
   <div class="wrap feature flip" id="style-editor">
@@ -126,7 +154,7 @@ nav: features
       </ul>
       <a class="more" href="docs/style-editor.html">The editor in the docs</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-34.png" width="1480" height="980" alt="The Style editor in Simple mode: stacked blocks for the blade, effects, ignition and retraction"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-38.png" width="1480" height="980" alt="The Style editor in Simple mode: stacked blocks for the blade, effects, ignition and retraction"></figure>
   </div>
 
   <div class="wrap feature" id="demo-room">
@@ -141,7 +169,7 @@ nav: features
       </ul>
       <a class="more" href="docs/demo-room.html">The demo room in the docs</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-41.png" width="1480" height="980" alt="The demo room: a lit saber on a 3D hilt, with style, color and effect controls"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-45.png" width="1480" height="980" alt="The demo room: a lit saber on a 3D hilt, with style, color and effect controls"></figure>
   </div>
 
   <div class="wrap feature flip" id="font-library">
@@ -155,7 +183,7 @@ nav: features
       </ul>
       <a class="more" href="docs/font-library.html">The font library in the docs</a>
     </div>
-    <figure class="frame"><img loading="lazy" src="assets/shots/clean-39.png" width="1480" height="980" alt="The Font library with one font open: its sounds, its maker and a button to copy it to a card"></figure>
+    <figure class="frame"><img loading="lazy" src="assets/shots/clean-43.png" width="1480" height="980" alt="The Font library with one font open: its sounds, its maker and a button to copy it to a card"></figure>
   </div>
 </section>
 
