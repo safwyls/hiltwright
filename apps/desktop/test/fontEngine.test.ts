@@ -108,6 +108,15 @@ describe('choosing sounds per effect', () => {
     expect(backend.played()).toEqual(['force01.wav']);
   });
 
+  it('says whether the font has a force sound, in any layout (the demo room says so when it has none)', () => {
+    expect(makeFont(POLY).engine.hasForce).toBe(false);
+    expect(makeFont([...POLY, 'force01.wav']).engine.hasForce).toBe(true);
+    expect(makeFont([...POLY, 'force.wav']).engine.hasForce).toBe(true);
+    expect(makeFont([...POLY, 'force/001.wav']).engine.hasForce).toBe(true);
+    const silent = makeFont(POLY); silent.engine.ignite(); silent.engine.effect('force');
+    expect(silent.backend.played().some((n) => /force/.test(n))).toBe(false);
+  });
+
   it('plays the font\'s name sound when announced', async () => {
     const { engine, backend } = makeFont(POLY);
     engine.announce(); await Promise.resolve(); await Promise.resolve();

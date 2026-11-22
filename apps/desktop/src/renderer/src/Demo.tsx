@@ -388,6 +388,11 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   useEffect(() => { try { localStorage.setItem('hiltwright.demo.staffLook', staffLookId); } catch { /* private mode */ } }, [staffLookId]);
   const holdRef = useRef(hold);
   holdRef.current = hold;
+  // Force, as the prop's Force effect: styles that answer EFFECT_FORCE react, and the font's force sound plays. Only
+  // while ignited, as on Live › Controls.
+  const force = () => { const r = scene.current; if (!r?.isOn) return; r.raise('EFFECT_FORCE'); engineRef.current?.effect('force'); };
+  const forceRef = useRef(force);
+  forceRef.current = force;
 
   // The room is built once; looks and colours are pushed into it.
   useEffect(() => {
@@ -458,7 +463,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
       if (k === '+' || k === '=') { room.zoomBy(-1); return; }
       if (k === '-' || k === '_') { room.zoomBy(1); return; }
       if (k === '?') { toggleHelpRef.current(); return; }
-      if (k === ' ') { e.preventDefault(); room.setOn(!room.isOn); setHold(null); } else if (k === 'c') room.trigger('clash', undefined, e.shiftKey); else if (k === 'b') room.trigger('blast'); else if (k === 's') room.trigger('stab'); else if (k === 'r') room.resetPose(); else if (/^[1-4]$/.test(k) && !e.repeat) room.raise(`EFFECT_USER${k}`);
+      if (k === ' ') { e.preventDefault(); room.setOn(!room.isOn); setHold(null); } else if (k === 'c') room.trigger('clash', undefined, e.shiftKey); else if (k === 'b') room.trigger('blast'); else if (k === 's') room.trigger('stab'); else if (k === 'f' && !e.repeat) forceRef.current(); else if (k === 'r') room.resetPose(); else if (/^[1-4]$/.test(k) && !e.repeat) room.raise(`EFFECT_USER${k}`);
       else { const h = HOLDS.find((x) => x.key === k); if (h && !e.repeat) setHold(holdRef.current === h.type ? null : h.type); }
     };
     el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
@@ -587,7 +592,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
 
           {tab === 'help' && (
             <div style={{ display: 'grid', gridTemplateColumns: '118px minmax(0, 1fr)', gap: '5px 12px', fontSize: 12, color: 'var(--dim)', alignContent: 'start' }} role="note" aria-label="Controls">
-              {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high, low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Dbl-click, Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  ⇧C  B  S', 'clash, hard clash, blast, stab'], ['L  D  M  N', 'hold lockup, drag, melt, lightning'], ['1  2  3  4', 'special abilities'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll, +, −', 'zoom'], ['R', 'reset the pose and the view'], ['?', 'this page']].map(([k, v]) => (
+              {[...(control === 'steer' ? [['Drag left, right', 'swing the blade level with the floor'], ['Drag up, down', 'tilt it up or down']] : [['Drag', 'move your hand; the blade follows it'], ['Hand high, low', 'points the blade up or down']]), ['Scroll', 'twist the hilt'], ['Dbl-click, Space', 'ignite, retract'], ['Click the blade', 'blaster bolt there'], ['C  ⇧C  B  S  F', 'clash, hard clash, blast, stab, force'], ['L  D  M  N', 'hold lockup, drag, melt, lightning'], ['1  2  3  4', 'special abilities'], ['Right-drag', 'look around'], ['Middle-drag', 'pan the view'], ['Ctrl+scroll, +, −', 'zoom'], ['R', 'reset the pose and the view'], ['?', 'this page']].map(([k, v]) => (
                 <div key={k} style={{ display: 'contents' }}><span className="mono" style={{ color: 'var(--text)', fontSize: 11 }}>{k}</span><span>{v}</span></div>
               ))}
               <span className="hint" style={{ gridColumn: '1 / -1', marginTop: 6 }}>{control === 'hold' ? 'You are holding the hilt: the blade follows your hand.' : 'Tilt and swing: the mouse steers the blade directly.'} Change it on the Saber tab.</span>
@@ -637,7 +642,8 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
           </div>
           <div className="col" style={{ gap: 4 }}>
             <span className="label">Hit</span>
-            <Deck items={[['Clash', 'C', () => room?.trigger('clash')], ['Hard', '⇧C', () => room?.trigger('clash', undefined, true)], ['Blast', 'B', () => room?.trigger('blast')], ['Stab', 'S', () => room?.trigger('stab')]]} disabled={!motion.on} />
+            <Deck items={[['Clash', 'C', () => room?.trigger('clash')], ['Hard', '⇧C', () => room?.trigger('clash', undefined, true)], ['Blast', 'B', () => room?.trigger('blast')], ['Stab', 'S', () => room?.trigger('stab')], ['Force', 'F', force]]} disabled={!motion.on} cols={3} />
+            {engine && !engine.hasForce && <span className="hint" style={{ fontSize: 11.5 }}>{engine.name} has no force sound, so Force is silent. A style that answers Force still shows it.</span>}
           </div>
           <div className="col" style={{ gap: 4 }}>
             <span className="label">Hold</span>

@@ -306,6 +306,8 @@ export class FontEngine {
   readonly hasSmoothSwing: boolean;
   /** Plays whole swing sounds (swng, swing or slsh files) because it has no SmoothSwing. */
   readonly hasPlainSwings: boolean;
+  /** The font has a force sound (force.wav, forceNN.wav or force/): many fonts have none. */
+  get hasForce(): boolean { return this.count('force') > 0; }
 
   constructor(font: FontFiles, opts: FontEngineOptions) {
     this.name = font.name;

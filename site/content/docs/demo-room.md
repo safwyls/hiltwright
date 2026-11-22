@@ -42,6 +42,7 @@ Press **?** or the **Controls** button for the full list. They are ignored while
 | Clash | | C |
 | Hard clash | | Shift+C |
 | Stab | | S |
+| Force | | F |
 | Lockup (hold) | | L |
 | Drag (hold) | | D |
 | Melt (hold) | | M |
@@ -53,7 +54,9 @@ Press **?** or the **Controls** button for the full list. They are ignored while
 | Reset the pose and the view | | R |
 | Show the controls | | ? |
 
-The same actions are on buttons along the foot of the panel: **Ignite** or **Retract**, **Hit** (Clash, Hard, Blast, Stab) and **Hold** (Lockup, Drag, Melt, Lightning). A held lockup stays on until you press it again. The hit and hold buttons only work while the blade is lit. If the blade turns off, any hold is released.
+The same actions are on buttons along the foot of the panel: **Ignite** or **Retract**, **Hit** (Clash, Hard, Blast, Stab, Force) and **Hold** (Lockup, Drag, Melt, Lightning). A held lockup stays on until you press it again. The hit and hold buttons only work while the blade is lit. If the blade turns off, any hold is released.
+
+**Force** plays the font's force sound, and a style that reacts to Force shows it on the blade. Many fonts have no force sound: the panel then says so, and Force is silent, as it would be on the saber.
 
 **Special ability** buttons appear only when the chosen prop file has abilities. A saber that is pre-igniting shows **Cancel preon**.
 
@@ -80,6 +83,6 @@ The **Scene** panel in the bottom right shapes the room. **Reset** puts everythi
 
 ## How faithful is it
 
-The blade runs the same per-LED math as the saber, so colors, timing and effects are close. The sound follows ProffieOS's own rules for sound fonts: the hum loops from ignition to retraction, ignition and retraction sounds chain as on the saber, clash, blast and stab layer on top, and lockups play their begin, loop and end sounds. Swings use the SmoothSwing method, or a whole swing sound each time the blade passes a swing speed for fonts without it. A font with drag sounds but no melt sounds plays drag for melt.
+The blade runs the same per-LED math as the saber, so colors, timing and effects are close. The sound follows ProffieOS's own rules for sound fonts: the hum loops from ignition to retraction, ignition and retraction sounds chain as on the saber, clash, blast, stab and force layer on top, and lockups play their begin, loop and end sounds. Swings use the SmoothSwing method, or a whole swing sound each time the blade passes a swing speed for fonts without it. A font with drag sounds but no melt sounds plays drag for melt.
 
 It is a good guide to the saber. Speakers, volume and the real hum will still differ. Parts of a style the preview models roughly are flagged under the style's description.
