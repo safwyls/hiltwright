@@ -367,9 +367,11 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
   const fwLine = firmwareLine(ws.info, cur?.name);
   // The panel to use now is the bright one: live while the picked saber is plugged in, its setup otherwise.
   const door = (bright: boolean): React.CSSProperties => (bright ? { borderLeft: '3px solid var(--sel)', background: 'color-mix(in srgb,var(--sel) 5%,transparent)' } : {});
+  // One line each, two to a row: the right column fits the default window without scrolling.
   const fact = (icon: Parameters<typeof Icon>[0]['name'], k: string, v: string) => (
-    <div className="col" style={{ gap: 4, padding: '10px 12px', border: '1px solid var(--line2)', borderRadius: 'var(--r-field)', background: 'var(--field)', minWidth: 0 }}>
-      <span className="hint row" style={{ gap: 6 }}><span style={{ display: 'flex', width: 13 }}><Icon name={icon} /></span>{k}</span><b className="ellip" style={{ fontWeight: 600, fontSize: 13 }}>{v}</b>
+    <div className="row" style={{ gap: 8, padding: '6px 10px', border: '1px solid var(--line2)', borderRadius: 'var(--r-field)', background: 'var(--field)', minWidth: 0 }} title={`${k}: ${v}`}>
+      <span className="hint" style={{ display: 'flex', width: 13, flex: 'none' }}><Icon name={icon} /></span>
+      <b className="ellip" style={{ fontWeight: 600, fontSize: 12.5, minWidth: 0 }}>{v}</b>
     </div>
   );
 
@@ -448,7 +450,7 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
         );
       })()}
 
-      <div className="col" style={{ gap: 14, minHeight: 0, overflow: 'auto' }} aria-label="The picked saber">
+      <div className="col" style={{ gap: 12, minHeight: 0, overflow: 'auto' }} aria-label="The picked saber">
         {!cur && ws.loading ? <section className="panel"><LoadingSpace text="Reading your sabers…" compact /></section> : !cur ? (
           <section className="panel" style={door(true)}><div className="pb col" style={{ gap: 8 }}><h3>Start here</h3><span className="small dim">Plug a saber in over a data cable, or press New saber to set one up ahead. Then the Install steps take it from wiring to an installed board.</span></div></section>
         ) : (
@@ -480,15 +482,15 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
             )}
 
             <section className="panel" style={{ flex: 'none', ...door(ws.live), ...(ws.live ? {} : { opacity: 0.78 }) }} aria-label="Adjust it live" data-tour="armory-live">
-              <div className="col" style={{ gap: 14, padding: 20 }}>
-                <div className="row" style={{ gap: 12 }}><span style={{ display: 'flex', width: 24, height: 24, color: ws.live ? 'var(--holo)' : 'var(--dim)' }}><Icon name="bolt" /></span><h3 style={{ margin: 0 }}>Adjust it live</h3></div>
-                <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>{ws.live ? 'Change its presets, volume and colours on the saber itself. Each change takes effect at once; nothing is built or flashed. Works with any ProffieOS firmware.' : cur.planned ? 'A planned saber has no firmware yet, so there is nothing to adjust live.' : `Plug ${cur.name} in to change its presets, volume and colours on the saber itself.`}</p>
+              <div className="col" style={{ gap: 10, padding: '16px 18px' }}>
+                <div className="row" style={{ gap: 10 }}><span style={{ display: 'flex', width: 20, height: 20, color: ws.live ? 'var(--holo)' : 'var(--dim)' }}><Icon name="bolt" /></span><h3 style={{ margin: 0 }}>Adjust it live</h3></div>
+                <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{ws.live ? 'Change its presets, volume and colours on the saber itself, at once. Nothing is built or flashed; any ProffieOS firmware works.' : cur.planned ? 'A planned saber has no firmware yet, so there is nothing to adjust live.' : `Plug ${cur.name} in to change its presets, volume and colours on the saber itself.`}</p>
                 {ws.live && info && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8 }}>
-                    {fact('play', 'Playing', playing ? `Preset ${info.currentPreset! + 1} · ${playing.name.replace(/\s*\n\s*/g, ' ') || playing.font}` : 'Not known')}
-                    {fact('presets', 'Presets', `${info.presets.length} on the card`)}
-                    {fact('battery', 'Battery', batteryLabel(info.battery))}
-                    {fact('sd', 'Card', info.sdMissing ? 'not readable' : board.card.shared ? 'shared with this computer' : 'in the saber')}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 6 }}>
+                    {fact('play', 'Playing', playing ? `Preset ${info.currentPreset! + 1} · ${playing.name.replace(/\s*\n\s*/g, ' ') || playing.font}` : 'Preset not known')}
+                    {fact('presets', 'Presets', `${info.presets.length} presets on the card`)}
+                    {fact('battery', 'Battery', `Battery ${batteryLabel(info.battery)}`)}
+                    {fact('sd', 'Card', info.sdMissing ? 'Card not readable' : board.card.shared ? 'Card shared here' : 'Card in the saber')}
                   </div>
                 )}
                 {ws.live
@@ -499,17 +501,19 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
             </section>
 
             <section className="panel" style={{ flex: 'none', ...door(!ws.live) }} aria-label="Change its setup" data-tour="armory-progress">
-              <div className="col" style={{ gap: 14, padding: 20 }}>
-                <div className="row" style={{ gap: 12 }}><span style={{ display: 'flex', width: 24, height: 24, color: ws.live ? 'var(--dim)' : 'var(--holo)' }}><Icon name="build" /></span><h3 style={{ margin: 0 }}>Change its setup</h3></div>
-                <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>Wiring, fonts and presets for the next install. Nothing on the saber changes until you install it, with its card in a card reader for the copy.</p>
-                <div className="inspect">
+              <div className="col" style={{ gap: 10, padding: '16px 18px' }}>
+                <div className="row" style={{ gap: 10 }}><span style={{ display: 'flex', width: 20, height: 20, color: ws.live ? 'var(--dim)' : 'var(--holo)' }}><Icon name="build" /></span><h3 style={{ margin: 0 }}>Change its setup</h3></div>
+                <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>Wiring, fonts and presets for the next install. Nothing on the saber changes until you install it.</p>
+                {/* One line per step: done, next (bright) or to come; each goes to its page. */}
+                <div className="col" style={{ gap: 0, border: '1px solid var(--line2)', borderRadius: 'var(--r-field)', overflow: 'hidden' }}>
                   {steps.map((st, i) => {
                     const done = (st.step === 'wiring' && wiringConfirmed(ws.model)) || (st.step === 'fonts' && chosenFonts(ws.model).length > 0) || (st.step === 'presets' && !!ws.model?.presets.length) || (st.step === 'build' && !!cur.firmware && !queuedLookIds(ws.model ?? undefined, cur.firmware).length && !ws.model?.presetsFrom);
                     const now = st.step === next;
                     return (
-                      <button key={st.step} type="button" className={`insp ${done ? 'done' : now ? 'now' : ''}`} onClick={() => go(stepPage[st.step])}>
-                        <span className="box" aria-hidden="true">{done ? <Icon name="check" /> : i + 1}</span>
-                        <b>{stepTitle[st.step]}{done && <span className="sr"> (done)</span>}</b><span className="what" title={st.label}>{st.label}</span>
+                      <button key={st.step} type="button" className="row" style={{ gap: 10, padding: '7px 10px', minWidth: 0, textAlign: 'left', borderTop: i ? '1px solid var(--line)' : 0, background: now ? 'color-mix(in srgb,var(--sel) 10%,transparent)' : undefined }} onClick={() => go(stepPage[st.step])}>
+                        <span className="mono small" aria-hidden="true" style={{ display: 'flex', justifyContent: 'center', width: 16, flex: 'none', color: done ? 'var(--green)' : now ? 'var(--holo)' : 'var(--mute)' }}>{done ? <span style={{ display: 'flex', width: 14 }}><Icon name="check" /></span> : i + 1}</span>
+                        <b style={{ fontWeight: now ? 700 : 600, fontSize: 13, width: 112, flex: 'none' }}>{stepTitle[st.step]}{done && <span className="sr"> (done)</span>}{now && <span className="sr"> (next)</span>}</b>
+                        <span className="hint ellip" style={{ minWidth: 0 }} title={st.label}>{st.label}</span>
                       </button>
                     );
                   })}
