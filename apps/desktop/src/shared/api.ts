@@ -267,7 +267,7 @@ export interface BackupInfo { file: string; at: string; label: string; bytes: nu
 
 /** `kind`: for a backup, what the read turned out to be; only 'firmware' is a backup (an erased read means a blank board). */
 /** `refused`: main would not write it (not this saber's last build, or unconfirmed wiring), so nothing was written. */
-export interface FlashStepResult { ok: boolean; ms: number; detail: string; file?: string; kind?: 'firmware' | 'erased' | 'unusable'; refused?: boolean }
+export interface FlashStepResult { ok: boolean; ms: number; detail: string; file?: string; kind?: 'firmware' | 'erased' | 'unusable' | 'partial'; refused?: boolean }
 
 /** Progress lines from long-running main-process jobs. */
 export interface JobEvent { job: 'toolchain' | 'build' | 'flash'; line: string; at: number }

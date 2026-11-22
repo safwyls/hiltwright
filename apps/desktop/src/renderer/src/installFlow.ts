@@ -6,7 +6,8 @@
 // its own; a board already in its bootloader is used only when its USB serial is this saber's, or the owner says it
 // is. The bootloader's flash size must be the build's board. Every refusal comes before anything is read or written.
 //
-// Safety nets (install-safety-nets): a backup counts only when it reads back as firmware (an erased board goes on);
+// Safety nets (install-safety-nets): a backup counts only when it reads back as firmware (an erased board goes on; a
+// restore goes on whatever the board holds, and an install does when the owner says so, issue #12);
 // a stop before the write sends this saber's board back to its firmware; the record is written as soon as the write
 // succeeds; and the install is checked against what the saber reports once it is back.
 //
@@ -43,6 +44,11 @@ export interface InstallDeps {
   sabers: SaberRecord[];
   /** Ask the owner whether the board in its bootloader, which Hiltwright cannot place, is this saber. */
   confirmTarget: (saberName: string) => Promise<boolean>;
+  /**
+   * Ask the owner whether to install with no backup, when the board was read but what it holds cannot be a backup (a
+   * write that did not finish, a protected or damaged read). Absent, or no: the install stops (issue #12).
+   */
+  confirmNoBackup?: (saberName: string, why: string) => Promise<boolean>;
   /** The parts of the board link (board.ts useBoard) the sequences use. Described here so tests need no browser. */
   board: {
     info: { presets: PresetRecord[] } | null;
@@ -179,12 +185,25 @@ const runningSerial = (saber: SaberRecord, target: Target) => (target.asked ? nu
 /**
  * Read the whole flash to a backup before a write. A firmware read is the backup; an erased read (a blank board) goes
  * on with a note; anything else stops, sending the board back (FW7). Null: stopped.
+ *
+ * A board left by a write that did not finish cannot be backed up, and that is when it most needs a write (issue #12).
+ * So with no `stopWords` (a restore, which writes a checked backup) any other read goes on with a note; for an
+ * install a read that is not a backup goes on only when the owner says so. A partial read is kept by main for a
+ * diagnosis, never as a backup.
  */
-async function takeBackup(deps: InstallDeps, saber: SaberRecord, target: Target, label: string, configName: string | null, stopWords: string): Promise<{ file: string | null; notes: InstallNote[] } | null> {
+async function takeBackup(deps: InstallDeps, saber: SaberRecord, target: Target, label: string, configName: string | null, stopWords: string | null): Promise<{ file: string | null; notes: InstallNote[] } | null> {
   deps.report({ xfer: 0, step: 'backup' });
   const bak = await deps.flash.backup(saber.id, label, configName, target.serial);
   if (bak.ok && bak.file) return { file: bak.file, notes: [] };
   if (bak.kind === 'erased') return { file: null, notes: [{ tone: 'amber', text: NOTHING_TO_BACK_UP }] };
+  const read = bak.kind === 'unusable' || bak.kind === 'partial';
+  const kept = read && bak.file ? ` What was read is kept at ${bak.file} in case it helps find the fault. It is not listed as a backup.` : '';
+  if (stopWords === null) return { file: null, notes: [{ tone: 'amber', text: `What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. ${bak.detail}${kept}` }] };
+  if (read && deps.confirmNoBackup && (await deps.confirmNoBackup(saber.name, bak.detail))) {
+    return { file: null, notes: [{ tone: 'amber', text: `No backup was taken this time: you chose to install without one. ${bak.detail}${kept}` }] };
+  }
+  // A board whose last write did not finish is not sent to that half-written firmware: it stays where a backup can go back.
+  if (bak.kind === 'partial') { fail(deps, `${stopWords} ${bak.detail} The board stays in bootloader mode: put a backup back from the Backups tab.`); return null; }
   await stopInBootloader(deps, saber, target, `${stopWords} ${bak.detail}`);
   return null;
 }
@@ -421,7 +440,9 @@ export async function restoreSequence(deps: InstallDeps, saber: SaberRecord, b: 
     const t = await checkTarget(deps, saber, target, null);
     if (!t) return;
     if (t.flashBytes && b.bytes !== t.flashBytes) { await stopInBootloader(deps, saber, target, backupSizeMismatch(b.bytes, t.flashBytes)); return; }
-    const bak = await takeBackup(deps, saber, target, 'before-restore', saber.identity.configName ?? null, 'The firmware on the board could not be backed up, so the backup was not put back.');
+    // What is on the board cannot stop the restore (issue #12): the backup going back was checked as firmware for
+    // this board's size, and a board a write left unreadable is the one that needs it.
+    const bak = await takeBackup(deps, saber, target, 'before-restore', saber.identity.configName ?? null, null);
     if (!bak) return;
     const notes = [...bak.notes];
     // The restored firmware reports the config it had when this backup was taken; expect the saber back with it.

@@ -21,7 +21,9 @@ const jobFor = (over: Partial<InstallJob> = {}): InstallJob => ({
 /** The boards plugged in: serial → flash size, and whether each is running or in its bootloader. */
 type Board = { serial: string | null; flash: number; mode: 'run' | 'boot' };
 type Over = {
-  backup?: { ok: boolean; detail?: string; kind?: 'firmware' | 'erased' | 'unusable'; file?: string }; write?: () => Promise<{ ok: boolean; detail: string }>; runtime?: boolean; confirm?: boolean;
+  backup?: { ok: boolean; detail?: string; kind?: 'firmware' | 'erased' | 'unusable' | 'partial'; file?: string }; write?: () => Promise<{ ok: boolean; detail: string }>; runtime?: boolean; confirm?: boolean;
+  /** The owner's answer when the board cannot be backed up and the install asks whether to go on (issue #12). Absent: never asked. */
+  noBackup?: boolean;
   connectedSerial?: string; noDriver?: boolean; reached?: SaberRecord | null; leaveFails?: boolean;
   /** What the saber reports when it is read after the reconnect. */
   comesBackAs?: { config: string | null; version: string | null };
@@ -92,6 +94,7 @@ function world(boards: Board[], over: Over = {}) {
     noteBootloader: vi.fn(async (id: string, seen: { serial: string | null; flashBytes: number }) => { calls.push(`note ${id} ${seen.serial} ${seen.flashBytes}`); return {} as SaberRecord; }),
     sabers: [saberRec(), v3Rec],
     confirmTarget: vi.fn(async (name: string) => { calls.push(`ask ${name}`); return over.confirm ?? true; }),
+    ...(over.noBackup !== undefined ? { confirmNoBackup: vi.fn(async (name: string) => { calls.push(`ask no backup ${name}`); return over.noBackup!; }) } : {}),
     board: {
       info: null,
       send: vi.fn(async (cmd: string) => { calls.push(cmd); if (cmd === 'del presets.ini') removed = true; return { lines: [] }; }),
@@ -515,11 +518,72 @@ describe('backups in the sequences', () => {
     expect(f.touched()).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
   });
 
-  it('a restore whose backup of the board fails: nothing put back, the saber sent back', async () => {
+  it('a restore whose read of the board fails: the chosen backup is put back all the same, with an amber note (issue #12)', async () => {
     const f = world([hote2()], { backup: { ok: false, detail: 'dfu-util: error' } });
     await restoreSequence(f.deps, saberRec(), { file: 'b.bin', at: '2026-09-27T10:00:00.000Z', label: 'x', bytes: 262144, valid: true, configName: null }, true);
-    expect(f.deps.flash.restore).not.toHaveBeenCalled();
-    expect(f.shown().note?.text).toBe('The firmware on the board could not be backed up, so the backup was not put back. dfu-util: error The saber is back on the firmware it had.');
+    expect(f.touched()).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
+    expect(f.calls.some((c) => c.startsWith('leave'))).toBe(false);
+    expect(f.shown().step).toBe('done');
+    expect(f.extra()).toEqual([{ tone: 'amber', text: 'What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. dfu-util: error' }]);
+  });
+
+  // Issue #12: a write that fails during or just after the erase leaves a board that reads as neither firmware nor
+  // erased. The restore Hiltwright then points to must still go through.
+  it('a failed write, then a restore: the unreadable board is read for the record, and the good backup is written', async () => {
+    const f = world([hote2()], { write: async () => ({ ok: false, detail: 'dfu-util: Error during download' }) });
+    await installSequence(f.deps, jobFor());
+    expect(f.shown().note?.text).toMatch(/^Writing failed\./);
+    expect(f.boards[0].mode).toBe('boot');
+    (f.deps.flash.backup as ReturnType<typeof vi.fn>).mockImplementation(async (_id: string, _l: string, _c?: string | null, serial?: string | null) => {
+      f.calls.push(`backup ${serial}`);
+      return { ok: false, ms: 1, kind: 'unusable', file: 'C:\\backups\\before-restore.bin', detail: 'The read was not usable firmware (it may be short, protected, or damaged).' };
+    });
+    const good: BackupInfo = { file: '2026-09-27T10-00-00-000Z-before-install.bin', at: '2026-09-27T10:00:00.000Z', label: 'before-install', bytes: 262144, valid: true, configName: 'config/hiltwright_hote2.h' };
+    await restoreSequence(f.deps, saberRec(), good, false);
+    expect(f.touched().slice(-2)).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
+    expect(f.deps.flash.restore).toHaveBeenCalledWith('s1', good.file, HOTE2);
+    expect(f.shown().step).toBe('done');
+    expect(f.shown().note?.tone).toBe('green');
+    expect(f.extra()).toEqual([{ tone: 'amber', text: 'What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. The read was not usable firmware (it may be short, protected, or damaged). What was read is kept at C:\\backups\\before-restore.bin in case it helps find the fault. It is not listed as a backup.' }]);
+  });
+
+  it('a partial read before a restore (it starts like firmware, but the last write did not finish): the restore goes on (issue #12)', async () => {
+    const f = world([hote2('boot')], { backup: { ok: false, kind: 'partial', file: 'C:\\backups\\x-partial-read-before-restore.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.' } });
+    await restoreSequence(f.deps, saberRec(), { file: 'b.bin', at: '2026-09-27T10:00:00.000Z', label: 'x', bytes: 262144, valid: true, configName: null }, false);
+    expect(f.touched()).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
+    expect(f.extra()[0].text).toMatch(/kept at C:.+partial-read-before-restore\.bin/);
+  });
+
+  it('an install on a board that cannot be backed up: asked first; yes writes, with a note that no backup was taken (issue #12)', async () => {
+    const unusable = { ok: false, kind: 'unusable' as const, file: 'C:\\backups\\before-install.bin', detail: 'The read was not usable firmware (it may be short, protected, or damaged).' };
+    const yes = world([hote2()], { backup: unusable, noBackup: true });
+    await installSequence(yes.deps, jobFor());
+    expect(yes.deps.confirmNoBackup).toHaveBeenCalledWith('hote2', unusable.detail);
+    expect(yes.touched()).toEqual([`backup ${HOTE2}`, `write ${HOTE2}`]);
+    expect(yes.shown().step).toBe('done');
+    // There is no backup from just now to name.
+    expect(yes.shown().note?.text).not.toMatch(/Backup of the previous firmware/);
+    expect(yes.extra()[0]).toEqual({ tone: 'amber', text: `No backup was taken this time: you chose to install without one. ${unusable.detail} What was read is kept at C:\\backups\\before-install.bin in case it helps find the fault. It is not listed as a backup.` });
+    const no = world([hote2()], { backup: unusable, noBackup: false });
+    await installSequence(no.deps, jobFor());
+    expect(no.deps.flash.write).not.toHaveBeenCalled();
+    expect(no.calls).toContain(`leave ${HOTE2}`);
+    expect(no.shown().note?.text).toMatch(/^Backup failed, so nothing was written\./);
+  });
+
+  it('an install whose read fails outright is not offered without a backup: stopped as before (issue #12)', async () => {
+    const f = world([hote2()], { backup: { ok: false, detail: 'dfu-util: Cannot open DFU device' }, noBackup: true });
+    await installSequence(f.deps, jobFor());
+    expect(f.deps.confirmNoBackup).not.toHaveBeenCalled();
+    expect(f.deps.flash.write).not.toHaveBeenCalled();
+  });
+
+  it('an install on a board whose last write did not finish, declined: nothing written, and the board is not sent to that firmware (issue #12)', async () => {
+    const f = world([hote2('boot')], { backup: { ok: false, kind: 'partial', file: 'C:\\backups\\p.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.' }, noBackup: false });
+    await installSequence(f.deps, jobFor({ connected: false }));
+    expect(f.deps.flash.write).not.toHaveBeenCalled();
+    expect(f.calls.some((c) => c.startsWith('leave'))).toBe(false);
+    expect(f.shown()).toEqual({ step: 'failed', note: { tone: 'red', text: 'Backup failed, so nothing was written. The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup. The board stays in bootloader mode: put a backup back from the Backups tab.' } });
   });
 
   it('a restore from a board already in its bootloader (after the driver step) is a restore, not an install', async () => {

@@ -62,7 +62,7 @@ With the card back in the saber and the saber plugged in, press **Flash (saber)*
 Flash then does these things:
 
 1. Reboots the saber into bootloader mode. This can take up to 45 seconds.
-2. Reads the saber's whole firmware into a backup file. If the board was blank, it says "there was nothing to back up" and goes on.
+2. Reads the saber's whole firmware into a backup file. If the board was blank, it says "there was nothing to back up" and goes on. If what the board holds cannot be a backup (after a write that did not finish, say), Flash asks first. **Install without a backup** goes on and keeps what was read for a diagnosis. **Cancel** writes nothing.
 3. Writes the new firmware.
 4. Waits for the saber to restart, reconnects and checks what it reports.
 
@@ -86,9 +86,9 @@ If the saber does not show up after a reboot, use the BOOT and RESET steps above
 
 ## Backups and "Put back"
 
-Every install first reads the saber's whole firmware to a file. The **Backups** tab lists them with the date and size. Each says "not a usable image" if it is not good.
+Every install first reads the saber's whole firmware to a file. The **Backups** tab lists them with the date and size. Each says "not a usable image" if it is not good. A read taken after a write that did not finish is labelled "partial-read" and is never offered to put back: it may be half old firmware and half new.
 
-Press **Put back**, then **Yes, put it back**. It writes that backup onto the saber exactly as it was, to undo an install. It also backs up what is on the board first. The button is off until the saber is connected.
+Press **Put back**, then **Yes, put it back**. It writes that backup onto the saber exactly as it was, to undo an install. It also backs up what is on the board first. If that read fails, or the board holds no usable firmware after a failed write, the backup is put back all the same and an amber note says so. The button is off until the saber is connected or a board is in bootloader mode.
 
 Presets and fonts on the SD card are not touched.
 

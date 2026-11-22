@@ -5,7 +5,7 @@
 import { execFile } from 'node:child_process';
 import { mkdir, open, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { findDfuUtil, run, toolchainPaths, type Progress } from './toolchain';
 import { backupSizeMismatch, boardForFlash } from '../shared/boards';
 
@@ -200,9 +200,31 @@ export type ImageKind = 'firmware' | 'erased' | 'unusable';
 
 /**
  * `kind`: for a backup, what the read turned out to be. Only 'firmware' is a backup; an erased read is deleted and
- * anything else is kept, but is never written back.
+ * anything else is kept, but is never written back. 'partial': it reads as firmware, but the last write to this board
+ * did not finish, so it may be half old and half new (issue #12).
  */
-export interface FlashStepResult { ok: boolean; ms: number; detail: string; file?: string; kind?: ImageKind; refused?: boolean }
+export interface FlashStepResult { ok: boolean; ms: number; detail: string; file?: string; kind?: ImageKind | 'partial'; refused?: boolean }
+
+/**
+ * Kept in a saber's backups folder while the last write to its board did not finish. A read taken then may be half
+ * written even when it starts like firmware, so it is saved as a partial read, never as a backup (issue #12).
+ */
+const WRITE_FAILED = 'last-write-failed.json';
+/** The part of a file name that marks a read kept only to look into a fault: never listed or put back as a backup. */
+const PARTIAL_READ = 'partial-read-';
+export const isPartialRead = (name: string) => name.includes(`Z-${PARTIAL_READ}`);
+
+/**
+ * Remember how a write or restore to this saber's board went, and pass its result on. A write that dfu-util ran and
+ * that failed may have left part of an image (`ms` 0: refused before anything was sent, so the board is as it was).
+ */
+export async function rememberWrite(backupDir: string, r: FlashStepResult): Promise<FlashStepResult> {
+  try {
+    if (r.ok) await rm(join(backupDir, WRITE_FAILED), { force: true });
+    else if (r.ms > 0 && !r.refused) { await mkdir(backupDir, { recursive: true }); await writeFile(join(backupDir, WRITE_FAILED), JSON.stringify({ at: new Date().toISOString() }), 'utf8'); }
+  } catch { /* the write's own result still stands; only the label of the next read is lost */ }
+  return r;
+}
 
 /**
  * Read the whole flash of the board with this serial into a backup file. `configName` is the config the saber
@@ -218,7 +240,10 @@ export async function backupFlash(toolchainRoot: string, backupDir: string, labe
   if (!dev) return { ok: false, ms: 0, detail: serial ? `The board ${serial} is not in bootloader mode.` : 'More than one board, or none, is in bootloader mode.' };
   if (!dev.flashBytes) return { ok: false, ms: 0, detail: `The bootloader did not report its flash layout.\n${info.listing.slice(-800)}` };
   await mkdir(backupDir, { recursive: true });
-  const file = join(backupDir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${label.replace(/[^A-Za-z0-9_-]/g, '_')}.bin`);
+  // After a write that did not finish, what the board holds may be half written: the read is named as a partial read
+  // from the start, so it is never listed as a backup, even if the app stops before it is judged (issue #12).
+  const afterFailedWrite = await stat(join(backupDir, WRITE_FAILED)).then(() => true, () => false);
+  const file = join(backupDir, `${new Date().toISOString().replace(/[:.]/g, '-')}-${afterFailedWrite ? PARTIAL_READ : ''}${label.replace(/[^A-Za-z0-9_-]/g, '_')}.bin`);
   onLine(`reading ${dev.flashBytes} bytes of flash`);
   const r = await run(dfuUtil, [...dfuDeviceArgs(dev.serial), '-a', '0', '-s', `0x08000000:${dev.flashBytes}`, '-U', file], { timeoutMs: 120000, onLine });
   if (r.code !== 0) return { ok: false, ms: r.ms, detail: (r.stderr || r.stdout).slice(-800), file };
@@ -230,6 +255,7 @@ export async function backupFlash(toolchainRoot: string, backupDir: string, labe
     return { ok: false, ms: r.ms, detail: 'The board had no firmware on it (its flash is erased), so there was nothing to back up.', kind };
   }
   if (kind === 'unusable') return { ok: false, ms: r.ms, detail: 'The read was not usable firmware (it may be short, protected, or damaged).', file, kind };
+  if (afterFailedWrite) return { ok: false, ms: r.ms, detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.', file, kind: 'partial' };
   if (configName) { try { await writeFile(`${file}.json`, JSON.stringify({ configName }), 'utf8'); } catch { /* the backup still restores; only the match after it is lost */ } }
   return { ok: true, ms: r.ms, detail: `backup written (${dev.flashBytes} bytes)`, file, kind };
 }
@@ -307,7 +333,8 @@ export async function listBackups(backupDir: string): Promise<BackupInfo[]> {
     const path = join(backupDir, file);
     const st = await stat(path).catch(() => null);
     if (!st) continue;
-    out.push({ file, at: m ? `${m[1]}T${m[2]}:${m[3]}:${m[4]}.${m[5]}Z` : st.mtime.toISOString(), label: m ? m[6].replace(/_/g, ' ') : file, bytes: st.size, valid: (st.size === 262144 || st.size === 524288) && (await imageKind(path, st.size)) === 'firmware', configName: await backupConfig(path) });
+    // A partial read may start like firmware and still be half written: it is listed, but never as one to put back.
+    out.push({ file, at: m ? `${m[1]}T${m[2]}:${m[3]}:${m[4]}.${m[5]}Z` : st.mtime.toISOString(), label: m ? m[6].replace(/_/g, ' ') : file, bytes: st.size, valid: !isPartialRead(file) && (st.size === 262144 || st.size === 524288) && (await imageKind(path, st.size)) === 'firmware', configName: await backupConfig(path) });
   }
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }
@@ -319,6 +346,7 @@ export async function listBackups(backupDir: string): Promise<BackupInfo[]> {
 export async function restoreBackup(toolchainRoot: string, path: string, onLine: Progress, serial: string | null = null, flashBytes: number | null = null): Promise<FlashStepResult> {
   const st = await stat(path).catch(() => null);
   if (!st || (st.size !== 262144 && st.size !== 524288)) return { ok: false, ms: 0, detail: 'That file is not a full flash backup (256 KB or 512 KB).' };
+  if (isPartialRead(basename(path))) return { ok: false, ms: 0, detail: 'That file was read after a write that did not finish, so it may be half written. It was not put back.' };
   if (!(await looksLikeFirmware(path))) return { ok: false, ms: 0, detail: 'That backup does not look like firmware (it may be an erased or protected read), so it was not written.' };
   if (flashBytes != null && st.size !== flashBytes) return { ok: false, ms: 0, detail: backupSizeMismatch(st.size, flashBytes) };
   onLine(`restoring ${st.size} bytes from ${path}`);

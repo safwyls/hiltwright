@@ -3,7 +3,7 @@
 
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const calls: string[][] = [];
@@ -29,7 +29,7 @@ vi.mock('../src/main/toolchain', () => ({
   },
 }));
 
-const { backAfter, backupFlash, backupSizeMismatch, boardForFlash, dfuDeviceArgs, flashTarget, imageKind, leaveBootloader, listBackups, newBootloaders, parseDfuList, pickDevice, restoreBackup, serialFromInstanceId, usbStateFrom, writeFirmware } = await import('../src/main/flash');
+const { backAfter, backupFlash, backupSizeMismatch, boardForFlash, dfuDeviceArgs, flashTarget, imageKind, isPartialRead, leaveBootloader, listBackups, newBootloaders, parseDfuList, pickDevice, rememberWrite, restoreBackup, serialFromInstanceId, usbStateFrom, writeFirmware } = await import('../src/main/flash');
 
 const HOTE2 = '209133815232';
 const V3 = '207A349A5430';
@@ -186,6 +186,32 @@ describe('what a backup read is', () => {
       const [listed] = await listBackups(join(dir, bad));
       expect(listed.valid).toBe(false);
     }
+  });
+
+  // Issue #12: a write that failed part way can leave new vectors in front of old code, which reads as firmware.
+  it('after a write that did not finish, the next read is a partial read: kept, never listed as a backup or put back', async () => {
+    const backups = join(dir, 'b');
+    await rememberWrite(backups, { ok: false, ms: 900, detail: 'dfu-util: Error during download' });
+    const r = await backupFlash(dir, backups, 'before-restore', () => undefined, null, HOTE2);
+    expect(r).toMatchObject({ ok: false, kind: 'partial' });
+    expect(r.detail).toMatch(/did not finish/);
+    expect(existsSync(r.file!)).toBe(true);
+    expect(isPartialRead(basename(r.file!))).toBe(true);
+    const [listed] = await listBackups(backups);
+    expect(listed.valid).toBe(false);
+    calls.length = 0;
+    expect((await restoreBackup(dir, r.file!, () => undefined, HOTE2, 262144)).ok).toBe(false);
+    expect(calls).toHaveLength(0);
+    // A write that then succeeds makes the next read a backup again.
+    await rememberWrite(backups, { ok: true, ms: 900, detail: 'wrote' });
+    expect(await backupFlash(dir, backups, 'before-install', () => undefined, null, HOTE2)).toMatchObject({ ok: true, kind: 'firmware' });
+  });
+
+  it('a write refused before anything was sent leaves the next read a backup', async () => {
+    const backups = join(dir, 'b');
+    await rememberWrite(backups, { ok: false, ms: 0, detail: 'That file is not a full flash backup (256 KB or 512 KB).' });
+    await rememberWrite(backups, { ok: false, ms: 5, detail: 'not the build just made', refused: true });
+    expect(await backupFlash(dir, backups, 'before-install', () => undefined, null, HOTE2)).toMatchObject({ ok: true, kind: 'firmware' });
   });
 });
 

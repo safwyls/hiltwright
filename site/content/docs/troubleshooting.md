@@ -66,6 +66,8 @@ Leave the saber plugged in until the page says **Installed**. If the install sto
 
 Every install reads the saber's whole firmware into a backup first. To undo an install, open the **Backups** tab on Build & Flash and press **Put back** on a backup. It writes that firmware to the saber exactly as it was. The presets and fonts on the SD card are not touched. See [Build & Flash](build-and-install.html).
 
+If the note says "Writing failed", the board stays in bootloader mode. Leave it plugged in and press **Put back** on the backup from just before. The board cannot be backed up in that state, so the backup goes back without one, and an amber note says so.
+
 ## Install says another saber is plugged in, or that the saber has changed
 
 An install only goes to the saber you picked in the [Armory](armory.html). If a different saber is plugged in, Install refuses. Unplug it, or pick that saber.
