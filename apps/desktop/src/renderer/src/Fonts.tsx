@@ -434,9 +434,11 @@ export function Fonts({ board, ws, go, mode }: { board: Board; ws: Workspace; go
               <span className="col grow" style={{ gap: 6, minWidth: 0 }}>
                 <b style={{ fontWeight: 600 }}>{trip.prepping ? trip.prepping
                   : trip.cardWork ? `Before ${ws.saber.name} is flashed, its card needs:`
-                  : trip.cardReady ? `${ws.saber.name}’s card is ready for the flash: it has the chosen fonts${trip.voiceNeed === null && prop === 'fett263' ? ' and a working voice pack' : ''}.`
+                  : trip.cardReady ? `${ws.saber.name}’s card is ready for the flash${check.cardCheck?.source === 'saber' ? ', as the saber reads it' : ''}: it has the chosen fonts${trip.voiceNeed === null && prop === 'fett263' ? ' and a working voice pack' : ''}.`
                   : check.cardChecking ? `Checking ${ws.saber.name}’s card…`
-                  : `${ws.saber.name}’s card has not been read yet. Put it in a card reader: it is found by itself.`}</b>
+                  : trip.cardKnown && trip.notInLibrary.length ? `${ws.saber.name}’s card is missing fonts that Hiltwright has no copy of.`
+                  : trip.cardKnown ? `${ws.saber.name}’s card has the chosen fonts, but its voice pack could not be checked${check.voiceWhy ? `: ${check.voiceWhy}` : ''}.`
+                  : `${ws.saber.name}’s card has not been read yet${check.voiceWhy ? ` (${check.voiceWhy})` : ''}. Put it in a card reader: it is found by itself.`}</b>
                 {trip.cardWork && !trip.prepping && <>
                   {trip.fontsToCopy.length > 0 && <span className="small">· Copy {trip.fontsToCopy.map((f) => f.folder).join(', ')} ({mb(trip.copyBytes)}){trip.onCardNow ? '' : ', skipping any already on it'}.</span>}
                   {trip.voiceNeed && <span className="small">· {voiceNeedText(trip.voiceNeed.why, trip.voiceName, check.voice)} What it replaces is kept on this computer.</span>}

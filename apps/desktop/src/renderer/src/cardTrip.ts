@@ -4,8 +4,8 @@
 
 import { useEffect, useState } from 'react';
 import { propFamily, type SaberConfigModel } from '@hiltwright/core';
-import type { LibraryFont, SaberRecord } from '../../shared/api';
-import { fontLibraryList, useSharedList, voicePackList, type VoicePackList } from './sharedLists';
+import type { LibraryFont, PackInfo, SaberRecord } from '../../shared/api';
+import { fontLibraryList, packList, useSharedList, voicePackList, type VoicePackList } from './sharedLists';
 import type { Board } from './board';
 import { chosenFonts } from './saberFonts';
 import { recordCopy, type CopyRoute } from './copyRate';
@@ -16,6 +16,9 @@ import type { useCardCheck } from './useCardCheck';
 const api = () => window.hiltwright;
 const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 const NO_FONTS: LibraryFont[] = [];
+const NO_PACKS: PackInfo[] = [];
+/** A chosen font the card lacks, and where it is copied from. Pack sizes are not known before the copy (bytes 0). */
+export type TripFont = { folder: string; bytes: number; from: 'library' | 'pack'; packId?: string };
 const NO_VOICES: VoicePackList = { packs: [], support: null, source: null, credit: null };
 
 /**
@@ -31,6 +34,8 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
   const library = useSharedList(fontLibraryList, NO_FONTS).value;
   // The voice packs Hiltwright offers: the one chosen on Install › Fonts, else the one that comes with it.
   const voicePacks = useSharedList(voicePackList, NO_VOICES).value.packs;
+  // The free fonts that ship with Hiltwright, copied like library fonts when a preset names one.
+  const packs = useSharedList(packList, NO_PACKS).value;
   const [prepping, setPrepping] = useState<string | null>(null);
   const [prepNote, setPrepNote] = useState<InstallNote | null>(null);
   useEffect(() => api().sd.onCopyProgress((p) => setPrepping((now) => (now ? `Copying ${p.name}: ${p.done} of ${p.total} files` : now))), []);
@@ -41,11 +46,19 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
   const sharedRoot = board.card.shared && inReader && cardCheck.root === board.card.root;
   const route: CopyRoute = sharedRoot ? 'saber' : 'reader';
   const onCardNow = cardCheck?.source === 'reader' || cardCheck?.source === 'saber' ? cardCheck.fonts : info?.fonts.length ? info.fonts : null;
+  // A font comes from the owner's library, else from the free fonts that ship with Hiltwright (its font packs).
   const libOf = (f: string) => library.find((l) => sameName(l.folder, f)) ?? null;
+  const packOf = (f: string) => packs.find((p) => p.kind === 'font' && p.allow.copyToCard && sameName(p.name, f)) ?? null;
+  const sourceOf = (f: string): TripFont | null => {
+    const lib = libOf(f);
+    if (lib) return { folder: lib.folder, bytes: lib.bytes, from: 'library' };
+    const pack = packOf(f);
+    return pack ? { folder: pack.name, bytes: 0, from: 'pack', packId: pack.id } : null;
+  };
   const chosen = chosenFonts(model);
-  const fontsToCopy = chosen.filter((f) => !(onCardNow ?? []).some((x) => sameName(x, f))).map(libOf).filter((l): l is LibraryFont => !!l);
+  const fontsToCopy = chosen.filter((f) => !(onCardNow ?? []).some((x) => sameName(x, f))).map(sourceOf).filter((l): l is TripFont => !!l);
   // Said only when the card's fonts are known: a font not in the library may well be on a card not read yet.
-  const notInLibrary = onCardNow ? chosen.filter((f) => !libOf(f) && !onCardNow.some((x) => sameName(x, f))) : [];
+  const notInLibrary = onCardNow ? chosen.filter((f) => !sourceOf(f) && !onCardNow.some((x) => sameName(x, f))) : [];
   const copyBytes = fontsToCopy.reduce((n, f) => n + f.bytes, 0);
   const clearPresets = !!model?.presetsFrom && !!saber && !saber.planned && presetsClearedFor.get(saber.id) !== model.presetsFrom.at;
   const link = inReader && cardCheck.by === 'presets' && !!cardCheck.card.volumeSerial;
@@ -55,9 +68,11 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
   const voiceNeed: { pack: string; why: VoiceNeed } | null = prop === 'fett263' && model && saber ? voiceWork({ chosen: model.voicePack, fallback: bundledVoice, voice: cardCheck?.source === 'out' ? null : voice, onCard: voiceOnCard(saber.id) }) : null;
   const voiceName = voiceNeed ? voicePacks.find((p) => p.id === voiceNeed.pack)?.name ?? voiceNeed.pack : '';
   const cardWork = fontsToCopy.length > 0 || clearPresets || !!voiceNeed;
-  // Ready only when the card was read and needs nothing: a card not read yet is not known to be ready.
+  // Ready only when the card was read, needs nothing, lacks no chosen font, and (with Fett263) its voice pack is known:
+  // a card not read yet, or one missing a font Hiltwright cannot copy, is not ready.
   const cardKnown = cardCheck?.source === 'reader' || cardCheck?.source === 'saber';
-  const cardReady = !cardWork && !prepping && cardKnown;
+  const voiceKnown = prop !== 'fett263' || !!voice;
+  const cardReady = !cardWork && !prepping && cardKnown && notInLibrary.length === 0 && voiceKnown;
 
   /** Copy the fonts the card lacks, remove its presets file for a staged list (a snapshot first), put on the voice pack, and remember the card. */
   const prepare = async () => {
@@ -80,8 +95,8 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
       for (const f of work.fonts) {
         setPrepping(`Copying ${f.folder}…`);
         const t0 = Date.now();
-        await api().fontLibrary.copyToCard(f.folder, c.root, false);
-        recordCopy(work.route, f.bytes, Date.now() - t0);
+        if (f.from === 'pack' && f.packId) await api().packs.copyFontToCard(f.packId, c.root, { replace: false });
+        else { await api().fontLibrary.copyToCard(f.folder, c.root, false); recordCopy(work.route, f.bytes, Date.now() - t0); }
       }
       if (work.fonts.length) done.push(`copied ${work.fonts.length === 1 ? work.fonts[0].folder : `${work.fonts.length} fonts`}`);
       if (work.voice) {

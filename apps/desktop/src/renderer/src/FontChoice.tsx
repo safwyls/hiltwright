@@ -5,8 +5,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { propFamily } from '@hiltwright/core';
-import type { ImportResult, LibraryFont } from '../../shared/api';
-import { fontLibraryList, useSharedList, voicePackList, type VoicePackList } from './sharedLists';
+import type { ImportResult, LibraryFont, PackInfo } from '../../shared/api';
+import { fontLibraryList, packList, useSharedList, voicePackList, type VoicePackList } from './sharedLists';
 import { contributorsChanged } from './credits';
 import { importSummary } from '../../shared/fontBulk';
 import { chosenFonts, presetsUsing, withFontChosen, withFontDropped } from './saberFonts';
@@ -23,6 +23,7 @@ const api = () => window.hiltwright;
 const cleanErr = (err: unknown) => String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '');
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 const NO_FONTS: LibraryFont[] = [];
+const NO_PACKS: PackInfo[] = [];
 const NO_VOICES: VoicePackList = { packs: [], support: null, source: null, credit: null };
 
 export function FontChoice({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'armory' | 'presets' | 'library' | 'build' | 'card') => void }) {
@@ -33,6 +34,7 @@ export function FontChoice({ ws, board, go }: { ws: Workspace; board: Board; go:
   const voiceShared = useSharedList(voicePackList, NO_VOICES);
   const voicePacks = voiceShared.read ? voiceShared.value.packs : null;
   const { value: library, read, failed } = useSharedList(fontLibraryList, NO_FONTS);
+  const packs = useSharedList(packList, NO_PACKS).value;
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
@@ -71,12 +73,14 @@ export function FontChoice({ ws, board, go }: { ws: Workspace; board: Board; go:
   };
 
   const libFont = (folder: string) => library.find((f) => same(f.folder, folder)) ?? null;
+  // The free fonts that ship with Hiltwright: copied on the Card step like library fonts.
+  const packFont = (folder: string) => packs.find((p) => p.kind === 'font' && p.allow.copyToCard && same(p.name, folder)) ?? null;
   // What the saber's card has: read just now (in a reader, or by the saber), else as last read; nothing for a saber never read.
   const cardFonts = card.cardCheck?.source === 'reader' || (card.cardCheck?.source === 'saber' && card.cardCheck.fonts.length) ? card.cardCheck.fonts : info && info.fonts.length ? info.fonts : null;
   const onCard = (folder: string) => (cardFonts ? cardFonts.some((x) => same(x, folder)) : null);
-  const toCopy = chosen.filter((f) => onCard(f) !== true && libFont(f));
+  const toCopy = chosen.filter((f) => onCard(f) !== true && (libFont(f) || packFont(f)));
   const copyBytes = toCopy.reduce((n, f) => n + (libFont(f)?.bytes ?? 0), 0);
-  const missing = read ? chosen.filter((f) => !libFont(f) && onCard(f) !== true) : [];
+  const missing = read ? chosen.filter((f) => !libFont(f) && !packFont(f) && onCard(f) !== true) : [];
   // The voice pack: the one chosen, else the one that comes with Hiltwright; and what the card has, when it is known.
   const fett263 = propFamily(model) === 'fett263';
   const bundled = voicePacks?.find((p) => p.have === 'bundled') ?? null;
@@ -104,6 +108,7 @@ export function FontChoice({ ws, board, go }: { ws: Workspace; board: Board; go:
             {chosen.length === 0 && <div className="li hint" style={{ minHeight: 48 }}>No fonts chosen yet. Add them from your font library.</div>}
             {chosen.map((f, i) => {
               const lf = libFont(f);
+              const pf = lf ? null : packFont(f);
               const users = presetsUsing(model, f);
               const card = onCard(f);
               return (
@@ -111,9 +116,9 @@ export function FontChoice({ ws, board, go }: { ws: Workspace; board: Board; go:
                   <span className="n" aria-hidden="true">{i + 1}</span>
                   <span className="col grow" style={{ gap: 2, minWidth: 0 }}>
                     <b className="ellip" style={{ fontWeight: 600 }}>{f}</b>
-                    <span className="hint ellip">{lf ? `${lf.meta.name || f}${lf.meta.maker ? ` by ${lf.meta.maker}` : ''} · ${mb(lf.bytes)}` : read ? 'Not in the font library' : 'Looking in the font library…'}{users.length ? ` · used by preset${users.length === 1 ? '' : 's'} ${users.map((u) => u + 1).join(', ')}` : ' · no preset uses it yet'}</span>
+                    <span className="hint ellip">{lf ? `${lf.meta.name || f}${lf.meta.maker ? ` by ${lf.meta.maker}` : ''} · ${mb(lf.bytes)}` : pf ? `${pf.creator ? `by ${pf.creator} · ` : ''}comes with Hiltwright` : read ? 'Not in the font library' : 'Looking in the font library…'}{users.length ? ` · used by preset${users.length === 1 ? '' : 's'} ${users.map((u) => u + 1).join(', ')}` : ' · no preset uses it yet'}</span>
                   </span>
-                  {card === true ? <span className="chip ok"><Icon name="check" />On the card</span> : lf ? <span className="chip"><Icon name="sd" />Copied at install</span> : read ? <span className="chip warn"><Icon name="warn" />{card === false ? 'Missing' : 'Not in the library'}</span> : null}
+                  {card === true ? <span className="chip ok"><Icon name="check" />On the card</span> : lf || pf ? <span className="chip"><Icon name="sd" />Copied on the Card step</span> : read ? <span className="chip warn"><Icon name="warn" />{card === false ? 'Missing' : 'Not in the library'}</span> : null}
                   <button type="button" className="chip" disabled={busy || users.length > 0} title={users.length ? `Preset ${users.map((u) => u + 1).join(', ')} uses it: change ${users.length === 1 ? 'its' : 'their'} font first` : `Do not carry ${f}`} aria-label={`Remove ${f}`} onClick={() => drop(f)}><Icon name="x" /></button>
                 </div>
               );

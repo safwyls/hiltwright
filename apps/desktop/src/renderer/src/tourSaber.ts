@@ -80,7 +80,9 @@ export const EXAMPLE_ANSWERS: Record<string, string[]> = {
   get_clash_threshold: ['3.5'],
   get_on: ['0'],
   'cat common/voicepack.ini': ['voice_pack_version=2'],
-  'dir common': ['mnum', 'boot.wav 88244', 'font.wav 66194', 'Done listing files.'],
+  'dir common': ['mnum 0', 'voicepack.ini 21', 'boot.wav 88244', 'font.wav 66194', 'Done listing files.'],
+  // Its card: the fonts its presets name, and common (the Install pages check the card the saber reads).
+  list_fonts: ['common', ...PRESETS.map((p) => p.font)],
 };
 
 /** Style ids the example saber has queued for its next build (chosen, not yet in its firmware). */

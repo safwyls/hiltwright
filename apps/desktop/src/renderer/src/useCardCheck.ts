@@ -14,7 +14,7 @@ const api = () => window.hiltwright;
 const DRIVE_POLL_MS = 2500;
 
 export type CardCheck = { source: 'reader'; root: string; by: OwnedBy; card: CardInfo; fonts: string[] } | { source: 'saber'; fonts: string[] } | { source: 'out' };
-type Own = { fonts: string[]; voice: VoicePackStatus | null; why: string | null; out: boolean };
+type Own = { fonts: string[]; voice: VoicePackStatus | null; why: string | null; out: boolean; unanswered?: boolean };
 type Result = { cardCheck: CardCheck | null; voice: VoicePackStatus | null; voiceWhy: string | null };
 
 /**
@@ -68,7 +68,7 @@ export function useCardCheck(board: Board, saber: SaberRecord | null) {
           const rejected = [...cat.lines, ...dir.lines].some((l) => /^Whut\? :/.test(l));
           own = { fonts: parseList(lf.lines), voice: rejected || out ? null : voicePackFromSerial(cat.lines, dir.lines), why: rejected ? 'this firmware does not answer the card commands (cat and dir)' : null, out };
           if (conn) saberAnswers.set(conn, own);
-        } catch { own = { fonts: [], voice: null, why: 'the saber is not answering', out: false }; }
+        } catch { own = { fonts: [], voice: null, why: 'the saber is not answering', out: false, unanswered: true }; }
       }
       // Its card in a reader. One known only by its presets gives way to a card the saber is reading itself. The look
       // and the read are shared with any other page asking at the same moment (cardCache.ts).
@@ -89,6 +89,8 @@ export function useCardCheck(board: Board, saber: SaberRecord | null) {
       }
       if (!live) return;
       if (own?.out) show({ cardCheck: { source: 'out' }, voice: null, voiceWhy: null });
+      // A saber that did not answer said nothing about its card: not known, not an empty card.
+      else if (own?.unanswered) show({ cardCheck: null, voice: null, voiceWhy: own.why });
       else if (own) show({ cardCheck: { source: 'saber', fonts: own.fonts }, voice: own.voice, voiceWhy: own.why });
       else show({ cardCheck: null, voice: null, voiceWhy: null });
     })().finally(() => { if (live) setCardChecking(false); });
