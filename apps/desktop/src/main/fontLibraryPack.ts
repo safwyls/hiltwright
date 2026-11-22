@@ -26,8 +26,15 @@ const WITH_PASSPHRASE = 2;
 export const LIBRARY_PACK_EXT = 'hwfonts';
 const MAGIC = Buffer.from('HWFL');
 const HEAD = MAGIC.length + 1 + 16;
-/** The most one record may claim to hold: a file of the library, or the list. Guards against a damaged length. */
-const MAX_RECORD = 0xfffffff0;
+/** The most one file of the library may unpack to (as for a zip, unzip.ts), and the most the list may (#21). */
+export const MAX_FILE_BYTES = 512 * 1024 * 1024;
+const MAX_LIST_BYTES = 64 * 1024 * 1024;
+/**
+ * The most one record may claim to hold: the largest file, deflated (which can come out a little larger than the file
+ * for sounds that do not compress), sealed. A record is also checked against what is left of the file before any room
+ * is made for it, so a damaged or crafted length cannot make the app allocate gigabytes (#21).
+ */
+const MAX_RECORD = MAX_FILE_BYTES + MAX_FILE_BYTES / 64 + 1024 + 28;
 
 export interface PackedFont { folder: string; meta: FontMeta; files: { path: string; bytes: number }[] }
 /** A font maker's link, and the size and kind of their logo; the logo's bytes are a record after every font file. */
@@ -156,6 +163,7 @@ export async function openLibraryPack(file: string, passphrase?: string): Promis
   let fh: FileHandle;
   try { fh = await open(file, 'r'); } catch { throw new Error('That file could not be opened.'); }
   let pos = 0;
+  let fileSize = 0;
   const take = async (n: number): Promise<Buffer | null> => {
     const buf = Buffer.alloc(n);
     const { bytesRead } = await fh.read(buf, 0, n, pos);
@@ -163,6 +171,7 @@ export async function openLibraryPack(file: string, passphrase?: string): Promis
     return bytesRead === n ? buf : null;
   };
   try {
+    fileSize = (await fh.stat()).size;
     const head = await take(HEAD);
     if (!head || !head.subarray(0, 4).equals(MAGIC)) throw new Error(NOT_A_PACK);
     const version = head[4];
@@ -171,26 +180,42 @@ export async function openLibraryPack(file: string, passphrase?: string): Promis
     if (locked && !passphrase) throw new Error(NEEDS_PASSPHRASE);
     const key = keyFor(version, head.subarray(5), passphrase);
     let index = 0;
-    const next = async (): Promise<Buffer> => {
+    /** The next record, inflated no further than `limit` bytes (#21); with `exact`, it must be that size. */
+    const record = async (limit: number, exact: boolean): Promise<Buffer> => {
       const len = (await take(4))?.readUInt32LE(0);
-      if (len == null || len < 28 || len > MAX_RECORD) throw new Error(DAMAGED);
+      if (len == null || len < 28 || len > MAX_RECORD || len > fileSize - pos) throw new Error(DAMAGED);
       const rec = await take(len);
       if (!rec) throw new Error(DAMAGED);
+      let packed: Buffer;
       try {
         const d = createDecipheriv('aes-256-gcm', key, rec.subarray(0, 12));
         d.setAAD(place(index++));
         d.setAuthTag(rec.subarray(12, 28));
-        return inflateSync(Buffer.concat([d.update(rec.subarray(28)), d.final()]));
+        packed = Buffer.concat([d.update(rec.subarray(28)), d.final()]);
       } catch { unsealed = false; throw new Error(DAMAGED); }
+      let out: Buffer;
+      try { out = inflateSync(packed, { maxOutputLength: Math.max(1, limit) }); } catch { throw new Error(DAMAGED); }
+      if (exact && out.length !== limit) throw new Error(DAMAGED);
+      return out;
     };
     let unsealed = true;
     let list: LibraryPackList | null = null;
-    try { list = cleanList(JSON.parse((await next()).toString('utf8'))); } catch (err) {
+    try { list = cleanList(JSON.parse((await record(MAX_LIST_BYTES, false)).toString('utf8'))); } catch (err) {
       // The first record of a locked file was all there but would not open: the passphrase, not the file.
       if (locked && !unsealed) throw new Error(WRONG_PASSPHRASE);
       if (err instanceof Error && err.message === DAMAGED) throw err;
     }
     if (!list) throw new Error(NOT_A_PACK);
+    // What each later record holds, from the list: every font file in order, then every maker's logo. Each is inflated
+    // no further than that size, and must be exactly it, as the writer checks.
+    const sizes = [...list.fonts.flatMap((f) => f.files.map((x) => x.bytes)), ...(list.makers ?? []).flatMap((m) => (m.logo ? [m.logo.bytes] : []))];
+    let n = 0;
+    const next = (): Promise<Buffer> => {
+      const want = sizes[n++];
+      if (want === undefined) return record(MAX_FILE_BYTES, false);
+      if (!Number.isSafeInteger(want) || want < 0 || want > MAX_FILE_BYTES) return Promise.reject(new Error(DAMAGED));
+      return record(want, true);
+    };
     return { list, next, close: () => fh.close() };
   } catch (err) {
     await fh.close().catch(() => undefined);

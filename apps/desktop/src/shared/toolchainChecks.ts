@@ -12,11 +12,16 @@ export const MAX_ROOT_LENGTH = 40;
 export const INSTALL_DISK_BYTES = 1.9 * 1024 * 1024 * 1024;
 export const INSTALL_DISK_MARGIN = 2.5 * 1024 * 1024 * 1024;
 
-export interface ToolchainFacts { root: string; ready: boolean; freeBytes: number | null; pathTooLong: boolean }
+export interface ToolchainFacts { root: string; ready: boolean; freeBytes: number | null; pathTooLong: boolean; open?: boolean | null }
 export interface Blocker { error: string; panel: string }
 
-export function toolchainBlockers(s: ToolchainFacts): { pathTooLong: Blocker | null; lowSpace: Blocker | null } {
+export function toolchainBlockers(s: ToolchainFacts): { pathTooLong: Blocker | null; lowSpace: Blocker | null; untrusted: Blocker | null } {
   return {
+    // Nothing is downloaded into, or run from, a folder another Windows account owns or can change (#20).
+    untrusted: s.open ? {
+      error: `Hiltwright will not set up the compiler in ${s.root}: another Windows account owns the folder or can change it. Choose Repair on the Compiler step first.`,
+      panel: 'Repair the folder first: another Windows account owns it or can change it.',
+    } : null,
     pathTooLong: s.pathTooLong ? {
       error: `The toolchain folder path is too long for the compiler on Windows (${s.root.length} characters, at most ${MAX_ROOT_LENGTH}): ${s.root}`,
       panel: `This folder's path is too long for the compiler on Windows: ${s.root.length} characters, where at most ${MAX_ROOT_LENGTH} fit. The compiler's own files sit about 213 characters deeper, and Windows stops at 259.`,

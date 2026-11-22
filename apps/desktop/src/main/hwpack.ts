@@ -73,15 +73,32 @@ export function readManifest(file: Buffer): { manifest: PackManifest; itemsStart
   return { manifest, itemsStart: 9 + len };
 }
 
+/** The most one item may unpack to: far more than a hilt mesh or a sound font's longest track. */
+export const MAX_ITEM_BYTES = 512 * 1024 * 1024;
+
+const DAMAGED_PACK = 'The pack is damaged.';
+
+/**
+ * One item's bytes, decrypted and inflated. The item must lie inside the file, and it is inflated no further than the
+ * size the manifest declares for it (#21): a crafted pack could otherwise inflate a small item to gigabytes.
+ */
 export function readItem(file: Buffer, manifest: PackManifest, itemsStart: number, item: PackItem): Buffer {
+  if (!Number.isSafeInteger(item.bytes) || item.bytes < 0 || item.bytes > MAX_ITEM_BYTES) throw new Error(DAMAGED_PACK);
   const at = itemsStart + item.offset;
+  if (!Number.isSafeInteger(at) || at < 0 || at + 32 > file.length) throw new Error(DAMAGED_PACK);
   const len = file.readUInt32LE(at);
+  if (len < 28 || at + 4 + len > file.length) throw new Error(DAMAGED_PACK);
   const nonce = file.subarray(at + 4, at + 16);
   const tag = file.subarray(at + 16, at + 32);
   const body = file.subarray(at + 32, at + 4 + len);
   const decipher = createDecipheriv('aes-256-gcm', itemKey(manifest.id), nonce);
   decipher.setAuthTag(tag);
-  return inflateSync(Buffer.concat([decipher.update(body), decipher.final()]));
+  const packed = Buffer.concat([decipher.update(body), decipher.final()]);
+  let data: Buffer;
+  // zlib needs room for at least one byte; an empty item inflates to none.
+  try { data = inflateSync(packed, { maxOutputLength: Math.max(1, item.bytes) }); } catch { throw new Error(DAMAGED_PACK); }
+  if (data.length !== item.bytes) throw new Error(DAMAGED_PACK);
+  return data;
 }
 
 // ---- the mesh an OBJ becomes ----

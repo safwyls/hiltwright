@@ -24,7 +24,7 @@ Everything up to the flash works with the saber unplugged, once it has been seen
 The first build needs the compiler, the program that turns the settings into firmware. Press **Download and install**. It is about 360 MB to download and about 1.9 GB on disk, into Hiltwright's own folder, and touches nothing else. The panel shows the free space. On a fast connection this takes about a minute. After that, nothing more is downloaded.
 
 - If there is not enough space, or the folder path is too long, a red note says so and the button is off. Free some space and press **Try again**.
-- If other Windows users on this computer could change the compiler folder, an amber note offers **Repair**, which limits it to administrators and your account. Windows may ask for approval.
+- If another Windows account on this computer owns the compiler folder or could change it, Hiltwright runs nothing from it, and an amber note offers **Repair**. Repair limits the folder to administrators and your account. If the other account had put files there, Repair removes them and the compiler is downloaded again. Windows may ask for approval.
 
 When ready, the step says "ProffieOS (version) ready".
 

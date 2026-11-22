@@ -313,7 +313,13 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const phasePct = xfer ?? 0;
   const overall = step === 'bootloader' ? 3 : step === 'backup' ? 5 + phasePct * 0.4 : step === 'writing' ? (withBackup ? 45 + phasePct * 0.47 : 5 + phasePct * 0.87) : step === 'verifying' ? 94 : step === 'done' ? 100 : 0;
   const phaseText = step === 'bootloader' ? 'Rebooting into the bootloader' : step === 'backup' ? 'Reading the backup' : step === 'writing' ? 'Writing firmware' : step === 'verifying' ? 'Waiting for the saber to restart' : '';
-  const blockers = tool ? toolchainBlockers(tool) : { pathTooLong: null, lowSpace: null };
+  const blockers = tool ? toolchainBlockers(tool) : { pathTooLong: null, lowSpace: null, untrusted: null };
+  // Why the compiler folder needs Repair (#20): nothing in it runs until it is fixed.
+  const openText = tool?.openWhy === 'owner'
+    ? `The compiler folder, ${tool.root}, belongs to another Windows account on this computer, so Hiltwright runs nothing from it. Repair makes it changeable only by administrators and your account, and removes what the other account put there; the compiler is then downloaded again. Windows will ask for approval.`
+    : tool?.openWhy === 'unknown'
+      ? `Hiltwright could not check who can change the compiler folder, ${tool.root}, so it runs nothing from it. Repair makes it changeable only by administrators and your account; Windows may ask for approval.`
+      : `Other Windows users on this computer could change the compiler Hiltwright uses, in ${tool?.root ?? ''}, so it runs nothing from it. Repair makes it changeable only by administrators and your account; Windows may ask for approval.`;
 
   const toolStep = (now: boolean) => (
     <div className={`stepc ${tool?.ready ? 'done' : now ? 'now' : ''}`} data-tour="build-compiler">
@@ -322,7 +328,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
       {tool?.ready && <span className="hint">arduino-cli {tool.versions.cli} · board support {tool.versions.core} · ProffieOS {tool.versions.proffieOS}</span>}
       {tool?.open && (
         <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
-          <span>Other Windows users on this computer could change the compiler Hiltwright uses, in {tool.root}. Repair makes it changeable only by administrators and your account; Windows may ask for approval.</span>
+          <span>{openText}</span>
           {repairNote && <span className="red small">{repairNote}</span>}
           <span className="row"><button type="button" className="btn sm" disabled={repairing || installing} onClick={() => void repair()}><span className="b"><span className="i">{repairing ? <><Loader size="sm" />Repairing…</> : 'Repair'}</span></span></button></span>
         </span></div>
@@ -339,7 +345,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
           {blockers.lowSpace && <div className="note red"><Icon name="x" /><span>{blockers.lowSpace.panel}</span></div>}
           {blockers.pathTooLong && <div className="note red"><Icon name="x" /><span>{blockers.pathTooLong.panel}</span></div>}
           {installError && <div className="note red"><Icon name="x" /><span className="col" style={{ gap: 8 }}><span>{installError}</span><SaveDiagnostics small /></span></div>}
-          <button type="button" className={`btn full ${now ? 'pri' : ''}`} disabled={installing || !!blockers.pathTooLong || !!blockers.lowSpace} onClick={() => void install()}><span className="b"><span className="i"><Icon name="import" />{installError ? 'Try again' : 'Download and install'}</span></span></button>
+          <button type="button" className={`btn full ${now ? 'pri' : ''}`} disabled={installing || !!blockers.pathTooLong || !!blockers.lowSpace || !!blockers.untrusted} onClick={() => void install()}><span className="b"><span className="i"><Icon name="import" />{installError ? 'Try again' : 'Download and install'}</span></span></button>
         </>
       )}
       {installing && <div className="console" style={{ maxHeight: 120, minHeight: 48, fontSize: 11 }}>{log.filter((e) => e.job === 'toolchain').slice(-6).map((e, i) => <div key={i}>{e.line}</div>)}</div>}
