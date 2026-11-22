@@ -21,7 +21,9 @@ const jobFor = (over: Partial<InstallJob> = {}): InstallJob => ({
 /** The boards plugged in: serial → flash size, and whether each is running or in its bootloader. */
 type Board = { serial: string | null; flash: number; mode: 'run' | 'boot' };
 type Over = {
-  backup?: { ok: boolean; detail?: string; kind?: 'firmware' | 'erased' | 'unusable'; file?: string }; write?: () => Promise<{ ok: boolean; detail: string }>; runtime?: boolean; confirm?: boolean;
+  backup?: { ok: boolean; detail?: string; kind?: 'firmware' | 'erased' | 'unusable' | 'partial'; file?: string }; write?: () => Promise<{ ok: boolean; detail: string }>; runtime?: boolean; confirm?: boolean;
+  /** The owner's answer when the board cannot be backed up and the install asks whether to go on (issue #12). Absent: never asked. */
+  noBackup?: boolean;
   connectedSerial?: string; noDriver?: boolean; reached?: SaberRecord | null; leaveFails?: boolean;
   /** What the saber reports when it is read after the reconnect. */
   comesBackAs?: { config: string | null; version: string | null };
@@ -32,6 +34,8 @@ type Over = {
   cardOut?: boolean;
   /** Its presets file went on the card trip before the install: it comes back with the compiled presets at once. */
   clearedOnTrip?: boolean;
+  /** The presets the saber reports before anything is removed (its presets file), when not the default "Old". */
+  own?: { font: string; track: string; name: string; styles?: string[]; variation?: number }[];
 };
 /** The saber read after a reconnect: the record for that serial, just seen, reporting what `comesBackAs` says. */
 const readBack = (serial: string | null | undefined, over: Over): SaberRecord | null => {
@@ -45,7 +49,8 @@ function world(boards: Board[], over: Over = {}) {
   const reports: InstallReport[] = [];
   let reached: SaberRecord | null = null;
   // The presets the saber reports, and whether its presets file has been removed.
-  let onSaber = over.clearedOnTrip && over.compiled ? over.compiled.map((c) => ({ ...c, styles: ['builtin 0 1'], variation: 0 })) : [{ font: 'Old;common', track: '', styles: ['builtin 0 1'], name: 'Old', variation: 0 }];
+  const fromFirmware = (list: { font: string; track: string; name: string }[]) => list.map((c, i) => ({ ...c, styles: [`builtin ${i} 1`], variation: 0 }));
+  let onSaber = over.clearedOnTrip && over.compiled ? fromFirmware(over.compiled) : over.own ? over.own.map((p, i) => ({ styles: [`builtin ${i} 1`], variation: 0, ...p })) : [{ font: 'Old;common', track: '', styles: ['builtin 0 1'], name: 'Old', variation: 0 }];
   let removed = false;
   const connectedSerial = over.connectedSerial ?? HOTE2;
   const usb = (): UsbState => {
@@ -92,13 +97,14 @@ function world(boards: Board[], over: Over = {}) {
     noteBootloader: vi.fn(async (id: string, seen: { serial: string | null; flashBytes: number }) => { calls.push(`note ${id} ${seen.serial} ${seen.flashBytes}`); return {} as SaberRecord; }),
     sabers: [saberRec(), v3Rec],
     confirmTarget: vi.fn(async (name: string) => { calls.push(`ask ${name}`); return over.confirm ?? true; }),
+    ...(over.noBackup !== undefined ? { confirmNoBackup: vi.fn(async (name: string) => { calls.push(`ask no backup ${name}`); return over.noBackup!; }) } : {}),
     board: {
       info: null,
       send: vi.fn(async (cmd: string) => { calls.push(cmd); if (cmd === 'del presets.ini') removed = true; return { lines: [] }; }),
       restartSaber: vi.fn(async () => {
         calls.push('restart');
         if (over.restartFails) return false;
-        if ((removed || over.cardOut) && !over.keepsOwn && over.compiled) onSaber = over.compiled.map((c) => ({ ...c, styles: ['builtin 0 1'], variation: 0 }));
+        if ((removed || over.cardOut) && !over.keepsOwn && over.compiled) onSaber = fromFirmware(over.compiled);
         return true;
       }),
       currentPresets: vi.fn(() => onSaber),
@@ -111,6 +117,8 @@ function world(boards: Board[], over: Over = {}) {
     } as unknown as InstallDeps['board'],
     report: (r) => reports.push(r),
     sleep: async () => undefined,
+    // The card trip removed its presets file for the staged list (cardTrip.ts presetsClearedFor, issue #13).
+    ...(over.clearedOnTrip ? { card: { where: 'saber' as const, cleared: () => true } } : {}),
   };
   /** What the page shows at the end: the last step and note reported. */
   const shown = () => ({ step: [...reports].reverse().find((r) => r.step)?.step, note: [...reports].reverse().find((r) => r.note !== undefined)?.note ?? null });
@@ -515,11 +523,72 @@ describe('backups in the sequences', () => {
     expect(f.touched()).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
   });
 
-  it('a restore whose backup of the board fails: nothing put back, the saber sent back', async () => {
+  it('a restore whose read of the board fails: the chosen backup is put back all the same, with an amber note (issue #12)', async () => {
     const f = world([hote2()], { backup: { ok: false, detail: 'dfu-util: error' } });
     await restoreSequence(f.deps, saberRec(), { file: 'b.bin', at: '2026-09-27T10:00:00.000Z', label: 'x', bytes: 262144, valid: true, configName: null }, true);
-    expect(f.deps.flash.restore).not.toHaveBeenCalled();
-    expect(f.shown().note?.text).toBe('The firmware on the board could not be backed up, so the backup was not put back. dfu-util: error The saber is back on the firmware it had.');
+    expect(f.touched()).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
+    expect(f.calls.some((c) => c.startsWith('leave'))).toBe(false);
+    expect(f.shown().step).toBe('done');
+    expect(f.extra()).toEqual([{ tone: 'amber', text: 'What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. dfu-util: error' }]);
+  });
+
+  // Issue #12: a write that fails during or just after the erase leaves a board that reads as neither firmware nor
+  // erased. The restore Hiltwright then points to must still go through.
+  it('a failed write, then a restore: the unreadable board is read for the record, and the good backup is written', async () => {
+    const f = world([hote2()], { write: async () => ({ ok: false, detail: 'dfu-util: Error during download' }) });
+    await installSequence(f.deps, jobFor());
+    expect(f.shown().note?.text).toMatch(/^Writing failed\./);
+    expect(f.boards[0].mode).toBe('boot');
+    (f.deps.flash.backup as ReturnType<typeof vi.fn>).mockImplementation(async (_id: string, _l: string, _c?: string | null, serial?: string | null) => {
+      f.calls.push(`backup ${serial}`);
+      return { ok: false, ms: 1, kind: 'unusable', file: 'C:\\backups\\before-restore.bin', detail: 'The read was not usable firmware (it may be short, protected, or damaged).' };
+    });
+    const good: BackupInfo = { file: '2026-09-27T10-00-00-000Z-before-install.bin', at: '2026-09-27T10:00:00.000Z', label: 'before-install', bytes: 262144, valid: true, configName: 'config/hiltwright_hote2.h' };
+    await restoreSequence(f.deps, saberRec(), good, false);
+    expect(f.touched().slice(-2)).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
+    expect(f.deps.flash.restore).toHaveBeenCalledWith('s1', good.file, HOTE2);
+    expect(f.shown().step).toBe('done');
+    expect(f.shown().note?.tone).toBe('green');
+    expect(f.extra()).toEqual([{ tone: 'amber', text: 'What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. The read was not usable firmware (it may be short, protected, or damaged). What was read is kept at C:\\backups\\before-restore.bin in case it helps find the fault. It is not listed as a backup.' }]);
+  });
+
+  it('a partial read before a restore (it starts like firmware, but the last write did not finish): the restore goes on (issue #12)', async () => {
+    const f = world([hote2('boot')], { backup: { ok: false, kind: 'partial', file: 'C:\\backups\\x-partial-read-before-restore.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.' } });
+    await restoreSequence(f.deps, saberRec(), { file: 'b.bin', at: '2026-09-27T10:00:00.000Z', label: 'x', bytes: 262144, valid: true, configName: null }, false);
+    expect(f.touched()).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
+    expect(f.extra()[0].text).toMatch(/kept at C:.+partial-read-before-restore\.bin/);
+  });
+
+  it('an install on a board that cannot be backed up: asked first; yes writes, with a note that no backup was taken (issue #12)', async () => {
+    const unusable = { ok: false, kind: 'unusable' as const, file: 'C:\\backups\\before-install.bin', detail: 'The read was not usable firmware (it may be short, protected, or damaged).' };
+    const yes = world([hote2()], { backup: unusable, noBackup: true });
+    await installSequence(yes.deps, jobFor());
+    expect(yes.deps.confirmNoBackup).toHaveBeenCalledWith('hote2', unusable.detail);
+    expect(yes.touched()).toEqual([`backup ${HOTE2}`, `write ${HOTE2}`]);
+    expect(yes.shown().step).toBe('done');
+    // There is no backup from just now to name.
+    expect(yes.shown().note?.text).not.toMatch(/Backup of the previous firmware/);
+    expect(yes.extra()[0]).toEqual({ tone: 'amber', text: `No backup was taken this time: you chose to install without one. ${unusable.detail} What was read is kept at C:\\backups\\before-install.bin in case it helps find the fault. It is not listed as a backup.` });
+    const no = world([hote2()], { backup: unusable, noBackup: false });
+    await installSequence(no.deps, jobFor());
+    expect(no.deps.flash.write).not.toHaveBeenCalled();
+    expect(no.calls).toContain(`leave ${HOTE2}`);
+    expect(no.shown().note?.text).toMatch(/^Backup failed, so nothing was written\./);
+  });
+
+  it('an install whose read fails outright is not offered without a backup: stopped as before (issue #12)', async () => {
+    const f = world([hote2()], { backup: { ok: false, detail: 'dfu-util: Cannot open DFU device' }, noBackup: true });
+    await installSequence(f.deps, jobFor());
+    expect(f.deps.confirmNoBackup).not.toHaveBeenCalled();
+    expect(f.deps.flash.write).not.toHaveBeenCalled();
+  });
+
+  it('an install on a board whose last write did not finish, declined: nothing written, and the board is not sent to that firmware (issue #12)', async () => {
+    const f = world([hote2('boot')], { backup: { ok: false, kind: 'partial', file: 'C:\\backups\\p.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.' }, noBackup: false });
+    await installSequence(f.deps, jobFor({ connected: false }));
+    expect(f.deps.flash.write).not.toHaveBeenCalled();
+    expect(f.calls.some((c) => c.startsWith('leave'))).toBe(false);
+    expect(f.shown()).toEqual({ step: 'failed', note: { tone: 'red', text: 'Backup failed, so nothing was written. The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup. The board stays in bootloader mode: put a backup back from the Backups tab.' } });
   });
 
   it('a restore from a board already in its bootloader (after the driver step) is a restore, not an install', async () => {
@@ -715,9 +784,57 @@ describe('staged presets', () => {
     expect(models.at(-1)?.presetsFrom).toBeUndefined();
   });
 
-  it('samePresets compares names and fonts in order', () => {
-    expect(samePresets(staged, staged)).toBe(true);
-    expect(samePresets(staged, [...staged].reverse())).toBe(false);
-    expect(samePresets(staged, staged.slice(1))).toBe(false);
+  // Issue #13: a staged change to only a track was reported as installed, the saber keeping its presets file.
+  const trackStaged = [{ font: 'Mara;common', track: 'tracks/new.wav', name: 'Mara Jade' }];
+  const trackModel = { ...model, presets: trackStaged, presetsFrom: { name: 'Set B', at: '2026-11-20T10:00:00.000Z' } } as SaberConfigModel;
+  const oldTrack = [{ font: 'Mara;common', track: 'tracks/old.wav', name: 'Mara Jade' }];
+
+  it('a staged track change, the card in the saber and not cleared on a trip: removed and restarted, then read back (issue #13)', async () => {
+    const f = world([hote2()], { compiled: trackStaged, own: oldTrack });
+    await installSequence(f.deps, jobFor({ model: trackModel }));
+    expect(staging(f)).toEqual(['del presets.ini', 'del presets.tmp', 'restart']);
+    expect(f.deps.snapshots.save).toHaveBeenCalledWith('s1', 'Before install with staged presets', [expect.objectContaining({ track: 'tracks/old.wav' })]);
+    expect(f.extra().at(-1)).toEqual({ tone: 'green', text: 'Your staged presets are on the saber now; its previous presets are kept as a snapshot.' });
+  });
+
+  it('the same names and fonts with no card trip: never taken as applied, even when the saber reports the staged list (issue #13)', async () => {
+    const f = world([hote2()], { compiled: trackStaged, own: trackStaged });
+    const note = await applyStagedPresets(f.deps, saberRec(), trackModel, HOTE2);
+    expect(staging(f)).toEqual(['del presets.ini', 'del presets.tmp', 'restart']);
+    expect(note.tone).toBe('green');
+  });
+
+  it('cleared on a trip, but the saber reports another track, or the trip was for another list: removed and restarted (issue #13)', async () => {
+    const other = world([hote2()], { compiled: trackStaged, own: oldTrack });
+    await applyStagedPresets({ ...other.deps, card: { where: 'saber', cleared: () => true } }, saberRec(), trackModel, HOTE2);
+    expect(staging(other)).toEqual(['del presets.ini', 'del presets.tmp', 'restart']);
+    const asked: string[] = [];
+    const earlier = world([hote2()], { compiled: trackStaged, own: trackStaged });
+    await applyStagedPresets({ ...earlier.deps, card: { where: 'saber', cleared: (id, at) => { asked.push(`${id} ${at}`); return at === '2026-09-27T10:00:00.000Z'; } } }, saberRec(), trackModel, HOTE2);
+    expect(asked).toEqual(['s1 2026-11-20T10:00:00.000Z']);
+    expect(staging(earlier)).toEqual(['del presets.ini', 'del presets.tmp', 'restart']);
+  });
+
+  it('a track change the saber keeps after its restart: still staged, not reported as installed (issue #13)', async () => {
+    const f = world([hote2()], { compiled: trackStaged, own: oldTrack, keepsOwn: true });
+    const note = await applyStagedPresets(f.deps, saberRec(), trackModel, HOTE2);
+    expect(note.text).toMatch(/^The saber still reports its own presets after its restart\./);
+    expect(f.deps.board.updateSaber).not.toHaveBeenCalled();
+  });
+
+  it('samePresets compares names, fonts and tracks in order, a variation of 0, and the styles a presets file would change', () => {
+    const fw = (list: { font: string; track: string; name: string }[]) => list.map((p, i) => ({ ...p, styles: [`builtin ${i} 1`], variation: 0 }));
+    expect(samePresets(fw(staged), staged)).toBe(true);
+    expect(samePresets(fw(staged), [...staged].reverse())).toBe(false);
+    expect(samePresets(fw(staged), staged.slice(1))).toBe(false);
+    expect(samePresets(fw(oldTrack), trackStaged)).toBe(false);
+    expect(samePresets([{ ...fw(trackStaged)[0], variation: 12 }], trackStaged)).toBe(false);
+    // A named style, or arguments the list does not give, come from a presets file.
+    expect(samePresets([{ ...fw(trackStaged)[0], styles: ['rainbow'] }], trackStaged)).toBe(false);
+    expect(samePresets([{ ...fw(trackStaged)[0], styles: ['builtin 0 1 65535,0,0'] }], trackStaged)).toBe(false);
+    const red = [{ ...trackStaged[0], styles: [{ kind: 'styleptr', style: 'x', args: '65535,0,0', factory: 'StylePtr' }] }];
+    expect(samePresets([{ ...fw(trackStaged)[0], styles: ['builtin 0 1 65535,0,0'] }], red)).toBe(true);
+    expect(samePresets([{ ...fw(trackStaged)[0], styles: ['builtin 0 1 0,0,65535'] }], red)).toBe(false);
+    expect(samePresets(fw(trackStaged), red)).toBe(true);
   });
 });

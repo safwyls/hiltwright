@@ -10,7 +10,7 @@ import { propLabel } from './Wiring';
 import { missingFontWarning } from './fontNeeds';
 import type { Workspace } from './workspace';
 import type { BackupInfo, BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
-import { useCardTrip } from './cardTrip';
+import { presetsClearedOnTrip, useCardTrip } from './cardTrip';
 import { useCardCheck } from './useCardCheck';
 
 /** Where the checks on the saber's SD card were made: its card in a reader, the saber itself, or nowhere (card out). */
@@ -58,6 +58,8 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const [builtModel, setBuiltModel] = useState<SaberConfigModel | null>(null);
   // A board in its bootloader that Hiltwright cannot place: the owner says whether it is this saber (FW4).
   const [askTarget, setAskTarget] = useState<{ name: string; answer: (yes: boolean) => void } | null>(null);
+  // A board whose firmware cannot be backed up (after a write that did not finish): the owner says whether to go on (issue #12).
+  const [askNoBackup, setAskNoBackup] = useState<{ name: string; why: string; answer: (yes: boolean) => void } | null>(null);
   const [step, setStep] = useState<Step>('idle');
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
   // Further notes under the main one: a record that could not be saved, a blank board with nothing to back up.
@@ -162,10 +164,11 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
     noteBootloader: async (id, seen) => { const r = await api().library.noteBootloader(id, seen); await board.refreshLibrary(); return r; },
     sabers: board.library,
     confirmTarget: (name) => new Promise<boolean>((resolve) => setAskTarget({ name, answer: (yes) => { setAskTarget(null); resolve(yes); } })),
+    confirmNoBackup: (name, why) => new Promise<boolean>((resolve) => setAskNoBackup({ name, why, answer: (yes) => { setAskNoBackup(null); resolve(yes); } })),
     report: (r) => { if (r.xfer !== undefined) setXfer(r.xfer); if (r.step) setStep(r.step); if (r.note !== undefined) setNote(r.note); if (r.notes !== undefined) setNotes(r.notes); },
     sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
     // Staged presets need the card's presets file gone, from wherever the card is (installFlow applyStagedPresets).
-    card: (() => { const c = cardCheckRef.current; return c?.source === 'reader' ? { where: 'reader' as const, root: c.root, clearPresets: (root: string, saberId: string) => api().sd.clearPresets(root, saberId) } : c?.source === 'out' ? { where: 'out' as const } : { where: 'saber' as const }; })(),
+    card: (() => { const c = cardCheckRef.current; return c?.source === 'reader' ? { where: 'reader' as const, root: c.root, clearPresets: (root: string, saberId: string) => api().sd.clearPresets(root, saberId) } : c?.source === 'out' ? { where: 'out' as const } : { where: 'saber' as const, cleared: presetsClearedOnTrip }; })(),
   }), [board]);
   // Connected as the picked saber; another saber plugged in counts as nothing plugged in here.
   const connectedNow = status === 'connected' && !otherPlugged;
@@ -481,6 +484,14 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
               <div className="row" style={{ gap: 8 }}>
                 <button type="button" className="btn danger grow" onClick={() => askTarget.answer(true)}><span className="b"><span className="i">Yes, it is {askTarget.name}</span></span></button>
                 <button type="button" className="btn ghost" onClick={() => askTarget.answer(false)}><span className="b"><span className="i">Cancel</span></span></button>
+              </div>
+            </div>
+          ) : askNoBackup ? (
+            <div className="col" style={{ gap: 10, padding: 12, border: '1px solid var(--amber)', background: 'color-mix(in srgb,var(--amber) 8%,transparent)' }}>
+              <span className="small"><b style={{ fontWeight: 600 }}>The firmware on {askNoBackup.name}{'’'}s board cannot be backed up.</b> {askNoBackup.why} Install the new firmware without a backup? Nothing has been written yet, and the backups you already have stay on the Backups tab.</span>
+              <div className="row" style={{ gap: 8 }}>
+                <button type="button" className="btn danger grow" onClick={() => askNoBackup.answer(true)}><span className="b"><span className="i">Install without a backup</span></span></button>
+                <button type="button" className="btn ghost" onClick={() => askNoBackup.answer(false)}><span className="b"><span className="i">Cancel</span></span></button>
               </div>
             </div>
           ) : step === 'driver' ? (

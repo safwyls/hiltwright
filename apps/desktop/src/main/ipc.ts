@@ -34,7 +34,7 @@ import { sourceUrl } from '../shared/about';
 import { installBootloaderDriver } from './driver';
 import { importXenoFont, scanXenoCard, type XenoFontInfo } from './importer';
 import { writeAllowed, type KeptBuild } from './writeGuard';
-import { backAfter, backupFlash, describeBootloader, driverUsable, flashTarget, leaveBootloader, listBackups, newBootloaders, restoreBackup, usbState, waitFor, writeFirmware, type UsbState } from './flash';
+import { backAfter, backupFlash, describeBootloader, driverUsable, flashTarget, leaveBootloader, listBackups, newBootloaders, rememberWrite, restoreBackup, usbState, waitFor, writeFirmware, type UsbState } from './flash';
 import { logged } from './ipcLog';
 import { tourGuarded, tourState } from './tourGuard';
 import { JsonStore, storeProblems } from './jsonStore';
@@ -654,7 +654,8 @@ export function registerIpc(): void {
     const saved = (await library.list()).find((s) => s.id === id)?.model;
     const allowed = writeAllowed(lastBuildBySaber.get(id), saved, p);
     if (!allowed.ok) return result('write')({ ok: false, ms: 0, detail: allowed.text, refused: true });
-    return writeFirmware(toolchainRoot, p, (l) => emit('flash', l), serialArg(serial)).then(result('write'));
+    // A write that did not finish is remembered, so the next read of the board is kept as a partial read (issue #12).
+    return writeFirmware(toolchainRoot, p, (l) => emit('flash', l), serialArg(serial)).then((r) => rememberWrite(backupsDir(id), r)).then(result('write'));
   });
   const backupsDir = (saberId: unknown) => join(userData, 'sabers', str(saberId, 40).replace(/[^A-Za-z0-9_-]/g, '_'), 'backups');
   handle('flash:listBackups', (_e, saberId: unknown) => listBackups(backupsDir(saberId)));
@@ -665,7 +666,7 @@ export function registerIpc(): void {
     // The board's own flash size, looked up here, decides whether the backup fits: whatever the page believes.
     const target = await flashTarget(toolchainRoot, serialArg(serial));
     if (!target.found) return result('restore')({ ok: false, ms: 0, detail: 'The saber is not in bootloader mode, or more than one board is. Nothing was written.' });
-    return restoreBackup(toolchainRoot, join(backupsDir(saberId), name), (l) => emit('flash', l), serialArg(serial), target.flashBytes).then(result('restore'));
+    return restoreBackup(toolchainRoot, join(backupsDir(saberId), name), (l) => emit('flash', l), serialArg(serial), target.flashBytes).then((r) => rememberWrite(backupsDir(saberId), r)).then(result('restore'));
   });
   // The installer is kept in the owner's own data folder, not the shared toolchain folder: it runs elevated.
   handle('flash:installDriver', () => installBootloaderDriver(join(userData, 'drivers'), (l) => emit('flash', l)).then(result('installDriver')));

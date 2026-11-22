@@ -30,7 +30,7 @@ When ready, the step says "ProffieOS (version) ready".
 
 ## Build
 
-**Build firmware** needs the compiler, a confirmed wiring and no problems in the wiring. It takes about a minute. Queued styles are built in. The Log tab opens by itself and shows the output.
+**Build firmware** needs the compiler, a confirmed wiring and no problems in the wiring. It takes about a minute. Queued styles are built in. The Log tab opens by itself and shows the output. Each saber builds in its own copy of ProffieOS. When a Hiltwright update brings a new ProffieOS, the next build makes that copy again first, and the log says "ProffieOS has changed".
 
 If the wiring is not confirmed, the page says "Confirm the wiring on the Wiring page before building." See [Wiring](wiring.html).
 
@@ -50,7 +50,7 @@ Read the notes under the steps. They can include:
 - **Where the card was checked.** Fonts and the voice pack are checked on the saber's own card wherever it is. With the card in a card reader on this computer, Hiltwright reads it there and says so, even with the saber unplugged. With the card in the saber, it asks the saber. With the card out of the saber and not in a reader, it says the card is out and warns about neither until the card is back. **Look again** checks once more. If the checks were made in a reader, put the card back in the saber before you use it.
 - **Missing fonts.** For example "2 presets name fonts that are not on the card (…). The saber will say "font directory not found" for them." The trip on [Card](card.html) copies the chosen fonts the card lacks. Or choose another font on [Presets](presets.html). This warning shows only when the card's fonts are known.
 - **Voice pack.** With the Fett263 prop, Hiltwright reports whether the voice pack is on the card, its version, and whether presets use the `common` folder. Without it, the saber speaks a voice pack error on every preset change. Everything else works.
-- **Staged presets.** They replace the saber's presets once the new firmware is on and checked, and a snapshot is kept first. If the firmware already has them, press **Use the staged presets** to put them on with one restart and no install. With the saber's card in a card reader, the trip on [Card](card.html) removes its old presets file there; put the card back in the saber before you use it. With the card out and not in a reader, the presets stay staged until it is back.
+- **Staged presets.** They replace the saber's presets once the new firmware is on and checked, and a snapshot is kept first. If the firmware already has them, press **Use the staged presets** to put them on with one restart and no install. With the saber's card in a card reader, the trip on [Card](card.html) removes its old presets file there; put the card back in the saber before you use it. Unless that trip removed the file for this list, the saber removes it itself and restarts once more. The presets count as installed only when the saber then reports the same names, fonts and tracks. With the card out and not in a reader, the presets stay staged until it is back.
 - **The saber changed since your list was made.** The same warning as on [Presets](presets.html) is repeated here, with the number of presets that differ. Installing replaces those changes. Go to Presets to bring the saber's presets in, or keep your list.
 - **A different saber is plugged in.** Install refuses while a saber other than the one you picked in the Armory is plugged in. Unplug it, or pick that saber.
 - **Shared card.** Give the saber's card back on [Card](card.html) or [Live › Card](fonts-and-sd.html) first. An install restarts the saber, and your computer must not be holding the card.
@@ -62,7 +62,7 @@ With the card back in the saber and the saber plugged in, press **Flash (saber)*
 Flash then does these things:
 
 1. Reboots the saber into bootloader mode. This can take up to 45 seconds.
-2. Reads the saber's whole firmware into a backup file. If the board was blank, it says "there was nothing to back up" and goes on.
+2. Reads the saber's whole firmware into a backup file. If the board was blank, it says "there was nothing to back up" and goes on. If what the board holds cannot be a backup (after a write that did not finish, say), Flash asks first. **Install without a backup** goes on and keeps what was read for a diagnosis. **Cancel** writes nothing.
 3. Writes the new firmware.
 4. Waits for the saber to restart, reconnects and checks what it reports.
 
@@ -86,9 +86,9 @@ If the saber does not show up after a reboot, use the BOOT and RESET steps above
 
 ## Backups and "Put back"
 
-Every install first reads the saber's whole firmware to a file. The **Backups** tab lists them with the date and size. Each says "not a usable image" if it is not good.
+Every install first reads the saber's whole firmware to a file. The **Backups** tab lists them with the date and size. Each says "not a usable image" if it is not good. A read taken after a write that did not finish is labelled "partial-read" and is never offered to put back: it may be half old firmware and half new.
 
-Press **Put back**, then **Yes, put it back**. It writes that backup onto the saber exactly as it was, to undo an install. It also backs up what is on the board first. The button is off until the saber is connected.
+Press **Put back**, then **Yes, put it back**. It writes that backup onto the saber exactly as it was, to undo an install. It also backs up what is on the board first. If that read fails, or the board holds no usable firmware after a failed write, the backup is put back all the same and an amber note says so. The button is off until the saber is connected or a board is in bootloader mode.
 
 Presets and fonts on the SD card are not touched.
 
