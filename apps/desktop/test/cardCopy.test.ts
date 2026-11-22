@@ -1,7 +1,7 @@
 // card-safety 1.1: copies onto the card are all or nothing, with a space check, a true replace and safe names.
 
 import { describe, expect, it } from 'vitest';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { copyFont, listFonts, stopReading } from '../src/main/sd';
@@ -135,6 +135,18 @@ describe('copies onto the card are all or nothing (card-safety D5)', () => {
     expect((await listFonts(root)).map((f) => f.name)).toEqual(['Vader']);
     await copyFont(src, root, {});
     expect(await files(join(root, 'Kylo'))).toEqual(await files(src));
+  });
+
+  it('a source file that went missing is named, and the card is not blamed (#34)', async () => {
+    const root = await card();
+    const src = await source();
+    let n = 0;
+    // The third file is deleted from the library just before it is copied, as another program might.
+    const vanishing = async (from: string, to: string) => { if (++n === 3) await rm(from); await copyFile(from, to); };
+    const err = await copyFont(src, root, { copyOne: vanishing }).catch((e: Error) => e);
+    expect(String(err)).toMatch(/The copy of Kylo stopped part way: \S+\.wav could not be read from the library or pack \(ENOENT\)\. Nothing was left on the card under Kylo\./);
+    expect(String(err)).not.toMatch(/card could not be written/);
+    expect((await readdir(root)).sort()).toEqual(['Vader']);
   });
 
   it('a failed replace keeps the old font as it was', async () => {

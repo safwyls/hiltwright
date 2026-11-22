@@ -224,6 +224,31 @@ export function layoutStyleCode(code: string): string {
 }
 
 /**
+ * The text with every C and C++ comment replaced by spaces of the same length (line breaks kept), so positions in the
+ * result match the original. A string literal is copied as it is: `"a // b"` holds no comment.
+ */
+function maskComments(s: string): string {
+  let out = '';
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === '"') {
+      let j = i + 1;
+      while (j < s.length && s[j] !== '"' && s[j] !== '\n') j += s[j] === '\\' ? 2 : 1;
+      j = Math.min(j + 1, s.length);
+      out += s.slice(i, j); i = j;
+    } else if (s.startsWith('//', i)) {
+      let j = s.indexOf('\n', i); if (j < 0) j = s.length;
+      out += ' '.repeat(j - i); i = j;
+    } else if (s.startsWith('/*', i)) {
+      let j = s.indexOf('*/', i + 2); j = j < 0 ? s.length : j + 2;
+      out += s.slice(i, j).replace(/[^\n]/g, ' '); i = j;
+    } else { out += c; i++; }
+  }
+  return out;
+}
+
+/**
  * Analyse pasted style code (typically from the Fett263 style library). Splits off the leading comment header,
  * finds the runtime arguments the style reads, and checks the shape is something a preset slot can hold.
  */
@@ -239,19 +264,31 @@ export function analyzeStyleCode(input: string): StyleAnalysis {
     if (line) { headerLines.push(line[0].trim()); text = text.slice(line[0].length); continue; }
     break;
   }
-  text = text.trim().replace(/,\s*$/, '');
+  // A comment after the code (`...>() // my favourite`, `...>() /* end */`, either side of a trailing comma) is cut off
+  // the stored expression (#32): the config writes a `,` straight after it on the same line, which a stored `//` would
+  // swallow. Comments inside the code stay, as each ends before the code goes on.
+  for (;;) {
+    text = text.trim();
+    const masked = maskComments(text);
+    const end = masked.trimEnd().length;
+    text = text.slice(0, end);
+    if (!text.endsWith(',')) break;
+    text = text.slice(0, -1);
+  }
+  // The checks read the code with its comments blanked out, so a `>` or `()` inside a comment does not count (#32).
+  const code = maskComments(text);
   if (!text) problems.push('No style code found.');
-  else if (!/^(StylePtr|StyleNormalPtr|StyleFirePtr|StyleRainbowPtr|StyleStrobePtr|StyleNormalPtrX|StyleRainbowPtrX|StyleFirePtrX|StyleStrobePtrX|Style\w+Ptr\w*)\s*</.test(text) && !/^&\w+/.test(text)) {
+  else if (!/^(StylePtr|StyleNormalPtr|StyleFirePtr|StyleRainbowPtr|StyleStrobePtr|StyleNormalPtrX|StyleRainbowPtrX|StyleFirePtrX|StyleStrobePtrX|Style\w+Ptr\w*)\s*</.test(code) && !/^&\w+/.test(code)) {
     problems.push('Expected a style expression such as StylePtr<...>() as the Fett263 library produces.');
   }
-  if (/^StylePtr</.test(text) && !/\)\s*$/.test(text)) problems.push('The expression should end with () after the closing >.');
-  const depth = (text.match(/</g) ?? []).length - (text.match(/>/g) ?? []).length;
+  if (/^StylePtr</.test(code) && !/\)\s*$/.test(code)) problems.push('The expression should end with () after the closing >.');
+  const depth = (code.match(/</g) ?? []).length - (code.match(/>/g) ?? []).length;
   if (depth !== 0) problems.push(`Unbalanced angle brackets (${depth > 0 ? 'missing >' : 'extra >'}).`);
-  if (/^\s*(#include|#define|#ifdef|using\s)/m.test(text)) problems.push('Only the style expression belongs here, not preprocessor lines or type aliases.');
+  if (/^\s*(#include|#define|#ifdef|using\s)/m.test(code)) problems.push('Only the style expression belongs here, not preprocessor lines or type aliases.');
 
-  const { args: argList, defaults } = scanStyleArgs(text);
+  const { args: argList, defaults } = scanStyleArgs(code);
   let preview = '#ffffff';
-  const base = /RgbArg\s*<\s*(?:BASE_COLOR_ARG|1)\s*,\s*([A-Za-z0-9_]+)(?:\s*<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>)?/.exec(text) ?? /\bRgb\s*<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>/.exec(text);
+  const base = /RgbArg\s*<\s*(?:BASE_COLOR_ARG|1)\s*,\s*([A-Za-z0-9_]+)(?:\s*<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>)?/.exec(code) ?? /\bRgb\s*<\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*>/.exec(code);
   if (base) {
     if (base.length === 5 && base[2] !== undefined) preview = rgb8ToHex(Number(base[2]), Number(base[3]), Number(base[4]));
     else if (base.length === 5 && NAMED_COLORS[base[1]]) preview = NAMED_COLORS[base[1]];

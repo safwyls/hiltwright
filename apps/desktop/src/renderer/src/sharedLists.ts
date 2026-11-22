@@ -28,10 +28,20 @@ export function sharedList<T>(fetch: () => Promise<T>): SharedList<T> {
   let value: T | null = null;
   let at = 0;
   let pending: Promise<T> | null = null;
+  // Each load is numbered, and only the newest may set the list and tell the pages (#33). An older, slower load that
+  // finishes after a refresh would otherwise put back the list from before the change (a font just added vanishing).
+  // A superseded load, however it ends, resolves to whatever the newest one gives.
+  let generation = 0;
+  let newest: Promise<T> | null = null;
   const listeners = new Set<(v: T) => void>();
   const start = () => {
-    const p = fetch().then((v) => { value = v; at = Date.now(); for (const fn of listeners) fn(v); return v; }).finally(() => { if (pending === p) pending = null; });
+    const mine = ++generation;
+    const p: Promise<T> = fetch().then(
+      (v) => { if (mine !== generation) return newest!; value = v; at = Date.now(); for (const fn of listeners) fn(v); return v; },
+      (err: unknown) => { if (mine !== generation) return newest!; throw err; },
+    ).finally(() => { if (pending === p) pending = null; });
     pending = p;
+    newest = p;
     return p;
   };
   return {
@@ -58,7 +68,8 @@ export function useSharedList<T>(list: SharedList<T>, empty: T): { value: T; rea
   useEffect(() => {
     let live = true;
     const off = list.subscribe((v) => { if (live) { setValue(v); setRead(true); setFailed(null); } });
-    void list.load().then((v) => { if (live) { setValue(v); setRead(true); } }, (err: unknown) => { if (live) { setRead(true); setFailed(String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')); } });
+    // The list as it stands when the load ends, not the load's own answer: a newer refresh may have landed since (#33).
+    void list.load().then((v) => { if (live) { setValue(list.value() ?? v); setRead(true); } }, (err: unknown) => { if (live) { setRead(true); setFailed(String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')); } });
     return () => { live = false; off(); };
   }, [list]);
   return { value, read, failed };

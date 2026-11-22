@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIBRARY_LOOKS, LOOK_FX, STARTER_LOOKS, analyzeStyleCode, creditOf, creditWords, pastedAuthor, withOrigin, lookFingerprint, scanStyleArgs, colorWordToHex, formatStyleArgs, generateConfig, hexToColorWord, layoutStyleCode, lookAtSlot, lookSlots, parseStyleArgs, validateModel, type LookDef, type SaberConfigModel } from '../src';
+import { LIBRARY_LOOKS, LOOK_FX, STARTER_LOOKS, analyzeStyleCode, creditOf, creditWords, pastedAuthor, withOrigin, lookFingerprint, scanStyleArgs, colorWordToHex, formatStyleArgs, generateConfig, hexToColorWord, layoutStyleCode, lookAtSlot, lookProblems, lookSlots, parseStyleArgs, validateModel, type LookDef, type SaberConfigModel } from '../src';
 
 const FETT263 = `// Hiltwright test look (header laid out like a library block)
 // Copyright 2026 Hiltwright contributors
@@ -28,6 +28,38 @@ describe('analyzeStyleCode', () => {
     expect(analyzeStyleCode('#define NUM_BLADES 1').ok).toBe(false);
     expect(analyzeStyleCode('StylePtr<Layers<Red>>').problems.join(' ')).toMatch(/end with \(\)/);
     expect(analyzeStyleCode('StylePtr<Layers<Red>()').problems.join(' ')).toMatch(/Unbalanced/);
+  });
+  it('accepts a comment inside the code and keeps it (#32)', () => {
+    const a = analyzeStyleCode('StylePtr<Layers<Red, /* a > b */ White>>()');
+    expect(a.problems).toEqual([]);
+    expect(a.expression).toBe('StylePtr<Layers<Red, /* a > b */ White>>()');
+    const lines = analyzeStyleCode('StylePtr<Layers<Red, // the base\n  White>>()');
+    expect(lines.problems).toEqual([]);
+    expect(lines.expression).toContain('// the base\n');
+    // A commented-out argument is not offered as a live option.
+    expect(analyzeStyleCode('StylePtr<Layers<Red /* RgbArg<BASE_COLOR_ARG,Red> */>>()').args).toEqual([]);
+  });
+  it('accepts a comment after the code and leaves it out of the stored expression (#32)', () => {
+    for (const tail of [' // my favourite', ' /* end */', ', // my favourite', ' /* a */ ,', ', /* a */ // b\n']) {
+      const a = analyzeStyleCode(`StylePtr<Layers<Red,White>>()${tail}`);
+      expect(a.problems, tail).toEqual([]);
+      expect(a.expression, tail).toBe('StylePtr<Layers<Red,White>>()');
+    }
+    // A // inside a string is not a comment.
+    expect(analyzeStyleCode('StylePtr<Layers<Red,White>>("http://x")').expression).toBe('StylePtr<Layers<Red,White>>("http://x")');
+  });
+  it('stores a pasted style with a trailing comment so the config still compiles (#32)', () => {
+    const a = analyzeStyleCode('StylePtr<Layers<Red, /* inner */ White>>() // my favourite');
+    const look: LookDef = { ...a, id: 'fav', name: 'Fav', source: 'pasted', by: 'Hiltwright', code: a.expression, roles: ['main'], description: '' };
+    expect(lookProblems(look)).toEqual([]);
+    const model: SaberConfigModel = {
+      name: 'hw_test', board: 'V2', boardFrom: 'owner', buttons: 2, prop: 'fett263',
+      blades: [{ id: 'main', role: 'main', type: 'pixel', pixels: 132, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2'] } }],
+      presets: [{ font: 'A', track: '', name: 'Fav', looks: ['fav'] }],
+      looks: [look],
+    };
+    const line = generateConfig(model).text.split('\n').find((l) => l.includes('StylePtr<Layers<Red'))!;
+    expect(line.trim()).toBe('/* Fav */ StylePtr<Layers<Red, /* inner */ White>>(),');
   });
   it('reads numeric argument slots and named colours', () => {
     const a = analyzeStyleCode('StylePtr<InOutHelper<RgbArg<1, DeepSkyBlue>, IntArg<5, 300>, IntArg<26, 800>>>()');

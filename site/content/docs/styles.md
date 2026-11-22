@@ -97,6 +97,8 @@ With no saber yet, the page says: "No saber yet: start one in the Armory, and st
 
 Hiltwright checks the code as you paste. It stops you, with a message, if there is no code, if it does not start like a style such as `StylePtr<...>()`, if the angle brackets do not balance, or if it contains lines like `#include` or `#define` that do not belong in a single style. When the code passes, the page says "Looks like a style" and lists the colors and options you will be able to change live. It also says whether it found a header.
 
+Comments are fine anywhere in the code. The checks skip them, so a `>` inside a comment does not count. A comment inside the style is kept. A comment after the last `()` is left out when the style is saved, because the configuration puts a comma straight after the style.
+
 > **Note:** The comment header, with its copyright and author, stays with the style and goes into your saber's configuration. Hiltwright never redistributes the library itself.
 
 A style you paste is credited to the person you name. You can fix the name later with **Edit** beside the credit, and add a logo or link for them. See [Contributors](contributors.html).
