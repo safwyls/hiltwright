@@ -1,7 +1,7 @@
 // board-connection 3.3 and 3.14 (baseline audit), on the rules useBoard uses.
 
 import { describe, expect, it } from 'vitest';
-import { NOT_MADE_AFTER_PAUSE, DISCONNECTED_DURING, NO_SD_CARD, connectGate, createRecovery, deleteShown, duplicateShown, moveShown, parseSdAccess, readBattery, runOperation, storedLayout, sdFailureIn, serialQueue, type OpDeps, type SaveState } from '../src/renderer/src/boardOps';
+import { NOT_MADE_AFTER_PAUSE, DISCONNECTED_DURING, NO_SD_CARD, connectGate, createRecovery, deleteShown, duplicateShown, moveShown, parseSdAccess, readBattery, runOperation, storedLayout, sdFailureIn, serialQueue, withNewSnapshot, type OpDeps, type SaveState } from '../src/renderer/src/boardOps';
 import type { PresetRecord } from '@hiltwright/core';
 
 const later = () => { let done!: () => void; const p = new Promise<void>((r) => { done = r; }); return { p, done }; };
@@ -299,5 +299,15 @@ describe('the shared card (card-safety D1, D2)', () => {
   it('with nothing to refuse, the operation runs as before', async () => {
     const d: OpDeps<{ name: string }> = { client: () => ({ name: 'c' }), setBusy: () => undefined, setSave: () => undefined, log: () => undefined, snapshot: async () => undefined, refuse: () => null };
     expect(await runOperation(d, 'Select preset 2', async () => ({ ok: true }), false)).toBe(true);
+  });
+});
+
+describe('History takes a snapshot just saved without reading the list again (issue #23)', () => {
+  const meta = (file: string) => ({ file, at: '', label: 'Connected', presets: 1 });
+  it('a new snapshot goes on top', () => {
+    expect(withNewSnapshot([meta('b'), meta('a')], meta('c')).map((m) => m.file)).toEqual(['c', 'b', 'a']);
+  });
+  it('the newest one handed back again (nothing changed since) is not shown twice', () => {
+    expect(withNewSnapshot([meta('b'), meta('a')], meta('b')).map((m) => m.file)).toEqual(['b', 'a']);
   });
 });

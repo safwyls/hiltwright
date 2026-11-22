@@ -2,10 +2,10 @@
 // itself loads the file (with its # header and no installed= line) needs a board: hardware-verification-v2 (BST-5).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { parsePresetsIni, planRestore } from '@hiltwright/core';
+import { emitPresetsIni, parsePresetsIni, planRestore } from '@hiltwright/core';
 import { Snapshots } from '../src/main/snapshots';
 
 let dir = '';
@@ -39,5 +39,89 @@ describe('snapshots', () => {
     expect(planRestore(saved, presets).same).toBe(true);
     const now = [{ ...presets[1], font: 'Other;common' }, presets[0]];
     expect(planRestore(saved, now).single).toMatchObject({ at: 0, snapshotAt: 1, patch: { font: 'Valkyrie;common' } });
+  });
+});
+
+describe('snapshots stay cheap as they pile up (issue #23)', () => {
+  const id = 'ea8dbea42e78';
+  const folder = () => join(dir, 'sabers', id, 'snapshots');
+  /** A list that differs from every other one numbered differently. */
+  const version = (n: number) => [{ ...presets[0], name: `Version ${n}` }];
+  const files = () => readdirSync(folder()).sort();
+
+  it('a new snapshot carries its preset count in its header, and a list reads only the header', async () => {
+    const snaps = new Snapshots(dir);
+    const meta = await snaps.save(id, 'Connected', presets);
+    const path = join(folder(), meta.file);
+    expect(readFileSync(path, 'utf8').split('\n')[3]).toBe('# presets=2');
+    // A list from a fresh start trusts the header: a count that disagrees with the body shows it was not parsed.
+    writeFileSync(path, readFileSync(path, 'utf8').replace('# presets=2', '# presets=7'));
+    expect((await new Snapshots(dir).list(id))[0].presets).toBe(7);
+  });
+
+  it('a snapshot saved before the count was in the header is still counted, by reading it', async () => {
+    mkdirSync(folder(), { recursive: true });
+    const old = `# hiltwright snapshot\n# label=Before: Rename\n# at=2026-09-01T10:00:00.000Z\n${emitPresetsIni({ installed: null, presets, terminated: true })}`;
+    writeFileSync(join(folder(), '2026-09-01T10-00-00-000Z-before-rename.ini'), old);
+    expect(await new Snapshots(dir).list(id)).toEqual([{ file: '2026-09-01T10-00-00-000Z-before-rename.ini', at: '2026-09-01T10:00:00.000Z', label: 'Before: Rename', presets: 2 }]);
+  });
+
+  it('a list notices files added and removed by hand', async () => {
+    const snaps = new Snapshots(dir);
+    const a = await snaps.save(id, 'Connected', version(1));
+    vi.setSystemTime(new Date('2026-09-25T20:01:00.000Z'));
+    const b = await snaps.save(id, 'Before: Rename', version(2));
+    expect((await snaps.list(id)).map((m) => m.file)).toEqual([b.file, a.file]);
+    rmSync(join(folder(), b.file));
+    expect((await snaps.list(id)).map((m) => m.file)).toEqual([a.file]);
+  });
+
+  it('a routine snapshot that matches the newest one is not saved again; one before an install always is', async () => {
+    const snaps = new Snapshots(dir);
+    const first = await snaps.save(id, 'Connected', presets);
+    vi.setSystemTime(new Date('2026-09-25T20:01:00.000Z'));
+    expect(await snaps.save(id, 'Connected', presets)).toEqual(first);
+    expect(await snaps.save(id, 'Before: Rename preset', presets)).toEqual(first);
+    // From a fresh start too, where the newest one is read back to compare.
+    expect(await new Snapshots(dir).save(id, 'Connected', presets)).toEqual(first);
+    expect(files()).toEqual([first.file]);
+    const install = await snaps.save(id, 'Before install with staged presets', presets);
+    expect(install.file).not.toBe(first.file);
+    vi.setSystemTime(new Date('2026-09-25T20:02:00.000Z'));
+    const changed = await snaps.save(id, 'Connected', version(9));
+    expect(files()).toEqual([first.file, install.file, changed.file].sort());
+  });
+
+  it('routine snapshots beyond the newest few are thinned to one a day; restore, install and card ones are never removed', async () => {
+    const snaps = new Snapshots(dir, 3);
+    const saved: { file: string; label: string }[] = [];
+    let n = 0;
+    const at = (day: number, hour: number, label: string) => {
+      vi.setSystemTime(new Date(`2026-09-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:00:00.000Z`));
+      return snaps.save(id, label, version(++n)).then((m) => { saved.push(m); return m; });
+    };
+    // Day 1: three routine snapshots and the important ones; day 2: two routine; day 3: four routine.
+    await at(1, 8, 'Connected');
+    await at(1, 9, 'Before: Rename');
+    await at(1, 10, 'Before: Restore "Connected"');
+    await at(1, 11, 'Before install with staged presets');
+    await at(1, 12, 'Card presets, before the card was prepared');
+    await at(1, 13, 'Before: Delete preset');
+    await at(2, 8, 'Connected');
+    await at(2, 9, 'Before: Font');
+    for (let h = 8; h < 12; h++) await at(3, h, h === 8 ? 'Connected' : 'Before: Colour');
+    const left = (await snaps.list(id)).map((m) => m.label + ' ' + m.at.slice(0, 13));
+    expect(left).toEqual([
+      // The newest three routine snapshots, all from day 3.
+      'Before: Colour 2026-09-03T11', 'Before: Colour 2026-09-03T10', 'Before: Colour 2026-09-03T09',
+      // Then the newest of each older day.
+      'Before: Font 2026-09-02T09',
+      'Before: Delete preset 2026-09-01T13',
+      // And every snapshot that is not routine.
+      'Card presets, before the card was prepared 2026-09-01T12',
+      'Before install with staged presets 2026-09-01T11',
+      'Before: Restore "Connected" 2026-09-01T10',
+    ]);
+    expect(files()).toHaveLength(left.length);
   });
 });

@@ -36,7 +36,9 @@ The **Try it** tab has controls for trying the saber: ignite, retract and the ef
 
 ## History
 
-The **History** tab lists snapshots. A snapshot of the saber's presets is kept before every change written to it. The newest entry says **Undo**. Older ones say **Restore**.
+The **History** tab lists snapshots. A snapshot of the saber's presets is kept when it connects and before every change written to it. The newest entry says **Undo**. Older ones say **Restore**.
+
+A snapshot that would be the same as the newest one is not kept again. Nothing is kept on connect when the saber cannot read its card, because it then shows the presets built into its firmware, not its own. Each saber keeps its newest 200 of these everyday snapshots. Older ones are thinned to one a day. Snapshots taken before a restore, an install, or the card being prepared are always kept.
 
 Pressing it shows what a restore would change before anything is sent. You may be offered:
 

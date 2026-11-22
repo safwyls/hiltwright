@@ -3,10 +3,18 @@
 
 import { NO_SD_CARD, parseBattery, parseBatteryVoltage, sdFailureIn, wasRejected } from '@hiltwright/core';
 import type { PresetRecord, SendOptions } from '@hiltwright/core';
-import type { SaberIdentity } from '../../shared/api';
+import type { SaberIdentity, SnapshotMeta } from '../../shared/api';
 
 /** Whether the saber said it cannot read its SD card (preset-editor-fixes D6); the rule lives with `editCurrentPreset`. */
 export { NO_SD_CARD, sdFailureIn };
+
+/**
+ * History with a snapshot just saved at the top (issue #23). Main hands back the newest one when nothing changed since
+ * it, so a snapshot already listed is moved up, never shown twice.
+ */
+export function withNewSnapshot(list: SnapshotMeta[], meta: SnapshotMeta): SnapshotMeta[] {
+  return [meta, ...list.filter((m) => m.file !== meta.file)];
+}
 
 /**
  * One connection attempt at a time. After a reflash, the install flow and the Web Serial 'connect' event both try to

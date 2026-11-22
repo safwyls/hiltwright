@@ -12,7 +12,7 @@ import { openFailureText } from '../../shared/openFailure';
 import { PROFFIE_FILTER, WebSerialTransport, describePort, grantedProffiePorts } from './serial';
 import { setConnectionSnapshot } from './support';
 import { assertMaySend, holdConnect, operationRefusal, tourLocked } from './tourLock';
-import { connectGate, createRecovery, deleteShown, duplicateShown, moveShown, parseSdAccess, readBattery, runOperation, sdFailureIn, sendOptionsFor, serialQueue, storedLayout, type SaveState } from './boardOps';
+import { connectGate, createRecovery, deleteShown, duplicateShown, moveShown, parseSdAccess, readBattery, runOperation, sdFailureIn, sendOptionsFor, serialQueue, storedLayout, withNewSnapshot, type SaveState } from './boardOps';
 
 export interface BoardInfo {
   version: VersionInfo | null;
@@ -123,9 +123,25 @@ export function useBoard() {
     } catch (err) { console.log(`[library] list failed: ${String(err)}`); } finally { setLibraryLoaded(true); }
   }, []);
 
+  // Only the newest list asked for is shown: one asked for before a snapshot was added would hide it.
+  const listTurn = useRef(0);
   const refreshSnapshots = useCallback(async (saberId: string) => {
-    try { setSnapshots(await api().snapshots.list(saberId)); } catch (err) { console.log(`[snapshots] list failed: ${String(err)}`); }
+    const turn = ++listTurn.current;
+    try {
+      const list = await api().snapshots.list(saberId);
+      if (turn === listTurn.current) setSnapshots(list);
+    } catch (err) { console.log(`[snapshots] list failed: ${String(err)}`); }
   }, []);
+  /**
+   * A snapshot just saved goes to the top of History at once, and the list is read again in the background (it may have
+   * dropped old routine ones). Nothing waits for that read: every live edit used to, before its command was sent (issue #23).
+   */
+  const showSnapshot = useCallback((saberId: string, meta: SnapshotMeta) => {
+    if (saberRef.current?.id !== saberId) return;
+    listTurn.current++;
+    setSnapshots((list) => withNewSnapshot(list, meta));
+    void refreshSnapshots(saberId);
+  }, [refreshSnapshots]);
   /** A snapshot saved outside this hook (the card trip, a flash): the History list shows it while that saber is the one plugged in. */
   const snapshotSaved = useCallback(async (saberId: string) => {
     if (saberRef.current?.id === saberId) await refreshSnapshots(saberId);
@@ -314,7 +330,9 @@ export function useBoard() {
       }
       // The saber wanted has been reached and read: every board may be reached again.
       if (wanted.current) { wanted.current = null; void api().usb.wantSerial(null); }
-      await api().snapshots.save(rec.id, 'Connected', next.presets);
+      // A saber that cannot read its card lists the presets built into its firmware, not its own: no snapshot of those
+      // (issue #23). Main skips one that matches the newest snapshot.
+      if (!next.sdMissing) await api().snapshots.save(rec.id, 'Connected', next.presets);
       await refreshSnapshots(rec.id);
       await refreshLibrary();
     } catch (err) {
@@ -502,8 +520,8 @@ export function useBoard() {
     const i = infoRef.current;
     const s = saberRef.current;
     if (!i || !s) return;
-    try { await api().snapshots.save(s.id, label, i.presets); await refreshSnapshots(s.id); } catch (err) { console.log(`[snapshots] save failed: ${String(err)}`); }
-  }, [refreshSnapshots]);
+    try { showSnapshot(s.id, await api().snapshots.save(s.id, label, i.presets)); } catch (err) { console.log(`[snapshots] save failed: ${String(err)}`); }
+  }, [showSnapshot]);
 
   /**
    * The saber's presets as just confirmed become its presets as last read, so a rename or font change made live is
