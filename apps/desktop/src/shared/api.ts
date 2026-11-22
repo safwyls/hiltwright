@@ -224,8 +224,13 @@ export interface ToolchainStatus {
   pathTooLong: boolean;
   /** What is installed, read back: arduino-cli's version, the board support's version folders, the ProffieOS source. */
   versions: { cli: string | null; core: string | null; proffieOS: string | null };
-  /** Windows: standard users other than the owner can change the folder. Null when it does not exist or is unknown. */
+  /**
+   * Windows: the folder fails the ownership check (#20), so nothing in it is run: another account owns it or can change
+   * it, or its permissions could not be read. Null when it does not exist.
+   */
   open: boolean | null;
+  /** Why the folder is open: another account owns it, other accounts can change it, or the check could not run. */
+  openWhy?: 'owner' | 'writers' | 'unknown' | null;
 }
 
 export interface BuildResult {

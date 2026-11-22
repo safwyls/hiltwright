@@ -6,10 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readdir, rename, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CORE_VERSION, PROFFIEOS_SHA256, cancelSetup, download, folderOpenToOthers, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, type ToolchainStatus, type ToolchainSys } from '../src/main/toolchain';
+import { CORE_VERSION, PROFFIEOS_SHA256, cancelSetup, download, ensureToolchainRoot, folderOpenToOthers, folderTrust, foreignEntries, installToolchain, judgeFolderAcl, lockFolder, parseForeignCount, pickToolchainRoot, plannedToolchainRoot, setupOnce, toolchainPaths, toolchainStatus, type FolderTrust, type ToolchainStatus, type ToolchainSys } from '../src/main/toolchain';
 import { toolchainBlockers } from '../src/shared/toolchainChecks';
 
 const status = (root: string, over: Partial<ToolchainStatus> = {}): ToolchainStatus => ({
@@ -180,6 +180,77 @@ describe('a pinned, checked toolchain', () => {
   });
 });
 
+// #20: who may own the toolchain folder or change it, judged from its permissions as folderTrust's script prints them.
+describe('the toolchain folder ownership check', () => {
+  const ME = 'S-1-5-21-1111111111-2222222222-3333333333-1001';
+  const OTHER = 'S-1-5-21-1111111111-2222222222-3333333333-1002';
+  const FULL = 2032127;
+  const READ_RUN = 1179817;
+  const MODIFY = 1245631;
+  const locked = [`me ${ME}`, `owner ${ME}`, `ace Allow S-1-5-18 ${FULL}`, `ace Allow S-1-5-32-544 ${FULL}`, `ace Allow ${ME} ${FULL}`, `ace Allow S-1-5-32-545 ${READ_RUN}`];
+
+  it('a folder locked as Hiltwright locks it passes, owned by this account, Administrators or SYSTEM', () => {
+    expect(judgeFolderAcl(locked.join('\r\n'))).toEqual({ trusted: true, foreignOwner: false, owner: ME, writers: [] });
+    for (const owner of ['S-1-5-32-544', 'S-1-5-18']) expect(judgeFolderAcl([locked[0], `owner ${owner}`, ...locked.slice(2)].join('\n'))?.trusted).toBe(true);
+  });
+
+  it('a folder another account owns fails, even when no one else holds a right to change it', () => {
+    // The attack in #20: another account makes the folder, owns it, and removes everyone else's write right.
+    const t = judgeFolderAcl([`me ${ME}`, `owner ${OTHER}`, `ace Allow ${OTHER} ${FULL}`, `ace Allow S-1-5-32-545 ${READ_RUN}`].join('\n'));
+    expect(t).toMatchObject({ trusted: false, foreignOwner: true, owner: OTHER });
+  });
+
+  it('any other account with a right to change it fails: an allow-list, not only Users and Everyone', () => {
+    const t = judgeFolderAcl([...locked, `ace Allow ${OTHER} ${MODIFY}`].join('\n'));
+    expect(t).toMatchObject({ trusted: false, foreignOwner: false, writers: [OTHER] });
+    // Each right alone is enough: write, append (create folders), delete, change permissions, take ownership, generic write.
+    for (const right of [0x2, 0x4, 0x10000, 0x40000, 0x80000, 0x40000000]) expect(judgeFolderAcl([...locked, `ace Allow ${OTHER} ${right}`].join('\n'))?.trusted).toBe(false);
+  });
+
+  it('the default %ProgramData% permissions, where Users can create files, fail', () => {
+    const programData = [`me ${ME}`, `owner ${ME}`, `ace Allow S-1-5-18 ${FULL}`, `ace Allow S-1-5-32-544 ${FULL}`, 'ace Allow S-1-3-0 268435456', `ace Allow S-1-5-32-545 ${READ_RUN}`, 'ace Allow S-1-5-32-545 278'];
+    expect(judgeFolderAcl(programData.join('\n'))).toMatchObject({ trusted: false, writers: ['S-1-5-32-545'] });
+  });
+
+  it('read rights, deny entries and CREATOR OWNER do not count as another account changing it', () => {
+    const t = judgeFolderAcl([...locked, `ace Allow ${OTHER} ${READ_RUN}`, `ace Allow ${OTHER} -2147483648`, `ace Deny ${OTHER} ${FULL}`, 'ace Allow S-1-3-0 268435456'].join('\n'));
+    expect(t?.trusted).toBe(true);
+  });
+
+  it('output that is not the check (an error, or no owner) is not judged', () => {
+    expect(judgeFolderAcl('Exception calling "GetAccessControl" with "1" argument(s): "Access to the path is denied."')).toBeNull();
+    expect(judgeFolderAcl(locked.filter((l) => !l.startsWith('owner')).join('\n'))).toBeNull();
+    expect(judgeFolderAcl('')).toBeNull();
+    expect(parseForeignCount('foreign 0')).toBe(0);
+    expect(parseForeignCount('foreign 12\r\n')).toBe(12);
+    expect(parseForeignCount('Exception: denied')).toBeNull();
+  });
+});
+
+describe('choosing the toolchain folder (#20)', () => {
+  const own = 'C:\\Users\\al\\AppData\\Local\\Hiltwright\\tc';
+  const pd = 'C:\\ProgramData\\Hiltwright';
+  const sd = 'C:\\Hiltwright';
+  const pick = (c: { perUser: string | null }, installed: string[], trusted: string[] = []) => pickToolchainRoot({ perUser: c.perUser, shared: [pd, sd], fallback: 'U:\\data\\toolchain' }, { installed: (p) => installed.includes(p), parentExists: () => true, trusted: (p) => trusted.includes(p) });
+
+  it("this account's own folder comes first when it fits", () => {
+    expect(pick({ perUser: own }, [])).toBe(own);
+    expect(pick({ perUser: own }, [own, pd], [pd])).toBe(own);
+  });
+
+  it('an existing shared install keeps working when it passes the check, and is passed over when it fails', () => {
+    expect(pick({ perUser: own }, [pd], [pd])).toBe(pd);
+    expect(pick({ perUser: own }, [pd])).toBe(own);
+    expect(pick({ perUser: own }, [pd, sd], [sd])).toBe(sd);
+  });
+
+  it("with no room for this account's own folder, a shared one is used, and one that fails the check shows Repair", () => {
+    expect(pick({ perUser: null }, [])).toBe(pd);
+    expect(pick({ perUser: null }, [pd])).toBe(pd);
+    expect(pick({ perUser: null }, [sd], [])).toBe(sd);
+  });
+});
+
 describe.skipIf(process.platform !== 'win32')('the toolchain folder lock (Windows)', () => {
   it('a folder standard users can write is reported open, and locking it leaves it changeable only by this account and administrators', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'hw-lock-'));
@@ -188,9 +259,67 @@ describe.skipIf(process.platform !== 'win32')('the toolchain folder lock (Window
     const r = await lockFolder(dir, false);
     expect(r).toEqual({ ok: true, text: 'Locked.' });
     expect(await folderOpenToOthers(dir)).toBe(false);
-    // This account can still write in it.
+    // This account can still write in it, and owns it (#20).
     await writeFile(join(dir, 'still-mine.txt'), 'ok');
     const acl = execFileSync('icacls', [dir]).toString();
     expect(acl).not.toMatch(/\(I\)/); // nothing inherited any more
+    expect(await folderTrust(dir)).toMatchObject({ trusted: true, foreignOwner: false, writers: [] });
+  });
+
+  it('locking a folder that holds files also gives them to this account and makes them follow the folder', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'hw-lock-'));
+    await mkdir(join(dir, 'arduino-cli'));
+    await writeFile(join(dir, 'arduino-cli', 'a.txt'), 'x');
+    execFileSync('icacls', [join(dir, 'arduino-cli', 'a.txt'), '/grant', '*S-1-5-32-545:M']);
+    expect(await lockFolder(dir, false)).toEqual({ ok: true, text: 'Locked.' });
+    const acl = execFileSync('icacls', [join(dir, 'arduino-cli', 'a.txt')]).toString();
+    expect(acl).not.toMatch(/BUILTIN\\Users:\(M\)|S-1-5-32-545:\(M\)/); // the file's own grant is gone
+    expect(await foreignEntries(dir)).toBe(0);
+  });
+
+  it('nothing is run from a folder that fails the check, and the build and flasher refuse it, until it is locked', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'hw-trust-'));
+    // A stand-in arduino-cli: Node itself, which runs `marker.cjs` first through NODE_OPTIONS, so a run leaves a file.
+    await mkdir(join(root, 'arduino-cli'));
+    await copyFile(process.execPath, join(root, 'arduino-cli', 'arduino-cli.exe'));
+    const marker = join(root, 'ran.txt');
+    const hook = join(tmpdir(), `hw-hook-${process.pid}.cjs`);
+    await writeFile(hook, `require('fs').writeFileSync(${JSON.stringify(marker)}, 'ran');`);
+    const was = process.env.NODE_OPTIONS;
+    try {
+      process.env.NODE_OPTIONS = `--require ${JSON.stringify(hook)}`;
+      execFileSync('icacls', [root, '/grant', '*S-1-5-32-545:(OI)(CI)M']);
+      const st = await toolchainStatus(root);
+      expect(st).toMatchObject({ open: true, openWhy: 'writers', ready: false, cliVersion: null });
+      expect(existsSync(marker)).toBe(false);
+      expect(() => toolchainPaths(root)).toThrow(/will not run the compiler or the flasher/);
+      await expect(installToolchain(root, () => undefined)).rejects.toThrow(/another Windows account owns the folder or can change it/);
+      expect((await lockFolder(root, false)).ok).toBe(true);
+      expect(await toolchainStatus(root)).toMatchObject({ open: false, openWhy: null });
+      expect(existsSync(marker)).toBe(true); // checked and closed: now it runs
+      expect(toolchainPaths(root).root).toBe(root);
+    } finally {
+      if (was === undefined) delete process.env.NODE_OPTIONS; else process.env.NODE_OPTIONS = was;
+    }
+  });
+
+  it('setup passes over a folder that fails the check and already holds files, and uses a new one that passes', async () => {
+    const base = await mkdtemp(join(tmpdir(), 'hw-ens-'));
+    const was = { ProgramData: process.env.ProgramData, LOCALAPPDATA: process.env.LOCALAPPDATA, SystemDrive: process.env.SystemDrive };
+    try {
+      // Every real candidate too long, so only the planned folder is tried.
+      const long = join(base, 'x'.repeat(50));
+      process.env.ProgramData = long; process.env.LOCALAPPDATA = long; process.env.SystemDrive = long;
+      const taken = join(base, 'taken');
+      await mkdir(taken);
+      await writeFile(join(taken, 'arduino-cli.exe'), 'planted');
+      const no = async (): Promise<FolderTrust> => ({ trusted: false, foreignOwner: true, owner: 'S-1-5-21-9', writers: [] });
+      const lines: string[] = [];
+      await expect(ensureToolchainRoot(taken, join(base, 'userData'), (l) => lines.push(l), no)).rejects.toThrow('could not find a toolchain folder that only administrators and your account can change');
+      expect(lines.join('\n')).toMatch(/not using .*taken/);
+      const fresh = join(base, 'fresh');
+      expect(await ensureToolchainRoot(fresh, join(base, 'userData'), () => undefined)).toBe(fresh);
+      expect(await folderTrust(fresh)).toMatchObject({ trusted: true });
+    } finally { Object.assign(process.env, was); }
   });
 });

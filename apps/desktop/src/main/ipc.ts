@@ -15,7 +15,7 @@ import { lookUpWanted, portHolders, proffieSerials } from './usb';
 import { activeWant, wantSerial } from './serialGate';
 import { readFile, rename, stat as statFile, writeFile } from 'node:fs/promises';
 import { checkFontDir, clearPresetsFiles, copyFont, findConfigFiles, listFonts, listTracks, lookForCards, mountedRoots, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
-import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
+import { cancelSetup, chooseToolchainRoot, ensureToolchainRoot, installToolchain, plannedToolchainRoot, repairToolchainFolder, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
 import { inspectVoicePack, installVoicePack } from './voicePackInstall';
 import { listChoices, readCatalogue, voicePackFile } from './voicePackCatalogue';
@@ -569,6 +569,8 @@ export function registerIpc(): void {
   // The toolchain wants a short path on Windows: GCC opens its headers 213 characters below the root and
   // CreateProcess fails past 260. The folder is chosen now but created only when the owner starts the setup.
   let toolchainRoot = process.env.HILTWRIGHT_TOOLCHAIN_DIR || plannedToolchainRoot(userData);
+  // A shared folder that already holds a toolchain is used only once its owner and permissions check out (#20).
+  const rootChosen = process.env.HILTWRIGHT_TOOLCHAIN_DIR ? Promise.resolve() : chooseToolchainRoot(userData).then((r) => { toolchainRoot = r; }, () => undefined);
   const emit = (job: JobEvent['job'], line: string) => {
     const ev: JobEvent = { job, line, at: Date.now() };
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send('job:event', ev);
@@ -579,17 +581,20 @@ export function registerIpc(): void {
     if (!m || typeof m !== 'object' || typeof m.name !== 'string' || !Array.isArray(m.blades) || !Array.isArray(m.presets)) throw new Error('Expected a saber model');
     return m;
   };
-  handle('toolchain:status', () => toolchainStatus(toolchainRoot));
+  handle('toolchain:status', async () => { await rootChosen; return toolchainStatus(toolchainRoot); });
   // One setup at a time: pressing Install again joins the running one. Cancel stops it between or during steps.
   handle('toolchain:install', () => setupOnce(async (signal) => {
     const onLine = (l: string) => emit('toolchain', l);
+    await rootChosen;
     if (!process.env.HILTWRIGHT_TOOLCHAIN_DIR) toolchainRoot = await ensureToolchainRoot(toolchainRoot, userData, onLine);
     return installToolchain(toolchainRoot, onLine, undefined, signal);
   }));
   handle('toolchain:cancel', () => cancelSetup());
-  // Lock a toolchain folder other users can change; asks Windows for approval when the folder belongs to administrators.
+  // Lock a toolchain folder another account owns or can change, and set its owner (#20); asks Windows for approval
+  // when the folder belongs to administrators or another account.
   handle('toolchain:repair', async () => {
-    const r = await lockFolder(toolchainRoot, true);
+    await rootChosen;
+    const r = await repairToolchainFolder(toolchainRoot);
     emit('toolchain', r.ok ? `locked ${toolchainRoot}` : `could not lock ${toolchainRoot}: ${r.text}`);
     return { ...r, status: await toolchainStatus(toolchainRoot) };
   });

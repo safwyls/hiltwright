@@ -4,8 +4,9 @@
 //
 // Every part is pinned (toolchain-integrity): arduino-cli and the ProffieOS source by SHA-256, checked before they are
 // unpacked; the board support by version. What is installed is read back, not assumed, and a toolchain that differs
-// from the pins is not ready. The machine-wide folder is created only when the owner starts the setup, and locked so
-// that only administrators and the owner can change what the compiler and flasher run.
+// from the pins is not ready. The folder is created only when the owner starts the setup, and locked so that only
+// administrators and the owner can change what the compiler and flasher run. Nothing is run from a folder another
+// Windows account owns or can change (#20).
 
 import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -61,9 +62,16 @@ export interface ToolchainStatus {
   freeBytes: number | null;
   /** Windows: the root is so deep that GCC's own tools would exceed the 260-character path limit. */
   pathTooLong: boolean;
-  /** Windows: standard users other than the owner can change the folder. Null when it does not exist or is unknown. */
+  /**
+   * Windows: the folder fails the ownership check (#20), so nothing in it is run: another account owns it or can change
+   * it, or its permissions could not be read. Null when it does not exist.
+   */
   open: boolean | null;
+  /** Why the folder is open: another account owns it, other accounts can change it, or the check could not run. */
+  openWhy?: OpenWhy | null;
 }
+
+export type OpenWhy = 'owner' | 'writers' | 'unknown';
 
 export { MAX_ROOT_LENGTH, INSTALL_DISK_BYTES, INSTALL_DISK_MARGIN } from '../shared/toolchainChecks';
 
@@ -75,51 +83,107 @@ export type Progress = (line: string) => void;
 const isWin = process.platform === 'win32';
 
 /**
- * Where the toolchain may live. On Windows, %ProgramData%\Hiltwright (25 characters) first: per-user folders are too
- * deep once the user name is added. Only candidates short enough for the compiler are offered.
+ * Where the toolchain may live. On Windows this account's own %LOCALAPPDATA%\Hiltwright\tc comes first, as no other
+ * account can plant files there (#20); it fits the compiler's path limit only for a short user name, so the shared
+ * %ProgramData%\Hiltwright (25 characters) and %SystemDrive%\Hiltwright follow. A shared folder is used only once its
+ * owner and permissions check out (folderTrust). Only candidates short enough for the compiler are offered.
  */
+export interface RootCandidates { perUser: string | null; shared: string[]; fallback: string }
+
+function rootCandidates(userData: string): RootCandidates {
+  const fallback = join(userData, 'toolchain');
+  if (!isWin) return { perUser: fallback, shared: [], fallback };
+  const fits = (c: string | null): c is string => !!c && c.length <= MAX_ROOT_LENGTH;
+  const own = process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'Hiltwright', 'tc') : null;
+  return {
+    perUser: fits(own) ? own : null,
+    shared: [
+      process.env.ProgramData ? join(process.env.ProgramData, 'Hiltwright') : null,
+      process.env.SystemDrive ? `${process.env.SystemDrive}\\Hiltwright` : null,
+    ].filter(fits),
+    fallback,
+  };
+}
+
 function candidateRoots(userData: string): string[] {
-  if (!isWin) return [join(userData, 'toolchain')];
-  return [
-    process.env.ProgramData ? join(process.env.ProgramData, 'Hiltwright') : null,
-    process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'Hiltwright', 'tc') : null,
-    process.env.SystemDrive ? `${process.env.SystemDrive}\\Hiltwright` : null,
-  ].filter((c): c is string => !!c && c.length <= MAX_ROOT_LENGTH);
+  const c = rootCandidates(userData);
+  return [...(c.perUser ? [c.perUser] : []), ...c.shared];
+}
+
+const holdsToolchain = (c: string) => existsSync(join(c, 'arduino-cli')) || existsSync(join(c, 'ProffieOS'));
+
+/**
+ * The choice of folder, given what is on disk (#20). This account's own folder when it already holds a toolchain;
+ * else a shared folder that holds one and passed the ownership check (existing installs keep working); else this
+ * account's own folder when it fits; else, as before, a shared folder: one holding a toolchain (which then shows
+ * Repair), or the first whose parent exists.
+ */
+export function pickToolchainRoot(c: RootCandidates, look: { installed: (p: string) => boolean; parentExists: (p: string) => boolean; trusted: (p: string) => boolean }): string {
+  if (c.perUser && look.installed(c.perUser)) return c.perUser;
+  const installed = c.shared.filter((s) => look.installed(s));
+  const ok = installed.find((s) => look.trusted(s));
+  if (ok) return ok;
+  if (c.perUser) return c.perUser;
+  return installed[0] ?? c.shared.find((s) => look.parentExists(s)) ?? c.shared[0] ?? c.fallback;
 }
 
 /**
- * The folder the toolchain is in, or will go into, chosen without creating anything: the first candidate that
- * already holds a toolchain, else the first whose parent exists. The folder is created by `ensureToolchainRoot`, when
- * the owner starts the setup.
+ * The folder the toolchain is in, or will go into, chosen without creating or checking anything: no shared folder
+ * counts as checked yet. `chooseToolchainRoot` makes the real choice, once the ownership check has run. The folder is
+ * created by `ensureToolchainRoot`, when the owner starts the setup.
  */
 export function plannedToolchainRoot(userData: string): string {
-  const all = candidateRoots(userData);
-  const installed = all.find((c) => existsSync(join(c, 'arduino-cli')) || existsSync(join(c, 'ProffieOS')));
-  return installed ?? all.find((c) => existsSync(dirname(c))) ?? all[0] ?? join(userData, 'toolchain');
+  return pickToolchainRoot(rootCandidates(userData), { installed: holdsToolchain, parentExists: (p) => existsSync(dirname(p)), trusted: () => false });
+}
+
+/** The folder to use: as `plannedToolchainRoot`, but a shared folder holding a toolchain counts when it passes folderTrust. */
+export async function chooseToolchainRoot(userData: string, trust: (root: string) => Promise<FolderTrust | null> = folderTrust): Promise<string> {
+  const c = rootCandidates(userData);
+  const ok = new Set<string>();
+  if (!(c.perUser && holdsToolchain(c.perUser))) {
+    for (const s of c.shared) if (holdsToolchain(s) && (await trust(s))?.trusted) ok.add(s);
+  }
+  return pickToolchainRoot(c, { installed: holdsToolchain, parentExists: (p) => existsSync(dirname(p)), trusted: (p) => ok.has(p) });
 }
 
 /**
- * Create the toolchain folder when the setup starts: the planned one, or the next candidate that can be created. A
- * folder created here is locked at once (lockFolder); an existing one is left as it is and flagged if open.
+ * Create the toolchain folder when the setup starts: the planned one, or the next candidate that can be used. A
+ * folder created here is locked at once (lockFolder). On Windows a folder is used only when it passes the ownership
+ * check (#20): an existing empty one that fails is locked first, and one that still fails, or that already holds
+ * files, is passed over (Repair deals with those).
  */
-export async function ensureToolchainRoot(planned: string, userData: string, onLine: Progress): Promise<string> {
+export async function ensureToolchainRoot(planned: string, userData: string, onLine: Progress, trust: (root: string) => Promise<FolderTrust | null> = folderTrust): Promise<string> {
   const order = [planned, ...candidateRoots(userData).filter((c) => c !== planned)];
   for (const c of order) {
-    if (await exists(c)) return c;
     try {
-      await mkdir(c, { recursive: true });
-      onLine(`created ${c}`);
-      if (isWin) {
-        const r = await lockFolder(c, false);
-        onLine(r.ok ? 'locked the toolchain folder: only administrators and this account can change it' : `could not lock the toolchain folder: ${r.text}`);
-      }
-      return c;
+      const existed = await exists(c);
+      if (!existed) { await mkdir(c, { recursive: true }); onLine(`created ${c}`); }
+      if (!isWin) return c;
+      if ((await trust(c))?.trusted) return c;
+      if (existed && (await readdir(c)).length) { onLine(`not using ${c}: another Windows account owns it or can change it, and it already holds files`); continue; }
+      const r = await lockFolder(c, false);
+      onLine(r.ok ? 'locked the toolchain folder: only administrators and this account can change it' : `could not lock the toolchain folder: ${r.text}`);
+      // Checked again after locking: a folder another account made in the meantime is still theirs.
+      if ((await trust(c))?.trusted) return c;
+      onLine(`not using ${c}: another Windows account owns it or can change it`);
     } catch (err) { onLine(`cannot use ${c}: ${String(err)}`); }
   }
-  throw new Error('Hiltwright could not create a toolchain folder: none of the places it can use could be written.');
+  throw new Error('Hiltwright could not find a toolchain folder that only administrators and your account can change. Choose Repair on the Compiler step; Windows may ask for approval.');
 }
 
+/**
+ * Folders whose last ownership check failed (#20). The build and the flasher reach the toolchain through
+ * toolchainPaths, so a folder in here refuses them too, not only the status check.
+ */
+const refused = new Set<string>();
+const refusedText = (root: string) => `Hiltwright will not run the compiler or the flasher from ${root}: another Windows account owns the folder or can change it. Choose Repair on the Compiler step first.`;
+
 export function toolchainPaths(root: string): ToolchainPaths {
+  if (refused.has(root)) throw new Error(refusedText(root));
+  return pathsIn(root);
+}
+
+function pathsIn(root: string): ToolchainPaths {
   return {
     root,
     cli: join(root, 'arduino-cli', isWin ? 'arduino-cli.exe' : 'arduino-cli'),
@@ -219,10 +283,19 @@ async function readStamp(osDir: string): Promise<{ tag: string; sha256: string }
 }
 
 export async function toolchainStatus(root: string): Promise<ToolchainStatus> {
-  const p = toolchainPaths(root);
+  const p = pathsIn(root);
+  // The ownership check comes first: nothing is run from a folder that fails it (#20).
+  let open: boolean | null = null;
+  let openWhy: OpenWhy | null = null;
+  if (isWin && (await exists(root))) {
+    const t = await folderTrust(root);
+    open = !t?.trusted;
+    openWhy = !t ? 'unknown' : t.foreignOwner ? 'owner' : t.writers.length ? 'writers' : null;
+    if (open) refused.add(root); else refused.delete(root);
+  }
   const cliPresent = await exists(p.cli);
   let cliVersion: string | null = null;
-  if (cliPresent) {
+  if (cliPresent && !open) {
     const r = await run(p.cli, ['version'], { env: cliEnv(p), timeoutMs: 10000 });
     cliVersion = /Version:\s*(\S+)/.exec(r.stdout)?.[1] ?? /(\d+\.\d+\.\d+)/.exec(r.stdout)?.[1] ?? null;
   }
@@ -237,11 +310,10 @@ export async function toolchainStatus(root: string): Promise<ToolchainStatus> {
   try { const probe = (await exists(root)) ? root : dirname(root); const f = await statfs(probe); freeBytes = Number(f.bavail) * Number(f.bsize); } catch { /* unknown */ }
   const pathTooLong = isWin && root.length > MAX_ROOT_LENGTH;
   const cli = cliPresent && cliVersion === CLI_VERSION;
-  const open = isWin && (await exists(root)) ? await folderOpenToOthers(root) : null;
   return {
     root, cli, cliVersion, core, gcc, dfuUtil, proffieOS, proffieOSVersion: proffieOS ? stamp!.tag : null,
     versions: { cli: cliVersion, core: cores.length ? cores.join(', ') : null, proffieOS: stamp ? stamp.tag : ino ? 'unknown (not from a checked download)' : null },
-    ready: cli && core && gcc && !!dfuUtil && proffieOS && !pathTooLong, freeBytes, pathTooLong, open,
+    ready: cli && core && gcc && !!dfuUtil && proffieOS && !pathTooLong && !open, freeBytes, pathTooLong, open, openWhy,
   };
 }
 
@@ -342,6 +414,7 @@ export async function installToolchain(root: string, onLine: Progress, sys: Tool
   await mkdir(root, { recursive: true });
   let status = await toolchainStatus(root);
   const blocked = toolchainBlockers(status);
+  if (blocked.untrusted) throw new Error(blocked.untrusted.error);
   if (blocked.pathTooLong) throw new Error(blocked.pathTooLong.error);
   if (blocked.lowSpace) throw new Error(blocked.lowSpace.error);
 
@@ -417,12 +490,32 @@ export function cancelSetup(): boolean {
 
 // ---- The folder's permissions (Windows) ----
 
+const SYSTEM = 'S-1-5-18';
+const ADMINS = 'S-1-5-32-544';
 const USERS = 'S-1-5-32-545';
+/**
+ * CREATOR OWNER and OWNER RIGHTS stand for whoever creates an item or owns it. Creating needs a right to write here,
+ * and the owner is checked on its own, so neither lets another account in by itself.
+ */
+const STANDS_FOR_OWNER = new Set(['S-1-3-0', 'S-1-3-4']);
+/**
+ * The rights that let an account change what is in a folder: write or append data (create files and folders), write
+ * attributes, delete, delete what is inside, change permissions, take ownership, and the generic all and write.
+ */
+const WRITE_RIGHTS = 0x2 | 0x4 | 0x10 | 0x40 | 0x100 | 0x10000 | 0x40000 | 0x80000 | 0x10000000 | 0x40000000;
 
 function powershell(script: string, timeoutMs = 20000): Promise<{ ok: boolean; out: string }> {
-  return new Promise((resolve) => execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: timeoutMs, windowsHide: true }, (err, stdout, stderr) => resolve({ ok: !err, out: `${stdout}${stderr}`.trim() })));
+  // Windows PowerShell gets its own module path. One inherited from PowerShell 7 makes it load PowerShell 7's modules,
+  // which fail there (a test run from a PowerShell 7 prompt could not read permissions).
+  const env = { ...process.env };
+  for (const k of Object.keys(env)) if (k.toLowerCase() === 'psmodulepath') delete env[k];
+  return new Promise((resolve) => execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: timeoutMs, windowsHide: true, env }, (err, stdout, stderr) => resolve({ ok: !err, out: `${stdout}${stderr}`.trim() })));
 }
 const psq = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+function icacls(args: string[], timeoutMs = 120000): Promise<{ ok: boolean; out: string }> {
+  return new Promise((resolve) => execFile('icacls', args, { windowsHide: true, timeout: timeoutMs }, (err, stdout, stderr) => resolve({ ok: !err, out: `${stdout}${stderr}`.trim() })));
+}
 
 /** The running Windows account's SID. */
 async function currentUserSid(): Promise<string> {
@@ -431,33 +524,152 @@ async function currentUserSid(): Promise<string> {
   return r.out;
 }
 
-/**
- * Whether standard users other than the folder's owner can change it: Users, Authenticated Users or Everyone holding
- * any right to write, create, delete or change permissions, on the folder or inherited by what is in it.
- */
-export async function folderOpenToOthers(root: string): Promise<boolean | null> {
-  const script = `$a = Get-Acl -LiteralPath ${psq(root)}; $who = 'S-1-5-32-545','S-1-5-11','S-1-1-0'; `
-    + `$w = [System.Security.AccessControl.FileSystemRights]'WriteData, AppendData, WriteExtendedAttributes, WriteAttributes, Delete, DeleteSubdirectoriesAndFiles, ChangePermissions, TakeOwnership'; `
-    + `$open = @($a.Access | Where-Object { $_.AccessControlType -eq 'Allow' -and ($who -contains $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value) -and (($_.FileSystemRights -band $w) -ne 0) }); `
-    + `if ($open.Count) { 'open' } else { 'closed' }`;
-  const r = await powershell(script);
-  return r.out === 'open' ? true : r.out === 'closed' ? false : null;
+/** What the ownership check found (#20). */
+export interface FolderTrust {
+  /** Hiltwright may run what is in the folder: the owner is this account, Administrators or SYSTEM, and no other account can change it. */
+  trusted: boolean;
+  /** The folder belongs to an account other than this one, Administrators and SYSTEM. */
+  foreignOwner: boolean;
+  owner: string;
+  /** Other accounts (SIDs) that can change the folder or what is in it. */
+  writers: string[];
 }
 
 /**
- * Lock the folder: administrators, SYSTEM and this account can change it; other users can read and run it. With
- * `elevate`, a folder this account may not re-permission (one an elevated run created) is locked through the Windows
- * approval prompt.
+ * Judge a folder from its permissions, as `folderTrust`'s script prints them: `me <sid>`, `owner <sid>`, then one
+ * `ace <Allow|Deny> <sid> <rights>` line per entry. An allow-list (#20): only this account, Administrators and SYSTEM
+ * may own the folder or hold a right to change it, on the folder or inherited by what is in it. Deny entries only take
+ * rights away, so they change nothing here. Null when the output is not that (the check failed).
+ */
+export function judgeFolderAcl(out: string): FolderTrust | null {
+  let me: string | null = null;
+  let owner: string | null = null;
+  const writers = new Set<string>();
+  for (const raw of out.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const who = /^(me|owner) (S-1-[\d-]+)$/.exec(line);
+    if (who) { if (who[1] === 'me') me = who[2]; else owner = who[2]; continue; }
+    const ace = /^ace (Allow|Deny) (S-1-[\d-]+) (-?\d+)$/.exec(line);
+    if (!ace) return null;
+    if (ace[1] === 'Allow' && (Number(ace[3]) & WRITE_RIGHTS) !== 0) writers.add(ace[2]);
+  }
+  if (!me || !owner) return null;
+  const allowed = new Set([me, ADMINS, SYSTEM]);
+  const others = [...writers].filter((s) => !allowed.has(s) && !STANDS_FOR_OWNER.has(s));
+  const foreignOwner = !allowed.has(owner);
+  return { trusted: !foreignOwner && !others.length, foreignOwner, owner, writers: others };
+}
+
+/**
+ * Read a folder's owner and permissions and judge them (judgeFolderAcl). Through .NET, not Get-Acl, so no PowerShell
+ * module has to load. Null when they could not be read. Off Windows every folder passes.
+ */
+export async function folderTrust(root: string): Promise<FolderTrust | null> {
+  if (!isWin) return { trusted: true, foreignOwner: false, owner: '', writers: [] };
+  if (tainted.has(root)) return { trusted: false, foreignOwner: true, owner: '', writers: [] };
+  const script = `$s = [System.Security.Principal.SecurityIdentifier]; $a = [System.IO.Directory]::GetAccessControl(${psq(root)}); `
+    + `'me ' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value; 'owner ' + $a.GetOwner($s).Value; `
+    + `foreach ($r in $a.GetAccessRules($true, $true, $s)) { 'ace ' + $r.AccessControlType + ' ' + $r.IdentityReference.Value + ' ' + [int]$r.FileSystemRights }`;
+  const r = await powershell(script);
+  return r.ok ? judgeFolderAcl(r.out) : null;
+}
+
+/** Whether accounts other than this one, Administrators and SYSTEM own the folder or can change it. Null when unknown. */
+export async function folderOpenToOthers(root: string): Promise<boolean | null> {
+  const t = await folderTrust(root);
+  return t ? !t.trusted : null;
+}
+
+/** `foreignEntries`' output: the number of items in the folder another account owns, or that could not be read. */
+export function parseForeignCount(out: string): number | null {
+  const m = /^foreign (\d+)$/m.exec(out.trim());
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * How many items below the folder belong to an account other than this one, Administrators and SYSTEM, or could not
+ * be read. Links are counted, not followed. Slow on a full toolchain, so only Repair runs it.
+ */
+export async function foreignEntries(root: string): Promise<number | null> {
+  const script = `$ok = @('${SYSTEM}', '${ADMINS}', [Security.Principal.WindowsIdentity]::GetCurrent().User.Value); $s = [System.Security.Principal.SecurityIdentifier]; `
+    + `$bad = 0; $todo = New-Object System.Collections.Stack; $todo.Push(${psq(`\\\\?\\${root}`)}); `
+    + `while ($todo.Count) { $d = $todo.Pop(); try { $items = [System.IO.Directory]::GetFileSystemEntries($d) } catch { $bad++; continue }; `
+    + `foreach ($e in $items) { try { $at = [System.IO.File]::GetAttributes($e); $dir = ($at -band [System.IO.FileAttributes]::Directory) -ne 0; `
+    + `$acl = if ($dir) { [System.IO.Directory]::GetAccessControl($e, 'Owner') } else { [System.IO.File]::GetAccessControl($e, 'Owner') }; `
+    + `if ($ok -notcontains $acl.GetOwner($s).Value) { $bad++ }; if ($dir -and -not ($at -band [System.IO.FileAttributes]::ReparsePoint)) { $todo.Push($e) } } catch { $bad++ } } }; `
+    + `'foreign ' + $bad`;
+  const r = await powershell(script, 10 * 60 * 1000);
+  return r.ok ? parseForeignCount(r.out) : null;
+}
+
+/**
+ * Lock the folder: administrators, SYSTEM and this account can change it; other users can read and run it. The owner
+ * is set too (#20), as an owner can always change a folder's permissions back: this account, or Administrators when
+ * Windows' approval was needed. What is inside is given to the same owner and made to follow the folder's permissions,
+ * as far as that can be done. With `elevate`, a folder this account may not re-permission (one an elevated run or
+ * another account created) is locked through the Windows approval prompt.
  */
 export async function lockFolder(root: string, elevate: boolean): Promise<{ ok: boolean; text: string }> {
   let sid: string;
   try { sid = await currentUserSid(); } catch (err) { return { ok: false, text: String(err) }; }
-  const args = [root, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F', `*${sid}:(OI)(CI)F`, `*${USERS}:(OI)(CI)RX`];
-  const plain = await new Promise<{ ok: boolean; out: string }>((resolve) => execFile('icacls', args, { windowsHide: true, timeout: 120000 }, (err, stdout, stderr) => resolve({ ok: !err, out: `${stdout}${stderr}`.trim() })));
-  if (plain.ok) return { ok: true, text: 'Locked.' };
+  const grant = [root, '/inheritance:r', '/grant:r', `*${SYSTEM}:(OI)(CI)F`, `*${ADMINS}:(OI)(CI)F`, `*${sid}:(OI)(CI)F`, `*${USERS}:(OI)(CI)RX`];
+  const inside = join(root, '*');
+  let plain = await icacls(grant);
+  if (plain.ok) plain = await icacls([root, '/setowner', `*${sid}`]);
+  if (plain.ok) {
+    if (await hasEntries(root)) {
+      await icacls([inside, '/setowner', `*${sid}`, '/T', '/C', '/Q'], 10 * 60 * 1000);
+      await icacls([inside, '/reset', '/T', '/C', '/Q'], 10 * 60 * 1000);
+    }
+    return { ok: true, text: 'Locked.' };
+  }
   if (!elevate) return { ok: false, text: plain.out };
-  const argList = args.map((a) => `'"${a.replace(/'/g, "''")}"'`).join(',');
-  const r = await powershell(`try { $p = Start-Process -FilePath icacls -ArgumentList @(${argList}) -Verb RunAs -Wait -PassThru -WindowStyle Hidden -ErrorAction Stop; exit $p.ExitCode } catch { Write-Output $_.Exception.Message; exit 1 }`, 10 * 60 * 1000);
+  // One approval for every step: a script for an elevated Windows PowerShell, passed encoded so no quoting is lost.
+  const script = [
+    `& icacls ${psq(root)} /setowner '*${ADMINS}' | Out-Null; if ($LASTEXITCODE) { exit $LASTEXITCODE }`,
+    `& icacls ${grant.map(psq).join(' ')} | Out-Null; if ($LASTEXITCODE) { exit $LASTEXITCODE }`,
+    `if ([System.IO.Directory]::GetFileSystemEntries(${psq(root)}).Length) { & icacls ${psq(inside)} /setowner '*${ADMINS}' /T /C /Q | Out-Null; & icacls ${psq(inside)} /reset /T /C /Q | Out-Null }`,
+    'exit 0',
+  ].join('\n');
+  const encoded = Buffer.from(script, 'utf16le').toString('base64');
+  const r = await powershell(`try { $p = Start-Process -FilePath powershell -ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','${encoded}' -Verb RunAs -Wait -PassThru -WindowStyle Hidden -ErrorAction Stop; exit $p.ExitCode } catch { Write-Output $_.Exception.Message; exit 1 }`, 10 * 60 * 1000);
   if (r.ok) return { ok: true, text: 'Locked.' };
   return { ok: false, text: /cancel/i.test(r.out) ? 'Windows asked for administrator approval and it was declined, so the folder was not changed.' : `The folder could not be locked: ${r.out.slice(0, 200)}` };
+}
+
+async function hasEntries(dir: string): Promise<boolean> {
+  try { return (await readdir(dir)).length > 0; } catch { return false; }
+}
+
+/**
+ * Folders Repair locked but could not empty of another account's files: refused for the rest of the session, as the
+ * folder itself would now pass the check.
+ */
+const tainted = new Set<string>();
+
+/**
+ * Repair (#20): lock the folder and set its owner. When another account owned the folder, or owns anything in it,
+ * what is there cannot be trusted: it is removed once the folder is locked, and the setup downloads the pinned parts
+ * again. A folder that was only open to others, with everything in it this account's or the administrators', keeps
+ * what is installed.
+ */
+export async function repairToolchainFolder(root: string): Promise<{ ok: boolean; text: string }> {
+  tainted.delete(root); // looked at afresh: the deep check below finds anything still left
+  const before = await folderTrust(root);
+  const foreign = before && !before.foreignOwner ? await foreignEntries(root) : 0;
+  if (!before || foreign === null) return { ok: false, text: 'Hiltwright could not read who owns the folder and what is in it, so it changed nothing.' };
+  const takeOver = before.foreignOwner || foreign > 0;
+  const r = await lockFolder(root, true);
+  if (!r.ok) return r;
+  if (!(await folderTrust(root))?.trusted) return { ok: false, text: 'The folder was locked, but another Windows account can still change it, so Hiltwright still will not use it.' };
+  if (!takeOver) return r;
+  try {
+    for (const name of await readdir(root)) await rm(join(root, name), { recursive: true, force: true });
+  } catch (err) {
+    tainted.add(root);
+    refused.add(root);
+    return { ok: false, text: `The folder was locked, but Hiltwright could not remove the files another Windows account put in it, so it will not use them: ${String(err).slice(0, 200)}` };
+  }
+  return { ok: true, text: 'Locked. Another Windows account had put files in this folder, so Hiltwright removed them. Download and install sets the compiler up again.' };
 }

@@ -51,7 +51,9 @@ If you choose **No**, the driver is not installed and you cannot flash. If you s
 
 ## The compiler setup fails
 
-The first build needs a one-time download of about 360 MB. A red note on the Compiler step can say there is not enough disk space or that the folder path is too long. Free some space and choose **Try again**. You need about 2.5 GB free. Setup uses `C:\ProgramData\Hiltwright`, or a short folder in your profile when that is not available.
+The first build needs a one-time download of about 360 MB. A red note on the Compiler step can say there is not enough disk space or that the folder path is too long. Free some space and choose **Try again**. You need about 2.5 GB free. Setup uses a folder in your own profile when its path is short enough for the compiler, otherwise `C:\ProgramData\Hiltwright`. An existing install in `C:\ProgramData\Hiltwright` keeps working.
+
+If another Windows account owns the compiler folder, or can change it, Hiltwright runs nothing from it and an amber note offers **Repair**. Repair makes the folder yours or the administrators', and changeable only by administrators and your account. If another account had put files there, Repair removes them, and **Download and install** sets the compiler up again. Windows may ask for approval.
 
 ## A build fails
 
