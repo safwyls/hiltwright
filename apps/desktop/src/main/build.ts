@@ -155,6 +155,62 @@ export async function prepareSketch(p: Pick<ToolchainPaths, 'osDir'>, saberDir: 
   return sketch;
 }
 
+/** Marks the CONFIG_FILE line a build puts in the sketch's .ino, so the next build can find it and take it out. */
+const CONFIG_TAG = '// hiltwright';
+
+/**
+ * The saber's ProffieOS.ino set up to build `configName`. A copy is kept between builds (prepareSketch), so the line
+ * this adds is tagged and the tagged line from the last build is removed first (#34): otherwise each build commented
+ * out the last one's line and added another, and the .ino grew a dead line per build. Any other CONFIG_FILE define is
+ * commented out, as before; one already commented out is left alone.
+ */
+export function sketchIno(ino: string, configName: string): string {
+  const tagged = new RegExp(`^#define CONFIG_FILE [^\\n]*${CONFIG_TAG.replace(/\//g, '\\/')}[ \\t]*\\r?\\n`, 'gm');
+  let out = ino.replace(tagged, '');
+  // Within one line: the line break, CRLF or LF, is kept as it was.
+  out = out.replace(/^[ \t]*#define CONFIG_FILE\b[^\r\n]*/gm, (m) => `// ${m.trim()}`);
+  const eol = /\r\n/.test(out) ? '\r\n' : '\n';
+  const line = `#define CONFIG_FILE "config/${configName}.h" ${CONFIG_TAG}${eol}`;
+  out = /#ifndef CONFIG_FILE\s*\n/.test(out) ? out.replace(/(#ifndef CONFIG_FILE\s*\n)/, `${line}$1`) : line + out;
+  // The release zip's version string is a git keyword ("$Id: <sha> $"), which is what `version` then prints.
+  // Stamp the tag we downloaded so the board reports something an owner (and parseVersion) can read. Once stamped the
+  // keyword is gone, so a later build leaves the line as it is.
+  return out.replace(/^const char version\[\] = "\$Id:\s*([0-9a-f]{7})[0-9a-f]*\s*\$";/m, (_m, sha: string) => `const char version[] = "${PROFFIEOS_TAG} hiltwright ${sha}";`);
+}
+
+const CACHED_DFU = 'ProffieOS.ino.dfu';
+const CACHED_RESULT = 'result.json';
+interface CachedResult { textBytes: number | null; maxSize?: number; fqbn?: string; hash?: string; at?: string }
+
+/**
+ * A cached build, or null for a miss. Both files must be there and the result must read as one (#34): a .dfu whose
+ * result.json is missing, cut short or unreadable is built again rather than failing the build.
+ */
+export async function readCachedBuild(cacheDir: string): Promise<CachedResult | null> {
+  if (!(await exists(join(cacheDir, CACHED_DFU)))) return null;
+  try {
+    const meta = JSON.parse(await readFile(join(cacheDir, CACHED_RESULT), 'utf8')) as Partial<CachedResult> | null;
+    if (!meta || typeof meta !== 'object') return null;
+    const textBytes = typeof meta.textBytes === 'number' && Number.isFinite(meta.textBytes) ? meta.textBytes : meta.textBytes === null ? null : undefined;
+    if (textBytes === undefined) return null;
+    return { ...meta, textBytes, maxSize: typeof meta.maxSize === 'number' && meta.maxSize > 0 ? meta.maxSize : undefined };
+  } catch { return null; }
+}
+
+/**
+ * Keep a finished build in the cache. result.json goes first and the .dfu is copied under a temporary name and renamed
+ * into place last (#34), so a .dfu under its real name always has its result beside it, however the copy is cut short.
+ */
+export async function storeCachedBuild(cacheDir: string, dfu: string, meta: CachedResult): Promise<void> {
+  await mkdir(cacheDir, { recursive: true });
+  const target = join(cacheDir, CACHED_DFU);
+  const tmp = `${target}.tmp`;
+  await rm(target, { force: true });
+  await writeFile(join(cacheDir, CACHED_RESULT), JSON.stringify(meta), 'utf8');
+  await cp(dfu, tmp);
+  await rename(tmp, target);
+}
+
 /**
  * Build a saber's firmware. Each saber builds in `<buildRoot>/<saberId>`, by default a folder of the Windows user's own
  * (userBuildRoot): never the shared toolchain folder, so another run's files cannot block it.
@@ -213,12 +269,12 @@ export async function buildFirmware(opts: { toolchainRoot: string; buildRoot?: s
     }
   }
 
-  const cachedDfu = join(cacheDir, 'ProffieOS.ino.dfu');
-  if (!opts.force && (await exists(cachedDfu))) {
-    const meta = JSON.parse(await readFile(join(cacheDir, 'result.json'), 'utf8')) as { textBytes: number | null; maxSize?: number };
-    const cap = meta.maxSize ?? flashBytes;
+  const cachedDfu = join(cacheDir, CACHED_DFU);
+  const hit = opts.force ? null : await readCachedBuild(cacheDir);
+  if (hit) {
+    const cap = hit.maxSize ?? flashBytes;
     onLine(`using the cached build ${cacheKey}`);
-    return { ...base, flashBytes: cap, ok: true, cached: true, ms: Date.now() - t0, dfuPath: cachedDfu, textBytes: meta.textBytes, flashPct: meta.textBytes ? Math.round((meta.textBytes / cap) * 100) : null, problems: [], output: '' };
+    return { ...base, flashBytes: cap, ok: true, cached: true, ms: Date.now() - t0, dfuPath: cachedDfu, textBytes: hit.textBytes, flashPct: hit.textBytes ? Math.round((hit.textBytes / cap) * 100) : null, problems: [], output: '' };
   }
 
   const sketch = await prepareSketch(p, saberDir, onLine);
@@ -226,14 +282,7 @@ export async function buildFirmware(opts: { toolchainRoot: string; buildRoot?: s
   // Beside the stock props, so its own #includes of them work; under a name of its own, so none is replaced.
   if (customProp) { await writeFile(inside(join(sketch, 'props', customProp.name)), customProp.text, 'utf8'); onLine(`using the custom prop file ${opts.model.customProp?.file} as props/${customProp.name}`); }
   const inoPath = join(sketch, 'ProffieOS.ino');
-  let ino = await readFile(inoPath, 'utf8');
-  ino = ino.replace(/^\s*#define CONFIG_FILE\b.*$/gm, (m) => `// ${m.trim()}`);
-  const line = `#define CONFIG_FILE "config/${opts.model.name}.h"\n`;
-  ino = /#ifndef CONFIG_FILE\s*\n/.test(ino) ? ino.replace(/(#ifndef CONFIG_FILE\s*\n)/, `${line}$1`) : line + ino;
-  // The release zip's version string is a git keyword ("$Id: <sha> $"), which is what `version` then prints.
-  // Stamp the tag we downloaded so the board reports something an owner (and parseVersion) can read.
-  ino = ino.replace(/^const char version\[\] = "\$Id:\s*([0-9a-f]{7})[0-9a-f]*\s*\$";/m, (_m, sha: string) => `const char version[] = "${PROFFIEOS_TAG} hiltwright ${sha}";`);
-  await writeFile(inoPath, ino, 'utf8');
+  await writeFile(inoPath, sketchIno(await readFile(inoPath, 'utf8'), opts.model.name), 'utf8');
 
   const buildPath = join(saberDir, 'build');
   onLine(`compiling ${opts.model.name}.h for Proffieboard ${opts.model.board}`);
@@ -255,9 +304,7 @@ export async function buildFirmware(opts: { toolchainRoot: string; buildRoot?: s
   }
   const dfu = join(buildPath, 'ProffieOS.ino.dfu');
   if (!(await exists(dfu))) return { ...base, ok: false, cached: false, ms: r.ms, dfuPath: null, textBytes: text, flashPct: null, problems: ['The build finished but produced no firmware file.'], output };
-  await mkdir(cacheDir, { recursive: true });
-  await cp(dfu, cachedDfu);
-  await writeFile(join(cacheDir, 'result.json'), JSON.stringify({ textBytes: text, maxSize: cap, fqbn, hash: gen.hash, at: new Date().toISOString() }), 'utf8');
+  await storeCachedBuild(cacheDir, dfu, { textBytes: text, maxSize: cap, fqbn, hash: gen.hash, at: new Date().toISOString() });
   // Keep only a handful of cached builds per saber.
   try {
     const entries = (await readdir(join(saberDir, 'cache'))).filter((n) => n !== cacheKey);

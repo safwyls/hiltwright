@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { analyzeStyleCode, generateConfig, validateModel, type LookDef, type ModelBlade, type SaberConfigModel } from '@hiltwright/core';
 import { newBlade, withKind } from '../src/renderer/src/hardwareModel';
-import { FLASH_BYTES, buildFirmware, configDefines, prepareSketch, propRuleProblems, translateErrors } from '../src/main/build';
+import { FLASH_BYTES, buildFirmware, configDefines, prepareSketch, propRuleProblems, readCachedBuild, sketchIno, storeCachedBuild, translateErrors } from '../src/main/build';
 import { toolchainPaths, toolchainStatus } from '../src/main/toolchain';
 import { importPropFile } from '../src/main/customProps';
 
@@ -105,6 +105,73 @@ describe('the private ProffieOS copy', () => {
     await writeFile(join(sketch, 'ProffieOS.ino'), 'edited by a build', 'utf8');
     await prepareSketch({ osDir }, saberDir, () => undefined);
     expect(await readFile(join(sketch, 'ProffieOS.ino'), 'utf8')).toBe('edited by a build');
+  });
+});
+
+// Issue #34: the kept .ino does not grow a line per build, and a cached .dfu without its result is a miss.
+describe('the sketch .ino and the build cache', () => {
+  const STOCK = [
+    '// #define CONFIG_FILE "config/default_proffieboard_config.h"',
+    '#ifdef CONFIG_FILE_TEST',
+    '#undef CONFIG_FILE',
+    '#define CONFIG_FILE CONFIG_FILE_TEST',
+    '#endif',
+    '#ifndef CONFIG_FILE',
+    '#error Please set CONFIG_FILE as shown above.',
+    '#endif',
+    'const char version[] = "$Id: 0123456789abcdef $";',
+    '',
+  ].join('\n');
+
+  it('replaces its own CONFIG_FILE line on each build instead of adding another', () => {
+    const once = sketchIno(STOCK, 'saber_a');
+    expect(once).toContain('#define CONFIG_FILE "config/saber_a.h" // hiltwright\n#ifndef CONFIG_FILE');
+    expect(once).toMatch(/const char version\[\] = "v[\d.]+ hiltwright 0123456"/);
+    const twice = sketchIno(sketchIno(once, 'saber_b'), 'saber_b');
+    expect(twice.split('\n')).toHaveLength(once.split('\n').length);
+    expect(twice).toContain('#define CONFIG_FILE "config/saber_b.h" // hiltwright');
+    expect(twice).not.toContain('saber_a');
+    expect(twice.match(/^#define CONFIG_FILE "/gm)).toHaveLength(1);
+    // The stock commented-out example is left as it was.
+    expect(twice.startsWith('// #define CONFIG_FILE "config/default_proffieboard_config.h"\n')).toBe(true);
+  });
+
+  it('keeps CRLF line endings when the .ino has them', () => {
+    const crlf = STOCK.replace(/\n/g, '\r\n');
+    const out = sketchIno(sketchIno(crlf, 'saber_a'), 'saber_a');
+    expect(out).toContain('#define CONFIG_FILE "config/saber_a.h" // hiltwright\r\n#ifndef CONFIG_FILE');
+    expect(out.match(/^#define CONFIG_FILE "/gm)).toHaveLength(1);
+  });
+
+  it('treats a cached .dfu with a missing or unreadable result.json as a miss', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'hw-cache-'));
+    const cache = join(dir, 'cache', 'k');
+    await mkdir(cache, { recursive: true });
+    await writeFile(join(cache, 'ProffieOS.ino.dfu'), 'firmware');
+    expect(await readCachedBuild(cache)).toBeNull();
+    await writeFile(join(cache, 'result.json'), '{"textBytes": 1');
+    expect(await readCachedBuild(cache)).toBeNull();
+    await writeFile(join(cache, 'result.json'), '{"textBytes": "lots"}');
+    expect(await readCachedBuild(cache)).toBeNull();
+    await writeFile(join(cache, 'result.json'), JSON.stringify({ textBytes: 180000, maxSize: 262144 }));
+    expect(await readCachedBuild(cache)).toMatchObject({ textBytes: 180000, maxSize: 262144 });
+    // A result with no .dfu beside it is a miss too.
+    await rm(join(cache, 'ProffieOS.ino.dfu'));
+    expect(await readCachedBuild(cache)).toBeNull();
+  });
+
+  it('stores the result before the .dfu takes its name, and leaves no temporary file', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'hw-cache-'));
+    const built = join(dir, 'ProffieOS.ino.dfu');
+    await writeFile(built, 'new firmware');
+    const cache = join(dir, 'cache', 'k');
+    await storeCachedBuild(cache, built, { textBytes: 1234, maxSize: 262144 });
+    expect(await readCachedBuild(cache)).toMatchObject({ textBytes: 1234 });
+    expect(await readFile(join(cache, 'ProffieOS.ino.dfu'), 'utf8')).toBe('new firmware');
+    expect((await readdir(cache)).sort()).toEqual(['ProffieOS.ino.dfu', 'result.json']);
+    // A copy that fails leaves no .dfu under its real name, so the cache cannot hand out a half-written one.
+    await expect(storeCachedBuild(cache, join(dir, 'gone.dfu'), { textBytes: 1 })).rejects.toThrow();
+    expect(await readCachedBuild(cache)).toBeNull();
   });
 });
 

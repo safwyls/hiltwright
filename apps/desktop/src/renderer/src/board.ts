@@ -568,12 +568,14 @@ export function useBoard() {
     if (pendingApply == null || status !== 'connected') return;
     const t = setInterval(() => {
       if (!client.current || busyRef.current || tourLocked()) return;
+      // A port that drops between polls makes this send reject (#34): the colours stay pending for the next poll or
+      // the reconnect, and the failure is logged rather than left as an unhandled rejection.
       void send('get_on', { idleMs: 400, timeoutMs: 6000 }).then((r) => {
         if (!r.lines.some((l) => l.trim() === '0')) return;
         const index = pendingApply;
         setPendingApply(null);
         void run('Apply colours', async (cl) => { const s = await selectPreset(cl, index); return { ok: s.preset !== null, error: s.preset ? undefined : 'No read-back after re-selecting.' }; }, false, false, () => infoRef.current?.currentPreset === index);
-      });
+      }).catch((err: unknown) => { console.log(`[board] get_on poll failed: ${String(err)}`); });
     }, 3000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

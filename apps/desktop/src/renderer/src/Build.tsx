@@ -67,7 +67,6 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   // What met the driver step: once the driver is in, that is what carries on (FW8), never an install in a restore's place.
   const paused = useRef<{ kind: 'install' } | { kind: 'restore'; backup: BackupInfo } | null>(null);
   const [armed, setArmed] = useState(false);
-  const [withBackup, setWithBackup] = useState(true);
   const [tab, setTab] = useState<Tab>('config');
   // The fonts the presets name and the Fett263 voice pack are checked on the saber's own SD card (useCardCheck.ts).
   const check = useCardCheck(board, saber);
@@ -182,7 +181,6 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   /** The install sequence. The renderer does the reboot because it owns the serial port. */
   const install2 = useCallback(async () => {
     if (!result?.ok || !result.dfuPath || !saber) return;
-    setWithBackup(true);
     setNote(null); setNotes([]); setElapsed(0);
     paused.current = { kind: 'install' };
     await duringWork('install', () => installSequence(flowDeps(), { saber, model: builtModel, result, info, connected: connectedNow }));
@@ -219,8 +217,6 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   useEffect(() => { loadBackups(); }, [loadBackups, step]);
   const restore = useCallback(async (b: BackupInfo) => {
     if (!saber) return;
-    // A restore backs up what is on the board first, like an install (FW8), so its bar has a backup phase too.
-    setWithBackup(true);
     setRestoreArmed(null); setNote(null); setNotes([]); setElapsed(0);
     paused.current = { kind: 'restore', backup: b };
     await duringWork('restore', () => restoreSequence(flowDeps(), saber, b, connectedNow));
@@ -285,7 +281,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
         currentSaber: () => ({ ...s, lastSeen: new Date(Date.now() + 1000).toISOString(), identity: { ...s.identity, configName: `config/${m.name}.h`, version: `${r.os} hiltwright pretend` } }),
         updateSaber: async () => { if (fault === 'record') throw new Error("Error invoking remote method 'library:update': Error: EPERM: operation not permitted, rename 'C:\\Users\\owner\\AppData\\Roaming\\@hiltwright\\desktop\\library.json.tmp' -> 'C:\\Users\\owner\\AppData\\Roaming\\@hiltwright\\desktop\\library.json'"); },
       };
-      setWithBackup(true); setNote(null); setNotes([]); setElapsed(0);
+      setNote(null); setNotes([]); setElapsed(0);
       await installSequence({ ...flowDeps(), flash, board: pretendBoard, noteBootloader: async () => s }, { saber: s, model: m, result: { ...r, ok: true, dfuPath: 'pretend.dfu' }, info: i, connected: true });
     };
     // Change the saved setup while this page stays open, as a change made elsewhere would (to see a build go stale).
@@ -310,8 +306,10 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const busy = step === 'building' || step === 'backup' || step === 'bootloader' || step === 'writing' || step === 'verifying';
   const stepLabel: Record<Step, string> = { idle: 'Ready', building: 'Building firmware…', built: 'Firmware built', backup: 'Backing up the saber…', bootloader: 'Rebooting into bootloader…', driver: 'Windows needs a driver', writing: 'Writing firmware…', verifying: 'Waiting for the saber…', done: 'Installed', failed: 'Stopped' };
   // One bar for the whole job: reboot, read the backup, write, wait for the saber. Transfers move it with real numbers.
+  // Every install and restore reads a backup before it writes, even one the owner lets go on without a backup (the
+  // read comes first, issue #12), so the write always starts after the backup phase (#34).
   const phasePct = xfer ?? 0;
-  const overall = step === 'bootloader' ? 3 : step === 'backup' ? 5 + phasePct * 0.4 : step === 'writing' ? (withBackup ? 45 + phasePct * 0.47 : 5 + phasePct * 0.87) : step === 'verifying' ? 94 : step === 'done' ? 100 : 0;
+  const overall = step === 'bootloader' ? 3 : step === 'backup' ? 5 + phasePct * 0.4 : step === 'writing' ? 45 + phasePct * 0.47 : step === 'verifying' ? 94 : step === 'done' ? 100 : 0;
   const phaseText = step === 'bootloader' ? 'Rebooting into the bootloader' : step === 'backup' ? 'Reading the backup' : step === 'writing' ? 'Writing firmware' : step === 'verifying' ? 'Waiting for the saber to restart' : '';
   const blockers = tool ? toolchainBlockers(tool) : { pathTooLong: null, lowSpace: null, untrusted: null };
   // Why the compiler folder needs Repair (#20): nothing in it runs until it is fixed.
@@ -438,7 +436,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
             <button type="button" className="chip" onClick={() => go('fonts')}><Icon name="fonts" />Fonts</button>
           </div>
           <span className="hint">{propLabel(model)}{saber?.planned ? ' · planned ahead, not connected yet' : ''}</span>
-          {!confirmedWiring && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>Confirm the wiring on the Wiring page before building.</span></div>}
+          {!confirmedWiring && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>Confirm the wiring on the Wiring page before installing.</span></div>}
           {model?.presetsFrom && !saber?.planned && info && !firmwareHasStaged(model, saber?.firmware) && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="info" /><span>The staged presets replace the {info.presets.length} on the saber once the new firmware is on and checked; a snapshot is kept first.</span></div>}
           {model && firmwareHasStaged(model, saber?.firmware) && (
             <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="info" /><span className="col" style={{ gap: 8 }}>

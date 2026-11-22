@@ -592,6 +592,13 @@ export async function copyFont(src: string, root: string, options: CopyOptions |
     // "UNKNOWN: unknown error, copyfile …").
     const code = (err as { code?: string }).code ?? (err instanceof Error ? err.message.split(':')[0] : String(err));
     console.log(`[sd] copy of ${name} to ${root} stopped: ${String(err)}`);
+    // Not every failure is the card's (#34): a file of the font can go missing or be unreadable at its source (moved,
+    // deleted, locked by another program). Each source file is checked again, and the first that cannot be read is
+    // named; only when they all can is the card blamed.
+    for (const f of files) {
+      const unreadable = await open(join(src, f.rel), 'r').then((h) => h.close().then(() => null), (e: unknown) => (e as { code?: string }).code ?? 'unreadable');
+      if (unreadable) throw new Error(`The copy of ${name} stopped part way: ${f.rel.replace(/\\/g, '/')} could not be read from the library or pack (${unreadable}). Nothing was left on the card under ${name}. Check the font is still there, then copy it again.`);
+    }
     throw new Error(`The copy of ${name} stopped part way: the card could not be written to (${code}). Nothing was left on the card under ${name}. Check the card is in, then copy it again.`);
   }
   if (!o.replace) {
