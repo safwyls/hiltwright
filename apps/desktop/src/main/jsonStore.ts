@@ -2,10 +2,33 @@
 // temporary file, the previous good file is kept as <base>.bak.json, and a file that cannot be read (or holds records
 // of the wrong shape) is set aside as <base>.damaged-<stamp>.json and never overwritten. Every set-aside is reported
 // through storeProblems() so the Armory can tell the owner.
+//
+// A file held open by another program (a virus scanner, a sync client) is not damage (issue #11): reads and the
+// final rename are tried again for a moment, and a read that still fails says "try again" without setting anything
+// aside. Each write is flushed to the disk before it replaces the main file, so a power cut cannot leave it empty.
 
-import { copyFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+
+/** The file calls a store makes. Tests replace them to act out a file another program holds open. */
+export interface StoreFs {
+  readFile(path: string, encoding: 'utf8'): Promise<string>;
+  rename(from: string, to: string): Promise<void>;
+  open(path: string, flags: 'w'): Promise<{ writeFile(data: string, encoding: 'utf8'): Promise<void>; sync(): Promise<void>; close(): Promise<void> }>;
+}
+
+const nodeFs: StoreFs = {
+  readFile: (path, encoding) => readFile(path, encoding),
+  rename: (from, to) => rename(from, to),
+  open: (path, flags) => open(path, flags),
+};
+
+/** Errors Windows gives for a file another program has open: worth waiting out, never a sign of damage. */
+const BUSY = new Set(['EBUSY', 'EPERM', 'EACCES']);
+const isBusy = (err: unknown) => BUSY.has((err as NodeJS.ErrnoException)?.code ?? '');
+/** About a second and a half in all: long enough for a scanner to let go, short enough not to hang a save. */
+export const BUSY_WAITS_MS = [100, 200, 300, 400, 400];
 
 export interface StoreProblem {
   /** What the owner calls it: "saber list", "preset sets". */
@@ -40,6 +63,10 @@ export interface StoreOptions<T> {
   /** Where the file lives, for telling the owner (default: the app's data folder). */
   place?: StorePlace;
   now?: () => Date;
+  /** Tests only: stand-ins for the file calls. */
+  fs?: Partial<StoreFs>;
+  /** Tests only: the waits between tries at a busy file, in milliseconds (default BUSY_WAITS_MS). */
+  busyWaits?: number[];
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -56,15 +83,29 @@ export class JsonStore<T> {
   private blocked: string | null = null;
   private readonly base: string;
   private readonly bak: string;
+  private readonly fs: StoreFs;
 
   constructor(private readonly file: string, private readonly opts: StoreOptions<T>) {
     this.base = join(dirname(file), basename(file).replace(/\.json$/i, ''));
     this.bak = `${this.base}.bak.json`;
+    this.fs = { ...nodeFs, ...opts.fs };
   }
 
   read(): Promise<T> {
-    this.loading ??= this.load();
+    // A read that failed because the file was busy is not remembered: the next read tries the disk again.
+    this.loading ??= this.load().catch((err: unknown) => { this.loading = null; throw err; });
     return this.loading;
+  }
+
+  /** Run a file call, trying again for a moment while another program holds the file (issue #11). */
+  private async whileBusy<R>(call: () => Promise<R>): Promise<R> {
+    const waits = this.opts.busyWaits ?? BUSY_WAITS_MS;
+    for (let i = 0; ; i++) {
+      try { return await call(); } catch (err) {
+        if (!isBusy(err) || i >= waits.length) throw err;
+        await new Promise((r) => setTimeout(r, waits[i]));
+      }
+    }
   }
 
   /** Change the value and write it. Updates run one at a time, each with its own write, in the order asked. */
@@ -87,9 +128,16 @@ export class JsonStore<T> {
   private async load(): Promise<T> {
     let text: string;
     try {
-      text = await readFile(this.file, 'utf8');
+      text = await this.whileBusy(() => this.fs.readFile(this.file, 'utf8'));
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return (this.value = await this.fromBackupIfAny());
+      // Still held by another program: the file may be perfectly good, so it is left where it is and nothing is
+      // reported as damaged. Setting it aside here started the store from a backup one write behind and stopped every
+      // save for the rest of the run (issue #11).
+      if (isBusy(err)) {
+        console.warn(`[store] the ${this.opts.name} file is in use by another program: ${String(err)}`);
+        throw new Error(`Could not read the ${this.opts.name}: another program is using its file. Try again in a moment.`);
+      }
       return (this.value = await this.setAside(String(err)));
     }
     let raw: unknown;
@@ -111,7 +159,7 @@ export class JsonStore<T> {
   /** Move an unusable file aside, then start from the backup when it reads, otherwise from nothing. */
   private async setAside(why: string): Promise<T> {
     const keptAs = this.asideName();
-    try { await rename(this.file, join(dirname(this.file), keptAs)); } catch (err) { this.blocked = `could not move it aside: ${String(err)}`; }
+    try { await this.whileBusy(() => this.fs.rename(this.file, join(dirname(this.file), keptAs))); } catch (err) { this.blocked = `could not move it aside: ${String(err)}`; }
     let from: StoreProblem['startedFrom'] = 'nothing';
     let value = this.opts.empty();
     const b = await this.readBackup();
@@ -124,7 +172,7 @@ export class JsonStore<T> {
   }
 
   private async readBackup(): Promise<T | null> {
-    try { return this.opts.clean(JSON.parse((await readFile(this.bak, 'utf8')).replace(/^﻿/, '')))?.value ?? null; } catch { return null; }
+    try { return this.opts.clean(JSON.parse((await this.fs.readFile(this.bak, 'utf8')).replace(/^﻿/, '')))?.value ?? null; } catch { return null; }
   }
 
   /** No main file. A first start has no backup either; a backup with no main file is a store that lost its file. */
@@ -157,9 +205,22 @@ export class JsonStore<T> {
     if (this.blocked) throw new Error(`The ${this.opts.name} is not being saved in this run, to protect the damaged file (${this.blocked}).`);
     await mkdir(dirname(this.file), { recursive: true });
     const tmp = `${this.file}.${process.pid}.${++this.writes}.tmp`;
-    await writeFile(tmp, JSON.stringify(value, null, 2), 'utf8');
-    if (this.fileGood) { try { await copyFile(this.file, this.bak); } catch { /* the backup is a courtesy */ } }
-    await rename(tmp, this.file);
+    try {
+      // Flushed before the rename: an unflushed file renamed into place can be empty after a power cut (issue #11).
+      const fh = await this.fs.open(tmp, 'w');
+      try {
+        await fh.writeFile(JSON.stringify(value, null, 2), 'utf8');
+        await fh.sync();
+      } finally {
+        await fh.close();
+      }
+      if (this.fileGood) { try { await copyFile(this.file, this.bak); } catch { /* the backup is a courtesy */ } }
+      await this.whileBusy(() => this.fs.rename(tmp, this.file));
+    } catch (err) {
+      // A write that did not land leaves no temporary file behind.
+      await rm(tmp, { force: true }).catch(() => undefined);
+      throw err;
+    }
     this.fileGood = true;
   }
 }
