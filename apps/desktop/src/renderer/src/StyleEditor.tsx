@@ -11,6 +11,7 @@ import { BladePreview } from './BladePreview';
 import { useHistory } from './editorHistory';
 import { Icon } from './Icon';
 import { Loader } from './Loader';
+import { PreviewNote } from './PreviewNote';
 import { PasteStyle, TreeEditor } from './TreeEditor';
 import { Select } from './Select';
 import { saveTarget, type EditorMode } from './styleSave';
@@ -170,7 +171,7 @@ export function StyleEditor({ editing, onSaved, onDemo, onLeaveGuard }: { editin
           {pasting && <PasteStyle onParsed={openParsed} onClose={() => setPasting(false)} />}
 
           {mode === 'tree' ? (
-            <TreeEditor tree={tree.tree} labels={tree.labels ?? []} unsupported={evaluated?.report.unsupported ?? []} approximate={evaluated?.report.approximate ?? []}
+            <TreeEditor tree={tree.tree} labels={tree.labels ?? []}
               layerKeys={history.present.keys} onChange={(t, labels, step, keys) => setTree((cur) => ({ ...cur, tree: t, labels }), step, keys)} onPreview={setPreviewTree} onCue={(c) => setCue((p) => ({ ...c, n: (p?.n ?? 0) + 1, at: Date.now() }))} />
           ) : (
             <>
@@ -230,6 +231,7 @@ export function StyleEditor({ editing, onSaved, onDemo, onLeaveGuard }: { editin
         <div className="ph"><h2>On the blade</h2><span className="hint">Simulated from the same maths the saber runs</span></div>
         <div className="pb col scroll" style={{ gap: 12 }}>
           <BladePreview version={previewKey} lookId={PREVIEW_ID} hilt controls cue={cue} />
+          <PreviewNote report={evaluated?.report ?? null} />
           <span className="hint">{mode === 'tree' ? 'Colours wrapped in a live setting (RgbArg) can be changed on Presets once installed; everything else is baked in when the style is built.' : 'Every colour here is a live setting once the style is on a saber: change it on Presets without a rebuild. The sliders are baked into the style when it is built.'}</span>
         </div>
       </section>

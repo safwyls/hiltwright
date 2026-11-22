@@ -9,7 +9,6 @@ import { RECIPES, analyzeStyleCode, cloneNode, composedName, firstColour, layerC
 import { Icon } from './Icon';
 import { LayerCardView } from './LayerCard';
 import { NodeCard } from './NodeCard';
-import { PreviewNote } from './PreviewNote';
 import { describe, friendly, friendlyEnum, layerPickList } from './treeWords';
 
 /** A layer's name when it has not been given one: what the card calls it, or the template's name. */
@@ -46,10 +45,9 @@ export interface TreeEditorProps {
   onPreview: (t: Node) => void;
   /** Show a layer off on the preview. */
   onCue: (c: Cue) => void;
-  unsupported: string[]; approximate: string[];
 }
 
-export function TreeEditor({ tree, labels, layerKeys, onChange, onPreview, onCue, unsupported, approximate }: TreeEditorProps) {
+export function TreeEditor({ tree, labels, layerKeys, onChange, onPreview, onCue }: TreeEditorProps) {
   const isLayers = tree.name === 'Layers';
   // Keys follow the layers through moves and deletes, so a layer keeps its selection and hidden state.
   const keys = useRef<string[]>([]);
@@ -163,7 +161,6 @@ export function TreeEditor({ tree, labels, layerKeys, onChange, onPreview, onCue
 
   return (
     <div className="col" style={{ gap: 12 }}>
-      <PreviewNote report={{ unsupported, approximate }} />
       <div className="layerswrap"><div className="layers">
         <div className="stackcol">
           <div className="row between" style={{ padding: '2px 2px 8px' }}>

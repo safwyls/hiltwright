@@ -59,7 +59,7 @@ The panel on the right, **On the blade**, shows the style on a blade with a hilt
 
 In Full, a layer with a trigger shows a **Trigger** button, or **Hold it** for a lockup. It sets that effect off on the preview, so you can see the layer without hunting for the right button. Dragging a **Where** control poses the blade so the effect lands where you are pointing.
 
-If the preview can show part of a style only roughly, a note says so: "The preview is only approximate for ..." A note in amber, starting "The preview cannot show ...", lists parts that are left out of the preview but kept in the style. Either way, that part may differ on the saber.
+If the preview can show part of a style only roughly, a note under the preview says so: "The preview is only approximate for ..." A note in amber, starting "The preview cannot show ...", lists parts that are left out of the preview but kept in the style. Either way, that part may differ on the saber.
 
 ## Checks before saving
 
