@@ -1,12 +1,18 @@
 // presets.ini snapshots on disk: <userData>/sabers/<id>/snapshots/<timestamp>-<label>.ini
-// Written in the board's own file format so a snapshot can be copied straight onto an SD card by hand.
+// The presets are written as presets.ini writes them (new_preset blocks, then `end`), after `#` header lines. That is
+// not a file ProffieOS would load if copied onto a card: it takes a plain presets.ini only when `installed=<the
+// firmware's build time>` comes first, and a snapshot has no such line (issue #28).
+//
+// Each snapshot is written to a temporary file and renamed into place, so a crash mid-write leaves no short file
+// behind. One cut short anyway (saved by an older version, or damaged since) is listed as incomplete and is never
+// restored: it would read as a shorter list, and a restore would delete the presets it lost (issue #28).
 //
 // Kept cheap as they pile up (issue #23): one is saved on every connect and before every live edit, and listing used to
 // read and parse every file before each edit was sent. Now the header carries the preset count, so a list reads only a
 // file's first lines, once per run; a routine snapshot that matches the newest one is not saved again; and routine
 // snapshots beyond the newest KEEP_ROUTINE are thinned to one a day. Install, restore and card snapshots are never removed.
 
-import { mkdir, open, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { emitPresetsIni, parsePresetsIni, type PresetRecord } from '@hiltwright/core';
 import type { SnapshotMeta } from '../shared/api';
@@ -15,6 +21,8 @@ import type { SnapshotMeta } from '../shared/api';
 export const KEEP_ROUTINE = 200;
 /** Enough of a file to hold its header lines (a label is at most 120 characters). */
 const HEAD_BYTES = 1024;
+/** Added to a snapshot's name while it is being written. */
+const PART = '.part';
 
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'snapshot';
@@ -31,14 +39,24 @@ export function routineSnapshot(label: string): boolean {
 /** The presets as compared text: two lists that write the same presets.ini are the same. */
 const sameKey = (text: string) => JSON.stringify(parsePresetsIni(text).presets);
 
-async function readHead(path: string): Promise<string> {
+/** Enough of a file's end to hold its last line. */
+const TAIL_BYTES = 64;
+/** Whether text ends with the `end` line a whole snapshot finishes with (the parser's `terminated`, read from the tail). */
+const endsWhole = (tail: string) => /(^|\n)end[ \t\r\n]*$/i.test(tail);
+
+/** A file's header lines, and whether it ends with its `end` line, reading only its first and last bytes. */
+async function readEdges(path: string): Promise<{ head: string; complete: boolean }> {
   const fh = await open(path, 'r');
   try {
     const buf = Buffer.alloc(HEAD_BYTES);
     const { bytesRead } = await fh.read(buf, 0, HEAD_BYTES, 0);
     const text = buf.subarray(0, bytesRead).toString('utf8');
-    // Only whole lines: the last one may be cut part-way.
-    return bytesRead < HEAD_BYTES ? text : text.slice(0, text.lastIndexOf('\n') + 1);
+    if (bytesRead < HEAD_BYTES) return { head: text, complete: endsWhole(text) };
+    const size = (await fh.stat()).size;
+    const tail = Buffer.alloc(TAIL_BYTES);
+    const t = await fh.read(tail, 0, TAIL_BYTES, Math.max(0, size - TAIL_BYTES));
+    // Only whole lines of the head: the last one may be cut part-way.
+    return { head: text.slice(0, text.lastIndexOf('\n') + 1), complete: endsWhole(tail.subarray(0, t.bytesRead).toString('utf8')) };
   } finally {
     await fh.close();
   }
@@ -72,8 +90,11 @@ export class Snapshots {
 
   /** Newest first. */
   private async listNow(saberId: string, dir: string): Promise<SnapshotMeta[]> {
-    let files: string[];
-    try { files = (await readdir(dir)).filter((f) => f.endsWith('.ini')); } catch { return []; }
+    let all: string[];
+    try { all = await readdir(dir); } catch { return []; }
+    // A save that never got to its rename (the app stopped mid-write) leaves its temporary file: never listed, removed here.
+    for (const f of all.filter((x) => x.endsWith(PART))) await rm(join(dir, f), { force: true }).catch(() => undefined);
+    const files = all.filter((f) => f.endsWith('.ini'));
     let known = this.metas.get(saberId);
     if (!known) this.metas.set(saberId, (known = new Map()));
     const present = new Set(files);
@@ -87,14 +108,18 @@ export class Snapshots {
   }
 
   private async readMeta(dir: string, file: string): Promise<SnapshotMeta | null> {
-    let head: string;
-    try { head = await readHead(join(dir, file)); } catch { return null; }
+    let edges: { head: string; complete: boolean };
+    try { edges = await readEdges(join(dir, file)); } catch { return null; }
+    const { head, complete } = edges;
     const label = /^# label=(.*)$/m.exec(head)?.[1] ?? file;
     const at = /^# at=(.*)$/m.exec(head)?.[1] ?? '';
     const count = /^# presets=(\d+)$/m.exec(head)?.[1];
-    if (count !== undefined) return { file, at, label, presets: Number(count) };
+    if (count !== undefined) return { file, at, label, presets: Number(count), complete };
     // Saved before the count was in the header: read the whole file, this once.
-    try { return { file, at, label, presets: parsePresetsIni(await readFile(join(dir, file), 'utf8')).presets.length }; } catch { return null; }
+    try {
+      const parsed = parsePresetsIni(await readFile(join(dir, file), 'utf8'));
+      return { file, at, label, presets: parsed.presets.length, complete: parsed.terminated };
+    } catch { return null; }
   }
 
   /**
@@ -115,8 +140,16 @@ export class Snapshots {
       const at = new Date().toISOString();
       const file = `${at.replace(/[:.]/g, '-')}-${slug(name)}.ini`;
       const body = `# hiltwright snapshot\n# label=${name}\n# at=${at}\n# presets=${presets.length}\n${ini}`;
-      await writeFile(join(dir, file), body, 'utf8');
-      const meta: SnapshotMeta = { file, at, label: name, presets: presets.length };
+      // Written beside it first, then renamed: the .ini is there whole or not at all (issue #28).
+      const part = join(dir, file + PART);
+      try {
+        await writeFile(part, body, 'utf8');
+        await rename(part, join(dir, file));
+      } catch (err) {
+        await rm(part, { force: true }).catch(() => undefined);
+        throw err;
+      }
+      const meta: SnapshotMeta = { file, at, label: name, presets: presets.length, complete: true };
       this.metas.get(saberId)?.set(file, meta);
       this.newest.set(saberId, { meta, key });
       try { await this.prune(saberId, dir); } catch (err) { console.warn(`[snapshots] could not remove old snapshots: ${String(err)}`); }
@@ -126,7 +159,8 @@ export class Snapshots {
 
   private async newestOf(saberId: string, dir: string): Promise<{ meta: SnapshotMeta; key: string } | null> {
     const top = (await this.listNow(saberId, dir))[0];
-    if (!top) return null;
+    // An incomplete newest snapshot cannot stand in for the saber's presets: the new one is saved.
+    if (!top || !top.complete) return null;
     const known = this.newest.get(saberId);
     if (known && known.meta.file === top.file) return known;
     try {
@@ -152,8 +186,14 @@ export class Snapshots {
     if (drop.length) console.log(`[snapshots] removed ${drop.length} old routine snapshot(s) for ${saberId}`);
   }
 
+  /** A snapshot's presets, to restore from. An incomplete one is refused: a restore would delete what it lost (issue #28). */
   async read(saberId: string, file: string): Promise<PresetRecord[]> {
     if (!/^[A-Za-z0-9._-]+\.ini$/.test(file)) throw new Error('Bad snapshot name');
-    return parsePresetsIni(await readFile(join(this.dir(saberId), file), 'utf8')).presets;
+    const parsed = parsePresetsIni(await readFile(join(this.dir(saberId), file), 'utf8'));
+    if (!parsed.terminated) throw new Error(INCOMPLETE);
+    return parsed.presets;
   }
 }
+
+/** What a restore from a snapshot cut short says. */
+const INCOMPLETE = 'This snapshot is incomplete: it was cut short when it was saved, so it cannot be restored.';

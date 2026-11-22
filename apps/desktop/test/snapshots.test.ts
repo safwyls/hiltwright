@@ -1,5 +1,5 @@
-// saber-library 1.9 (baseline audit): a snapshot on disk is a presets.ini the codec reads back. Whether ProffieOS
-// itself loads the file (with its # header and no installed= line) needs a board: hardware-verification-v2 (BST-5).
+// saber-library 1.9 (baseline audit): a snapshot on disk is a presets list the codec reads back. ProffieOS would not
+// load one copied onto a card: it takes a plain presets.ini only with installed=<its build time> first (issue #28).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -18,7 +18,7 @@ const presets = [
 ];
 
 describe('snapshots', () => {
-  it('1.9 a snapshot can be used outside the app: a presets.ini with a header that reads back the same', async () => {
+  it('1.9 a snapshot on disk is a presets list with a header that reads back the same', async () => {
     const snaps = new Snapshots(dir);
     const meta = await snaps.save('ea8dbea42e78', 'Before: Edit\npreset', presets);
     expect(meta.file).toBe('2026-09-25T20-00-00-000Z-before-edit-preset.ini');
@@ -29,7 +29,7 @@ describe('snapshots', () => {
     expect(ini.terminated).toBe(true);
     expect(ini.presets).toEqual(presets);
     expect(await snaps.read('ea8dbea42e78', meta.file)).toEqual(presets);
-    expect(await snaps.list('ea8dbea42e78')).toEqual([{ file: meta.file, at: '2026-09-25T20:00:00.000Z', label: 'Before: Edit preset', presets: 2 }]);
+    expect(await snaps.list('ea8dbea42e78')).toEqual([{ file: meta.file, at: '2026-09-25T20:00:00.000Z', label: 'Before: Edit preset', presets: 2, complete: true }]);
   });
 
   it('preset-history-restore: a snapshot read back from disk plans no change against the list it was taken from, and finds a moved, edited preset', async () => {
@@ -63,7 +63,7 @@ describe('snapshots stay cheap as they pile up (issue #23)', () => {
     mkdirSync(folder(), { recursive: true });
     const old = `# hiltwright snapshot\n# label=Before: Rename\n# at=2026-09-01T10:00:00.000Z\n${emitPresetsIni({ installed: null, presets, terminated: true })}`;
     writeFileSync(join(folder(), '2026-09-01T10-00-00-000Z-before-rename.ini'), old);
-    expect(await new Snapshots(dir).list(id)).toEqual([{ file: '2026-09-01T10-00-00-000Z-before-rename.ini', at: '2026-09-01T10:00:00.000Z', label: 'Before: Rename', presets: 2 }]);
+    expect(await new Snapshots(dir).list(id)).toEqual([{ file: '2026-09-01T10-00-00-000Z-before-rename.ini', at: '2026-09-01T10:00:00.000Z', label: 'Before: Rename', presets: 2, complete: true }]);
   });
 
   it('a list notices files added and removed by hand', async () => {
@@ -123,5 +123,57 @@ describe('snapshots stay cheap as they pile up (issue #23)', () => {
       'Before: Restore "Connected" 2026-09-01T10',
     ]);
     expect(files()).toHaveLength(left.length);
+  });
+});
+
+describe('a snapshot cut short is never offered as complete (issue #28)', () => {
+  const id = 'ea8dbea42e78';
+  const folder = () => join(dir, 'sabers', id, 'snapshots');
+  /** Long enough that the header and the end are read apart (more than the 1024 bytes of the header read). */
+  const many = Array.from({ length: 30 }, (_, i) => ({ ...presets[1], name: `Preset ${i}` }));
+  const cut = (text: string) => text.slice(0, text.lastIndexOf('end')); // a save that stopped before its end line
+
+  it('is written whole: through a temporary file renamed into place, with nothing left beside it', async () => {
+    const snaps = new Snapshots(dir);
+    const meta = await snaps.save(id, 'Connected', many);
+    expect(meta.complete).toBe(true);
+    expect(readdirSync(folder())).toEqual([meta.file]);
+    // A temporary file a crash left behind is not listed, and goes.
+    writeFileSync(join(folder(), `${meta.file.replace('.ini', '-x.ini')}.part`), '# hiltwright snapshot\n');
+    expect((await new Snapshots(dir).list(id)).map((m) => m.file)).toEqual([meta.file]);
+    expect(readdirSync(folder())).toEqual([meta.file]);
+  });
+
+  it('lists a file cut short as incomplete, long or short, with the count in its header or not, and refuses to read it', async () => {
+    const snaps = new Snapshots(dir);
+    const long = await snaps.save(id, 'Before install with staged presets', many);
+    vi.setSystemTime(new Date('2026-09-25T20:01:00.000Z'));
+    const short = await snaps.save(id, 'Before: Restore "Connected"', presets);
+    for (const m of [long, short]) writeFileSync(join(folder(), m.file), cut(readFileSync(join(folder(), m.file), 'utf8')));
+    mkdirSync(folder(), { recursive: true });
+    const old = '2026-09-01T10-00-00-000Z-before-rename.ini';
+    writeFileSync(join(folder(), old), cut(`# hiltwright snapshot\n# label=Before: Rename\n# at=2026-09-01T10:00:00.000Z\n${emitPresetsIni({ installed: null, presets, terminated: true })}`));
+    const listed = await new Snapshots(dir).list(id);
+    expect(listed.map((m) => [m.file, m.complete])).toEqual([[short.file, false], [long.file, false], [old, false]]);
+    for (const m of listed) await expect(snaps.read(id, m.file)).rejects.toThrow(/incomplete.*cannot be restored/);
+  });
+
+  it('keeps the flag in the metas it remembers between lists', async () => {
+    const snaps = new Snapshots(dir);
+    const meta = await snaps.save(id, 'Before install with staged presets', presets);
+    expect((await snaps.list(id))[0].complete).toBe(true);
+    writeFileSync(join(folder(), 'zz-cut.ini'), cut(readFileSync(join(folder(), meta.file), 'utf8')));
+    expect((await snaps.list(id)).map((m) => [m.file, m.complete])).toEqual([['zz-cut.ini', false], [meta.file, true]]);
+    expect((await snaps.list(id)).map((m) => m.complete)).toEqual([false, true]);
+  });
+
+  it('an incomplete newest snapshot does not stand in for the saber\'s presets: the routine one is saved', async () => {
+    const snaps = new Snapshots(dir);
+    const first = await snaps.save(id, 'Connected', presets);
+    writeFileSync(join(folder(), first.file), cut(readFileSync(join(folder(), first.file), 'utf8')));
+    vi.setSystemTime(new Date('2026-09-25T20:01:00.000Z'));
+    const again = await new Snapshots(dir).save(id, 'Connected', presets);
+    expect(again.file).not.toBe(first.file);
+    expect(again.complete).toBe(true);
   });
 });
