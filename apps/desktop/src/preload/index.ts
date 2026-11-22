@@ -144,7 +144,7 @@ const api: HiltwrightApi = {
     target: (serial) => ipcRenderer.invoke('flash:target', serial),
     leave: (serial) => ipcRenderer.invoke('flash:leave', serial),
     backup: (saberId, label, configName, serial) => ipcRenderer.invoke('flash:backup', saberId, label, configName ?? null, serial ?? null),
-    write: (saberId, dfuPath, serial) => ipcRenderer.invoke('flash:write', saberId, dfuPath, serial ?? null),
+    write: (saberId, dfuPath, serial, opts) => ipcRenderer.invoke('flash:write', saberId, dfuPath, serial ?? null, { noBackup: opts?.noBackup === true }),
     installDriver: () => ipcRenderer.invoke('flash:installDriver'),
     listBackups: (saberId) => ipcRenderer.invoke('flash:listBackups', saberId),
     restore: (saberId, file, serial) => ipcRenderer.invoke('flash:restore', saberId, file, serial ?? null),

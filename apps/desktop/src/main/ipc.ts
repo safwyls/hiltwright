@@ -34,6 +34,7 @@ import { sourceUrl } from '../shared/about';
 import { installBootloaderDriver } from './driver';
 import { importXenoFont, scanXenoCard, type XenoFontInfo } from './importer';
 import { writeAllowed, type KeptBuild } from './writeGuard';
+import { BackupProofs, SABER_ID } from './backupProof';
 import { backAfter, backupFlash, describeBootloader, driverUsable, flashTarget, leaveBootloader, listBackups, newBootloaders, rememberWrite, restoreBackup, usbState, waitFor, writeFirmware, type UsbState } from './flash';
 import { logged } from './ipcLog';
 import { tourGuarded, tourState } from './tourGuard';
@@ -649,7 +650,7 @@ export function registerIpc(): void {
     try {
       const mm = model(m);
       const r = await buildFirmware({ toolchainRoot, saberId: id, model: mm, force: force === true, customPropsDir: customPropsDir(userData), onLine: (l) => emit('build', l) });
-      if (r.ok && r.dfuPath) lastBuildBySaber.set(id, { dfuPath: r.dfuPath, layout: wiringFingerprint(mm.board, mm.blades) });
+      if (r.ok && r.dfuPath) lastBuildBySaber.set(id, { dfuPath: r.dfuPath, board: r.board, layout: wiringFingerprint(mm.board, mm.blades) });
       lastBuild = { at, saberId: id, ok: r.ok, cached: r.cached, ms: r.ms, textBytes: r.textBytes, flashBytes: r.flashBytes, flashPct: r.flashPct, warnings: r.warnings, problems: r.problems };
       console.log(`[build] result ok=${r.ok} cached=${r.cached} ms=${r.ms} flash=${r.flashPct ?? '?'}% warnings=${r.warnings.length} problems=${r.problems.length}${r.problems[0] ? `: ${r.problems[0]}` : ''}`);
       return r;
@@ -681,30 +682,61 @@ export function registerIpc(): void {
   })()));
   handle('flash:target', (_e, serial: unknown) => flashTarget(toolchainRoot, serialArg(serial)).then(result('target')));
   handle('flash:leave', (_e, serial: unknown) => leaveBootloader(toolchainRoot, serialArg(serial), (l) => emit('flash', l)).then(result('leave')));
-  handle('flash:backup', (_e, saberId: unknown, label: unknown, configName: unknown, serial: unknown) => backupFlash(toolchainRoot, join(userData, 'sabers', str(saberId, 40), 'backups'), str(label, 60), (l) => emit('flash', l), typeof configName === 'string' ? str(configName, 200) : null, serialArg(serial)).then(result('backup')));
-  handle('flash:write', async (_e, saberId: unknown, dfuPath: unknown, serial: unknown) => {
-    const id = str(saberId, 40);
+  // A saber's backups folder, for a saber id as the library makes them (12 hex characters) and one it holds: never a
+  // folder built from whatever the page sends (issue #29).
+  const knownSaber = async (v: unknown): Promise<string | null> => {
+    const id = str(v, 40);
+    return SABER_ID.test(id) && (await library.list()).some((s) => s.id === id) ? id : null;
+  };
+  const saberArg = async (v: unknown): Promise<string> => { const id = await knownSaber(v); if (!id) throw new Error('Unknown saber'); return id; };
+  const backupsDir = (id: string) => join(userData, 'sabers', id, 'backups');
+  // Every read of a board main makes for a saber, for the write or restore that must follow it (backupProof.ts, issue #29).
+  const proofs = new BackupProofs();
+  handle('flash:backup', async (_e, saberId: unknown, label: unknown, configName: unknown, serial: unknown) => {
+    const id = await saberArg(saberId);
+    const s = serialArg(serial);
+    const before = await flashTarget(toolchainRoot, s);
+    const r = await backupFlash(toolchainRoot, backupsDir(id), str(label, 60), (l) => emit('flash', l), typeof configName === 'string' ? str(configName, 200) : null, s);
+    // A read that dfu-util ran is recorded whatever it found; one refused before reading (ms 0) proves nothing.
+    if (r.kind || r.ms > 0) proofs.record({ saberId: id, serial: s, board: before.board, kind: r.kind ?? 'failed' });
+    return result('backup')(r);
+  });
+  handle('flash:write', async (_e, saberId: unknown, dfuPath: unknown, serial: unknown, opts: unknown) => {
+    const id = await saberArg(saberId);
     const p = str(dfuPath, 1000);
+    const s = serialArg(serial);
+    const noBackup = !!opts && typeof opts === 'object' && (opts as { noBackup?: unknown }).noBackup === true;
     // Paths arrive with whatever slashes the builder used; compare them resolved and case-folded (Windows).
     const norm = (x: string) => resolve(x).replace(/[\\/]+/g, '/').toLowerCase();
     if (!norm(p).startsWith(norm(userBuildRoot()) + '/')) throw new Error('Only firmware built by Hiltwright can be written');
-    // Main's own gate, whatever the page asks for: this saber's last build, from wiring the owner confirmed (FW10).
-    const saved = (await library.list()).find((s) => s.id === id)?.model;
-    const allowed = writeAllowed(lastBuildBySaber.get(id), saved, p);
-    if (!allowed.ok) return result('write')({ ok: false, ms: 0, detail: allowed.text, refused: true });
+    const refuse = (text: string) => result('write')({ ok: false, ms: 0, detail: text, refused: true });
+    // Main's own gate, whatever the page asks for: this saber's last build, from wiring the owner confirmed (FW10), for
+    // the board in bootloader mode now, which main read just before (issue #29).
+    const now = await flashTarget(toolchainRoot, s);
+    if (!now.found) return refuse('The saber is not in bootloader mode, or more than one board is. Nothing was written.');
+    const saved = (await library.list()).find((x) => x.id === id)?.model;
+    const allowed = writeAllowed(lastBuildBySaber.get(id), saved, p, now);
+    if (!allowed.ok) return refuse(allowed.text);
+    const proof = proofs.forWrite(id, s, now.board, noBackup);
+    if (!proof.ok) return refuse(proof.text);
     // A write that did not finish is remembered, so the next read of the board is kept as a partial read (issue #12).
-    return writeFirmware(toolchainRoot, p, (l) => emit('flash', l), serialArg(serial)).then((r) => rememberWrite(backupsDir(id), r)).then(result('write'));
+    return writeFirmware(toolchainRoot, p, (l) => emit('flash', l), s).then((r) => rememberWrite(backupsDir(id), r)).then(result('write'));
   });
-  const backupsDir = (saberId: unknown) => join(userData, 'sabers', str(saberId, 40).replace(/[^A-Za-z0-9_-]/g, '_'), 'backups');
-  handle('flash:listBackups', (_e, saberId: unknown) => listBackups(backupsDir(saberId)));
+  // An id that is not a saber's has no backups.
+  handle('flash:listBackups', async (_e, saberId: unknown) => { const id = await knownSaber(saberId); return id ? listBackups(backupsDir(id)) : []; });
   handle('flash:restore', async (_e, saberId: unknown, file: unknown, serial: unknown) => {
+    const id = await saberArg(saberId);
+    const s = serialArg(serial);
     const name = str(file, 200);
     // Only a plain file name from this saber's own backups folder; never a path.
     if (!/^[A-Za-z0-9._-]+\.bin$/.test(name)) throw new Error('Not a backup file name');
     // The board's own flash size, looked up here, decides whether the backup fits: whatever the page believes.
-    const target = await flashTarget(toolchainRoot, serialArg(serial));
+    const target = await flashTarget(toolchainRoot, s);
     if (!target.found) return result('restore')({ ok: false, ms: 0, detail: 'The saber is not in bootloader mode, or more than one board is. Nothing was written.' });
-    return restoreBackup(toolchainRoot, join(backupsDir(saberId), name), (l) => emit('flash', l), serialArg(serial), target.flashBytes).then((r) => rememberWrite(backupsDir(saberId), r)).then(result('restore'));
+    // What the board held is read first, as for an install, whatever that read finds (issue #29, issue #12).
+    const proof = proofs.forRestore(id, s);
+    if (!proof.ok) return result('restore')({ ok: false, ms: 0, detail: proof.text, refused: true });
+    return restoreBackup(toolchainRoot, join(backupsDir(id), name), (l) => emit('flash', l), s, target.flashBytes).then((r) => rememberWrite(backupsDir(id), r)).then(result('restore'));
   });
   // The installer is kept in the owner's own data folder, not the shared toolchain folder: it runs elevated.
   handle('flash:installDriver', () => installBootloaderDriver(join(userData, 'drivers'), (l) => emit('flash', l)).then(result('installDriver')));
