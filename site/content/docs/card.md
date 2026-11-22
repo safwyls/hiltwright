@@ -26,6 +26,8 @@ When nothing is left to do, the note says the card is ready for the flash.
 
 Removing the presets file is what lets the new list take effect. Without it, the saber would keep using the presets on its card. Because it is done in the reader, the saber starts with your list after the flash, with no second restart.
 
+The snapshot kept first is the list the saber itself would load. The saber saves its presets to two files in turn, `presets.ini` and `presets.tmp`, and Hiltwright picks the newer good save, as the saber does. Both files are also kept on this computer as they were. If Hiltwright cannot tell which list the saber would load, it makes no snapshot, but still keeps both files.
+
 If a font you chose is not in your font library, the note says so and links to Fonts. It cannot be copied.
 
 Whatever the voice pack replaces is kept on this computer, and the note says where.

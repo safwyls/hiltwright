@@ -44,7 +44,7 @@ The line under the heading shows free and total space, the number of fonts and t
 
 Hiltwright writes only to the card it read. A card put in, taken out, or swapped for another in the same reader is noticed within a few seconds. If a copy or the voice pack is asked for just as a card is swapped, it is refused with "The card in E: is not the one Hiltwright read. Look again." and nothing is written to the other card.
 
-Below it, Hiltwright says whose card it is. A card the saber shares over USB is remembered as that saber's, by the card's serial number, so the same card in a card reader is known too. A card that holds the presets a saber last reported is taken to be that saber's. To be sure, press **This is (saber)'s card**; **Not (saber)'s card** undoes it. The saber's own card is chosen first when several are in, and Build & Flash checks it there.
+Below it, Hiltwright says whose card it is. A card the saber shares over USB is remembered as that saber's, by the card's serial number, so the same card in a card reader is known too. A card that holds the presets a saber last reported is taken to be that saber's. The saber saves its presets to two files in turn, `presets.ini` and `presets.tmp`, and Hiltwright reads the list the saber would load, the newer good save. If it cannot tell which list that is, it does not guess. To be sure, press **This is (saber)'s card**; **Not (saber)'s card** undoes it. The saber's own card is chosen first when several are in, and Build & Flash checks it there.
 
 Headings tell you what Hiltwright found:
 
