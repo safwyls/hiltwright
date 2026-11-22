@@ -33,7 +33,7 @@ How to cut a Hiltwright beta from now on, and how an installed copy then finds i
    npm run dist
    ```
 
-   `dist` never publishes anything (`--publish never`). It writes into `apps/desktop/release/`.
+   `dist` never publishes anything (`--publish never`). It writes into `apps/desktop/release/`. It also sets Electron's fuses; see [Electron fuses](#electron-fuses-and-the-packaged-page).
 
 4. **Make the GitHub release**, by hand, on https://github.com/safwyls/hiltwright/releases/new:
 
@@ -93,6 +93,24 @@ Checks happen in an installed copy only, a little after it starts and every four
 ## Signing
 
 The app is unsigned and stays unsigned. `win.verifyUpdateCodeSignature` is `false`, so `app-update.yml` carries no `publisherName` and the updater does not ask the downloaded installer for a signature. Smart App Control must be off on a tester's PC for the app to run at all. The browser warning and the **Unblock** step apply only to an installer downloaded in a browser: the updater's download is written by the app without the "downloaded from the internet" mark and started directly, so SmartScreen's "Windows protected your PC" prompt is not expected. That last point is from reading electron-updater's code, not from a test on a PC; check it with the first real update.
+
+## Electron fuses and the packaged page
+
+Packaging sets Electron's fuses in `Hiltwright.exe` (issue #30): switches compiled into the binary that no launch environment can turn back on. `apps/desktop/build/afterPack.mjs` runs as electron-builder's `afterPack` hook, after the app is packed and before anything is signed, and sets:
+
+| Fuse | Set to | So that |
+|---|---|---|
+| RunAsNode | off | `ELECTRON_RUN_AS_NODE` cannot turn the app into a plain Node.js. |
+| EnableNodeOptionsEnvironmentVariable | off | `NODE_OPTIONS` cannot load code into it. |
+| EnableNodeCliInspectArguments | off | `--inspect` and the other inspector switches are refused. |
+| OnlyLoadAppFromAsar | on | The app's code loads only from `resources/app.asar`. |
+| EnableEmbeddedAsarIntegrityValidation | on | `app.asar` must match the hash electron-builder embeds in the executable, or the app does not start. |
+
+The hook reads the fuses back and fails the build if one did not take, and it refuses to package an app that is not in `app.asar`: never set `"asar": false` in the build config, or the last two fuses would stop the app starting. It uses `@electron/fuses`, pinned in `apps/desktop/package.json`; do not also set electron-builder's own `electronFuses`. The build log shows a line "Electron fuses set in ...". To check a build, run `npx electron-fuses read --app release\win-unpacked\Hiltwright.exe` in `apps/desktop` (or point `--app` at an installed copy's `Hiltwright.exe`).
+
+After a change to the build config or an Electron upgrade, install the new build and start it once before publishing: a wrong asar hash shows as the app closing straight away. The unit tests run the hook against stand-ins only.
+
+A packaged build also ignores `ELECTRON_RENDERER_URL` (it always loads its own page), and its page's Content-Security-Policy allows no WebSocket. The development page allows `ws://localhost:*` for live reload; the build removes it (`apps/desktop/build/csp.ts`) and stops if the policy no longer reads as expected.
 
 ## Testing an update locally
 

@@ -47,6 +47,8 @@ During your first install the Build page stops at "Windows needs a driver".
 3. Choose **Yes** when Windows asks for approval.
 4. Leave the saber plugged in. The install carries on by itself.
 
+Hiltwright checks the installer again as it starts it, and holds the file so nothing can change it in between. If you see "The driver installer changed after it was checked", choose **Install the driver** again: Hiltwright downloads a fresh copy.
+
 If you choose **No**, the driver is not installed and you cannot flash. If you see "Still no driver (Windows reports ...)", run the installer again with the board plugged in, then check again. If you see "The board is no longer in bootloader mode", hold BOOT, tap RESET, release BOOT, then check again.
 
 ## The compiler setup fails
@@ -69,6 +71,8 @@ Leave the saber plugged in until the page says **Installed**. If the install sto
 Every install reads the saber's whole firmware into a backup first. To undo an install, open the **Backups** tab on Build & Flash and press **Put back** on a backup. It writes that firmware to the saber exactly as it was. The presets and fonts on the SD card are not touched. See [Build & Flash](build-and-install.html).
 
 If the note says "Writing failed", the board stays in bootloader mode. Leave it plugged in and press **Put back** on the backup from just before. The board cannot be backed up in that state, so the backup goes back without one, and an amber note says so.
+
+If the note says "This board was not read just before, so nothing was written", press **Install** or **Put back** again. Hiltwright writes to a board only within a few minutes of reading it, and only once per reading.
 
 ## Install says another saber is plugged in, or that the saber has changed
 
@@ -121,7 +125,7 @@ The preview runs the same math as the saber. A few things are left unmodeled.
 
 ## Reporting a problem
 
-1. Press **Save diagnostics** on the Controls page, or on the fault screen or failed build note. It saves a file on your computer and sends nothing.
+1. Press **Save diagnostics** on the Controls page, or on the fault screen or failed build note. It saves a file on your computer and sends nothing. Your user folder, user name and computer name are replaced, and serial numbers show only their last four characters.
 2. Open [github.com/safwyls/hiltwright/issues](https://github.com/safwyls/hiltwright/issues).
 3. Say what happened and which step you were on.
 4. Attach the diagnostics file.

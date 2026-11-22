@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { listBackups, restoreBackup } from '../src/main/flash';
+import { RESTORE_NO_FLASH_SIZE, listBackups, restoreBackup } from '../src/main/flash';
 
 let dir = '';
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'hw-backups-')); });
@@ -38,6 +38,16 @@ describe('firmware-install audit', () => {
     expect(b.valid).toBe(false);
     const r = await restoreBackup(join(dir, 'no-toolchain'), join(dir, b.file), () => undefined);
     expect(r).toEqual({ ok: false, ms: 0, detail: 'That backup does not look like firmware (it may be an erased or protected read), so it was not written.' });
+  });
+
+  // Issue #29: with the board's flash size unknown, whether the backup fits cannot be told, so nothing is written (a
+  // backup read refuses in the same case).
+  it('a good backup with the board\'s flash size unknown: putting it back is refused', async () => {
+    writeFileSync(join(dir, '2026-09-25T16-00-00-000Z-before-install.bin'), image());
+    const lines: string[] = [];
+    const r = await restoreBackup(join(dir, 'no-toolchain'), join(dir, '2026-09-25T16-00-00-000Z-before-install.bin'), (l) => lines.push(l), '209133815232', null);
+    expect(r).toEqual({ ok: false, ms: 0, detail: RESTORE_NO_FLASH_SIZE });
+    expect(lines).toEqual([]);
   });
 
   it('5.15 a wrong-size read that starts like firmware: putting it back is refused', async () => {

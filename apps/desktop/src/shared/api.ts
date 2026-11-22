@@ -528,13 +528,17 @@ export interface HiltwrightApi {
     leave(serial: string | null): Promise<FlashStepResult>;
     /** `configName`: what the saber reported before its reboot, kept beside the backup so a restore can expect it back. `serial`: the board to read. */
     backup(saberId: string, label: string, configName?: string | null, serial?: string | null): Promise<FlashStepResult>;
-    /** Write this saber's last build. Main refuses any other file, or wiring the owner has not confirmed (`refused`). */
-    write(saberId: string, dfuPath: string, serial?: string | null): Promise<FlashStepResult>;
+    /**
+     * Write this saber's last build. Main refuses any other file, wiring the owner has not confirmed, a board of another
+     * type, or a board main did not read just before (`refused`, issue #29). `noBackup`: the owner chose to install
+     * although that read could not be a backup.
+     */
+    write(saberId: string, dfuPath: string, serial?: string | null, opts?: { noBackup?: boolean }): Promise<FlashStepResult>;
     /** Windows: download the official bootloader driver installer, run it elevated, wait for WinUSB to bind. */
     installDriver(): Promise<{ ok: boolean; text: string }>;
     /** Flash backups taken before installs for this saber, newest first. */
     listBackups(saberId: string): Promise<BackupInfo[]>;
-    /** Write one of this saber's backups back to the board with this serial. The board must be in bootloader mode. */
+    /** Write one of this saber's backups back to the board with this serial. The board must be in bootloader mode, and read by `backup` just before. */
     restore(saberId: string, file: string, serial?: string | null): Promise<FlashStepResult>;
     /** Wait for the running firmware's serial device to be back; with a serial, that board's. */
     waitForRuntime(timeoutMs: number, serial?: string | null): Promise<boolean>;

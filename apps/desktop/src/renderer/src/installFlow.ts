@@ -9,7 +9,8 @@
 // Safety nets (install-safety-nets): a backup counts only when it reads back as firmware (an erased board goes on; a
 // restore goes on whatever the board holds, and an install does when the owner says so, issue #12);
 // a stop before the write sends this saber's board back to its firmware; the record is written as soon as the write
-// succeeds; and the install is checked against what the saber reports once it is back.
+// succeeds; and the install is checked against what the saber reports once it is back. Main checks the read came first
+// on its own (backupProof.ts, issue #29): a write or restore with no fresh read of that board is refused.
 //
 // Staged presets (safe-staged-install): nothing is removed before the reboot. Only once the new firmware is installed
 // and checked are the saber's presets files removed and the saber restarted, and the list stops being staged only when
@@ -192,7 +193,7 @@ const runningSerial = (saber: SaberRecord, target: Target) => (target.asked ? nu
  * install a read that is not a backup goes on only when the owner says so. A partial read is kept by main for a
  * diagnosis, never as a backup.
  */
-async function takeBackup(deps: InstallDeps, saber: SaberRecord, target: Target, label: string, configName: string | null, stopWords: string | null): Promise<{ file: string | null; notes: InstallNote[] } | null> {
+async function takeBackup(deps: InstallDeps, saber: SaberRecord, target: Target, label: string, configName: string | null, stopWords: string | null): Promise<{ file: string | null; notes: InstallNote[]; noBackup?: true } | null> {
   deps.report({ xfer: 0, step: 'backup' });
   const bak = await deps.flash.backup(saber.id, label, configName, target.serial);
   if (bak.ok && bak.file) return { file: bak.file, notes: [] };
@@ -200,8 +201,9 @@ async function takeBackup(deps: InstallDeps, saber: SaberRecord, target: Target,
   const read = bak.kind === 'unusable' || bak.kind === 'partial';
   const kept = read && bak.file ? ` What was read is kept at ${bak.file} in case it helps find the fault. It is not listed as a backup.` : '';
   if (stopWords === null) return { file: null, notes: [{ tone: 'amber', text: `What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. ${bak.detail}${kept}` }] };
+  // The owner's choice goes to main with the write: main lets a write follow a read that is not a backup only then (issue #29).
   if (read && deps.confirmNoBackup && (await deps.confirmNoBackup(saber.name, bak.detail))) {
-    return { file: null, notes: [{ tone: 'amber', text: `No backup was taken this time: you chose to install without one. ${bak.detail}${kept}` }] };
+    return { file: null, notes: [{ tone: 'amber', text: `No backup was taken this time: you chose to install without one. ${bak.detail}${kept}` }], noBackup: true };
   }
   // A board whose last write did not finish is not sent to that half-written firmware: it stays where a backup can go back.
   if (bak.kind === 'partial') { fail(deps, `${stopWords} ${bak.detail} The board stays in bootloader mode: put a backup back from the Backups tab.`); return null; }
@@ -246,7 +248,7 @@ export async function writeFromBootloader(deps: InstallDeps, job: InstallJob, gi
     // From here, the saber coming back is the only board the page may open (HW-2026-09-25c).
     if (serial) await board.reachNext(serial);
     report({ xfer: 0, step: 'writing' });
-    const w = await flash.write(saber.id, result.dfuPath, target.serial);
+    const w = bak.noBackup ? await flash.write(saber.id, result.dfuPath, target.serial, { noBackup: true }) : await flash.write(saber.id, result.dfuPath, target.serial);
     // Main would not write it (FW10): nothing was written, so this is a stop before the write.
     if (w.refused) { await stopInBootloader(deps, saber, target, w.detail, notes); return; }
     // A failed write leaves a partial image: the board stays in its bootloader, where a backup can be put back.

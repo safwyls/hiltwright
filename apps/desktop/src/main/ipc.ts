@@ -34,6 +34,7 @@ import { sourceUrl } from '../shared/about';
 import { installBootloaderDriver } from './driver';
 import { importXenoFont, scanXenoCard, type XenoFontInfo } from './importer';
 import { writeAllowed, type KeptBuild } from './writeGuard';
+import { BackupProofs, SABER_ID } from './backupProof';
 import { backAfter, backupFlash, describeBootloader, driverUsable, flashTarget, leaveBootloader, listBackups, newBootloaders, rememberWrite, restoreBackup, usbState, waitFor, writeFirmware, type UsbState } from './flash';
 import { logged } from './ipcLog';
 import { tourGuarded, tourState } from './tourGuard';
@@ -46,7 +47,20 @@ import { DialogFolders } from './dialogFolders';
 import { WORK_CHANNELS, type BusyFacts, type UpdateState, type WorkKind } from '../shared/updates';
 import type { FontLibraryStatus, JobEvent } from '../shared/api';
 import type { FirmwareManifest } from '@hiltwright/core';
-import type { SaberIdentity, SaberPatch } from '../shared/api';
+import type { SaberIdentity, SaberPatch, SaberRecord } from '../shared/api';
+import { rememberSerials } from './redact';
+
+// Every serial number main is told of or finds is handed to the redactor, so the log and the diagnostics file show
+// only its last four characters (issue #24).
+function seenSaber<T extends SaberRecord | SaberRecord[]>(r: T): T {
+  const list: SaberRecord[] = Array.isArray(r) ? r : [r as SaberRecord];
+  for (const s of list) rememberSerials(s.identity.usbSerial, s.bootloader?.serial, ...(s.cards ?? []).map((c) => c.serial));
+  return r;
+}
+function seenUsb<T extends UsbState>(u: T): T {
+  rememberSerials(...u.runtimeSerials, ...u.bootloaders.map((b) => b.serial));
+  return u;
+}
 
 function str(v: unknown, max = 200): string {
   if (typeof v !== 'string' || v.length > max) throw new Error('Expected a short string');
@@ -104,11 +118,13 @@ export function registerIpc(): void {
   };
   const library =new Library(libraryPath(userData));
   const snapshots = new Snapshots(userData);
+  void library.list().then(seenSaber, () => undefined);
 
-  handle('library:list', () => library.list());
+  handle('library:list', () => library.list().then(seenSaber));
   handle('library:upsert', (_e, input: unknown) => {
     const o = (input ?? {}) as Record<string, unknown>;
     const ex = (o.expect ?? null) as { id?: unknown; configName?: unknown } | null;
+    rememberSerials(typeof (o.identity as { usbSerial?: unknown } | undefined)?.usbSerial === 'string' ? (o.identity as { usbSerial: string }).usbSerial : null);
     return library.upsert({
       identity: identity(o.identity), presets: presets(o.presets ?? []),
       fonts: Array.isArray(o.fonts) ? o.fonts.map((f) => str(f, 200)) : [],
@@ -121,11 +137,13 @@ export function registerIpc(): void {
   handle('library:adopt', (_e, plannedId: unknown, targetId: unknown) => library.adopt(str(plannedId, 40), str(targetId, 40)));
   handle('library:noteBootloader', (_e, id: unknown, seen: unknown) => {
     const o = (seen ?? {}) as { serial?: unknown; flashBytes?: unknown };
+    rememberSerials(typeof o.serial === 'string' ? o.serial : null);
     return library.noteBootloader(str(id, 40), { serial: typeof o.serial === 'string' ? o.serial : null, flashBytes: Number(o.flashBytes) });
   });
   handle('library:remove', (_e, id: unknown) => library.remove(str(id, 40)));
   handle('library:linkCard', (_e, id: unknown, card: unknown) => {
     const c = (card ?? {}) as { serial?: unknown; label?: unknown };
+    rememberSerials(typeof c.serial === 'string' ? c.serial : null);
     return library.linkCard(str(id, 40), { serial: str(c.serial, 16), label: typeof c.label === 'string' ? c.label : null });
   });
   handle('library:unlinkCard', (_e, id: unknown, serial: unknown) => library.unlinkCard(str(id, 40), str(serial, 16)));
@@ -167,11 +185,12 @@ export function registerIpc(): void {
   handle('snapshots:save', (_e, id: unknown, label: unknown, list: unknown) => snapshots.save(str(id, 40), str(label, 120), presets(list)));
   handle('snapshots:read', (_e, id: unknown, file: unknown) => snapshots.read(str(id, 40), str(file, 200)));
 
-  handle('usb:proffieSerials', () => proffieSerials());
+  handle('usb:proffieSerials', () => proffieSerials().then((l) => { rememberSerials(...l); return l; }));
   handle('usb:portHolders', () => portHolders());
   // Reach only this board next (the saber an install is bringing back); null lets every Proffieboard through again.
   handle('usb:wantSerial', async (_e, serial: unknown) => {
     const s = typeof serial === 'string' && /^[A-Za-z0-9]{1,40}$/.test(serial) ? serial : null;
+    rememberSerials(s);
     wantSerial(s);
     if (s) await lookUpWanted();
     const found = s ? activeWant()?.ids.size ?? 0 : 0;
@@ -195,6 +214,7 @@ export function registerIpc(): void {
   // as before, an empty list included when it did not. A look Windows did not answer leaves the known cards as they were.
   handle('sd:locate', async (_e, opts: unknown) => {
     const look = await lookForCards();
+    if (look.answered) rememberSerials(...look.cards.flatMap((c) => [c.volumeSerial, c.saberSerial]));
     console.log(`[sd] drive look: ${look.answered ? `${look.cards.length} card(s)` : 'no answer'} in ${look.ms} ms`);
     if (look.answered) knownRoots = new Map(look.cards.map((c) => [c.root, c.volumeId]));
     const detailed = !!opts && typeof opts === 'object' && (opts as { detailed?: unknown }).detailed === true;
@@ -630,7 +650,7 @@ export function registerIpc(): void {
     try {
       const mm = model(m);
       const r = await buildFirmware({ toolchainRoot, saberId: id, model: mm, force: force === true, customPropsDir: customPropsDir(userData), onLine: (l) => emit('build', l) });
-      if (r.ok && r.dfuPath) lastBuildBySaber.set(id, { dfuPath: r.dfuPath, layout: wiringFingerprint(mm.board, mm.blades) });
+      if (r.ok && r.dfuPath) lastBuildBySaber.set(id, { dfuPath: r.dfuPath, board: r.board, layout: wiringFingerprint(mm.board, mm.blades) });
       lastBuild = { at, saberId: id, ok: r.ok, cached: r.cached, ms: r.ms, textBytes: r.textBytes, flashBytes: r.flashBytes, flashPct: r.flashPct, warnings: r.warnings, problems: r.problems };
       console.log(`[build] result ok=${r.ok} cached=${r.cached} ms=${r.ms} flash=${r.flashPct ?? '?'}% warnings=${r.warnings.length} problems=${r.problems.length}${r.problems[0] ? `: ${r.problems[0]}` : ''}`);
       return r;
@@ -641,9 +661,13 @@ export function registerIpc(): void {
   });
   // Install steps report failure in their result rather than by throwing, so each result is logged here.
   const result = (step: string) => <T>(r: T): T => { console.log(`[flash] ${step} result: ${JSON.stringify(r)}`); return r; };
-  handle('flash:usb', () => usbState());
+  handle('flash:usb', () => usbState().then(seenUsb));
   // A USB serial from the page: short plain text, or null for "the only board".
-  const serialArg = (v: unknown): string | null => (typeof v === 'string' && /^[A-Za-z0-9]{1,40}$/.test(v) ? v : null);
+  const serialArg = (v: unknown): string | null => {
+    const s = typeof v === 'string' && /^[A-Za-z0-9]{1,40}$/.test(v) ? v : null;
+    rememberSerials(s);
+    return s;
+  };
   const serialsArg = (v: unknown): (string | null)[] | null => (Array.isArray(v) ? v.slice(0, 16).map(serialArg) : null);
   handle('flash:waitForBootloader', async (_e, timeoutMs: unknown, before: unknown) => result('waitForBootloader')(await (async () => {
     // With `before` (the bootloaders present before a reboot), only a bootloader that was not there counts.
@@ -653,35 +677,66 @@ export function registerIpc(): void {
     if (!s) return { ok: false, text: 'The board did not switch to bootloader mode. Hold BOOT, tap RESET, release BOOT, then try again.', serials: [] };
     // Give Windows a moment to bind the driver before judging it.
     const bound = (await waitFor((u) => fresh(u).length > 0 && fresh(u).every((b) => driverUsable(b.driver)), 5000)) ?? s;
-    const found = fresh(bound);
+    const found = fresh(seenUsb(bound));
     return { ...describeBootloader({ ...bound, bootloaderDriver: found[0]?.driver ?? null, bootloaderProblem: found[0]?.problem ?? null }), serials: found.map((b) => b.serial) };
   })()));
   handle('flash:target', (_e, serial: unknown) => flashTarget(toolchainRoot, serialArg(serial)).then(result('target')));
   handle('flash:leave', (_e, serial: unknown) => leaveBootloader(toolchainRoot, serialArg(serial), (l) => emit('flash', l)).then(result('leave')));
-  handle('flash:backup', (_e, saberId: unknown, label: unknown, configName: unknown, serial: unknown) => backupFlash(toolchainRoot, join(userData, 'sabers', str(saberId, 40), 'backups'), str(label, 60), (l) => emit('flash', l), typeof configName === 'string' ? str(configName, 200) : null, serialArg(serial)).then(result('backup')));
-  handle('flash:write', async (_e, saberId: unknown, dfuPath: unknown, serial: unknown) => {
-    const id = str(saberId, 40);
+  // A saber's backups folder, for a saber id as the library makes them (12 hex characters) and one it holds: never a
+  // folder built from whatever the page sends (issue #29).
+  const knownSaber = async (v: unknown): Promise<string | null> => {
+    const id = str(v, 40);
+    return SABER_ID.test(id) && (await library.list()).some((s) => s.id === id) ? id : null;
+  };
+  const saberArg = async (v: unknown): Promise<string> => { const id = await knownSaber(v); if (!id) throw new Error('Unknown saber'); return id; };
+  const backupsDir = (id: string) => join(userData, 'sabers', id, 'backups');
+  // Every read of a board main makes for a saber, for the write or restore that must follow it (backupProof.ts, issue #29).
+  const proofs = new BackupProofs();
+  handle('flash:backup', async (_e, saberId: unknown, label: unknown, configName: unknown, serial: unknown) => {
+    const id = await saberArg(saberId);
+    const s = serialArg(serial);
+    const before = await flashTarget(toolchainRoot, s);
+    const r = await backupFlash(toolchainRoot, backupsDir(id), str(label, 60), (l) => emit('flash', l), typeof configName === 'string' ? str(configName, 200) : null, s);
+    // A read that dfu-util ran is recorded whatever it found; one refused before reading (ms 0) proves nothing.
+    if (r.kind || r.ms > 0) proofs.record({ saberId: id, serial: s, board: before.board, kind: r.kind ?? 'failed' });
+    return result('backup')(r);
+  });
+  handle('flash:write', async (_e, saberId: unknown, dfuPath: unknown, serial: unknown, opts: unknown) => {
+    const id = await saberArg(saberId);
     const p = str(dfuPath, 1000);
+    const s = serialArg(serial);
+    const noBackup = !!opts && typeof opts === 'object' && (opts as { noBackup?: unknown }).noBackup === true;
     // Paths arrive with whatever slashes the builder used; compare them resolved and case-folded (Windows).
     const norm = (x: string) => resolve(x).replace(/[\\/]+/g, '/').toLowerCase();
     if (!norm(p).startsWith(norm(userBuildRoot()) + '/')) throw new Error('Only firmware built by Hiltwright can be written');
-    // Main's own gate, whatever the page asks for: this saber's last build, from wiring the owner confirmed (FW10).
-    const saved = (await library.list()).find((s) => s.id === id)?.model;
-    const allowed = writeAllowed(lastBuildBySaber.get(id), saved, p);
-    if (!allowed.ok) return result('write')({ ok: false, ms: 0, detail: allowed.text, refused: true });
+    const refuse = (text: string) => result('write')({ ok: false, ms: 0, detail: text, refused: true });
+    // Main's own gate, whatever the page asks for: this saber's last build, from wiring the owner confirmed (FW10), for
+    // the board in bootloader mode now, which main read just before (issue #29).
+    const now = await flashTarget(toolchainRoot, s);
+    if (!now.found) return refuse('The saber is not in bootloader mode, or more than one board is. Nothing was written.');
+    const saved = (await library.list()).find((x) => x.id === id)?.model;
+    const allowed = writeAllowed(lastBuildBySaber.get(id), saved, p, now);
+    if (!allowed.ok) return refuse(allowed.text);
+    const proof = proofs.forWrite(id, s, now.board, noBackup);
+    if (!proof.ok) return refuse(proof.text);
     // A write that did not finish is remembered, so the next read of the board is kept as a partial read (issue #12).
-    return writeFirmware(toolchainRoot, p, (l) => emit('flash', l), serialArg(serial)).then((r) => rememberWrite(backupsDir(id), r)).then(result('write'));
+    return writeFirmware(toolchainRoot, p, (l) => emit('flash', l), s).then((r) => rememberWrite(backupsDir(id), r)).then(result('write'));
   });
-  const backupsDir = (saberId: unknown) => join(userData, 'sabers', str(saberId, 40).replace(/[^A-Za-z0-9_-]/g, '_'), 'backups');
-  handle('flash:listBackups', (_e, saberId: unknown) => listBackups(backupsDir(saberId)));
+  // An id that is not a saber's has no backups.
+  handle('flash:listBackups', async (_e, saberId: unknown) => { const id = await knownSaber(saberId); return id ? listBackups(backupsDir(id)) : []; });
   handle('flash:restore', async (_e, saberId: unknown, file: unknown, serial: unknown) => {
+    const id = await saberArg(saberId);
+    const s = serialArg(serial);
     const name = str(file, 200);
     // Only a plain file name from this saber's own backups folder; never a path.
     if (!/^[A-Za-z0-9._-]+\.bin$/.test(name)) throw new Error('Not a backup file name');
     // The board's own flash size, looked up here, decides whether the backup fits: whatever the page believes.
-    const target = await flashTarget(toolchainRoot, serialArg(serial));
+    const target = await flashTarget(toolchainRoot, s);
     if (!target.found) return result('restore')({ ok: false, ms: 0, detail: 'The saber is not in bootloader mode, or more than one board is. Nothing was written.' });
-    return restoreBackup(toolchainRoot, join(backupsDir(saberId), name), (l) => emit('flash', l), serialArg(serial), target.flashBytes).then((r) => rememberWrite(backupsDir(saberId), r)).then(result('restore'));
+    // What the board held is read first, as for an install, whatever that read finds (issue #29, issue #12).
+    const proof = proofs.forRestore(id, s);
+    if (!proof.ok) return result('restore')({ ok: false, ms: 0, detail: proof.text, refused: true });
+    return restoreBackup(toolchainRoot, join(backupsDir(id), name), (l) => emit('flash', l), s, target.flashBytes).then((r) => rememberWrite(backupsDir(id), r)).then(result('restore'));
   });
   // The installer is kept in the owner's own data folder, not the shared toolchain folder: it runs elevated.
   handle('flash:installDriver', () => installBootloaderDriver(join(userData, 'drivers'), (l) => emit('flash', l)).then(result('installDriver')));
@@ -696,7 +751,7 @@ export function registerIpc(): void {
   handle('support:save', async (_e, snapshot: unknown) => {
     const connection = cleanSnapshot(snapshot);
     const fail = (err: unknown) => ({ error: err instanceof Error ? err.message : String(err) });
-    const [toolchain, usb, sabers] = await Promise.all([toolchainStatus(toolchainRoot).catch(fail), usbState().catch(fail), Promise.resolve(library.list()).catch(() => [])]);
+    const [toolchain, usb, sabers] = await Promise.all([toolchainStatus(toolchainRoot).catch(fail), usbState().then(seenUsb).catch(fail), Promise.resolve(library.list()).then(seenSaber).catch(() => [])]);
     const saber = connection.saberId ? sabers.find((x) => x.id === connection.saberId) ?? null : null;
     console.log(`[support] saving diagnostics (status ${connection.status}, saber ${saber?.name ?? 'none'})`);
     const logDir = join(userData, 'logs');

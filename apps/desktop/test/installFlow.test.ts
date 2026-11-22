@@ -5,6 +5,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SaberConfigModel } from '@hiltwright/core';
 import type { BackupInfo, BuildResult, SaberRecord, UsbState } from '../src/shared/api';
+import { BackupProofs, NO_FRESH_READ } from '../src/main/backupProof';
 import { STOPPED_HINT, applyStagedPresets, checkBoard, installSequence, samePresets, restoreSequence, writeFromBootloader, type InstallDeps, type InstallJob, type InstallReport } from '../src/renderer/src/installFlow';
 
 const HOTE2 = '209133815232';
@@ -836,5 +837,101 @@ describe('staged presets', () => {
     expect(samePresets([{ ...fw(trackStaged)[0], styles: ['builtin 0 1 65535,0,0'] }], red)).toBe(true);
     expect(samePresets([{ ...fw(trackStaged)[0], styles: ['builtin 0 1 0,0,65535'] }], red)).toBe(false);
     expect(samePresets(fw(trackStaged), red)).toBe(true);
+  });
+});
+
+// Issue #29: main's own proof of a read before a write or restore (backupProof.ts), wired as ipc.ts wires it, under the
+// page's real sequences. Every flow issue #12 lets through must still get through, and nothing else.
+describe("main's read-before-write gate", () => {
+  /** The world's flash calls, with main's gate in front of write and restore, as ipc.ts does it. */
+  function gated(f: ReturnType<typeof world>) {
+    const proofs = new BackupProofs();
+    const { backup, write, restore, target } = f.deps.flash;
+    const refusals: string[] = [];
+    f.deps.flash.backup = vi.fn(async (id: string, l: string, c?: string | null, serial?: string | null) => {
+      const before = await target(serial ?? null);
+      const r = await backup(id, l, c, serial);
+      if (r.kind || r.ms > 0) proofs.record({ saberId: id, serial: serial ?? null, board: before.board, kind: r.kind ?? 'failed' });
+      return r;
+    });
+    f.deps.flash.write = vi.fn(async (id: string, p: string, serial?: string | null, opts?: { noBackup?: boolean }) => {
+      const now = await target(serial ?? null);
+      const proof = proofs.forWrite(id, serial ?? null, now.board, opts?.noBackup === true);
+      if (!proof.ok) { refusals.push(proof.text); return { ok: false, ms: 0, detail: proof.text, refused: true }; }
+      return write(id, p, serial);
+    });
+    f.deps.flash.restore = vi.fn(async (id: string, file: string, serial?: string | null) => {
+      const proof = proofs.forRestore(id, serial ?? null);
+      if (!proof.ok) { refusals.push(proof.text); return { ok: false, ms: 0, detail: proof.text, refused: true }; }
+      return restore(id, file, serial);
+    });
+    return { proofs, refusals };
+  }
+  const unusable = { ok: false, kind: 'unusable' as const, file: 'C:\\backups\\before-install.bin', detail: 'The read was not usable firmware (it may be short, protected, or damaged).' };
+  const partial = { ok: false, kind: 'partial' as const, file: 'C:\\backups\\p.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.' };
+  const aBackup: BackupInfo = { file: 'b.bin', at: '2026-09-27T10:00:00.000Z', label: 'x', bytes: 262144, valid: true, configName: null };
+
+  it('an install after a backup, or on a blank board: written', async () => {
+    for (const backup of [undefined, { ok: false, kind: 'erased' as const, detail: 'erased', file: undefined }]) {
+      const f = world([hote2()], { backup });
+      const g = gated(f);
+      await installSequence(f.deps, jobFor());
+      expect(g.refusals).toEqual([]);
+      expect(f.touched()).toEqual([`backup ${HOTE2}`, `write ${HOTE2}`]);
+      expect(f.shown().step).toBe('done');
+    }
+  });
+
+  it('an install the owner chose to make without a backup (unusable or partial read): written, the choice passed to main', async () => {
+    for (const backup of [unusable, partial]) {
+      const f = world([hote2()], { backup, noBackup: true });
+      const g = gated(f);
+      await installSequence(f.deps, jobFor());
+      expect(g.refusals).toEqual([]);
+      expect(f.deps.flash.write).toHaveBeenCalledWith('s1', build().dfuPath, HOTE2, { noBackup: true });
+      expect(f.shown().step).toBe('done');
+    }
+  });
+
+  it('a restore after any read, a failed one included: written', async () => {
+    for (const backup of [undefined, unusable, partial, { ok: false, detail: 'dfu-util: error' }]) {
+      const f = world([hote2()], { backup });
+      const g = gated(f);
+      await restoreSequence(f.deps, saberRec(), aBackup, true);
+      expect(g.refusals).toEqual([]);
+      expect(f.touched()).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
+      expect(f.shown().step).toBe('done');
+    }
+  });
+
+  it('a page that skips the read: refused by main, nothing written, and the saber sent back', async () => {
+    const f = world([hote2()]);
+    const g = gated(f);
+    // A page that writes without reading first: its own backup step answers without asking main.
+    f.deps.flash.backup = vi.fn(async () => ({ ok: true, ms: 1, detail: 'backup written', file: 'C:\\fake.bin', kind: 'firmware' as const }));
+    await installSequence(f.deps, jobFor());
+    expect(g.refusals).toEqual([NO_FRESH_READ]);
+    expect(f.calls.filter((c) => c.startsWith('write'))).toEqual([]);
+    expect(f.calls).toContain(`leave ${HOTE2}`);
+    expect(f.shown().note?.text).toMatch(/^This board was not read just before, so nothing was written\./);
+  });
+
+  it('a page that claims the owner chose no backup after a failed read: refused', async () => {
+    const f = world([hote2('boot')]);
+    const g = gated(f);
+    g.proofs.record({ saberId: 's1', serial: HOTE2, board: 'V2', kind: 'failed' });
+    const w = await f.deps.flash.write('s1', build().dfuPath!, HOTE2, { noBackup: true });
+    expect(w).toMatchObject({ ok: false, refused: true });
+    expect(f.calls.filter((c) => c.startsWith('write'))).toEqual([]);
+  });
+
+  it('one read lets one write through, not two', async () => {
+    const f = world([hote2('boot')]);
+    gated(f);
+    await f.deps.flash.backup('s1', 'before-install', null, HOTE2);
+    expect((await f.deps.flash.write('s1', build().dfuPath!, HOTE2)).ok).toBe(true);
+    for (const b of f.boards) b.mode = 'boot';
+    expect(await f.deps.flash.write('s1', build().dfuPath!, HOTE2)).toMatchObject({ ok: false, refused: true });
+    expect(await f.deps.flash.restore('s1', 'b.bin', HOTE2)).toMatchObject({ ok: false, refused: true });
   });
 });

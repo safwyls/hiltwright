@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { wiringConfirmed } from '@hiltwright/core';
 import type { ConnectionSnapshot, SaberRecord, ToolchainStatus } from '../shared/api';
 import type { UsbState } from './flash';
-import { redact as redactThisComputer } from './redact';
+import { maskSerial, maskSerials, redact as redactThisComputer } from './redact';
 
 export const MAX_BUNDLE_BYTES = 2 * 1024 * 1024;
 export const PREVIOUS_LOG_BYTES = 200 * 1024;
@@ -103,7 +103,7 @@ function saberLines(s: SaberRecord | null): string[] {
   const out = [
     `Name: ${s.name}${s.planned ? ' (planned, not connected yet)' : ''}`,
     `First seen: ${s.firstSeen}, last seen: ${s.lastSeen}`,
-    `Identity: firmware ${id.version ?? '?'}, config ${id.configName ?? '?'}, prop ${id.prop ?? '?'}, buttons ${id.buttons ?? '?'}, installed ${id.installed ?? '?'}, USB serial ${id.usbSerial ?? '?'}`,
+    `Identity: firmware ${id.version ?? '?'}, config ${id.configName ?? '?'}, prop ${id.prop ?? '?'}, buttons ${id.buttons ?? '?'}, installed ${id.installed ?? '?'}, USB serial ${id.usbSerial ? maskSerial(id.usbSerial) : '?'}`,
     `Reported by the saber: ${s.presets.length} presets, ${s.fonts.length} fonts, ${s.tracks.length} tracks, pixel blades ${JSON.stringify(id.pixelBlades)}`,
   ];
   const m = s.model;
@@ -148,7 +148,8 @@ export function composeBundle(input: BundleInput, redact: (text: string) => stri
   const head = [
     'Hiltwright diagnostics',
     'This file stays on this computer unless you send it. Read it first if you like; your user folder, user name and',
-    'computer name have been replaced. It holds no style code, fonts, hilt models or firmware backups.',
+    'computer name have been replaced. Serial numbers of boards and SD cards show only their last four characters',
+    '(****1234), enough to tell two apart. It holds no style code, fonts, hilt models or firmware backups.',
     '',
     section('About', aboutLines(input.about, input.now)),
     section('Toolchain', toolchainLines(input.toolchain)),
@@ -170,7 +171,16 @@ export function composeBundle(input: BundleInput, redact: (text: string) => stri
     const t = tail(prev.text, Math.max(0, Math.min(PREVIOUS_LOG_BYTES, budget)));
     logs.push(section(`End of the previous run's log (${prev.name})`, [...(t.dropped ? [`[${t.dropped} older lines left out]`] : []), t.text]));
   }
-  return redact([head, ...logs].join('\n'));
+  // The serials this file itself knows of are masked too, so the logs agree with the Saber section even when a line
+  // was written before the app knew the number was a serial (issue #24).
+  return maskSerials(redact([head, ...logs].join('\n')), knownSerials(input));
+}
+
+/** Every serial number the bundle's own facts name: the saber's USB serial, its bootloader's, its cards', and the boards on USB. */
+function knownSerials(input: BundleInput): (string | null | undefined)[] {
+  const s = input.saber;
+  const u = 'error' in input.usb ? null : input.usb;
+  return [s?.identity.usbSerial, s?.bootloader?.serial, ...(s?.cards ?? []).map((c) => c.serial), ...(u?.runtimeSerials ?? []), ...(u?.bootloaders ?? []).map((b) => b.serial)];
 }
 
 /** The page's snapshot, checked: only the expected fields, short strings, small numbers. */

@@ -339,16 +339,20 @@ export async function listBackups(backupDir: string): Promise<BackupInfo[]> {
   return out.sort((a, b) => b.at.localeCompare(a.at));
 }
 
+export const RESTORE_NO_FLASH_SIZE = 'The bootloader did not report its flash size, so Hiltwright cannot tell whether this backup fits the board. Nothing was written.';
+
 /**
  * Write a backup image back to the board with this serial. Refuses anything that does not look like firmware for this
- * chip family, and, when the board's flash size is known, a backup of another size.
+ * chip family, and a backup of another size than the board's flash. With the board's flash size unknown it refuses too,
+ * as a backup read does (issue #29).
  */
 export async function restoreBackup(toolchainRoot: string, path: string, onLine: Progress, serial: string | null = null, flashBytes: number | null = null): Promise<FlashStepResult> {
   const st = await stat(path).catch(() => null);
   if (!st || (st.size !== 262144 && st.size !== 524288)) return { ok: false, ms: 0, detail: 'That file is not a full flash backup (256 KB or 512 KB).' };
   if (isPartialRead(basename(path))) return { ok: false, ms: 0, detail: 'That file was read after a write that did not finish, so it may be half written. It was not put back.' };
   if (!(await looksLikeFirmware(path))) return { ok: false, ms: 0, detail: 'That backup does not look like firmware (it may be an erased or protected read), so it was not written.' };
-  if (flashBytes != null && st.size !== flashBytes) return { ok: false, ms: 0, detail: backupSizeMismatch(st.size, flashBytes) };
+  if (flashBytes == null) return { ok: false, ms: 0, detail: RESTORE_NO_FLASH_SIZE };
+  if (st.size !== flashBytes) return { ok: false, ms: 0, detail: backupSizeMismatch(st.size, flashBytes) };
   onLine(`restoring ${st.size} bytes from ${path}`);
   return writeFirmware(toolchainRoot, path, onLine, serial);
 }
