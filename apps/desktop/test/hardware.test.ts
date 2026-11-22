@@ -109,4 +109,7 @@ describe('the page and the build agree', () => {
     expect(t.power.filter((r) => r.users.includes('b2')).map((r) => r.pin)).toEqual(['bladePowerPin4', 'bladePowerPin6']);
     expect(bladeSummary([main, sparse], sparse, 'V3')).toBe('Single LED · LED 4 + LED 6');
   });
+  it("#16 a blade's brightness limit shows in its summary", () => {
+    expect(bladeSummary([{ ...main, dim: 20 }], { ...main, dim: 20 }, 'V2')).toBe('132 px · bladePin · LED 2 + LED 3 · 20% brightness');
+  });
 });

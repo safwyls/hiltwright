@@ -135,4 +135,29 @@ describe("an installer's config, imported and built again", () => {
     expect(wiringProblems(model.blades, 'V3')).toEqual([]);
     expect(bladePowerPins(model.blades[1])).toEqual(['bladePowerPin4', 'bladePowerPin6']);
   });
+
+  it("#16 keeps a DimBlade's brightness limit, on a strip, a chained part of one and an LED", () => {
+    const text = withBlades([
+      'DimBlade(20.0, WS281XBladePtr<144, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3>>())',
+      'SubBlade(0, 9, WS281XBladePtr<20, blade2Pin, Color8::GRB, PowerPINS<bladePowerPin4>>())',
+      'DimBlade(50, SubBlade(10, 19, NULL))',
+      'DimBlade(12.5f, SimpleBladePtr<CreeXPE2WhiteTemplate<550>, NoLED, NoLED, NoLED, bladePowerPin5, -1, -1, -1>())',
+    ]);
+    const w = wiringFromConfig(text)!;
+    expect(w.unreadable).toEqual([]);
+    expect(w.blades.map((b) => b.dim)).toEqual([20, undefined, 50, 12.5]);
+    const { model, generated, back } = roundTrip(text);
+    expect(generated).toContain('DimBlade(20, WS281XBladePtr<144, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3> >())');
+    expect(generated).toContain('DimBlade(50, SubBlade(10, 19, NULL))');
+    expect(back.blades.map((b) => b.dim)).toEqual([20, undefined, 50, 12.5]);
+    expect(compareWiring(model, w)).toEqual([]);
+    // Without the limit the blade would run at full brightness: the comparison says so.
+    const bright = { ...model, blades: model.blades.map((b, i) => (i === 0 ? { ...b, dim: undefined } : b)) };
+    expect(compareWiring(bright, w).map(differenceText)).toEqual(['Blade 1 brightness limit: none here, 20% in the config']);
+  });
+
+  it('#16 a DimBlade whose limit is not a plain percentage is not readable, rather than imported at full brightness', () => {
+    const w = wiringFromConfig(withBlades(['DimBlade(MY_DIM, WS281XBladePtr<144, bladePin, Color8::GRB, PowerPINS<bladePowerPin2>>())']))!;
+    expect(w.unreadable.map((u) => u.blade)).toEqual([1]);
+  });
 });

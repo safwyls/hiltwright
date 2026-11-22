@@ -30,6 +30,11 @@ export interface BladeSpec {
   /** Strips soldered in parallel on the same data wire. Product metadata; ProffieOS never sees it. */
   parallel: number;
   wiring: Wiring;
+  /**
+   * A brightness limit in percent, as ProffieOS's `DimBlade(percent, blade)` sets it: installers cap a blade for
+   * current, heat or battery sag (issue #16). Absent: full brightness. Left out of the layout fingerprint when absent.
+   */
+  dim?: number;
 }
 
 /** A blade-identity row: which set of blades, and which preset array, applies at a Blade ID reading. */

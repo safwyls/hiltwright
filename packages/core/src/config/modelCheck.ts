@@ -108,6 +108,8 @@ export function modelFormProblems(raw: unknown): string[] {
       if (!isInt(b.pixels, 1, 2048)) out.push(`${n}'s LED count must be a whole number from 1 to 2048.`);
       if (!isStr(b.order) || !/^([RGBWrgbw]{3,4})?$/.test(b.order)) out.push(`${n}'s colour order must be letters such as GRB or GRBW.`);
       if (b.parallel !== undefined && !isInt(b.parallel, 1, 16)) out.push(`${n}'s parallel strip count must be a whole number.`);
+      // Printed as DimBlade's percentage (issue #16): a plain number, above 0 and at most 100.
+      if (b.dim !== undefined && !(typeof b.dim === 'number' && Number.isFinite(b.dim) && b.dim > 0 && b.dim <= 100)) out.push(`${n}'s brightness limit must be a percentage above 0 and at most 100.`);
       if (!Array.isArray(b.extra) || !b.extra.every(isTemplateToken)) out.push(`${n} has extra strip settings Hiltwright does not accept.`);
       if (!Array.isArray(b.leds) || b.leds.length > 4 || !b.leds.every(isTemplateToken)) out.push(`${n} has LED types Hiltwright does not accept.`);
       const w = b.wiring;

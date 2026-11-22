@@ -107,6 +107,8 @@ export function HardwareEditor({ blades, board, detected, locked, onChange, swap
                 {kind === 'star' && <span className="hint">A tri-colour star LED on three power pins, red, green and blue in that order. The resistor values are the stock ProffieOS examples; ask the installer if the colours look wrong.</span>}
                 {kind === 'single' && <span className="hint">One LED on one power pin. Shown white in previews; its style decides the brightness.</span>}
                 {kind === 'motor' && <span className="hint">Runs from one power pin at full power while its style is on.</span>}
+                {/* Read from the installer's config (issue #16); the build keeps it as DimBlade. */}
+                {b.dim !== undefined && <span className="hint">Brightness limited to {b.dim}%, as the installer{'’'}s config set it, often to spare the battery or keep the LEDs cool. Builds keep the limit.</span>}
 
                 <div className="col" style={{ gap: 8 }}>
                   <span className="label">Wiring</span>

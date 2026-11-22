@@ -34,6 +34,8 @@ If the wiring here matches it, Wiring says so. If it differs, each difference is
 
 A `SimpleBladePtr` pairs each LED with the pin in the same place, so Hiltwright keeps every pin in its place, also when the installer left a place between two LEDs empty (`-1`). Such a blade shows only the pins it really uses.
 
+An installer can limit a blade's brightness with `DimBlade`, often to spare the battery or keep the LEDs cool. Hiltwright keeps that limit: the blade card says "Brightness limited to 20%", and builds keep it. A different limit, or none, is listed as a difference. A `DimBlade` whose limit is not a plain percentage is named as not readable.
+
 ### A custom prop file
 
 Choose **Custom prop file…** and pick the file. Hiltwright checks that it is a ProffieOS prop file (it has a `#define PROP_TYPE`) and keeps its own copy. The build puts it next to the props that come with ProffieOS, so it can include them, under a name of its own so none of them is replaced. **Choose another file…** swaps it, and choosing a stock prop and then Custom again goes back to the same file.

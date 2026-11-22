@@ -19,6 +19,10 @@ export function referenceFrom(name: string, from: 'card' | 'file', cfg: ConfigWi
 
 /** One blade in words: "144-pixel strip on bladePin, power bladePowerPin2 + bladePowerPin3 (GRB)". */
 export function bladeWords(b: ConfigWiring['blades'][number]): string {
+  return b.dim !== undefined ? `${plainWords(b)}, limited to ${b.dim}% brightness` : plainWords(b);
+}
+
+function plainWords(b: ConfigWiring['blades'][number]): string {
   if (b.type === 'simple') { const pins = bladePowerPins(b); return `LED on ${pins.length ? pins.join(' + ') : 'no pins'}`; }
   if (b.wiring.kind === 'chain') return `${b.pixels} pixels further along the strip before it`;
   if (b.wiring.kind === 'own') return `${b.pixels}-pixel strip on ${b.wiring.dataPin}, power ${b.wiring.powerPins.join(' + ') || 'none'}${b.order ? ` (${b.order})` : ''}`;

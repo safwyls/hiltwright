@@ -34,6 +34,11 @@ describe('the form of a saber model (issue #5)', () => {
 
   it('refuses extra #define lines and a custom prop name that is not a file name', () => {
     expect(modelFormProblems({ ...good(), extraDefines: ['FETT263_TWIST_ON', 'ORIENTATION ORIENTATION_USB_TOWARDS_BLADE'] })).toEqual([]);
+    // #16 a brightness limit is printed as DimBlade's percentage: a plain number above 0 and at most 100.
+    const dimmed = (dim: unknown) => modelFormProblems({ ...good(), blades: good().blades.map((b) => ({ ...b, dim })) });
+    expect(dimmed(20)).toEqual([]);
+    expect(dimmed(12.5)).toEqual([]);
+    for (const bad of [0, 150, -5, '20', '20, bladePin)', Number.NaN]) expect(dimmed(bad)).toEqual(["Blade 1's brightness limit must be a percentage above 0 and at most 100."]);
     expect(modelFormProblems({ ...good(), extraDefines: ['bladePowerPin2 bladePowerPin6'] })).toEqual(['An extra #define is not in the accepted form.']);
     expect(modelFormProblems({ ...good(), extraDefines: ['X 1\n#define bladePin blade4Pin'] })).toEqual(['An extra #define is not in the accepted form.']);
     expect(modelFormProblems({ ...good(), prop: 'custom', customProp: { file: '../x.h\n#define y', sha256: 'a'.repeat(64), propType: 'P', like: null } })).toEqual(['The custom prop file is not recorded properly.']);

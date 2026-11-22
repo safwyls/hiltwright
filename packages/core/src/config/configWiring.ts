@@ -10,7 +10,7 @@ import type { BladeExpr } from './document';
 import type { BoardModel, SaberConfigModel, StockProp } from './generate';
 import { bladeTables, boardInclude, getDefine, parseConfig } from './parse';
 import { splitArgs } from './cpp';
-import { bladePowerPins, rowToBlades } from './blades';
+import { bladePowerPins, dimPercent, rowToBlades } from './blades';
 
 /** What a config file says about the hardware. */
 export interface ConfigWiring {
@@ -92,7 +92,9 @@ export function wiringFromConfig(text: string): ConfigWiring | null {
   const propInc = /#ifdef\s+CONFIG_PROP\s*\n\s*#include\s+"([^"]+)"/.exec(text.replace(/\r\n/g, '\n'))?.[1] ?? null;
   const blades = row ? rowToBlades({ ...row, blades: row.blades.map(withDefaults) }, 'cfg') : [];
   const unreadable = (row?.blades ?? []).map((b, i) => ({ blade: i + 1, expr: withDefaults(b) }))
-    .filter(({ expr }) => expr.kind === 'raw' || (expr.kind === 'dim' && expr.inner.kind === 'raw') || (expr.kind === 'subblade' && expr.inner?.kind === 'raw'))
+    // A DimBlade whose limit is not a plain percentage (a macro, say) is not readable either: importing the blade
+    // without it would run it at full brightness (issue #16).
+    .filter(({ expr }) => expr.kind === 'raw' || (expr.kind === 'dim' && (expr.inner.kind === 'raw' || dimPercent(expr.factor) === null)) || (expr.kind === 'subblade' && expr.inner?.kind === 'raw'))
     .map(({ blade, expr }) => ({ blade, text: expr.raw.replace(/\s+/g, ' ').slice(0, 160) }));
   const propFile = propInc?.split('/').pop() ?? null;
   return {
@@ -115,6 +117,7 @@ const slotPins = (b: BladeSpec): string[] => {
   while (pins.length && pins[pins.length - 1] === '-1') pins.pop();
   return pins;
 };
+const dimWords = (dim: number | undefined) => (dim === undefined ? 'none' : `${dim}%`);
 const slotWords = (pins: string[]) => pins.map((p) => (p === '-1' ? 'no pin' : p)).join(', ') || 'none';
 const describe = (b: BladeSpec | undefined) => !b ? 'none' : b.type === 'simple' ? 'LED' : b.wiring.kind === 'chain' ? 'part of the strip before it' : 'pixel strip';
 
@@ -136,6 +139,8 @@ export function compareWiring(m: Pick<SaberConfigModel, 'board' | 'buttons' | 'b
     } else if (!sameSet(pinsOf(a), pinsOf(c))) out.push({ blade: i + 1, what: 'power pins', here: pinsOf(a).join(', ') || 'none', config: pinsOf(c).join(', ') || 'none', danger: true });
     if (a.type === 'pixel' && a.pixels !== c.pixels) out.push({ blade: i + 1, what: 'pixels', here: String(a.pixels), config: String(c.pixels), danger: false });
     if (a.type === 'pixel' && a.wiring.kind === 'own' && c.order && (a.order || 'GRB') !== c.order) out.push({ blade: i + 1, what: 'colour order', here: a.order || 'GRB', config: c.order, danger: false });
+    // The installer's DimBlade cap (issue #16): without it the blade runs at full brightness.
+    if ((a.dim ?? null) !== (c.dim ?? null)) out.push({ blade: i + 1, what: 'brightness limit', here: dimWords(a.dim), config: dimWords(c.dim), danger: false });
   }
   return out;
 }

@@ -111,6 +111,11 @@ export function pinTable(blades: ModelBlade[], board: BoardModel): PinReport {
 }
 
 export function bladeSummary(blades: ModelBlade[], b: ModelBlade, board: BoardModel): string {
+  // A brightness limit from the installer's config (issue #16) is part of what the blade is.
+  return b.dim !== undefined ? `${plainSummary(blades, b, board)} · ${b.dim}% brightness` : plainSummary(blades, b, board);
+}
+
+function plainSummary(blades: ModelBlade[], b: ModelBlade, board: BoardModel): string {
   const kind = kindOf(b);
   if (kind === 'pixel') {
     if (b.wiring.kind === 'chain') {
