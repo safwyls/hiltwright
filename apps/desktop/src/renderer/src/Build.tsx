@@ -10,7 +10,7 @@ import { propLabel } from './Wiring';
 import { missingFontWarning } from './fontNeeds';
 import type { Workspace } from './workspace';
 import type { BackupInfo, BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
-import { useCardTrip } from './cardTrip';
+import { presetsClearedOnTrip, useCardTrip } from './cardTrip';
 import { useCardCheck } from './useCardCheck';
 
 /** Where the checks on the saber's SD card were made: its card in a reader, the saber itself, or nowhere (card out). */
@@ -168,7 +168,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
     report: (r) => { if (r.xfer !== undefined) setXfer(r.xfer); if (r.step) setStep(r.step); if (r.note !== undefined) setNote(r.note); if (r.notes !== undefined) setNotes(r.notes); },
     sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
     // Staged presets need the card's presets file gone, from wherever the card is (installFlow applyStagedPresets).
-    card: (() => { const c = cardCheckRef.current; return c?.source === 'reader' ? { where: 'reader' as const, root: c.root, clearPresets: (root: string, saberId: string) => api().sd.clearPresets(root, saberId) } : c?.source === 'out' ? { where: 'out' as const } : { where: 'saber' as const }; })(),
+    card: (() => { const c = cardCheckRef.current; return c?.source === 'reader' ? { where: 'reader' as const, root: c.root, clearPresets: (root: string, saberId: string) => api().sd.clearPresets(root, saberId) } : c?.source === 'out' ? { where: 'out' as const } : { where: 'saber' as const, cleared: presetsClearedOnTrip }; })(),
   }), [board]);
   // Connected as the picked saber; another saber plugged in counts as nothing plugged in here.
   const connectedNow = status === 'connected' && !otherPlugged;

@@ -26,6 +26,8 @@ const NO_VOICES: VoicePackList = { packs: [], support: null, source: null, credi
  * (by its start time): the trip does not offer it again, and the flash finds the list already in place.
  */
 const presetsClearedFor = new Map<string, string>();
+/** Whether a card trip this session removed this saber's presets file for the staged list started then (issue #13). */
+export const presetsClearedOnTrip = (saberId: string, stagedAt: string) => presetsClearedFor.get(saberId) === stagedAt;
 
 export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model: SaberConfigModel | null; info: Board['info']; check: ReturnType<typeof useCardCheck> }) {
   const { board, saber, model, info, check } = o;

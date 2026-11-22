@@ -71,9 +71,10 @@ export interface InstallDeps {
   /**
    * Where the saber's SD card is, for staged presets: `reader` is its card in a card reader on this computer (its
    * presets files are removed there), `out` that the saber cannot read a card and none of its own is in a reader.
-   * Absent or `saber`: the card is in the saber, and the saber removes them.
+   * Absent or `saber`: the card is in the saber, and the saber removes them. `cleared` says whether the card trip
+   * removed its presets file for this staged list (by its start time); only then is nothing removed (issue #13).
    */
-  card?: { where: 'saber' } | { where: 'reader'; root: string; clearPresets: (root: string, saberId: string) => Promise<string[]> } | { where: 'out' };
+  card?: { where: 'saber'; cleared?: (saberId: string, stagedAt: string) => boolean } | { where: 'reader'; root: string; clearPresets: (root: string, saberId: string) => Promise<string[]> } | { where: 'out' };
 }
 /**
  * What is being installed: the saber, the model the build was made from, the build, what the saber last reported,
@@ -318,9 +319,34 @@ export async function installSequence(deps: InstallDeps, job: InstallJob): Promi
 /** The staged list stays staged: why, and how to try again. */
 const keepStaged = (why: string): InstallNote => ({ tone: 'amber', text: `${why} Your staged presets are still waiting; press "Use the staged presets" on Build & Flash to try again.` });
 
-/** The saber reports these presets in this order: the same names and fonts as the list. */
-export function samePresets(a: { name: string; font: string }[], b: { name: string; font: string }[]): boolean {
-  return a.length === b.length && a.every((p, i) => p.name.trim() === b[i].name.trim() && p.font.trim() === b[i].font.trim());
+/** Style arguments as words, so spacing does not count. */
+const argWords = (s: string | null | undefined) => (s ?? '').trim().split(/\s+/).filter(Boolean).join(' ');
+
+/**
+ * The saber reports the staged list as its firmware compiled it: the same names, fonts and tracks in this order. A
+ * change to only a track, or to a colour, must show too (issue #13), so more is compared than the names:
+ * - the variation is 0: a compiled preset starts there, and only a presets file keeps another;
+ * - each style is the firmware's own (`builtin`), with no arguments, or the ones the list gives that blade. A named
+ *   style or other arguments come from a presets file. With no arguments the compiled defaults are used, which the
+ *   saber does not print, so a colour compiled into the style cannot be told apart that way.
+ */
+export function samePresets(
+  saber: { name: string; font: string; track?: string; variation?: number; styles?: string[] }[],
+  list: { name: string; font: string; track?: string; styles?: { kind: string; args?: string }[] }[],
+): boolean {
+  return saber.length === list.length && saber.every((p, i) => {
+    const want = list[i];
+    if (p.name.trim() !== want.name.trim() || p.font.trim() !== want.font.trim()) return false;
+    if (p.track !== undefined && want.track !== undefined && p.track.trim() !== want.track.trim()) return false;
+    if (p.variation !== undefined && p.variation !== 0) return false;
+    return (p.styles ?? []).every((s) => {
+      const m = /^builtin\s+\d+\s+(\d+)(?:\s+(.*))?$/.exec(s.trim());
+      if (!m) return false;
+      if (!argWords(m[2])) return true;
+      const style = want.styles?.[Number(m[1]) - 1];
+      return !!style && argWords(style.args) === argWords(m[2]);
+    });
+  });
 }
 
 export const STAGED_ON = 'Your staged presets are on the saber now; its previous presets are kept as a snapshot.';
@@ -341,7 +367,10 @@ export async function applyStagedPresets(deps: Pick<InstallDeps, 'flash' | 'snap
     if (!own) return keepStaged("The saber's presets could not be read, so they were not replaced.");
     // Its presets file went when the card was prepared in a reader (the card trip on Install › Card, which kept the
     // snapshot): the saber, with its card back, already starts with the staged list. Nothing to remove or restart.
-    if (card.where === 'saber' && samePresets(own, model.presets)) {
+    // Only when the trip really removed it for this list: a presets file with the same names would otherwise be
+    // taken for the staged list, and a change to a track or colour reported as installed (issue #13).
+    const clearedOnTrip = card.where === 'saber' && !!model.presetsFrom && !!card.cleared?.(saber.id, model.presetsFrom.at);
+    if (clearedOnTrip && samePresets(own, model.presets)) {
       const { presetsFrom: _applied, ...settled } = model;
       try { await board.updateSaber({ model: settled }, saber.id); } catch (err) {
         return { tone: 'amber', text: `Your staged presets are on the saber now, but Hiltwright could not update its record of the saber: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}` };
