@@ -4,6 +4,7 @@
 import { useEffect, useReducer, useState } from 'react';
 import type { ContributorInfo } from '../../shared/api';
 import { Icon } from './Icon';
+import { Logo } from './Logo';
 import { creditOf } from '@hiltwright/core';
 import appIcon from './assets/hiltwright-icon.svg';
 
@@ -59,6 +60,8 @@ export function useContributors() {
 
 /** A contributor's logo, or their initials in its place. */
 export function ContributorLogo({ name, logo, size = 22 }: { name: string; logo: string | null | undefined; size?: number }) {
+  // Hiltwright's own mark is drawn, not shown as the image, so its blade takes the theme's colour like the app's.
+  if (logo === appIcon) return <Logo size={size} className="mlogo" label={`${name} logo`} />;
   if (logo) return <img className="mlogo" src={logo} alt={`${name} logo`} style={{ width: size, height: size }} />;
   const initials = name.split(/[\s_-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?';
   return <span className="mlogo" aria-hidden="true" style={{ width: size, height: size, fontSize: Math.max(8, Math.round(size * 0.38)) }}>{initials}</span>;
