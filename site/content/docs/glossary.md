@@ -10,7 +10,7 @@ Terms are in alphabetical order. If you come from Crystal Focus X, Xenopixel or 
 A small extra LED or LED strip on the saber, apart from the main blade. It can follow the blade, flash on hits or show the battery. Hiltwright treats it as a kind of blade you can give a style to.
 
 ## Backup
-A copy of the saber's whole firmware, saved to your computer before each install. **Put back** on the Backups tab writes one onto the saber exactly as it was. See [Build & Install](build-and-install.html).
+A copy of the saber's whole firmware, saved to your computer before each install. **Put back** on the Backups tab writes one onto the saber exactly as it was. See [Build & Flash](build-and-install.html).
 
 ## Blade
 In Hiltwright, anything the saber lights or runs on its own: the main blade, a side blade, a crystal chamber, an accent LED or a motor. You set how many there are on the [Wiring](wiring.html) page.
@@ -19,7 +19,7 @@ In Hiltwright, anything the saber lights or runs on its own: the main blade, a s
 An effect for a blaster bolt hitting the blade. A small ring of light spreads from where it lands.
 
 ## Card reader
-A small device that plugs into your computer and holds the SD card, so the computer can read it without the saber. It is about 30 times faster than copying over the saber's own USB. See [Build & Install](build-and-install.html).
+A small device that plugs into your computer and holds the SD card, so the computer can read it without the saber. It is about 30 times faster than copying over the saber's own USB. See [Card](card.html).
 
 ## Clash
 An effect for the blade hitting something hard. It flashes where the blade is hit, and the saber plays a clash sound.
@@ -49,7 +49,7 @@ To write firmware onto the board. Hiltwright calls it an install. It is also use
 See Sound font.
 
 ## Install
-Two meanings. In the sidebar, Install is the four steps that set a saber up: Wiring, Fonts, Presets, and Build & Install. As an action, it is writing newly built firmware to the saber over USB. Hiltwright takes a backup first, writes the firmware, then waits for the saber to start again. Also see Flash and Live.
+Two meanings. In the sidebar, Install is the five steps that set a saber up: Wiring, Fonts, Presets, Card, and Build & Flash. As an action, it is writing newly built firmware to the saber over USB. Hiltwright takes a backup first, writes the firmware, then waits for the saber to start again. Also see Flash and Live.
 
 ## Lightning block
 An effect for blocking Force lightning. Crackles run along the blade while it is held.
@@ -88,7 +88,7 @@ The open-source software that runs on a Proffieboard. It decides how the saber l
 The part of ProffieOS that decides what each button press does, such as ignite, change preset or enter edit mode. You choose it on the Wiring page, along with the number of buttons.
 
 ## Queued
-A style chosen for a preset that the firmware does not hold yet. It goes on with the next Build & Install. See [Styles](styles.html).
+A style chosen for a preset that the firmware does not hold yet. It goes on with the next Build & Flash. See [Styles](styles.html).
 
 ## SD card
 The memory card in the saber. It holds the sound fonts, tracks and the `presets.ini` file. FAT32 is the format to use. A saber cannot read a card formatted exFAT or NTFS.

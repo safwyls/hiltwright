@@ -1,5 +1,5 @@
 // The build model for a saber: wiring, prop, and which look goes in each preset slot. Drafted from what the
-// board reports, refined by the owner on Build & Install, and stored on the saber record.
+// board reports, refined by the owner on Build & Flash, and stored on the saber record.
 
 import { boardHint, type BladeVariant, type BoardModel, type LookDef, type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
 import type { SaberRecord } from '../../shared/api';
@@ -121,7 +121,7 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
     prop: overrides.prop ?? saved?.prop ?? 'fett263',
     // A custom prop file chosen before is kept, also while a stock prop is chosen, so choosing Custom again reuses it.
     ...(saved?.customProp ? { customProp: saved.customProp } : {}),
-    // The installer's config the wiring is checked against (Wiring, Build & Install).
+    // The installer's config the wiring is checked against (Wiring, Build & Flash).
     ...(saved?.wiringReference ? { wiringReference: saved.wiringReference } : {}),
     blades,
     // Presets loaded from a bank stay as loaded until they have been installed; otherwise the saber's own are the truth.
@@ -133,6 +133,7 @@ export function draftModel(info: BoardInfo, saber: SaberRecord, overrides: { bla
     looks: saved?.looks ?? [],
     // The fonts chosen on Install › Fonts.
     ...(saved?.fonts ? { fonts: saved.fonts } : {}),
+    ...(saved?.voicePack ? { voicePack: saved.voicePack } : {}),
     ...(saved?.presetsFrom ? { presetsFrom: saved.presetsFrom } : {}),
     // The owner's wiring confirmation travels with the model; it only counts while the layout matches (see wiringConfirmed).
     ...(saved?.wiringConfirmation ? { wiringConfirmation: saved.wiringConfirmation } : {}),

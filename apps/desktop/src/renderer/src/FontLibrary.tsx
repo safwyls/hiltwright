@@ -4,6 +4,8 @@
 // played here. Fonts can be grouped by maker (each with a logo) or by bundle, the sets makers release together.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as RowClick } from 'react';
+import { fontLibraryList } from './sharedLists';
+import { sharedLook } from './cardCache';
 import type { CardInfo, FontLibraryStatus, FontSound, ImportResult, LibraryFont, LibraryFontDetail } from '../../shared/api';
 import { copyAnywayQuestion, shouldAskBeforeCopy } from '@hiltwright/core';
 import { bulkHeadline, clickSelection, importSummary, type BulkLine } from '../../shared/fontBulk';
@@ -86,7 +88,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
 
   const refresh = useCallback(async () => {
     let st: FontLibraryStatus; let list: LibraryFont[];
-    try { [st, list] = await Promise.all([api().fontLibrary.status(), api().fontLibrary.list()]); }
+    try { [st, list] = await Promise.all([api().fontLibrary.status(), fontLibraryList.refresh()]); }
     catch (err) { setLoaded(true); setNote({ tone: 'red', text: `Could not read the font library: ${cleanErr(err)}` }); return; }
     setStatus(st); setFonts(list); setLoaded(true);
     void api().app.storeProblems().then((ps) => setProblems(ps.filter((x) => x.place === 'fonts')), () => undefined);
@@ -98,7 +100,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
   useEffect(() => {
     let live = true;
     setLooking(true);
-    void api().sd.locate().then((cs) => { if (live) setCards(cs); }, () => undefined).finally(() => { if (live) setLooking(false); });
+    void sharedLook().then((l) => { if (live && l.answered) setCards(l.cards); }, () => undefined).finally(() => { if (live) setLooking(false); });
     return () => { live = false; };
   }, [board.card.shared, board.card.root]);
   useEffect(() => api().fontLibrary.onProgress(setProgress), []);

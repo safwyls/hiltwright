@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasMenuSounds, presetsWithoutCommon, parseVoicePackIni, voicePackFolder, voicePackFromSerial, voicePackVerdict } from '../src';
+import { hasMenuSounds, mixedSounds, soundOf, presetsWithoutCommon, parseVoicePackIni, voicePackFolder, voicePackFromSerial, voicePackVerdict } from '../src';
 
 describe('voice pack', () => {
   it('parses voicepack.ini; a file without the key counts as version 1, like ProffieOS', () => {
@@ -28,9 +28,25 @@ describe('voice pack', () => {
 
   it('reads the board answers to cat and dir', () => {
     const s = voicePackFromSerial(['voice_pack_version=2'], ['mnum 0', 'voicepack.ini 23', 'mzoom.wav 40012', 'Done listing files.']);
-    expect(s).toEqual({ ini: true, version: 2, menuSounds: true });
-    expect(voicePackFromSerial([], ['No such directory.'])).toEqual({ ini: false, version: null, menuSounds: false });
-    expect(voicePackFromSerial(['Whut? :cat'], ['Whut? :dir'])).toEqual({ ini: false, version: null, menuSounds: false });
+    expect(s).toEqual({ ini: true, version: 2, menuSounds: true, mixed: [] });
+    expect(voicePackFromSerial([], ['No such directory.'])).toEqual({ ini: false, version: null, menuSounds: false, mixed: [] });
+    expect(voicePackFromSerial(['Whut? :cat'], ['Whut? :dir'])).toEqual({ ini: false, version: null, menuSounds: false, mixed: [] });
+  });
+
+  // Seen on a card: an old pack's loose mnum1.wav… beside English A's mnum/ folder, and ProffieOS said
+  // "Found mnum.wav files: 1-20 in subdirs SOME FILES ARE MISSING! 20 != 40 in common" on every preset change.
+  it('finds sounds that are in common both as a folder and as loose files', () => {
+    const dir = ['. 0', '.. 0', 'mnum1.wav 46790', 'mnum20.wav 51200', 'clrlst1.wav 30000', 'clrlst 0', 'mnum 0', 'mclash.wav 40000', 'voicepack.ini 21', 'Done listing files.'];
+    expect(voicePackFromSerial(['voice_pack_version=2'], dir)).toEqual({ ini: true, version: 2, menuSounds: true, mixed: ['clrlst', 'mnum'] });
+    expect(soundOf('mnum12.wav', false)).toBe('mnum');
+    expect(soundOf('MNUM', true)).toBe('mnum');
+    expect(soundOf('LICENSE.txt', false)).toBeNull();
+    expect(soundOf('12.wav', false)).toBeNull();
+    // A sound only loose, or only in a folder, is fine; so is a loose file whose name merely starts the same.
+    expect(mixedSounds([{ name: 'mnum', isFolder: true }, { name: 'mnumber.wav', isFolder: false }, { name: 'mclash1.wav', isFolder: false }])).toEqual([]);
+    const v = voicePackVerdict('fett263', { ini: true, version: 2, menuSounds: true, mixed: ['mnum'] })!;
+    expect(v).toMatchObject({ ok: false, tone: 'amber' });
+    expect(v.text).toMatch(/mnum both as a folder and as loose files.*"error in font directory"/);
   });
 
   it('only Fett263 needs the pack, and it needs version 2', () => {

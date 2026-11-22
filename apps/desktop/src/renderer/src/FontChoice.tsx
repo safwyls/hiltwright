@@ -1,30 +1,45 @@
 // Install › Fonts: choose the sound fonts this saber will carry, from the font library, with new fonts added to the
-// library right here. Nothing here needs the saber or its card: the list is kept with the saber's setup, and the fonts
-// go onto the card at Build & Install. Every font a preset names counts as chosen (saberFonts.ts).
+// library right here, and the voice pack its Fett263 controls speak in. Nothing here needs the saber or its card: the
+// choices are kept with the saber's setup, and go onto the card on Install › Card. Every font a preset names counts as
+// chosen (saberFonts.ts). The card is read when it can be, to say whether its voice pack works (voiceChoice.ts).
 
 import { useEffect, useMemo, useState } from 'react';
+import { propFamily } from '@hiltwright/core';
 import type { ImportResult, LibraryFont } from '../../shared/api';
+import { fontLibraryList, useSharedList, voicePackList, type VoicePackList } from './sharedLists';
+import { contributorsChanged } from './credits';
 import { importSummary } from '../../shared/fontBulk';
 import { chosenFonts, presetsUsing, withFontChosen, withFontDropped } from './saberFonts';
 import { mb } from './FontLibrary';
 import { Icon } from './Icon';
-import { LoadingSpace } from './Loader';
+import { Loader, LoadingSpace } from './Loader';
+import { Select } from './Select';
+import type { Board } from './board';
+import { useCardCheck } from './useCardCheck';
+import { voiceNeedText, voiceOnCard, voiceWork } from './voiceChoice';
 import type { Workspace } from './workspace';
 
 const api = () => window.hiltwright;
 const cleanErr = (err: unknown) => String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '');
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+const NO_FONTS: LibraryFont[] = [];
+const NO_VOICES: VoicePackList = { packs: [], support: null, source: null, credit: null };
 
-export function FontChoice({ ws, go }: { ws: Workspace; go: (page: 'armory' | 'presets' | 'library' | 'build') => void }) {
+export function FontChoice({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'armory' | 'presets' | 'library' | 'build' | 'card') => void }) {
   const { saber, model, info } = ws;
-  const [library, setLibrary] = useState<LibraryFont[]>([]);
-  const [read, setRead] = useState(false);
+  // The voice pack, for the Fett263 controls: chosen here, put on the card on Install › Card (voiceChoice.ts).
+  const card = useCardCheck(board, saber);
+  // The voice packs and the font library are shared app-wide (sharedLists.ts): the card trip and the Card page use them too.
+  const voiceShared = useSharedList(voicePackList, NO_VOICES);
+  const voicePacks = voiceShared.read ? voiceShared.value.packs : null;
+  const { value: library, read, failed } = useSharedList(fontLibraryList, NO_FONTS);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: 'green' | 'amber' | 'red'; text: string } | null>(null);
+  useEffect(() => { if (failed) setNote({ tone: 'red', text: `The font library could not be read: ${failed}` }); }, [failed]);
   const [filter, setFilter] = useState('');
-  const refresh = async () => { try { setLibrary(await api().fontLibrary.list()); } catch (err) { setNote({ tone: 'red', text: `The font library could not be read: ${cleanErr(err)}` }); } finally { setRead(true); } };
-  useEffect(() => { void refresh(); }, []);
+  /** After adding fonts: every page's library list, and the credits (new fonts can bring their makers). */
+  const refresh = async () => { await fontLibraryList.refresh(); contributorsChanged(); };
   useEffect(() => api().fontLibrary.onProgress(setProgress), []);
 
   const chosen = useMemo(() => chosenFonts(model), [model]);
@@ -56,22 +71,34 @@ export function FontChoice({ ws, go }: { ws: Workspace; go: (page: 'armory' | 'p
   };
 
   const libFont = (folder: string) => library.find((f) => same(f.folder, folder)) ?? null;
-  // What the saber's card had when it was last read; nothing known for a saber never read.
-  const cardFonts = info && info.fonts.length ? info.fonts : null;
+  // What the saber's card has: read just now (in a reader, or by the saber), else as last read; nothing for a saber never read.
+  const cardFonts = card.cardCheck?.source === 'reader' || (card.cardCheck?.source === 'saber' && card.cardCheck.fonts.length) ? card.cardCheck.fonts : info && info.fonts.length ? info.fonts : null;
   const onCard = (folder: string) => (cardFonts ? cardFonts.some((x) => same(x, folder)) : null);
   const toCopy = chosen.filter((f) => onCard(f) !== true && libFont(f));
   const copyBytes = toCopy.reduce((n, f) => n + (libFont(f)?.bytes ?? 0), 0);
   const missing = read ? chosen.filter((f) => !libFont(f) && onCard(f) !== true) : [];
+  // The voice pack: the one chosen, else the one that comes with Hiltwright; and what the card has, when it is known.
+  const fett263 = propFamily(model) === 'fett263';
+  const bundled = voicePacks?.find((p) => p.have === 'bundled') ?? null;
+  const voiceSel = voicePacks?.find((p) => p.id === (model.voicePack ?? bundled?.id)) ?? null;
+  const voiceGroups = [...new Set((voicePacks ?? []).map((p) => p.group))];
+  const cardVoice = card.cardCheck?.source === 'out' ? null : card.voice;
+  const voiceNeed = fett263 ? voiceWork({ chosen: model.voicePack, fallback: bundled?.id ?? null, voice: cardVoice, onCard: voiceOnCard(saber.id) }) : null;
+  const chooseVoice = (id: string) => {
+    const p = voicePacks?.find((x) => x.id === id);
+    if (p) void save({ ...model, voicePack: id }, `${p.name} is the voice for ${saber.name}.`);
+  };
   const offered = library.filter((f) => !chosen.some((c) => same(c, f.folder)) && (!filter.trim() || `${f.folder} ${f.meta.name} ${f.meta.maker}`.toLowerCase().includes(filter.trim().toLowerCase())));
 
   return (
     <>
-      <div className="note"><Icon name="info" /><span>Choose the sound fonts {saber.name} will carry. They are copied onto its card at Build &amp; Install, with the card in a card reader. Presets, the next step, pick their fonts from this list.</span></div>
+      <div className="note"><Icon name="info" /><span>Choose the sound fonts {saber.name} will carry. They are copied onto its card on the Card step, with the card in a card reader. Presets, the next step, pick their fonts from this list.</span></div>
       {missing.length > 0 && <div className="note amber"><Icon name="warn" /><span>{missing.length === 1 ? `${missing[0]} is` : `${missing.join(', ')} are`} not in your font library{cardFonts ? ' or on the card' : ''}. {cardFonts ? `${missing.length === 1 ? 'It' : 'They'} cannot be copied: add ${missing.length === 1 ? 'it' : 'them'} to the library below.` : `The card's fonts have not been read yet. Unless the card has ${missing.length === 1 ? 'it' : 'them'} already, add ${missing.length === 1 ? 'it' : 'them'} to the library below so ${missing.length === 1 ? 'it' : 'they'} can be copied.`}</span></div>}
       {note && <div className={`note ${note.tone}`} role="status"><Icon name={note.tone === 'green' ? 'check' : 'info'} /><span>{note.text}</span></div>}
 
       <div className="work" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(320px,420px)' }}>
-        <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }} aria-label={`Fonts for ${saber.name}`} data-tour="fontchoice-chosen">
+        <div className="col" style={{ gap: 16, minHeight: 0 }}>
+        <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }} aria-label={`Fonts for ${saber.name}`} data-tour="fontchoice-chosen">
           <div className="ph"><h2>Fonts for {saber.name} · {chosen.length}</h2></div>
           <div className="list" style={{ overflow: 'auto' }}>
             {chosen.length === 0 && <div className="li hint" style={{ minHeight: 48 }}>No fonts chosen yet. Add them from your font library.</div>}
@@ -94,13 +121,38 @@ export function FontChoice({ ws, go }: { ws: Workspace; go: (page: 'armory' | 'p
           </div>
           <div className="row between" style={{ marginTop: 'auto', padding: '12px 18px', borderTop: '1px solid var(--line)', gap: 12 }}>
             <span className="hint">{[
-              toCopy.length ? `${toCopy.length} font${toCopy.length === 1 ? '' : 's'}, ${mb(copyBytes)}, to copy onto the card at install.` : '',
+              toCopy.length ? `${toCopy.length} font${toCopy.length === 1 ? '' : 's'}, ${mb(copyBytes)}, to copy onto the card on the Card step.` : '',
               missing.length ? `${missing.length} not in the font library.` : '',
               !toCopy.length && !missing.length && chosen.length && cardFonts ? 'Nothing to copy: the card has every chosen font, as last read.' : '',
             ].filter(Boolean).join(' ')}</span>
             <button type="button" className="btn sm pri" disabled={!chosen.length} onClick={() => go('presets')}><span className="b"><span className="i"><Icon name="chev" />Continue with Presets</span></span></button>
           </div>
         </section>
+
+        {fett263 && (
+          <section className="panel" style={{ flex: 'none' }} aria-label="Voice pack">
+            <div className="ph"><h2>Voice pack</h2>
+              {card.cardChecking ? <span className="chip"><Loader size="sm" />Checking the card</span>
+                : !cardVoice ? <span className="chip">Card not read</span>
+                : voiceNeed && voiceNeed.why !== 'change' ? <span className="chip warn"><Icon name="warn" />{voiceNeed.why === 'mixed' ? 'Mixed with an old pack' : voiceNeed.why === 'old' ? `Version ${cardVoice.version ?? 1} on the card` : 'Missing'}</span>
+                : <span className="chip ok"><Icon name="check" />Version {cardVoice.version} on the card</span>}
+            </div>
+            <div className="col" style={{ gap: 8, padding: '12px 18px 14px' }}>
+              <span className="small">The voice the Fett263 controls speak their menus in. It goes in the card{'’'}s common folder on the Card step, with the card in a card reader.</span>
+              {voicePacks === null && <span className="row" style={{ gap: 10 }}><Loader size="sm" /><span className="hint">Finding the voice packs…</span></span>}
+              {voiceSel && <>
+                <span className="input sans" style={{ maxWidth: 360 }}><span className="ellip">{voiceSel.name}</span><span className="caret"><Icon name="down" /></span><Select aria-label="Voice pack" value={voiceSel.id} onChange={(e) => chooseVoice(e.target.value)}>
+                  {voiceGroups.map((g) => <optgroup key={g} label={g}>{voicePacks!.filter((p) => p.group === g).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>)}
+                </Select></span>
+                <span className="hint small">By {voiceSel.author}{voiceSel.year ? `, ${voiceSel.year}` : ''} · {voiceSel.have === 'bundled' ? 'comes with Hiltwright' : voiceSel.have === 'downloaded' ? 'downloaded before' : `downloads ${mb(voiceSel.assetBytes)} at install`}{model.voicePack ? '' : ' · put on only when the card has no working pack'}</span>
+              </>}
+              {voiceNeed && <div className={`note${voiceNeed.why === 'change' ? '' : ' amber'}`} style={{ padding: '8px 10px' }}><Icon name={voiceNeed.why === 'change' ? 'sd' : 'warn'} /><span className="col grow" style={{ gap: 8, minWidth: 0 }}><span>{voiceNeedText(voiceNeed.why, voiceSel?.name ?? voiceNeed.pack, cardVoice)} The Card step does this, with the card in a card reader.{voiceNeed.why === 'mixed' || voiceNeed.why === 'missing' || voiceNeed.why === 'old' ? ' Until then the saber speaks an error on every preset change.' : ''}</span>
+                <span className="row"><button type="button" className="btn sm" onClick={() => go('card')}><span className="b"><span className="i"><Icon name="sd" />{voiceNeed.why === 'change' ? 'Put it on the card' : 'Fix it on the card'}</span></span></button></span></span></div>}
+              {!cardVoice && !card.cardChecking && <span className="hint small">{card.voiceWhy ? `The card's voice pack could not be checked: ${card.voiceWhy}.` : `What is on the card is checked once ${saber.name} is plugged in, or its card is in a card reader.`} <button type="button" className="holo" onClick={card.again}>Look again</button></span>}
+            </div>
+          </section>
+        )}
+        </div>
 
         <section className="panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }} aria-label="Font library" data-tour="fontchoice-library">
           <div className="ph"><h2>Font library</h2>

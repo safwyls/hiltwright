@@ -2,6 +2,7 @@
 // logos and links and what of theirs is here. Credit is by name as written on each font and look; this page only gathers it.
 
 import { useEffect, useMemo, useState } from 'react';
+import { fontLibraryList, packList } from './sharedLists';
 import { STARTER_LOOKS, type LookDef } from '@hiltwright/core';
 import type { LibraryFont, PackInfo } from '../../shared/api';
 import { listHilts } from './hiltStore';
@@ -26,10 +27,10 @@ export function Contributors({ onFonts, onLooks, onDemo }: { onFonts: () => void
   const [read, setRead] = useState(0);
   const done = () => setRead((n) => n + 1);
   useEffect(() => {
-    void api().fontLibrary.list().then(setFonts).catch(() => undefined).finally(done);
+    void fontLibraryList.load().then(setFonts).catch(() => undefined).finally(done);
     void api().looks.list().then(setSaved).catch(() => undefined).finally(done);
     // Hilts for the demo room: those in packs, credited by the pack, and those the owner loaded and credited.
-    void api().packs.list().catch(() => [] as PackInfo[]).then(async (packs) => [packs, await listHilts(packs).catch(() => [])] as const).then(([packs, own]) => setHilts([
+    void packList.load().catch(() => [] as PackInfo[]).then(async (packs) => [packs, await listHilts(packs).catch(() => [])] as const).then(([packs, own]) => setHilts([
       ...packs.filter((p) => p.kind === 'hilt' && p.creator).map((p) => ({ name: p.name, creator: p.creator, licence: p.licence || null })),
       ...own.filter((h) => h.creator).map((h) => ({ name: h.name, creator: h.creator!, licence: null })),
     ])).catch(() => undefined).finally(done);

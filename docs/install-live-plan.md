@@ -163,9 +163,11 @@ One commit each, with tests; hidden-app checks as usual (no board connected duri
 
 ## As built (2026-11-21)
 
-- **Step 4 kept its name, Build & Install.** Renaming it to "Card & Flash" meant rewording about 16 on-screen sentences, several of which read worse ("goes on with the next Card & Flash"), and the page still builds and installs. The card trip is a new Card step on it, between Build and Install.
+- **Step 4 kept its name, Build & Install**, at first: renaming it to "Card & Flash" meant rewording about 16 on-screen sentences, several of which read worse, and the page still built and installed. The card trip was a Card step on it.
+- **Then (2026-11-21) the card got its own step: Install › Card, and step 5 became Build & Flash.** The owner found the Card page living only under Live confusing when Install needs it too, and wanted every card action reachable from Install. One page in both sections, as Presets is: Install › Card works on the Armory's pick and carries the card trip (cardTrip.ts); Live › Card works on the plugged saber. Build & Flash keeps a Card line saying whether the card is ready, with a way to Install › Card. With the card gone from it, "Build & Flash" names what is left.
 - **The card trip does:** link a card known only by its presets to the saber (first, since removing the presets file would lose that), keep a snapshot of the saber's presets and remove its presets file when a list is staged, and copy the chosen fonts the card lacks, timing each copy to correct the estimate.
-- **Not done yet:** setting up the voice pack in the same trip (the verdict links to Live › Card, which does it), and writing the `ProffieOS source/` config copy to the card (there is no call for writing files to a card yet).
+- **Voice pack (2026-11-21):** chosen on Install › Fonts (`model.voicePack`, the bundled one when none is chosen), with the card's pack state shown there. The Card step puts it on when the card's pack is missing, too old or mixed with an older pack, or when another voice was chosen than the one Hiltwright last put on (remembered per saber on this computer, voiceChoice.ts).
+- **Not done yet:** writing the `ProffieOS source/` config copy to the card (there is no call for writing files to a card yet).
 - **USB fallback:** share the card on Live › Card. Build & Install then sees the shared drive like a reader and prepares it the same way, with the slower estimate.
 
 ## Out of scope

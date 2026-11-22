@@ -1,5 +1,5 @@
 // "Save diagnostics": writes the diagnostics file (see support.ts) and says where it went. The same button on
-// Diagnostics, on the fault screen and beside a failure on Build & Install.
+// Diagnostics, on the fault screen and beside a failure on Build & Flash.
 
 import { useState } from 'react';
 import { saveDiagnostics } from './support';

@@ -44,7 +44,7 @@ Press one and Hiltwright shows what will happen before it does anything. Adoptin
 
 Press **Adopt** to go ahead, or **Not now** to leave it.
 
-> **Note:** Adopting changes nothing on the saber itself. Everything reaches the saber at the next Build & Install.
+> **Note:** Adopting changes nothing on the saber itself. Everything reaches the saber at the next Build & Flash.
 
 ## The connection panel
 
@@ -88,7 +88,8 @@ The ticks mean:
 1. Wiring: you have confirmed the wiring.
 2. Fonts: you have chosen at least one font for the saber.
 3. Presets: the saber has presets in Hiltwright.
-4. Build & Install: the saber's firmware has been built and installed from the current setup, with no styles left queued and no staged presets waiting.
+4. Card: the card had every chosen font when the saber last listed them.
+5. Build & Flash: the saber's firmware has been built and flashed from the current setup, with no styles left queued and no staged presets waiting.
 
 With no saber picked, the page says "Start here". Styles are chosen on the Presets step. Make and try new ones in the Workshop (see [Styles](styles.html)).
 

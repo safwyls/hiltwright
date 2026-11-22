@@ -1,4 +1,4 @@
-// Build & Install warns before an install when presets name fonts the card lacks, or leave out `common`
+// Build & Flash warns before an install when presets name fonts the card lacks, or leave out `common`
 // where the voice pack lives. Both decisions are pure.
 
 import { describe, expect, it } from 'vitest';

@@ -2,15 +2,17 @@
 // (voicePackCatalogue.ts), or a zip the owner chose.
 //
 // common holds more than the voice pack (shared sounds the owner put there), so it is never cleared. Each top-level
-// entry the pack has (a file, or a folder such as mnum) replaces the card's entry of that name whole, so an old pack's
-// numbered sounds never mix with the new ones. The pack is copied to a hidden folder on the card first, then moved into
+// entry the pack has (a file, or a folder such as mnum) replaces the card's entry of that name whole, and with it every
+// card entry of the same sound in either layout: a pack's mnum/ folder replaces loose mnum1.wav, mnum2.wav…, and
+// loose files replace an mnum/ folder. ProffieOS counts every layout, so an old pack's numbered sounds left beside
+// the new ones make it say "error in font directory" on every preset change. The pack is copied to a hidden folder on the card first, then moved into
 // common with voicepack.ini last: a copy cut short leaves the card reading as its old version, and the next run puts
 // back what was moved aside. Whatever is replaced is copied to this computer before anything on the card changes.
 
 import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { FETT263_REQUIRED_VOICE_PACK, hasMenuSounds, parseVoicePackIni, voicePackFolder, type VoicePackStatus } from '@hiltwright/core';
+import { FETT263_REQUIRED_VOICE_PACK, hasMenuSounds, parseVoicePackIni, soundOf, voicePackFolder, type VoicePackStatus } from '@hiltwright/core';
 import { extractZip, listZip } from './unzip';
 import { checkEntryName } from './packCopy';
 import { cardFree, exists, filesUnder, isDir, noteCardWritten, readVoicePack } from './sd';
@@ -122,10 +124,28 @@ export async function installVoicePack(file: string, root: string, o: VoicePackI
   const common = join(root, 'common');
   await mkdir(common, { recursive: true });
   const isIni = (n: string) => n.toLowerCase() === 'voicepack.ini';
-  const top = (await readdir(staged)).sort((a, b) => Number(isIni(a)) - Number(isIni(b)));
-  // FAT is case-blind: the card's MNUM is the pack's mnum.
-  const existing = new Map((await readdir(common)).map((n) => [n.toLowerCase(), n]));
-  const replacing = top.map((n) => existing.get(n.toLowerCase())).filter((n): n is string => !!n);
+  const top = (await readdir(staged, { withFileTypes: true })).sort((a, b) => Number(isIni(a.name)) - Number(isIni(b.name)));
+  // What each pack entry replaces on the card: its own name (FAT is case-blind, so the card's MNUM is the pack's mnum)
+  // and every other card entry of the same sound, in either layout (an old mnum30.wav the pack lacks goes too).
+  const card = await readdir(common, { withFileTypes: true });
+  const taken = new Set<string>();
+  const replaces = new Map<string, string[]>();
+  for (const d of top) {
+    const same = card.find((c) => c.name.toLowerCase() === d.name.toLowerCase());
+    const list = same ? [same.name] : [];
+    if (same) taken.add(same.name);
+    replaces.set(d.name, list);
+  }
+  for (const d of top) {
+    const sound = soundOf(d.name, d.isDirectory());
+    if (!sound) continue;
+    for (const c of card) {
+      if (taken.has(c.name) || soundOf(c.name, c.isDirectory()) !== sound) continue;
+      taken.add(c.name);
+      replaces.get(d.name)!.push(c.name);
+    }
+  }
+  const replacing = [...taken];
   let backup: string | null = null;
   if (replacing.length) {
     try {
@@ -141,21 +161,20 @@ export async function installVoicePack(file: string, root: string, o: VoicePackI
   // 3. Into common, each entry whole, voicepack.ini last.
   const old = join(root, OLD);
   const moveIn = o.moveIn ?? rename;
-  const moved: { name: string; had?: string; landed: boolean }[] = [];
+  const moved: { name: string; had: string[]; aside: string[]; landed: boolean }[] = [];
   try {
     await mkdir(old, { recursive: true });
-    for (const n of top) {
-      const had = existing.get(n.toLowerCase());
-      const m = { name: n, had, landed: false };
-      if (had) await rename(join(common, had), join(old, had));
+    for (const { name: n } of top) {
+      const m = { name: n, had: replaces.get(n) ?? [], aside: [] as string[], landed: false };
       moved.push(m);
+      for (const h of m.had) { await rename(join(common, h), join(old, h)); m.aside.push(h); }
       await moveIn(join(staged, n), join(common, n));
       m.landed = true;
     }
   } catch (err) {
     for (const m of moved.reverse()) {
       if (m.landed) await rename(join(common, m.name), join(staged, m.name)).catch(() => undefined);
-      if (m.had) await rename(join(old, m.had), join(common, m.had)).catch(() => undefined);
+      for (const h of m.aside) await rename(join(old, h), join(common, h)).catch(() => undefined);
     }
     await clearVoiceLeftovers(root).catch(() => undefined);
     console.log(`[voice] swap on ${root} stopped: ${String(err)}`);

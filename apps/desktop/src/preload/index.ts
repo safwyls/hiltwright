@@ -50,6 +50,7 @@ const api: HiltwrightApi = {
   sd: {
     locate: () => ipcRenderer.invoke('sd:locate'),
     look: () => ipcRenderer.invoke('sd:locate', { detailed: true }),
+    mounted: () => ipcRenderer.invoke('sd:mounted'),
     listFonts: (root) => ipcRenderer.invoke('sd:listFonts', root),
     eject: (root) => ipcRenderer.invoke('sd:eject', root),
     hasFolder: (root, name) => ipcRenderer.invoke('sd:hasFolder', root, name),

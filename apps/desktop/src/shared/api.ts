@@ -344,6 +344,8 @@ export interface HiltwrightApi {
     locate(): Promise<CardInfo[]>;
     /** The same look as `locate`, saying when Windows did not answer instead of returning an empty list. */
     look(): Promise<DriveLook>;
+    /** The drives mounted now, by root: cheap, to notice a card put in a reader or taken out without a full look. */
+    mounted(): Promise<string[]>;
     listFonts(root: string): Promise<FontEntry[]>;
     /** Flush and dismount the card's volume, as 'Safely remove' does. Before the saber takes its card back. */
     eject(root: string): Promise<{ ok: boolean; detail: string }>;

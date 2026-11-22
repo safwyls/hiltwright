@@ -1,0 +1,100 @@
+// The card trip: everything a saber's SD card needs before its next flash, done in one go while the card is in a
+// card reader (or shared over the saber's USB): the chosen fonts it lacks, the voice pack, and removing its presets
+// file so a staged preset list takes effect. Done on Install › Card; Build & Flash says whether it is done.
+
+import { useEffect, useState } from 'react';
+import { propFamily, type SaberConfigModel } from '@hiltwright/core';
+import type { LibraryFont, SaberRecord } from '../../shared/api';
+import { fontLibraryList, useSharedList, voicePackList, type VoicePackList } from './sharedLists';
+import type { Board } from './board';
+import { chosenFonts } from './saberFonts';
+import { recordCopy, type CopyRoute } from './copyRate';
+import { rememberVoiceOn, voiceOnCard, voiceWork, type VoiceNeed } from './voiceChoice';
+import type { InstallNote } from './installFlow';
+import type { useCardCheck } from './useCardCheck';
+
+const api = () => window.hiltwright;
+const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+const NO_FONTS: LibraryFont[] = [];
+const NO_VOICES: VoicePackList = { packs: [], support: null, source: null, credit: null };
+
+/**
+ * Sabers whose card had its presets file removed on a card trip this session, for the staged list then being prepared
+ * (by its start time): the trip does not offer it again, and the flash finds the list already in place.
+ */
+const presetsClearedFor = new Map<string, string>();
+
+export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model: SaberConfigModel | null; info: Board['info']; check: ReturnType<typeof useCardCheck> }) {
+  const { board, saber, model, info, check } = o;
+  const { cardCheck, cardCheckRef, voice } = check;
+  // The font library and the voice packs, shared with the page this runs on (sharedLists.ts).
+  const library = useSharedList(fontLibraryList, NO_FONTS).value;
+  // The voice packs Hiltwright offers: the one chosen on Install › Fonts, else the one that comes with it.
+  const voicePacks = useSharedList(voicePackList, NO_VOICES).value.packs;
+  const [prepping, setPrepping] = useState<string | null>(null);
+  const [prepNote, setPrepNote] = useState<InstallNote | null>(null);
+  useEffect(() => api().sd.onCopyProgress((p) => setPrepping((now) => (now ? `Copying ${p.name}: ${p.done} of ${p.total} files` : now))), []);
+  useEffect(() => { setPrepNote(null); }, [saber?.id]);
+
+  // What the card still needs. Its fonts are known from a reader or the saber reading it now, else as last read.
+  const inReader = cardCheck?.source === 'reader';
+  const sharedRoot = board.card.shared && inReader && cardCheck.root === board.card.root;
+  const route: CopyRoute = sharedRoot ? 'saber' : 'reader';
+  const onCardNow = cardCheck?.source === 'reader' || cardCheck?.source === 'saber' ? cardCheck.fonts : info?.fonts.length ? info.fonts : null;
+  const libOf = (f: string) => library.find((l) => sameName(l.folder, f)) ?? null;
+  const chosen = chosenFonts(model);
+  const fontsToCopy = chosen.filter((f) => !(onCardNow ?? []).some((x) => sameName(x, f))).map(libOf).filter((l): l is LibraryFont => !!l);
+  // Said only when the card's fonts are known: a font not in the library may well be on a card not read yet.
+  const notInLibrary = onCardNow ? chosen.filter((f) => !libOf(f) && !onCardNow.some((x) => sameName(x, f))) : [];
+  const copyBytes = fontsToCopy.reduce((n, f) => n + f.bytes, 0);
+  const clearPresets = !!model?.presetsFrom && !!saber && !saber.planned && presetsClearedFor.get(saber.id) !== model.presetsFrom.at;
+  const link = inReader && cardCheck.by === 'presets' && !!cardCheck.card.volumeSerial;
+  // The Fett263 voice pack: put on when the card has no working one, or the owner chose another voice (voiceChoice.ts).
+  const prop = model ? propFamily(model) : 'fett263';
+  const bundledVoice = voicePacks.find((p) => p.have === 'bundled')?.id ?? null;
+  const voiceNeed: { pack: string; why: VoiceNeed } | null = prop === 'fett263' && model && saber ? voiceWork({ chosen: model.voicePack, fallback: bundledVoice, voice: cardCheck?.source === 'out' ? null : voice, onCard: voiceOnCard(saber.id) }) : null;
+  const voiceName = voiceNeed ? voicePacks.find((p) => p.id === voiceNeed.pack)?.name ?? voiceNeed.pack : '';
+  const cardWork = fontsToCopy.length > 0 || clearPresets || !!voiceNeed;
+  // Ready only when the card was read and needs nothing: a card not read yet is not known to be ready.
+  const cardKnown = cardCheck?.source === 'reader' || cardCheck?.source === 'saber';
+  const cardReady = !cardWork && !prepping && cardKnown;
+
+  /** Copy the fonts the card lacks, remove its presets file for a staged list (a snapshot first), put on the voice pack, and remember the card. */
+  const prepare = async () => {
+    const c = cardCheckRef.current;
+    if (c?.source !== 'reader' || !saber || !model) return;
+    const work = { fonts: fontsToCopy, clearPresets, link, route, voice: voiceNeed ? { pack: voiceNeed.pack, name: voiceName } : null };
+    setPrepping('Getting the card ready…'); setPrepNote(null);
+    const done: string[] = [];
+    try {
+      // First: a card known only by its presets would not be known once its presets file goes.
+      if (work.link) { await check.linkReaderCard(); done.push(`remembered it as ${saber.name}'s card`); }
+      if (work.clearPresets && model.presetsFrom) {
+        // What the saber had, kept before its presets file goes: Live › Presets can put it back.
+        if (info?.presets.length) { await api().snapshots.save(saber.id, 'Before install with staged presets', info.presets); void board.snapshotSaved(saber.id); }
+        setPrepping('Removing the presets file…');
+        await api().sd.clearPresets(c.root);
+        presetsClearedFor.set(saber.id, model.presetsFrom.at);
+        done.push('removed its presets file, so it starts with your list after the flash');
+      }
+      for (const f of work.fonts) {
+        setPrepping(`Copying ${f.folder}…`);
+        const t0 = Date.now();
+        await api().fontLibrary.copyToCard(f.folder, c.root, false);
+        recordCopy(work.route, f.bytes, Date.now() - t0);
+      }
+      if (work.fonts.length) done.push(`copied ${work.fonts.length === 1 ? work.fonts[0].folder : `${work.fonts.length} fonts`}`);
+      if (work.voice) {
+        setPrepping(`Putting the ${work.voice.name} voice pack on…`);
+        const r = await api().sd.installVoicePack(c.root, { pack: work.voice.pack });
+        rememberVoiceOn(saber.id, work.voice.pack);
+        done.push(`put the ${work.voice.name} voice pack in common${r.backup ? ` (what it replaced is kept on this computer, in ${r.backup})` : ''}`);
+      }
+      setPrepNote({ tone: 'green', text: `The card is ready: Hiltwright ${done.join(', ')}. ${work.route === 'saber' ? 'Give the card back' : 'Put the card back in the saber'}, plug the saber in, then flash it on Build & Flash.` });
+    } catch (err) {
+      setPrepNote({ tone: 'red', text: `The card was not finished${done.length ? ` (it ${done.join(', ')})` : ''}: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}` });
+    } finally { setPrepping(null); check.again(); }
+  };
+
+  return { inReader, sharedRoot, route, onCardNow, fontsToCopy, notInLibrary, copyBytes, clearPresets, voiceNeed, voiceName, cardWork, cardKnown, cardReady, prepping, prepNote, prepare };
+}

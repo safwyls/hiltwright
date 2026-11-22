@@ -4,7 +4,7 @@
 import { execFile } from 'node:child_process';
 import { copyFile, mkdir, open, readFile, readdir, rename, rm, stat, statfs } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
-import { WAV_HEADER_BYTES, checkFontListing, classifySound, hasMenuSounds, parsePresetsIni, parseVoicePackIni, type FontListingEntry, type FontReport, type VoicePackStatus } from '@hiltwright/core';
+import { WAV_HEADER_BYTES, checkFontListing, classifySound, hasMenuSounds, mixedSounds, parsePresetsIni, parseVoicePackIni, type FontListingEntry, type FontReport, type VoicePackStatus } from '@hiltwright/core';
 
 export interface CardInfo {
   root: string;
@@ -297,6 +297,32 @@ async function cardPresets(root: string): Promise<{ font: string; name: string }
   return null;
 }
 
+/** Drive letters that once took too long to answer (a network drive gone away): not asked again this run. */
+const slowDrives = new Set<string>();
+const DRIVE_ANSWER_MS = 1500;
+
+/**
+ * The drives mounted now, by their roots: a cheap check, asked every few seconds so a card put in a reader (or taken
+ * out) is noticed without the full look, which runs PowerShell and reads every card. On Windows each letter D: to Z:
+ * is asked whether it opens; an empty card reader slot says no at once.
+ */
+export async function mountedRoots(): Promise<string[]> {
+  const override = process.env.HILTWRIGHT_SD_ROOT;
+  if (override) return (await isDir(override)) ? [override] : [];
+  if (process.platform === 'win32') {
+    const letters = 'DEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter((l) => !slowDrives.has(l));
+    const answers = await Promise.all(letters.map((l) => new Promise<string | null>((resolve) => {
+      const t = setTimeout(() => { slowDrives.add(l); resolve(null); }, DRIVE_ANSWER_MS);
+      stat(`${l}:\\`).then(() => { clearTimeout(t); resolve(`${l}:\\`); }, () => { clearTimeout(t); resolve(null); });
+    })));
+    return answers.filter((a): a is string => !!a);
+  }
+  const bases = process.platform === 'darwin' ? ['/Volumes'] : ['/media', '/run/media', '/mnt'];
+  const out: string[] = [];
+  for (const b of bases) { try { for (const n of await readdir(b)) out.push(join(b, n)); } catch { /* not present */ } }
+  return out.sort();
+}
+
 export async function lookForCards(): Promise<DriveLook> {
   const started = Date.now();
   const { list, failed } = await candidateRoots();
@@ -399,9 +425,9 @@ export async function readVoicePack(root: string): Promise<VoicePackStatus> {
   const common = join(root, 'common');
   let text: string | null = null;
   try { text = await readFile(join(common, 'voicepack.ini'), 'utf8'); } catch { /* no file */ }
-  let names: string[] = [];
-  try { names = await readdir(common); } catch { /* no common folder */ }
-  return { ...parseVoicePackIni(text), menuSounds: hasMenuSounds(names) };
+  let entries: { name: string; isFolder: boolean }[] = [];
+  try { entries = (await readdir(common, { withFileTypes: true })).map((d) => ({ name: d.name, isFolder: d.isDirectory() })); } catch { /* no common folder */ }
+  return { ...parseVoicePackIni(text), menuSounds: hasMenuSounds(entries.map((e) => e.name)), mixed: mixedSounds(entries) };
 }
 
 export async function listTracks(root: string): Promise<{ name: string; size: number }[]> {

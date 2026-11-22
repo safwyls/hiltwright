@@ -30,7 +30,7 @@ Start here with every saber.
 
 The saber's firmware does not say which pins its blades use: they are compiled into it. The installer's config file does, and installers often leave it on the card. With the saber's card in a card reader, Wiring looks for a config file at the top of the card or in a `config` folder, and shows what it describes: the board, the buttons, and each blade's pixels, data pin and power pins. **Compare with a config file…** reads one from your computer instead.
 
-If the wiring here matches it, Wiring says so. If it differs, each difference is listed; a different pin or number of blades is shown in red, because a wrong pin can damage the board. **Use its wiring** fills in the blades, the buttons and the board from the config (a board read from the saber itself stays). **Check builds against it** keeps it as the reference: Build & Install then warns before installing whenever the wiring here differs from it. Hiltwright reads the common blade forms (`WS281XBladePtr`, `WS2811BladePtr`, `SubBlade`, `SimpleBladePtr`); a blade written another way is named as not readable, so you check that one by hand. A config with several blade configurations (Blade ID) is read from its first.
+If the wiring here matches it, Wiring says so. If it differs, each difference is listed; a different pin or number of blades is shown in red, because a wrong pin can damage the board. **Use its wiring** fills in the blades, the buttons and the board from the config (a board read from the saber itself stays). **Check builds against it** keeps it as the reference: Build & Flash then warns before installing whenever the wiring here differs from it. Hiltwright reads the common blade forms (`WS281XBladePtr`, `WS2811BladePtr`, `SubBlade`, `SimpleBladePtr`); a blade written another way is named as not readable, so you check that one by hand. A config with several blade configurations (Blade ID) is read from its first.
 
 ### A custom prop file
 
@@ -90,7 +90,7 @@ Hiltwright will not build while a problem is listed. The pins on a Proffieboard 
 
 Check every data pin and power pin against what the installer wrote down. Then turn on **I checked the wiring**.
 
-This switch exists because a wrong power pin can damage hardware. Nothing is installed until it is on. Until then the **Fonts** button under "Next" is grayed out, and the Build & Install page shows "Confirm the wiring to unlock the install."
+This switch exists because a wrong power pin can damage hardware. Nothing is installed until it is on. Until then the **Fonts** button under "Next" is grayed out, and the Build & Flash page shows "Confirm the wiring to unlock the install."
 
 The confirmation belongs to the layout you checked. If you change the board or any blade, it turns off again. If you change it back, it comes back. A saber that was set up before this check existed asks you once: "Hiltwright now records which wiring you checked. Check it once more to go on."
 
@@ -100,7 +100,7 @@ If the saber reports pixel blades when you plug it in, Hiltwright shows them as 
 
 ## What needs a rebuild
 
-Wiring is compiled into the saber's firmware. After you change it, Build & Install says "The setup changed after this build. Build again to install it." Build again, then install. See [Build & Install](build-and-install.html).
+Wiring is compiled into the saber's firmware. After you change it, Build & Flash says "The setup changed after this build. Build again to install it." Build again, then install. See [Build & Flash](build-and-install.html).
 
 ## If the wiring was changed elsewhere
 

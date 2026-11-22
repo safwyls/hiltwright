@@ -61,18 +61,29 @@ export function starterModel(saber: SaberRecord): SaberConfigModel {
 }
 
 /** Where the saber is in the flow, for the Armory's progress card and the next-step buttons. */
-export type FlowStep = 'wiring' | 'fonts' | 'presets' | 'build';
+export type FlowStep = 'wiring' | 'fonts' | 'presets' | 'card' | 'build';
+/**
+ * The chosen fonts the card lacked when the saber last listed its fonts; null when it never has. Only a guess at the
+ * card as it is now: Install › Card reads the card itself.
+ */
+export function fontsMissingAsLastRead(ws: Workspace): string[] | null {
+  const had = ws.info?.fonts.length ? ws.info.fonts : null;
+  if (!had) return null;
+  return chosenFonts(ws.model).filter((f) => !had.some((x) => x.toLowerCase() === f.toLowerCase()));
+}
 export function flowStatus(ws: Workspace): { step: FlowStep; label: string }[] {
   const m = ws.model; const s = ws.saber;
   const wired = wiringConfirmed(m);
   const presets = m?.presets.length ?? 0;
   const fonts = chosenFonts(m).length;
+  const missing = fontsMissingAsLastRead(ws);
   const installed = s?.firmware?.at ? new Date(s.firmware.at).toLocaleDateString() : null;
   return [
     { step: 'wiring', label: !m ? 'not started' : `${m.blades.length} blade${m.blades.length === 1 ? '' : 's'}, ${wired ? 'confirmed' : 'not confirmed yet'}` },
     { step: 'fonts', label: fonts ? `${fonts} chosen` : 'none chosen yet' },
-    { step: 'presets', label: presets ? `${presets}${m?.presetsFrom ? ', staged for the next install' : ''}` : 'none yet' },
-    { step: 'build', label: installed ? `installed ${installed}` : 'not installed yet' },
+    { step: 'presets', label: presets ? `${presets}${m?.presetsFrom ? ', staged for the next flash' : ''}` : 'none yet' },
+    { step: 'card', label: !missing ? 'not read yet' : missing.length ? `${missing.length} font${missing.length === 1 ? '' : 's'} to copy, as last read` : 'has every font, as last read' },
+    { step: 'build', label: installed ? `flashed ${installed}` : 'not flashed yet' },
   ];
 }
 export function nextStep(ws: Workspace): FlowStep {
@@ -80,5 +91,7 @@ export function nextStep(ws: Workspace): FlowStep {
   if (!m || !wiringConfirmed(m)) return 'wiring';
   if (!chosenFonts(m).length) return 'fonts';
   if (!m.presets.length) return 'presets';
+  const missing = fontsMissingAsLastRead(ws);
+  if (!missing || missing.length) return 'card';
   return 'build';
 }

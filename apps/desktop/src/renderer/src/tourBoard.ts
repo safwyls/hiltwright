@@ -64,6 +64,8 @@ export function tourBoard(real: Pick<Board, 'library' | 'refreshLibrary' | 'isPr
     adoptPlan: () => reject('adopt a plan'),
     currentPresetNow: () => info.presets[info.currentPreset ?? 0] ?? null,
     refreshLibrary: () => real.refreshLibrary(),
+    // The example saber has no snapshots to show.
+    snapshotSaved: async () => {},
     isPresetBlockEnd: real.isPresetBlockEnd,
     rebootToBootloader: () => no('reboot to the bootloader'),
   };

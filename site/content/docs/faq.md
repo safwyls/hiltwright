@@ -14,7 +14,7 @@ Yes to both. Hiltwright is licensed under GPL-3.0-or-later. You may use, change 
 
 ## Do I need Arduino or to write code?
 
-No. Hiltwright writes the settings file for you, builds the firmware and installs it over USB. You never need to read C++. The Config tab on Build & Install shows what it wrote, if you are curious.
+No. Hiltwright writes the settings file for you, builds the firmware and installs it over USB. You never need to read C++. The Config tab on Build & Flash shows what it wrote, if you are curious.
 
 The first build needs a one-time download of about 360 MB of compiler tools. After that, a build takes about a minute.
 
@@ -22,7 +22,7 @@ The first build needs a one-time download of about 360 MB of compiler tools. Aft
 
 An install replaces the firmware on the board. Before it does, Hiltwright reads the saber's whole firmware into a backup file. To undo an install, use **Put back** on the Backups tab. It writes the old firmware back exactly as it was.
 
-The presets and fonts on the SD card are not touched by an install or a put back. When a new list of presets replaces the saber's, Hiltwright keeps a copy of the saber's own presets first, so they can be put back. See [Build and Install](build-and-install.html).
+The presets and fonts on the SD card are not touched by an install or a put back. When a new list of presets replaces the saber's, Hiltwright keeps a copy of the saber's own presets first, so they can be put back. See [Build & Flash](build-and-install.html).
 
 ## Does it send my data anywhere?
 
@@ -42,7 +42,7 @@ Yes. The beta is not signed, so Windows shows warnings such as "Windows protecte
 
 ## Where do sound fonts come from?
 
-You bring them. Fonts you buy or download go into the [Font library](font-library.html) as a `.zip` package or a folder. Six free ProffieOS fonts come with Hiltwright: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. Choose the fonts a saber carries on [Install › Fonts](fonts.html). They are copied to the card on Build & Install, or one at a time on [Live › Card](fonts-and-sd.html).
+You bring them. Fonts you buy or download go into the [Font library](font-library.html) as a `.zip` package or a folder. Six free ProffieOS fonts come with Hiltwright: TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. Choose the fonts a saber carries on [Install › Fonts](fonts.html). They are copied to the card on Build & Flash, or one at a time on [Live › Card](fonts-and-sd.html).
 
 Hiltwright does not build fonts from raw sounds.
 
@@ -66,7 +66,7 @@ No. **New saber** in the Armory sets one up ahead: wiring, presets and styles, r
 
 ## Why use a card reader?
 
-The saber's own USB is slow: it runs at USB 1.1 speed. In a test, one font took about 4 seconds in a card reader and about 120 seconds over the saber's USB, about 30 times slower. Build & Install asks you to take the card out and put it in a reader for the copy. Sharing the card over the saber's USB still works, on [Live › Card](fonts-and-sd.html), and suits a small fix.
+The saber's own USB is slow: it runs at USB 1.1 speed. In a test, one font took about 4 seconds in a card reader and about 120 seconds over the saber's USB, about 30 times slower. Install › [Card](card.html) asks you to take the card out and put it in a reader for the copy. Sharing the card over the saber's USB still works, on [Live › Card](fonts-and-sd.html), and suits a small fix.
 
 ## What is not in this beta?
 

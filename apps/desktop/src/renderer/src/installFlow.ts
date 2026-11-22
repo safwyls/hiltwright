@@ -1,4 +1,4 @@
-// The install and restore sequences of Build & Install, as plain functions: the calls to the flasher and the board
+// The install and restore sequences of Build & Flash, as plain functions: the calls to the flasher and the board
 // come in as arguments, and every change to the page is a report. Build.tsx wraps them with the real calls and its
 // state; tests drive them with fakes.
 //
@@ -285,7 +285,7 @@ export async function installSequence(deps: InstallDeps, job: InstallJob): Promi
 }
 
 /** The staged list stays staged: why, and how to try again. */
-const keepStaged = (why: string): InstallNote => ({ tone: 'amber', text: `${why} Your staged presets are still waiting; press "Use the staged presets" on Build & Install to try again.` });
+const keepStaged = (why: string): InstallNote => ({ tone: 'amber', text: `${why} Your staged presets are still waiting; press "Use the staged presets" on Build & Flash to try again.` });
 
 /** The saber reports these presets in this order: the same names and fonts as the list. */
 export function samePresets(a: { name: string; font: string }[], b: { name: string; font: string }[]): boolean {
@@ -308,7 +308,7 @@ export async function applyStagedPresets(deps: Pick<InstallDeps, 'flash' | 'snap
   try {
     const own = board.currentPresets();
     if (!own) return keepStaged("The saber's presets could not be read, so they were not replaced.");
-    // Its presets file went when the card was prepared in a reader (Build & Install's card step, which kept the
+    // Its presets file went when the card was prepared in a reader (the card trip on Install › Card, which kept the
     // snapshot): the saber, with its card back, already starts with the staged list. Nothing to remove or restart.
     if (card.where === 'saber' && samePresets(own, model.presets)) {
       const { presetsFrom: _applied, ...settled } = model;

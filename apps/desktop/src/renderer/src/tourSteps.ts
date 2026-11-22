@@ -29,7 +29,7 @@ export const TOUR: TourChapter[] = [
         title: 'From plan to installed saber',
         target: 'nav-install',
         text: [
-          'Install\'s numbered steps take a saber from a plan to an installed board: 1 Wiring, 2 Presets, 3 Fonts & SD, 4 Build & Install.',
+          'Install\'s numbered steps take a saber from a plan to an installed board: 1 Wiring, 2 Fonts, 3 Presets, 4 Card, 5 Build & Flash.',
           'Live, below them, changes a saber that is plugged in now. The Armory, on top, is where you pick a saber.',
         ],
       },
@@ -81,7 +81,7 @@ export const TOUR: TourChapter[] = [
         title: 'Live, or a new setup',
         target: 'armory-progress',
         text: [
-          '"Adjust it live" changes a plugged-in saber at once. "Change its setup" shows the four Install steps and how far this saber has got.',
+          '"Adjust it live" changes a plugged-in saber at once. "Change its setup" shows the five Install steps and how far this saber has got.',
           'A tick means a step is done; the bright one is next. Press a step to go to it.',
         ],
       },
@@ -129,7 +129,7 @@ export const TOUR: TourChapter[] = [
         title: 'Fonts for this saber',
         target: 'fontchoice-chosen',
         text: [
-          'Choose the sound fonts this saber will carry. They are copied onto its card at Build & Install.',
+          'Choose the sound fonts this saber will carry. They are copied onto its card on the Card step.',
           'No card or saber is needed for this. Every font a preset names is on this list too.',
         ],
       },
@@ -157,7 +157,7 @@ export const TOUR: TourChapter[] = [
         title: 'Kept for the next install',
         target: 'presets-state',
         text: [
-          'Changes here are "staged": they wait in Hiltwright and replace the saber\'s presets at the next Build & Install. A copy of the saber\'s own is kept first.',
+          'Changes here are "staged": they wait in Hiltwright and replace the saber\'s presets at the next flash. A copy of the saber\'s own is kept first.',
           'To change a plugged-in saber right away, use Live › Presets instead.',
         ],
       },
@@ -174,7 +174,7 @@ export const TOUR: TourChapter[] = [
         target: 'presets-styles',
         text: [
           'Each blade gets a style: its colour, flicker and effects. A style already in the saber\'s firmware switches at once.',
-          '"Queued" means the style is chosen but not in the firmware yet. It goes on with the next Build & Install.',
+          '"Queued" means the style is chosen but not in the firmware yet. It goes on with the next Build & Flash.',
         ],
       },
       {
@@ -188,12 +188,31 @@ export const TOUR: TourChapter[] = [
     ],
   },
   {
-    id: 'build', name: '4 Build & Install', page: 'build', steps: [
+    id: 'card', name: '4 Card', page: 'card', steps: [
       {
-        title: 'Five steps to the saber',
+        title: 'The card, in one trip',
+        target: 'card-trip',
+        text: [
+          'Take the SD card out of the saber and put it in a card reader: it is found by itself. "Prepare the card" copies the fonts it lacks, puts on the voice pack and readies it for your preset list.',
+          'Sharing the card over the saber\'s USB works too, but is about 30 times slower.',
+        ],
+      },
+      {
+        title: 'Everything else on the card',
+        target: 'fonts-table',
+        text: [
+          'The same page is under Live, for a quick fix on a saber that is already flashed. Here it works on the saber picked in the Armory.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'build', name: '5 Build & Flash', page: 'build', steps: [
+      {
+        title: 'Four steps to the saber',
         target: 'build-steps',
         text: [
-          'This turns the saber\'s wiring, presets and styles into firmware, gets its card ready, and installs it.',
+          'This turns the saber\'s wiring, presets and styles into firmware, and flashes it onto the saber. The Card line says whether its card is ready.',
           'Each step turns green when it is done. The bright one is next.',
         ],
       },
@@ -214,18 +233,10 @@ export const TOUR: TourChapter[] = [
         ],
       },
       {
-        title: 'The card, in one trip',
-        target: 'build-card',
-        text: [
-          'Take the SD card out of the saber and put it in a card reader. "Prepare the card" copies the fonts it lacks and readies it for your preset list.',
-          'Then put the card back and install. Sharing the card over the saber\'s USB works too, but is about 30 times slower.',
-        ],
-      },
-      {
-        title: 'Install, with a backup first',
+        title: 'Flash, with a backup first',
         target: 'build-install',
         text: [
-          'Install reads the saber\'s whole firmware into a backup file first. Then it writes the new firmware, and waits for the saber to start again.',
+          'Flash reads the saber\'s whole firmware into a backup file first. Then it writes the new firmware, and waits for the saber to start again.',
           'Leave the saber plugged in until it says Installed. Windows asks once for a driver the first time.',
         ],
       },

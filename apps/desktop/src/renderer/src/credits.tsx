@@ -17,6 +17,8 @@ async function refresh(): Promise<void> {
   try { people = await api().contributors.list(); } catch { /* keep what we had */ }
   for (const l of listeners) l();
 }
+/** Fonts added anywhere can bring their makers in as contributors: the credits everywhere show them. */
+export function contributorsChanged(): void { if (loaded) void refresh(); }
 
 const find = (name: string | null | undefined) => {
   const want = (name ?? '').trim().toLowerCase();

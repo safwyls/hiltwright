@@ -1,5 +1,5 @@
 // Whose SD card is this? A saber's card is often out of the saber, in a card reader, so the app can copy to it
-// quickly; the checks on Build & Install and Fonts & SD then need to know the card in the reader is that saber's.
+// quickly; the checks on Build & Flash and Fonts & SD then need to know the card in the reader is that saber's.
 // Kept apart from React so it can be tested under node.
 //
 // In order:

@@ -312,7 +312,7 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
                 <>
                   <button type="button" className="btn pri full" disabled={!words.enabled || applying || (plan.kind === 'live' && board.busy)} onClick={() => void putIn()}><span className="b"><span className="i">{applying && plan.kind === 'live' ? <Loader size="sm" /> : <Icon name={plan.kind === 'live' ? 'presets' : plan.kind === 'already' ? 'check' : 'plus'} />}{applying && plan.kind === 'live' ? 'Writing to the saber…' : words.button}</span></span></button>
                   <span className="hint">{words.hint} <button type="button" className="holo" onClick={onPresets}>Open Presets</button></span>
-                  {selState === 'queued' && <button type="button" className="btn warn full" onClick={onBuild}><span className="b"><span className="i"><Icon name="bolt" />Build &amp; install queued styles</span></span></button>}
+                  {selState === 'queued' && <button type="button" className="btn warn full" onClick={onBuild}><span className="b"><span className="i"><Icon name="bolt" />Build &amp; flash queued styles</span></span></button>}
                 </>
               )}
               {note && <div className={`note ${note.tone}`}><Icon name={note.tone === 'green' ? 'check' : 'x'} /><span>{note.text}</span></div>}

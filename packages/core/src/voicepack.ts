@@ -12,9 +12,32 @@ export interface VoicePackStatus {
   version: number | null;
   /** Menu number sounds (`mnum`) exist beside it, as files or as a folder. ProffieOS checks for these first. */
   menuSounds: boolean;
+  /**
+   * Sounds that are in common both as a folder (`mnum/`) and as loose files (`mnum1.wav`), lowercased: usually an old
+   * pack's files left beside a newer pack's folder. ProffieOS counts both, finds twice the files it expects, and says
+   * "error in font directory" on every preset change. Absent when not checked.
+   */
+  mixed?: string[];
 }
 
 export const FETT263_REQUIRED_VOICE_PACK = 2;
+
+/**
+ * The sound a `common` entry holds, the way ProffieOS groups files: a folder by its name, a `.wav` by its name less
+ * any number (`mnum12.wav` is mnum). Lowercased, since FAT is case-blind. Null for anything else.
+ */
+export function soundOf(name: string, isFolder: boolean): string | null {
+  if (isFolder) return name.toLowerCase();
+  const m = /^(.*?[^\d])\d*\.wav$/i.exec(name);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/** The sounds in a listing of common that are there both as a folder and as loose files (see `mixed`). */
+export function mixedSounds(entries: { name: string; isFolder: boolean }[]): string[] {
+  const folders = new Set(entries.filter((e) => e.isFolder).map((e) => e.name.toLowerCase()));
+  const loose = new Set(entries.filter((e) => !e.isFolder).map((e) => soundOf(e.name, false)).filter((s): s is string => !!s));
+  return [...folders].filter((f) => loose.has(f)).sort();
+}
 
 /** Parse voicepack.ini text (ProffieOS config-file format: `key=value`, `#` comments). Null when there is no file. */
 export function parseVoicePackIni(text: string | null): { ini: boolean; version: number | null } {
@@ -54,13 +77,18 @@ export function voicePackFolder(paths: string[]): string | null {
 
 /**
  * Read the board's answers to `cat common/voicepack.ini` and `dir common`. `cat` on a missing file prints nothing;
- * `dir` prints "<name> <size>" per entry and ends with "Done listing files.".
+ * `dir` prints "<name> <size>" per entry and ends with "Done listing files.". Folders are listed with size 0; an
+ * entry of size 0 with no extension is taken as one.
  */
 export function voicePackFromSerial(catLines: string[], dirLines: string[]): VoicePackStatus {
   const text = catLines.filter((l) => !/^Whut\? :/.test(l)).join('\n');
   const parsed = parseVoicePackIni(/voice_pack_version|=/.test(text) ? text : null);
-  const names = dirLines.filter((l) => !/^(Done listing files\.|No such directory\.|Whut\? :)/.test(l)).map((l) => l.replace(/\s+\d+\s*$/, ''));
-  return { ...parsed, menuSounds: hasMenuSounds(names) };
+  const entries = dirLines.filter((l) => !/^(Done listing files\.|No such directory\.|Whut\? :)/.test(l)).map((l) => {
+    const m = /^(.*?)\s+(\d+)\s*$/.exec(l);
+    const name = m ? m[1] : l;
+    return { name, isFolder: !!m && m[2] === '0' && !name.includes('.') };
+  }).filter((e) => e.name !== '.' && e.name !== '..');
+  return { ...parsed, menuSounds: hasMenuSounds(entries.map((e) => e.name)), mixed: mixedSounds(entries) };
 }
 
 /**
@@ -72,6 +100,12 @@ export function presetsWithoutCommon(presets: { font: string }[]): number {
 }
 
 export interface VoicePackVerdict { ok: boolean; tone: 'green' | 'amber'; text: string }
+
+/** What to say about sounds that are in common twice (see `VoicePackStatus.mixed`), and how to fix it. */
+export function mixedText(mixed: string[]): string {
+  const list = mixed.join(' and ');
+  return `The card's common folder has ${list} both as a folder and as loose files, left from an older voice pack. The saber counts both, so it says "error in font directory" on every preset change. Put the voice pack on again on Live › Card: Hiltwright moves the loose files aside and keeps a copy of them on this computer.`;
+}
 
 /**
  * What to tell the owner before building with `prop`, given what the card holds. Null when the prop needs no pack.
@@ -87,6 +121,7 @@ export function voicePackVerdict(prop: Prop | null, s: VoicePackStatus | null, c
   if (!s.menuSounds && !s.ini) return { ok: false, tone: 'amber', text: `No voice pack found in the common folder. ${fix}` };
   if ((s.version ?? 1) < need) return { ok: false, tone: 'amber', text: `The card has voice pack version ${s.version ?? 1}, and this firmware needs version ${need}. ${fix}` };
   if (!s.menuSounds) return { ok: false, tone: 'amber', text: `voicepack.ini says version ${s.version}, but the menu sounds (mnum) are missing from the common folder. ${fix}` };
+  if (s.mixed?.length) return { ok: false, tone: 'amber', text: mixedText(s.mixed) };
   if (presetsWithoutCommon > 0) {
     const n = presetsWithoutCommon;
     return { ok: false, tone: 'amber', text: `The card has voice pack version ${s.version}, but ${n} preset${n === 1 ? '' : 's'} on the saber ${n === 1 ? 'does' : 'do'} not use the common folder, which is where the pack lives. The saber will say "voice pack not found" on ${n === 1 ? 'it' : 'them'}. On the Presets page, turn on "Also use common sounds" for ${n === 1 ? 'that preset' : 'each of them'}.` };

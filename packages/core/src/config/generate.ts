@@ -109,11 +109,17 @@ export interface SaberConfigModel {
    * font a preset names counts as chosen too. The generator ignores it: fonts live on the card, not in firmware.
    */
   fonts?: string[];
+  /**
+   * The voice pack (a catalogue id, voicePackCatalogue.ts) chosen on Install › Fonts for the Fett263 controls to speak
+   * their menus in, put in the card's common folder at install. Absent: the one that comes with Hiltwright, put on only
+   * when the card lacks a working pack. The generator ignores it.
+   */
+  voicePack?: string;
   /** Swappable main blades told apart by their ID resistor. Absent or empty: one blade, no Blade ID. */
   bladeId?: { variants: BladeVariant[] };
   /**
    * The installer's config file this saber's wiring is checked against (configWiring.ts): what it said about the
-   * board, buttons and blades when the owner imported or compared it. Build & Install warns when the wiring differs.
+   * board, buttons and blades when the owner imported or compared it. Build & Flash warns when the wiring differs.
    * The generator ignores it.
    */
   wiringReference?: { file: string; from: 'card' | 'file'; at: string; board: BoardModel | null; buttons: number | null; blades: BladeSpec[]; unreadable: { blade: number; text: string }[] };

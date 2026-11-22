@@ -1,23 +1,19 @@
-// Build & Install: the last step. The wiring (Wiring page), fonts (Fonts page) and presets (Presets page) live in the
-// saber's model; this page shows the config they make and builds it, prepares the card in one trip to a card reader
-// (the fonts it lacks, and the presets file when a new list is staged), then installs: backup → bootloader → write →
-// verify. Copying over the saber's own USB is the slow fallback (docs/install-live-plan.md).
+// Build & Flash: the last step. The wiring (Wiring page), fonts (Fonts page) and presets (Presets page) live in the
+// saber's model; this page shows the config they make, builds it, says whether the card is ready (it is got ready on
+// Install › Card, cardTrip.ts), then flashes: backup → bootloader → write → verify (docs/install-live-plan.md).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FETT263_REQUIRED_VOICE_PACK, compareWiring, differenceText, parseList, presetsWithoutCommon, propFamily, wiringFromConfig, type ConfigWiring, sdFailureIn, voicePackFromSerial, voicePackVerdict, wiringConfirmed, withWiringConfirmation, type VoicePackStatus } from '@hiltwright/core';
+import { FETT263_REQUIRED_VOICE_PACK, compareWiring, differenceText, presetsWithoutCommon, propFamily, voicePackVerdict, wiringConfirmed, withWiringConfirmation } from '@hiltwright/core';
 import { firmwareHasStaged, presetDrift, queuedLookIds } from './saberModel';
-import { chosenFonts } from './saberFonts';
-import { aboutTime, copySeconds, recordCopy, type CopyRoute } from './copyRate';
 import { mb } from './FontLibrary';
 import { propLabel } from './Wiring';
 import { missingFontWarning } from './fontNeeds';
 import type { Workspace } from './workspace';
-import type { BackupInfo, BuildResult, CardInfo, JobEvent, LibraryFont, ToolchainStatus } from '../../shared/api';
-import { saberCardIn, type OwnedBy } from './cardOwner';
-import { cachedRead, rememberRead } from './cardCache';
+import type { BackupInfo, BuildResult, JobEvent, ToolchainStatus } from '../../shared/api';
+import { useCardTrip } from './cardTrip';
+import { useCardCheck } from './useCardCheck';
 
 /** Where the checks on the saber's SD card were made: its card in a reader, the saber itself, or nowhere (card out). */
-type CardCheck = { source: 'reader'; root: string; by: OwnedBy; card: CardInfo; fonts: string[] } | { source: 'saber'; fonts: string[] } | { source: 'out' };
 import type { SaberConfigModel } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
@@ -40,14 +36,7 @@ const fmtGB = (b: number) => `${(b / 1073741824).toFixed(1)} GB`;
  * wiring and comes back to it: kept here, the build is shown again, as current or out of date (FW5).
  */
 const lastBuilds = new Map<string, { result: BuildResult; model: SaberConfigModel | null }>();
-/**
- * Sabers whose card had its presets file removed on a card trip this session, for the staged list then being prepared
- * (by its start time): the card step does not offer it again, and the install finds the list already in place.
- */
-const presetsClearedFor = new Map<string, string>();
-const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-
-export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'presets' | 'looks' | 'armory' | 'wiring' | 'fonts' | 'live-card') => void }) {
+export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (page: 'presets' | 'looks' | 'armory' | 'wiring' | 'fonts' | 'card' | 'live-card') => void }) {
   const { status } = board;
   // Frozen at connect time: the install deliberately drops the port, and the page must keep working through that.
   const [held, setSnap] = useState<{ info: NonNullable<Board['info']>; saber: NonNullable<Board['saber']> } | null>(null);
@@ -78,112 +67,11 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   const [armed, setArmed] = useState(false);
   const [withBackup, setWithBackup] = useState(true);
   const [tab, setTab] = useState<Tab>('config');
-  // The fonts the presets name and the Fett263 voice pack are checked on the saber's own SD card, wherever it is: in a
-  // card reader on this computer (read directly: the reader flow, which needs no USB sharing), or in the saber (asked
-  // over serial), or out of both, when nothing is said about fonts or the voice pack until it is back.
-  const [voice, setVoice] = useState<VoicePackStatus | null>(null);
-  // Why the card could not be read, when it could not (kept apart from "the pack is not there").
-  const [voiceWhy, setVoiceWhy] = useState<string | null>(null);
-  const [cardCheck, setCardCheck] = useState<CardCheck | null>(null);
-  const cardCheckRef = useRef<CardCheck | null>(null);
-  cardCheckRef.current = cardCheck;
-  const [lookAgain, setLookAgain] = useState(0);
-  const [cardConfig, setCardConfig] = useState<{ name: string; wiring: ConfigWiring } | null>(null);
-  // The card is being checked: what is known about the voice pack and fonts is not known yet, rather than missing.
-  const [cardChecking, setCardChecking] = useState(false);
-  const [linkNote, setLinkNote] = useState<string | null>(null);
-  useEffect(() => {
-    const me = saber;
-    if (!me) return;
-    let live = true;
-    setCardChecking(true);
-    void (async () => {
-      // The saber's own view: not while its card is shared, when the saber would be reading a card this computer has
-      // (card-safety D2). The font list is read again here: the one from connecting is stale once fonts are copied.
-      let own: { fonts: string[]; voice: VoicePackStatus | null; why: string | null; out: boolean } | null = null;
-      if (board.status === 'connected' && !board.card.shared && board.saber?.id === me.id) {
-        try {
-          const lf = await board.send('list_fonts', { idleMs: 700 });
-          const cat = await board.send('cat common/voicepack.ini', { idleMs: 700 });
-          const dir = await board.send('dir common', { idleMs: 900, until: (l) => /^(Done listing files\.|No such directory\.)/.test(l) });
-          const out = sdFailureIn([...lf.lines, ...cat.lines, ...dir.lines]) || !!board.info?.sdMissing;
-          const rejected = [...cat.lines, ...dir.lines].some((l) => /^Whut\? :/.test(l));
-          own = { fonts: parseList(lf.lines), voice: rejected || out ? null : voicePackFromSerial(cat.lines, dir.lines), why: rejected ? 'this firmware does not answer the card commands (cat and dir)' : null, out };
-        } catch { own = { fonts: [], voice: null, why: 'the saber is not answering', out: false }; }
-      }
-      // Its card in a reader. One known only by its presets gives way to a card the saber is reading itself.
-      let reader: ReturnType<typeof saberCardIn> = null;
-      try { const look = await api().sd.look(); if (look.answered) reader = saberCardIn(look.cards, me, board.library); } catch { /* no drive list */ }
-      if (reader && (reader.by !== 'presets' || !own || own.out || !own.fonts.length)) {
-        const root = reader.card.root;
-        try {
-          // What Fonts & SD read from this card, while it is still what is on it (cardCache.ts); else read it, and keep that.
-          let read = cachedRead(reader.card);
-          if (!read) {
-            const [fonts, tracks, vp] = await Promise.all([api().sd.listFonts(root), api().sd.listTracks(root), api().sd.voicePack(root)]);
-            rememberRead(reader.card, { fonts, tracks, voice: vp });
-            read = cachedRead(reader.card);
-          }
-          if (!live || !read) return;
-          setCardCheck({ source: 'reader', root, by: reader.by, card: reader.card, fonts: read.fonts.map((f) => f.name) }); setVoice(read.voice); setVoiceWhy(null);
-          // An installer's config on the card: its pins are checked against the wiring below.
-          void api().sd.configFiles(root).then((files) => {
-            for (const f of files) { const w = wiringFromConfig(f.text); if (w && live) { setCardConfig({ name: f.name, wiring: w }); return; } }
-          }).catch(() => undefined);
-          return;
-        } catch (err) { console.log(`[build] reading the card in the reader (${root}) failed: ${String(err)}`); }
-      }
-      if (!live) return;
-      if (own?.out) { setCardCheck({ source: 'out' }); setVoice(null); setVoiceWhy(null); }
-      else if (own) { setCardCheck({ source: 'saber', fonts: own.fonts }); setVoice(own.voice); setVoiceWhy(own.why); }
-      else { setCardCheck(null); setVoice(null); setVoiceWhy(null); }
-    })().finally(() => { if (live) setCardChecking(false); });
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [board.status, board.saber?.id, board.card.shared, saber?.id, lookAgain]);
-  /** The owner says the card in the reader, known only by its presets, is this saber's: it is known by its serial from now on. */
-  const linkReaderCard = async () => {
-    const c = cardCheck?.source === 'reader' ? cardCheck.card : null;
-    if (!c?.volumeSerial || !saber) return;
-    try { await api().library.linkCard(saber.id, { serial: c.volumeSerial, label: c.label }); await board.refreshLibrary(); setLinkNote(null); setLookAgain((n) => n + 1); }
-    catch (err) { setLinkNote(`Could not remember the card: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
-  };
-  // ---- the card trip: everything the card needs, done in one go while it is in a reader (or shared over USB) ----
-  const [library, setLibrary] = useState<LibraryFont[]>([]);
-  useEffect(() => { void api().fontLibrary.list().then(setLibrary).catch(() => undefined); }, []);
-  const [prepping, setPrepping] = useState<string | null>(null);
-  const [prepNote, setPrepNote] = useState<InstallNote | null>(null);
-  useEffect(() => api().sd.onCopyProgress((p) => setPrepping((now) => (now ? `Copying ${p.name}: ${p.done} of ${p.total} files` : now))), []);
-  useEffect(() => { setPrepNote(null); }, [saber?.id]);
-  /** Copy the fonts the card lacks, remove its presets file for a staged list (a snapshot first), and remember the card. */
-  const prepareCard = async (work: { fonts: LibraryFont[]; clearPresets: boolean; link: boolean; route: CopyRoute }) => {
-    const c = cardCheckRef.current;
-    if (c?.source !== 'reader' || !saber || !model) return;
-    setPrepping('Getting the card ready…'); setPrepNote(null);
-    const done: string[] = [];
-    try {
-      // First: a card known only by its presets would not be known once its presets file goes.
-      if (work.link) { await linkReaderCard(); done.push(`remembered it as ${saber.name}'s card`); }
-      if (work.clearPresets && model.presetsFrom) {
-        // What the saber had, kept before its presets file goes: Live › Presets can put it back.
-        if (info?.presets.length) await api().snapshots.save(saber.id, 'Before install with staged presets', info.presets);
-        setPrepping('Removing the presets file…');
-        await api().sd.clearPresets(c.root);
-        presetsClearedFor.set(saber.id, model.presetsFrom.at);
-        done.push('removed its presets file, so it starts with your list after the install');
-      }
-      for (const f of work.fonts) {
-        setPrepping(`Copying ${f.folder}…`);
-        const t0 = Date.now();
-        await api().fontLibrary.copyToCard(f.folder, c.root, false);
-        recordCopy(work.route, f.bytes, Date.now() - t0);
-      }
-      if (work.fonts.length) done.push(`copied ${work.fonts.length === 1 ? work.fonts[0].folder : `${work.fonts.length} fonts`}`);
-      setPrepNote({ tone: 'green', text: `The card is ready: Hiltwright ${done.join(', ')}. ${work.route === 'saber' ? 'Give the card back on Live › Card' : 'Put the card back in the saber'}, plug the saber in, then install.` });
-    } catch (err) {
-      setPrepNote({ tone: 'red', text: `The card was not finished${done.length ? ` (it ${done.join(', ')})` : ''}: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}` });
-    } finally { setPrepping(null); setLookAgain((n) => n + 1); }
-  };
+  // The fonts the presets name and the Fett263 voice pack are checked on the saber's own SD card (useCardCheck.ts).
+  const check = useCardCheck(board, saber);
+  const { voice, voiceWhy, cardCheck, cardCheckRef, cardConfig, cardChecking, linkNote, linkReaderCard, again: lookAgain } = check;
+  // What the card still needs before the flash; it is got ready on Install › Card (cardTrip.ts).
+  const trip = useCardTrip({ board, saber, model, info, check });
   // Poll USB while disconnected so an install can proceed from a board that is already in its bootloader.
   const [inBootloader, setInBootloader] = useState(false);
   useEffect(() => {
@@ -268,7 +156,9 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
 
   // The install and restore sequences live in installFlow.ts; these wrap them with the real calls and this page's state.
   const flowDeps = useCallback((): InstallDeps => ({
-    flash: api().flash, snapshots: api().snapshots, board,
+    flash: api().flash, board,
+    // The History tab on Live › Presets shows a snapshot saved here at once.
+    snapshots: { save: async (saberId, label, presets) => { const r = await api().snapshots.save(saberId, label, presets); void board.snapshotSaved(saberId); return r; } },
     noteBootloader: async (id, seen) => { const r = await api().library.noteBootloader(id, seen); await board.refreshLibrary(); return r; },
     sabers: board.library,
     confirmTarget: (name) => new Promise<boolean>((resolve) => setAskTarget({ name, answer: (yes) => { setAskTarget(null); resolve(yes); } })),
@@ -467,23 +357,9 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   // A build is current only while the setup would still make the same config (FW5); changing it back makes it current again.
   const stale = !!result?.ok && !!preview && preview.hash !== result.configHash;
   const built = !!result?.ok && step !== 'building' && !stale;
-  // What the card still needs. Its fonts are known from a reader or the saber reading it now, else as last read.
-  const inReader = cardCheck?.source === 'reader';
-  const sharedRoot = board.card.shared && inReader && cardCheck.root === board.card.root;
-  const route: CopyRoute = sharedRoot ? 'saber' : 'reader';
-  const onCardNow = cardCheck?.source === 'reader' || cardCheck?.source === 'saber' ? cardCheck.fonts : info.fonts.length ? info.fonts : null;
-  const libOf = (f: string) => library.find((l) => sameName(l.folder, f)) ?? null;
-  const chosen = chosenFonts(model);
-  const fontsToCopy = chosen.filter((f) => !(onCardNow ?? []).some((x) => sameName(x, f))).map(libOf).filter((l): l is LibraryFont => !!l);
-  // Said only when the card's fonts are known: a font not in the library may well be on a card not read yet.
-  const notInLibrary = onCardNow ? chosen.filter((f) => !libOf(f) && !onCardNow.some((x) => sameName(x, f))) : [];
-  const copyBytes = fontsToCopy.reduce((n, f) => n + f.bytes, 0);
-  const clearPresets = !!model?.presetsFrom && !saber.planned && presetsClearedFor.get(saber.id) !== model.presetsFrom.at;
-  const link = inReader && cardCheck.by === 'presets' && !!cardCheck.card.volumeSerial;
-  const cardWork = fontsToCopy.length > 0 || clearPresets;
-  const cardReady = !cardWork && !prepping;
+  const { cardWork, cardKnown, cardReady, fontsToCopy, copyBytes, voiceNeed, clearPresets, notInLibrary } = trip;
   const drift = presetDrift(model, info);
-  const nowStep = !wiringOk ? 1 : !tool?.ready ? 2 : !built ? 3 : cardWork ? 4 : step === 'done' ? 0 : 5;
+  const nowStep = !wiringOk ? 1 : !tool?.ready ? 2 : !built ? 3 : step === 'done' ? 0 : 4;
   // An install armed for a build that has since gone out of date is disarmed.
   if (stale && armed) setArmed(false);
   // The presets that will be on the saber: the staged list when presets are staged, else the saber's own (both are model.presets).
@@ -576,34 +452,19 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
           <button type="button" className={`btn full ${nowStep === 3 ? 'pri' : ''}`} disabled={!canBuild} onClick={() => void build(true)}><span className="b"><span className="i">{step === 'building' ? <Loader size="sm" /> : <Icon name="build" />}{step === 'building' ? 'Building…' : built ? 'Build again' : 'Build firmware'}</span></span></button>
         </div>
 
-        <div className={`stepc ${cardReady ? 'done' : nowStep === 4 ? 'now' : ''}`} data-tour="build-card">
-          <div className="head"><span className="nbox">{cardReady ? <Icon name="check" /> : 4}</span><b>Card</b><span className="what">{prepping ? 'getting it ready' : cardWork ? (fontsToCopy.length ? `${fontsToCopy.length} font${fontsToCopy.length === 1 ? '' : 's'}, ${mb(copyBytes)}` : 'your preset list') : 'nothing to put on it'}</span></div>
-          {cardWork && (
-            <div className="col" style={{ gap: 4 }}>
-              {fontsToCopy.length > 0 && <span className="small">Copy {fontsToCopy.map((f) => f.folder).join(', ')}{onCardNow ? '' : ' (the card has not been read yet: fonts already on it are skipped)'}.</span>}
-              {clearPresets && <span className="small">Remove its presets file, so the saber starts with your list after the install. A snapshot of its own presets is kept first.</span>}
-            </div>
-          )}
+        <div className={`stepc ${cardReady ? 'done' : ''}`} data-tour="build-card">
+          <div className="head"><span className="nbox">{cardReady ? <Icon name="check" /> : <Icon name="sd" />}</span><b>Card</b><span className="what">{trip.prepping ? 'getting it ready' : cardWork ? [fontsToCopy.length ? `${fontsToCopy.length} font${fontsToCopy.length === 1 ? '' : 's'}, ${mb(copyBytes)}` : '', voiceNeed ? 'a voice pack' : '', clearPresets ? 'your preset list' : ''].filter(Boolean).join(', ') : cardChecking ? 'checking the card' : cardKnown ? 'ready' : 'not read yet'}</span></div>
+          {cardWork && <span className="small">{saber.name}{'’'}s card needs {[fontsToCopy.length ? `${fontsToCopy.length === 1 ? fontsToCopy[0].folder : `${fontsToCopy.length} fonts`} copied` : '', voiceNeed ? 'its voice pack put on' : '', clearPresets ? 'its old presets file removed' : ''].filter(Boolean).join(', ')} before the flash. Do it with the card in a card reader.</span>}
           {notInLibrary.length > 0 && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>{notInLibrary.join(', ')} {notInLibrary.length === 1 ? 'is' : 'are'} not in your font library, so {notInLibrary.length === 1 ? 'it' : 'they'} cannot be copied. <button type="button" className="holo" onClick={() => go('fonts')}>Fonts</button></span></div>}
-          {prepping && <span className="row small" style={{ gap: 10 }}><Loader size="sm" />{prepping}</span>}
-          {cardWork && !prepping && (inReader ? (
-            <>
-              <span className="hint" style={{ overflowWrap: 'anywhere' }}>{sharedRoot ? `The card is shared over ${saber.name}'s USB (${cardCheck.root}): slow, ${aboutTime(copySeconds(copyBytes, 'saber'))} for this.` : `The card is in a card reader (${cardCheck.root}): ${aboutTime(copySeconds(copyBytes, 'reader'))} for this.`}</span>
-              <button type="button" className={`btn full ${nowStep === 4 ? 'pri' : ''}`} disabled={busy} onClick={() => void prepareCard({ fonts: fontsToCopy, clearPresets, link, route })}><span className="b"><span className="i"><Icon name="sd" />Prepare the card</span></span></button>
-            </>
-          ) : (
-            <>
-              <span className="small">Take the SD card out of {saber.name} and put it in a card reader on this computer, then press Look again.</span>
-              {copyBytes > 0 && <span className="hint">{`About ${aboutTime(copySeconds(copyBytes, 'reader')).replace(/^about /, '')} in a card reader; ${aboutTime(copySeconds(copyBytes, 'saber'))} over the saber's own USB.`}</span>}
-              <span className="row" style={{ gap: 8 }}><button type="button" className="btn sm" disabled={cardChecking} onClick={() => setLookAgain((n) => n + 1)}><span className="b"><span className="i">{cardChecking ? <Loader size="sm" /> : <Icon name="undo" />}Look again</span></span></button></span>
-              <span className="hint">No card reader? Share the card over the saber{'’'}s USB on <button type="button" className="holo" onClick={() => go('live-card')}>Live › Card</button>, then come back here. It is much slower.</span>
-            </>
-          ))}
-          {prepNote && <div className={`note ${prepNote.tone}`} style={{ padding: '8px 10px' }}><Icon name={prepNote.tone === 'green' ? 'check' : 'warn'} /><span>{prepNote.text}</span></div>}
+          {!cardWork && !cardKnown && !cardChecking && <span className="hint">Put {saber.name}{'’'}s card in a card reader, or plug the saber in. It is found by itself.</span>}
+          <span className="row" style={{ gap: 8 }}>
+            <button type="button" className={`btn sm ${cardWork && nowStep === 4 ? 'pri' : ''}`} onClick={() => go('card')}><span className="b"><span className="i"><Icon name="sd" />{cardWork ? 'Get the card ready' : 'Install › Card'}</span></span></button>
+            <button type="button" className="btn sm ghost" disabled={cardChecking} onClick={() => lookAgain()}><span className="b"><span className="i">{cardChecking ? <Loader size="sm" /> : <Icon name="undo" />}Look again</span></span></button>
+          </span>
         </div>
 
-        <div className={`stepc ${step === 'done' ? 'done' : nowStep === 5 ? 'now' : ''}`} data-tour="build-install">
-          <div className="head"><span className="nbox">{step === 'done' ? <Icon name="check" /> : 5}</span><b>Install</b><span className="what">{step === 'backup' ? `backing up, ${elapsed} s` : step === 'writing' ? `writing, ${elapsed} s` : 'backup first, about two minutes'}</span></div>
+        <div className={`stepc ${step === 'done' ? 'done' : nowStep === 4 ? 'now' : ''}`} data-tour="build-install">
+          <div className="head"><span className="nbox">{step === 'done' ? <Icon name="check" /> : 4}</span><b>Flash</b><span className="what">{step === 'backup' ? `backing up, ${elapsed} s` : step === 'writing' ? `writing, ${elapsed} s` : 'backup first, about two minutes'}</span></div>
           {/* The list for the next install would overwrite changes made on the saber since it was started (Live, say). */}
           {drift !== null && step !== 'done' && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>{saber.name} has changed since your preset list was made: {drift} preset{drift === 1 ? '' : 's'} differ{drift === 1 ? 's' : ''}. Installing replaces those changes. <button type="button" className="holo" onClick={() => go('presets')}>Bring them in on Presets</button></span></div>}
           {(step === 'bootloader' || step === 'backup' || step === 'writing' || step === 'verifying') && (
@@ -646,7 +507,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
               <button type="button" className="btn sm full" onClick={() => go('wiring')}><span className="b"><span className="i"><Icon name="blade" />Look at the wiring</span></span></button>
             </div>
           ) : step === 'bootloader' || step === 'backup' || step === 'writing' || step === 'verifying' ? null : !armed ? (
-            <button type="button" className={`btn full ${nowStep === 5 ? 'warn' : ''}`} disabled={busy || step !== 'built' || stale || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Install on {saber.name}</span></span></button>
+            <button type="button" className={`btn full ${nowStep === 4 ? 'warn' : ''}`} disabled={busy || step !== 'built' || stale || !confirmedWiring || !canInstall} onClick={() => setArmed(true)}><span className="b"><span className="i"><Icon name="bolt" />Flash {saber.name}</span></span></button>
           ) : (
             <div className="row" style={{ gap: 8 }}>
               <button type="button" className="btn danger grow" disabled={busy || stale} onClick={() => { setArmed(false); void install2(); }}><span className="b"><span className="i"><Icon name="bolt" />Yes, write the firmware</span></span></button>
@@ -667,21 +528,21 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
         {cardCheck?.source === 'reader' && <div className="note"><Icon name="sd" /><span className="col" style={{ gap: 6 }}>
           <span>Fonts and the voice pack were checked on {saber.name}{'’'}s card in the card reader ({cardCheck.root}){cardCheck.by === 'presets' ? ', which Hiltwright knows by its presets' : ''}. Put it back in the saber before you use it.</span>
           <span className="row" style={{ gap: 8 }}>
-            <button type="button" className="holo" onClick={() => setLookAgain((n) => n + 1)}>Look again</button>
+            <button type="button" className="holo" onClick={() => lookAgain()}>Look again</button>
             {cardCheck.by === 'presets' && cardCheck.card.volumeSerial && <button type="button" className="holo" onClick={() => void linkReaderCard()}>Remember it as {saber.name}{'’'}s card</button>}
           </span>
           {linkNote && <span className="small">{linkNote}</span>}
         </span></div>}
         {cardCheck?.source === 'out' && <div className="note"><Icon name="sd" /><span className="col" style={{ gap: 6 }}>
           <span>{saber.name}{'’'}s SD card is out of the saber. The font and voice pack checks run once it is back in the saber, or in a card reader on this computer.</span>
-          <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => setLookAgain((n) => n + 1)}>Look again</button></span>
+          <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => lookAgain()}>Look again</button></span>
         </span></div>}
-        {fontWarn && !cardChecking && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 6 }}><span>{fontWarn.text}</span><span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('live-card')}>Copy them onto the card</button><button type="button" className="holo" onClick={() => go('presets')}>Presets</button></span></span></div>}
+        {fontWarn && !cardChecking && <div className="note amber"><Icon name="warn" /><span className="col" style={{ gap: 6 }}><span>{fontWarn.text}</span><span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('card')}>Copy them onto the card</button><button type="button" className="holo" onClick={() => go('presets')}>Presets</button></span></span></div>}
         {cardChecking && <div className="note" style={{ alignItems: 'center' }}><Loader size="sm" /><span>Checking the saber{'’'}s card: its fonts and voice pack…</span></div>}
         {verdict && !cardChecking && <div className={`note ${verdict.tone}`}><Icon name={verdict.ok ? 'check' : 'warn'} />{verdict.ok || !voice ? <span>{verdict.text}</span> : <span className="col" style={{ gap: 6 }}><span>{verdict.text}</span><span className="row" style={{ gap: 8 }}>
           {/* The pack itself is short: Fonts & SD can put one on the card. Otherwise it is presets leaving common out. */}
-          {!voice.menuSounds || (voice.version ?? 0) < FETT263_REQUIRED_VOICE_PACK
-            ? <button type="button" className="holo" onClick={() => go('live-card')}>Update it on the card</button>
+          {!voice.menuSounds || (voice.version ?? 0) < FETT263_REQUIRED_VOICE_PACK || !!voice.mixed?.length
+            ? <button type="button" className="holo" onClick={() => go('card')}>Put it on the card</button>
             : <button type="button" className="holo" onClick={() => go('presets')}>Presets</button>}
         </span></span>}</div>}
         {preview?.warnings.map((w) => <div key={w} className="note"><Icon name="info" /><span>{w}</span></div>)}

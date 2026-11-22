@@ -10,6 +10,7 @@
 //            (ProffieOS saves presets on the card).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { fontLibraryList } from './sharedLists';
 import { STARTER_LOOKS, argInfo, bankFromSaber, bankLoadCheck, bankToModel, colorWordToHex, formatBuiltin, formatStyleArgs, hexToColorWord, lookSlots, parseStyleArgs, planRestore, registerLookSim, singleWords, starterLookFor, type BankLoadCheck, type LookDef, type PresetBank, type PresetRecord, type RestorePlan, type SaberConfigModel } from '@hiltwright/core';
 import { BladePreview, canSimulate } from './BladePreview';
 import { LookPreviewNote } from './PreviewNote';
@@ -87,7 +88,7 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
       if (info) { for (const x of info.fonts) if (x !== 'common') f.add(x); for (const x of info.tracks) t.add(x); }
       // Fonts in the library can be named before they are on the card; Fonts & SD copies them over.
       try {
-        const lib = await api().fontLibrary.list();
+        const lib = await fontLibraryList.load();
         setLibrary(lib);
         for (const x of lib) {
           f.add(x.folder);
@@ -331,7 +332,7 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
                     <span className="hint ellip grow" title={libFont?.meta.notes || undefined}>
                       {cf.folder && (libFont ? <>{libFont.meta.name}{libFont.meta.maker ? ` by ${libFont.meta.maker}` : ''}</> : libraryRead ? 'Not in the font library' : 'Looking in the font library…')}
                       {fontOnCard === true && <span className="green"> · on the card</span>}
-                      {fontOnCard === false && <> · <span className="amber">not on the card</span>{libFont && (inLive ? <>, <button type="button" className="holo" onClick={() => go('live-card')}>copy it over</button></> : ', copied at install')}</>}
+                      {fontOnCard === false && <> · <span className="amber">not on the card</span>{libFont && (inLive ? <>, <button type="button" className="holo" onClick={() => go('live-card')}>copy it over</button></> : ', copied on the Card step')}</>}
                     </span>
                     <button type="button" className="holo small nowrap" disabled={busy} title="Choose from the fonts in your font library" onClick={() => setPicking(true)}>Choose from library</button>
                   </div>
@@ -368,7 +369,7 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
                             {choices.some((l) => keptIds.has(l.id)) && <optgroup label="Only on this saber (removed from your styles)">{choices.filter((l) => keptIds.has(l.id)).map((l) => <option key={l.id} value={l.id} disabled={inLive && !compiled.has(l.id)}>{l.name}</option>)}</optgroup>}
                             {choices.some((l) => l.source !== 'starter' && !keptIds.has(l.id)) && <optgroup label="Your styles">{choices.filter((l) => l.source !== 'starter' && !keptIds.has(l.id)).map((l) => <option key={l.id} value={l.id} disabled={inLive && !compiled.has(l.id)}>{l.name}{l.by && l.by !== 'you' ? ` (${l.by})` : ''}{compiled.has(l.id) ? '' : inLive ? ' (not in the firmware)' : live ? ' (needs a build)' : ''}</option>)}</optgroup>}
                           </Select></span>
-                        {!inLive && shownLook && !onSaber && <span className="chip warn" title="Goes on with the next Build & Install"><Icon name="clock" />Queued</span>}
+                        {!inLive && shownLook && !onSaber && <span className="chip warn" title="Goes on with the next Build & Flash"><Icon name="clock" />Queued</span>}
                         {shownLook && canSimulate(shownLook.id) && <div style={{ width: ROLE_META[b.role].kind === 'pixel' ? 150 : 24, flex: 'none' }}><BladePreview lookId={shownLook.id} args={args} leds={ROLE_META[b.role].kind === 'pixel' ? Math.min(60, Math.max(4, Math.round(b.pixels / 3))) : 1} dot={ROLE_META[b.role].kind !== 'pixel'} size="sm" /></div>}
                         {shownLook && canSimulate(shownLook.id) && <LookPreviewNote look={shownLook} compact />}
                       </div>

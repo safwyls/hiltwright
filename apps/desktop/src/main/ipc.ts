@@ -14,7 +14,7 @@ import { Snapshots } from './snapshots';
 import { lookUpWanted, portHolders, proffieSerials } from './usb';
 import { activeWant, wantSerial } from './serialGate';
 import { stat as statFile } from 'node:fs/promises';
-import { checkFontDir, clearPresetsFiles, copyFont, findConfigFiles, listFonts, listTracks, lookForCards, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
+import { checkFontDir, clearPresetsFiles, copyFont, findConfigFiles, listFonts, listTracks, lookForCards, mountedRoots, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
 import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
 import { inspectVoicePack, installVoicePack } from './voicePackInstall';
@@ -185,11 +185,19 @@ export function registerIpc(): void {
   // as before, an empty list included when it did not. A look Windows did not answer leaves the known cards as they were.
   handle('sd:locate', async (_e, opts: unknown) => {
     const look = await lookForCards();
+    console.log(`[sd] drive look: ${look.answered ? `${look.cards.length} card(s)` : 'no answer'} in ${look.ms} ms`);
     if (look.answered) knownRoots = new Set(look.cards.map((c) => c.root));
     const detailed = !!opts && typeof opts === 'object' && (opts as { detailed?: unknown }).detailed === true;
     return detailed ? look : look.answered ? look.cards : [];
   });
-  handle('sd:listFonts', (_e, r: unknown) => listFonts(root(r)));
+  handle('sd:mounted', () => mountedRoots());
+  handle('sd:listFonts', async (_e, r: unknown) => {
+    const at = root(r);
+    const t0 = Date.now();
+    const fonts = await listFonts(at);
+    console.log(`[sd] listed ${fonts.length} fonts on ${at} in ${Date.now() - t0} ms`);
+    return fonts;
+  });
   handle('sd:eject', (_e, r: unknown) => ejectVolume(root(r)));
   handle('sd:hasFolder', (_e, r: unknown, name: unknown) => hasFolder(root(r), str(name, 200)));
   // The font library: fonts the owner added, in a folder of their choosing (default userData/fonts). Where it is lives

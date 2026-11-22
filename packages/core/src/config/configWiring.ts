@@ -2,7 +2,7 @@
 // colour order. An installer often leaves the config on the saber's card; reading the pins from it beats guessing,
 // since a wrong pin can damage a board. The firmware itself cannot tell us (pins are compiled into machine code).
 //
-// Also compares that wiring with a saber's model, so the Wiring page can import it and Build & Install can warn
+// Also compares that wiring with a saber's model, so the Wiring page can import it and Build & Flash can warn
 // before installing firmware whose pins differ from the installer's.
 
 import type { BladeSpec } from '../model';

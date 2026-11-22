@@ -64,13 +64,13 @@ A failed build shows a red note, such as "Could not build: ...", or the first pr
 
 Leave the saber plugged in until the page says **Installed**. If the install stops, the page says: "If the saber does not show up after a reboot: hold BOOT, tap RESET, release BOOT, then press Install again. A backup can always be put back from the Backups tab."
 
-Every install reads the saber's whole firmware into a backup first. To undo an install, open the **Backups** tab on Build & Install and press **Put back** on a backup. It writes that firmware to the saber exactly as it was. The presets and fonts on the SD card are not touched. See [Build and Install](build-and-install.html).
+Every install reads the saber's whole firmware into a backup first. To undo an install, open the **Backups** tab on Build & Flash and press **Put back** on a backup. It writes that firmware to the saber exactly as it was. The presets and fonts on the SD card are not touched. See [Build & Flash](build-and-install.html).
 
 ## Install says another saber is plugged in, or that the saber has changed
 
 An install only goes to the saber you picked in the [Armory](armory.html). If a different saber is plugged in, Install refuses. Unplug it, or pick that saber.
 
-If Build & Install or Install › Presets says "(saber) has changed since this list was made", the saber's presets were changed after you started your list, for example on Live › Presets. Installing your list would replace those changes. On [Presets](presets.html), choose **Bring in the saber's presets** (your list is kept as a preset set first) or **Keep my list**.
+If Build & Flash or Install › Presets says "(saber) has changed since this list was made", the saber's presets were changed after you started your list, for example on Live › Presets. Installing your list would replace those changes. On [Presets](presets.html), choose **Bring in the saber's presets** (your list is kept as a preset set first) or **Keep my list**.
 
 ## The card will not share, or will not give back
 
@@ -86,11 +86,17 @@ If the page says the firmware cannot share its card over USB, it needs Hiltwrigh
 
 Each preset names a sound font by its folder name. If the font is not on the card, the saber says "font directory not found" on every preset change. This happens after an install when the presets name fonts such as TeensySF or SmthJedi that were never copied onto the card.
 
-Fix it in one of three ways. On **Build & Install**, the Card step copies the fonts you chose that the card lacks. On [Live › Card](fonts-and-sd.html), the **Preset fonts** tab lists the fonts the presets use but the card lacks, with a one-click copy. Or choose another font on the Presets page. If the font is not in your library, add it on [Fonts](fonts.html) first.
+Fix it in one of three ways. On Install › [Card](card.html), the trip copies the fonts you chose that the card lacks. On [Live › Card](fonts-and-sd.html), the **Preset fonts** tab lists the fonts the presets use but the card lacks, with a one-click copy. Or choose another font on the Presets page. If the font is not in your library, add it on [Fonts](fonts.html) first.
+
+## The saber says "error in font directory"
+
+The folders are there, but a sound in one of them has more files than ProffieOS expects. It says this on every preset change when the sound is in `common`, which every preset uses. The usual cause is two voice packs mixed together: an older pack's loose menu sounds (`mnum1.wav`, `mnum2.wav`…) beside a newer pack's `mnum` folder. ProffieOS counts both sets.
+
+Hiltwright says which sounds are in `common` twice, on Install › [Fonts](fonts.html) and on Live › Card. To fix it, run the trip on Install › [Card](card.html), or put the voice pack on again on Live › Card. Either way the old loose files are moved aside, and a copy of them is kept on this computer.
 
 ## The saber says "voice pack not found"
 
-This happens with the Fett263 prop when the voice pack is not on the card, is too old, or the preset does not use the `common` folder where it lives. The Build & Install page says which. To put a version 2 pack in `common`, use the voice pack note on [Live › Card](fonts-and-sd.html). If the card has it, turn on **Also use common sounds** for the preset on the Presets page. See [Controls](diagnostics.html).
+This happens with the Fett263 prop when the voice pack is not on the card, is too old, or the preset does not use the `common` folder where it lives. The Build & Flash page says which. To put a version 2 pack in `common`, use the voice pack note on [Live › Card](fonts-and-sd.html). If the card has it, turn on **Also use common sounds** for the preset on the Presets page. See [Controls](diagnostics.html).
 
 ## Fonts show "Missing"
 

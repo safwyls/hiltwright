@@ -43,7 +43,7 @@ You then see an amber question, "Send ... anyway?", with **Send it** and **Do no
 
 Some props, such as the Fett263 button controls, speak their menus from a voice pack kept in the `common` folder on the saber's card. Hiltwright checks for it by asking the saber over the same serial link as the console. It reads `common/voicepack.ini` and lists the folder. You do not need a card reader.
 
-The result shows on the **Build & Install** page. It says one of:
+The result shows on the **Build & Flash** page. It says one of:
 
 - "Voice pack version ... found on the card. Fett263 button controls will speak their menus."
 - "No voice pack found in the common folder." with what to put there.
@@ -55,7 +55,7 @@ The check is skipped while the card is shared with the computer.
 
 ## Save diagnostics
 
-If something goes wrong, press **Save diagnostics**. The same button appears on the fault screen and beside a failed build or install on Build & Install.
+If something goes wrong, press **Save diagnostics**. The same button appears on the fault screen and beside a failed build or install on Build & Flash.
 
 It writes one plain text file on this computer, then opens the folder with the file selected. The page tells you: "Saved ... Its folder is open; you can read the file before sending it." **It sends nothing anywhere.** You attach it to your report yourself.
 

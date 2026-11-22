@@ -30,7 +30,7 @@ export type PutInPlan =
   | { kind: 'already'; where: 'installed' | 'queued' | 'staged' }
   /** Written to the saber now, `style` being the `builtin P B args` to write; recorded in the plan once confirmed (ST4). */
   | { kind: 'live'; style: string; args: string | null; kept: number[]; replaced: number[] }
-  /** Saved in the plan for the next Build & Install: into the staged list (ST3), or the saber's own list. */
+  /** Saved in the plan for the next Build & Flash: into the staged list (ST3), or the saber's own list. */
   | { kind: 'plan'; staged: boolean; installed: boolean; args: string | null; kept: number[]; replaced: number[] };
 
 /** The settings a blade slot holds now: those still to be written from the plan, else those on the saber's preset. */
@@ -145,7 +145,7 @@ export function putInWords(plan: PutInPlan, names: { saber: string; preset: stri
           ? `${preset} already uses this style on blade ${blade}, on ${saber}. Choose another preset or blade, or try other colours.`
           : plan.where === 'staged'
             ? `The staged ${preset} already has this style on blade ${blade}. It goes on with the next install.`
-            : `This style is already queued for ${preset}, blade ${blade}. It goes on with the next Build & Install.`,
+            : `This style is already queued for ${preset}, blade ${blade}. It goes on with the next Build & Flash.`,
       };
     case 'live': {
       const c = coloursText(plan, blade);
@@ -155,10 +155,10 @@ export function putInWords(plan: PutInPlan, names: { saber: string; preset: stri
       const c = coloursText(plan, blade);
       const after = plan.args ? ' The colours are written to the saber right after the install.' : '';
       if (plan.staged) return { button: `Use it in ${preset}`, enabled: true, hint: `${saber}'s presets are staged here, so this goes into the staged ${preset} and reaches the saber with the next install.${after}${c ? ` ${c}` : ''}` };
-      if (plan.installed) return { button: `Use it in ${preset}`, enabled: true, hint: `${saber} already has this style, but is not plugged in, so ${preset} gets it with the next Build & Install. Or plug the saber in to put it on now.${c ? ` ${c}` : ''}` };
+      if (plan.installed) return { button: `Use it in ${preset}`, enabled: true, hint: `${saber} already has this style, but is not plugged in, so ${preset} gets it with the next Build & Flash. Or plug the saber in to put it on now.${c ? ` ${c}` : ''}` };
       return {
         button: names.queuedElsewhere ? `Also use it in ${preset}` : `Add to ${preset}`, enabled: true,
-        hint: `New styles reach the saber with the next Build & Install${names.kb != null ? `, and cost about ${names.kb.toFixed(1)} KB of firmware space once` : ''}.${after}${c ? ` ${c}` : ''}`,
+        hint: `New styles reach the saber with the next Build & Flash${names.kb != null ? `, and cost about ${names.kb.toFixed(1)} KB of firmware space once` : ''}.${after}${c ? ` ${c}` : ''}`,
       };
     }
   }
@@ -177,7 +177,7 @@ export function putInResult(plan: PutInPlan, names: { saber: string; preset: str
     const after = plan.args ? ' The colours are written to the saber right after the install.' : '';
     return { tone: 'green', text: plan.staged
       ? `"${look}" goes into the staged ${preset}, blade ${blade}${withColours}. It reaches ${saber} with the next install.${after}`
-      : `"${look}" goes into ${preset}, blade ${blade}${withColours}, with the next Build & Install.${after}` };
+      : `"${look}" goes into ${preset}, blade ${blade}${withColours}, with the next Build & Flash.${after}` };
   }
   return null;
 }

@@ -12,7 +12,7 @@ export function importedBlades(cfg: Pick<ConfigWiring, 'blades'>, current: Model
   return cfg.blades.map((b, i) => ({ ...b, role: keep ? current[i].role : (i === 0 ? 'main' : 'accent') as BladeRole }));
 }
 
-/** What the model remembers of the config, for Build & Install to check against later. */
+/** What the model remembers of the config, for Build & Flash to check against later. */
 export function referenceFrom(name: string, from: 'card' | 'file', cfg: ConfigWiring): NonNullable<SaberConfigModel['wiringReference']> {
   return { file: name, from, at: new Date().toISOString(), board: cfg.board, buttons: cfg.buttons, blades: cfg.blades, unreadable: cfg.unreadable };
 }

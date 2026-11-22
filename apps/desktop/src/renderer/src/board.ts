@@ -126,6 +126,10 @@ export function useBoard() {
   const refreshSnapshots = useCallback(async (saberId: string) => {
     try { setSnapshots(await api().snapshots.list(saberId)); } catch (err) { console.log(`[snapshots] list failed: ${String(err)}`); }
   }, []);
+  /** A snapshot saved outside this hook (the card trip, a flash): the History list shows it while that saber is the one plugged in. */
+  const snapshotSaved = useCallback(async (saberId: string) => {
+    if (saberRef.current?.id === saberId) await refreshSnapshots(saberId);
+  }, [refreshSnapshots]);
 
   const disconnect = useCallback(async (reason?: string) => {
     const c = cardRef.current;
@@ -784,7 +788,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { card, cardShared, cardGivenBack, cardLostWhileShared, status, error, portName, info, saber, library, libraryLoaded, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, readSnapshot, restoreSnapshot, renameSaber, updateSaber, expectAfterInstall, reachNext, currentSaber, restartSaber, currentPresets, planSaber, adoptPlan, currentPresetNow, refreshLibrary, isPresetBlockEnd, rebootToBootloader };
+  return { card, cardShared, cardGivenBack, cardLostWhileShared, status, error, portName, info, saber, library, libraryLoaded, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, readSnapshot, restoreSnapshot, renameSaber, updateSaber, expectAfterInstall, reachNext, currentSaber, restartSaber, currentPresets, planSaber, adoptPlan, currentPresetNow, refreshLibrary, snapshotSaved, isPresetBlockEnd, rebootToBootloader };
 }
 
 export type Board = ReturnType<typeof useBoard>;

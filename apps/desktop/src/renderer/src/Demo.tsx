@@ -2,6 +2,7 @@
 // driven by the motion of the saber on screen.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { fontLibraryList, packList } from './sharedLists';
 import { PROPS, propFamily, SIMULATED_LOOKS, STARTER_LOOKS, argInfo, canSimulateLook, hexToColorWord, propBehaviour, registerLookSim, type LockupType, type LookDef } from '@hiltwright/core';
 import { BLADE_DIAMETERS, DEFAULT_SCENE, DemoScene, STRIP_DENSITIES, ledsFor, type BladeDiameter, type ControlMode, type Motion, type SceneSettings } from './demoScene';
 import { Icon } from './Icon';
@@ -92,7 +93,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   // Library fonts go by their folder (what a preset names); the name the owner gave them is shown.
   const [libNames, setLibNames] = useState<Record<string, string>>({});
   const libraryEntries = async (): Promise<FontEntry[]> => {
-    const list = await api().fontLibrary.list();
+    const list = await fontLibraryList.load();
     setLibNames(Object.fromEntries(list.map((f) => [f.folder, f.meta.name])));
     return list.map((f) => ({ name: f.folder, path: f.folder, report: f.report }));
   };
@@ -105,7 +106,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   const [soundNote, setSoundNote] = useState<string | null>(null);
   const [volume, setVolume] = useState(() => { try { return Number(localStorage.getItem('hiltwright.demo.volume') ?? 0.8); } catch { return 0.8; } });
   const refreshSources = async () => {
-    const [lib, found] = await Promise.all([api().fontLibrary.list().catch(() => []), api().packs.list().catch(() => [] as PackInfo[])]);
+    const [lib, found] = await Promise.all([fontLibraryList.load().catch(() => []), packList.load().catch(() => [] as PackInfo[])]);
     const next: Source[] = lib.length ? [{ kind: 'library', root: LIBRARY, label: `Font library (${lib.length})` }] : [];
     if (found.some((p) => p.kind === 'font' && p.allow.demoPlayback)) next.push({ kind: 'pack', root: 'packs', label: 'Hiltwright fonts' });
     setSources(next);
@@ -117,8 +118,8 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   const [sourcesRead, setSourcesRead] = useState(false);
   /** The fonts a source holds, read straight from it (the `fonts` state follows the selected source a moment later). */
   const entriesOf = async (src: Source): Promise<{ name: string; path: string }[]> => src.kind === 'pack'
-    ? (await api().packs.list().catch(() => [] as PackInfo[])).filter((p) => p.kind === 'font' && p.allow.demoPlayback).map((p) => ({ name: p.name, path: p.id }))
-    : (await api().fontLibrary.list().catch(() => [])).map((f) => ({ name: f.folder, path: f.folder }));
+    ? (await packList.load().catch(() => [] as PackInfo[])).filter((p) => p.kind === 'font' && p.allow.demoPlayback).map((p) => ({ name: p.name, path: p.id }))
+    : (await fontLibraryList.load().catch(() => [])).map((f) => ({ name: f.folder, path: f.folder }));
   // The room opens with a font, so it is never silent: the one chosen in the font library on the way here, else the
   // one last heard here if it is still there, else the first font to hand.
   useEffect(() => {
@@ -139,10 +140,10 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   useEffect(() => {
     if (!source) { setFonts([]); return; }
     let live = true;
-    void (source.kind === 'pack' ? api().packs.list().then((ps) => ps.filter((p) => p.kind === 'font' && p.allow.demoPlayback).map((p) => ({ name: p.name, path: p.id, report: { files: p.sounds, bytes: 0, type: 'unknown' as const, effects: {}, issues: [] } }))) : libraryEntries()).then((f) => { if (live) setFonts(f); }).catch(() => { if (live) setFonts([]); });
+    void (source.kind === 'pack' ? packList.load().then((ps) => ps.filter((p) => p.kind === 'font' && p.allow.demoPlayback).map((p) => ({ name: p.name, path: p.id, report: { files: p.sounds, bytes: 0, type: 'unknown' as const, effects: {}, issues: [] } }))) : libraryEntries()).then((f) => { if (live) setFonts(f); }).catch(() => { if (live) setFonts([]); });
     return () => { live = false; };
   }, [source?.root]); // eslint-disable-line react-hooks/exhaustive-deps
-  const addToLibrary = async () => { const r = await api().fontLibrary.addFolder(); if (r?.added.length) await refreshSources(); };
+  const addToLibrary = async () => { const r = await api().fontLibrary.addFolder(); if (r?.added.length) { await fontLibraryList.refresh(); await refreshSources(); } };
   // Loads can overlap (the room's own first load, a font picked while one is still decoding): only the latest
   // one may sound. An engine from an earlier load is thrown away when it arrives.
   const loadSeq = useRef(0);
@@ -202,7 +203,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     const from = sources.find((sr) => fonts.some((f) => f.name === folder) && sr.root === source?.root) ?? source;
     // The font may live on a different source than the one selected: try each until one has it.
     for (const sr of [from, ...sources].filter((x): x is Source => !!x)) {
-      const list = sr.root === source?.root ? fonts : sr.kind === 'pack' ? (await api().packs.list().catch(() => [] as PackInfo[])).filter((p) => p.kind === 'font').map((p) => ({ name: p.name, path: p.id })) : await libraryEntries().catch(() => []);
+      const list = sr.root === source?.root ? fonts : sr.kind === 'pack' ? (await packList.load().catch(() => [] as PackInfo[])).filter((p) => p.kind === 'font').map((p) => ({ name: p.name, path: p.id })) : await libraryEntries().catch(() => []);
       if (list.some((f) => f.name === folder)) { setSource(sr); await loadFont(folder, sr); return; }
     }
     setSoundNote(`The font "${folder}" is not in the Font library. Add it there to hear it here.`);
@@ -236,7 +237,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   const ownEntry = (h: HiltInfo): RoomHilt => ({ key: h.id, id: h.id, name: h.name, format: h.format, fit: h.fit, ...(h.creator ? { creator: h.creator } : {}) });
   /** Read the hilts, first bringing over any this page kept itself in an earlier version. */
   const loadHiltList = async () => {
-    const found = await api().packs.list().catch(() => [] as PackInfo[]);
+    const found = await packList.load().catch(() => [] as PackInfo[]);
     setPacks(found);
     let moveNote: string | null = null;
     try {

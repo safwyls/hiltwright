@@ -1,4 +1,4 @@
-// The install and restore sequences of Build & Install, run against a fake USB world: which boards are running, which
+// The install and restore sequences of Build & Flash, run against a fake USB world: which boards are running, which
 // are in their bootloaders, and each one's flash. Baseline audit (baseline-firmware firmware-install 5.5, 5.11, 5.13),
 // and install-target-safety (design D3-D6): which board is written, and every refusal before anything is touched.
 
@@ -372,7 +372,7 @@ describe('checking the board', () => {
     const f = world([theV3()], { connectedSerial: V3, noDriver: true });
     const r = await checkBoard(f.deps, v3Rec);
     expect(r.tone).toBe('amber');
-    expect(r.text).toBe('Windows has no driver for the bootloader yet. It is installed with the first install on Build & Install; choose the board yourself for now. To bring the saber back to its firmware, press RESET on the board, or unplug it and plug it back in.');
+    expect(r.text).toBe('Windows has no driver for the bootloader yet. It is installed with the first flash on Build & Flash; choose the board yourself for now. To bring the saber back to its firmware, press RESET on the board, or unplug it and plug it back in.');
     expect(f.calls.some((c) => /^(target|leave|note)/.test(c))).toBe(false);
   });
 
@@ -611,7 +611,7 @@ describe('staged presets', () => {
   it('the saber still reports its own presets after the restart: stays staged, and says so', async () => {
     const f = world([hote2()], { compiled: staged, keepsOwn: true });
     await installSequence(f.deps, job());
-    expect(f.extra().at(-1)).toEqual({ tone: 'amber', text: 'The saber still reports its own presets after its restart. Your staged presets are still waiting; press "Use the staged presets" on Build & Install to try again.' });
+    expect(f.extra().at(-1)).toEqual({ tone: 'amber', text: 'The saber still reports its own presets after its restart. Your staged presets are still waiting; press "Use the staged presets" on Build & Flash to try again.' });
     const models = (f.deps.board.updateSaber as ReturnType<typeof vi.fn>).mock.calls.map((c) => (c[0] as { model?: SaberConfigModel }).model);
     expect(models.every((m) => m?.presetsFrom)).toBe(true);
   });

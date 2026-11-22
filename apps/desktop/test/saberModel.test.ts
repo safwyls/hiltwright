@@ -36,7 +36,7 @@ describe('queuing a look with the colours chosen for it', () => {
 });
 
 // preset-editing 6.14 (baseline audit): a style chosen for a live preset that the installed firmware lacks is queued
-// for the next Build & Install, and is counted once.
+// for the next Build & Flash, and is counted once.
 describe('a new style on a live saber', () => {
   const firmware = (ids: string[]): SaberRecord['firmware'] => ({ hash: 'h', os: 'v8.10', at: '2026-09-25T00:00:00Z', looks: ids.map((id) => ({ id, name: id, args: [] })), presets: [] });
 

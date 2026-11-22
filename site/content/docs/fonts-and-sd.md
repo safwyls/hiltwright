@@ -6,7 +6,7 @@ order: 3
 ---
 Live › Card works on the saber's SD card, for a small fix: one font, or the voice pack. It needs no new build and no install. This page was called Fonts & SD before.
 
-For a full set-up, use a card reader instead. On [Build & Install](build-and-install.html), the Card step copies every font your saber needs in one go, and it is much faster. Choosing which fonts a saber carries is done on [Install › Fonts](fonts.html).
+For a full set-up, use a card reader instead. On Install › [Card](card.html), the trip copies every font your saber needs in one go, and it is much faster. Choosing which fonts a saber carries is done on [Install › Fonts](fonts.html).
 
 ## Two ways to reach the card
 
@@ -27,7 +27,7 @@ For a full set-up, use a card reader instead. On [Build & Install](build-and-ins
 While the card is shared:
 
 - The saber cannot play.
-- Preset changes and installs are blocked. [Live › Presets](live-presets.html) and Build & Install tell you to give the card back first.
+- Preset changes and installs are blocked. [Live › Presets](live-presets.html) and Build & Flash tell you to give the card back first.
 - Copying is slow. A big font can take minutes.
 
 Press **Give the card back** here. Do not unplug the saber, so nothing is left half written.
@@ -36,13 +36,13 @@ Press **Give the card back** here. Do not unplug the saber, so nothing is left h
 
 If Hiltwright cannot tell which drive is the saber's card, it asks you to use Safely Remove in Windows for it, then press **Give the card back** again. If the connection drops while the card is shared, reconnect the saber to give the card back.
 
-Sharing is also the slow fallback for a full install, for people with no card reader. Share the card here, then go to Build & Install, which treats the shared drive like a reader.
+Sharing is also the slow fallback for a full install, for people with no card reader. Share the card on Install › [Card](card.html), which gets it ready the same way as a card in a reader.
 
 ## The card status line
 
 The line under the heading shows free and total space, the number of fonts and tracks, whether `presets.ini` is present, the card's format and the voice pack. If several cards are seen, a **Card** list lets you choose. Nothing is copied until you do. **Look again** reads the card once more.
 
-Below it, Hiltwright says whose card it is. A card the saber shares over USB is remembered as that saber's, by the card's serial number, so the same card in a card reader is known too. A card that holds the presets a saber last reported is taken to be that saber's. To be sure, press **This is (saber)'s card**; **Not (saber)'s card** undoes it. The saber's own card is chosen first when several are in, and Build & Install checks it there.
+Below it, Hiltwright says whose card it is. A card the saber shares over USB is remembered as that saber's, by the card's serial number, so the same card in a card reader is known too. A card that holds the presets a saber last reported is taken to be that saber's. To be sure, press **This is (saber)'s card**; **Not (saber)'s card** undoes it. The saber's own card is chosen first when several are in, and Build & Flash checks it there.
 
 Headings tell you what Hiltwright found:
 
@@ -96,6 +96,6 @@ The status line reports the voice pack, for example "voice pack version 2" or "n
 
 Choose a voice from the list: the plain voices in several languages, or one of the character voices. They are Brian Conner's (NoSloppy) voice packs, included with his permission. English A comes with Hiltwright. Any other is downloaded when you put it on the card, checked, and kept on this computer for next time. **Use a zip you downloaded** takes a pack you downloaded yourself, as the zip it came in. Hiltwright checks the zip is version 2 and has its menu sounds before copying.
 
-The pack replaces only its own files and folders in `common`. Other sounds you keep there stay. Whatever it replaces is copied to this computer first, and the note says where. Hiltwright does not put the rest of the `common` folder on the card. Build & Install warns if the voice pack is missing, and Presets has the "Also use common sounds" switch. Setting up the voice pack is done here, not in the Build & Install card step.
+The pack replaces only its own files and folders in `common`. Other sounds you keep there stay. Whatever it replaces is copied to this computer first, and the note says where. Hiltwright does not put the rest of the `common` folder on the card. Build & Flash warns if the voice pack is missing, and Presets has the "Also use common sounds" switch. Setting up the voice pack is done here, not in the Build & Flash card step.
 
 Next: [Settings and About](settings.html).

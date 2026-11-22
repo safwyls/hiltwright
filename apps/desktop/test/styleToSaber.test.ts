@@ -146,7 +146,7 @@ describe('ST6: messages match the situation', () => {
     const plan = planPutIn(input({ look: fresh }));
     expect(putInWords(plan, names).button).toBe('Add to Two');
     expect(putInWords(plan, { ...names, queuedElsewhere: true }).button).toBe('Also use it in Two');
-    expect(putInWords(plan, names).hint).toMatch(/next Build & Install, and cost about 1.2 KB/);
+    expect(putInWords(plan, names).hint).toMatch(/next Build & Flash, and cost about 1.2 KB/);
   });
 
   it('nothing is sent while the card is out or shared', () => {

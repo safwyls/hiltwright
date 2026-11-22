@@ -84,7 +84,7 @@ describe('sd-card audit', () => {
   });
 
   it('2.7 a version 2 voice pack with its menu sounds is read as version 2 from the card', async () => {
-    expect(await readVoicePack(await card())).toEqual({ ini: true, version: 2, menuSounds: true });
+    expect(await readVoicePack(await card())).toEqual({ ini: true, version: 2, menuSounds: true, mixed: [] });
   });
 
   it('2.8 copying a new font puts it on the card under its folder name, and leaves the original unchanged', async () => {

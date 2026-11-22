@@ -1,10 +1,11 @@
 // Wiring: the board, its buttons and prop, and every blade the saber drives. The one thing old firmware cannot tell
 // us, so it is described here once and confirmed against the installer's notes. Everything is saved to the saber as
-// it is changed; Build & Install compiles from it.
+// it is changed; Build & Flash compiles from it.
 
 import { useEffect, useRef, useState } from 'react';
 import { compareWiring, differenceText, parseId, wiringConfirmed, wiringFromConfig, withWiringConfirmation, type BladeVariant, type BoardModel, type ConfigWiring, type ModelBlade, type Prop, type SaberConfigModel } from '@hiltwright/core';
 import { saberCardIn } from './cardOwner';
+import { sharedLook } from './cardCache';
 import { bladeWords, importedBlades, referenceFrom } from './wiringImport';
 import { HardwareEditor } from './Hardware';
 import { FEATURES } from './features';
@@ -98,7 +99,7 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
 
   // The installer's config file, when there is one: found on the saber's card in a card reader, or chosen from this
   // computer. Its pins are the surest source there is (the firmware cannot tell them), so it is shown beside the
-  // wiring here, can fill it in, and is remembered so Build & Install warns when they differ.
+  // wiring here, can fill it in, and is remembered so Build & Flash warns when they differ.
   const [config, setConfig] = useState<{ name: string; from: 'card' | 'file'; where: string | null; wiring: ConfigWiring } | null>(null);
   const [configNote, setConfigNote] = useState<string | null>(null);
   const [configLooking, setConfigLooking] = useState(false);
@@ -109,7 +110,8 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
     setConfigLooking(true);
     void (async () => {
       try {
-        const look = await window.hiltwright.sd.look();
+        // Shared with any other page looking for drives at the same moment (cardCache.ts).
+        const look = await sharedLook();
         const own = look.answered ? saberCardIn(look.cards, saber, board.library) : null;
         if (!own) return;
         for (const f of await window.hiltwright.sd.configFiles(own.card.root)) {
@@ -211,7 +213,7 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
                 {w.rows > 1 && <span className="small">It has {w.rows} blade configurations (Blade ID); this is the first.</span>}
                 {w.prop && !w.prop.stock && draft.prop !== 'custom' && <span className="small">It uses the prop {w.prop.include.split('/').pop()}. If you have that file, choose it above as a custom prop file.</span>}
                 {diffs.length === 0
-                  ? <span>The wiring here matches it.{kept ? '' : ' Check builds against it, so Build & Install warns if the wiring here ever changes from it.'}</span>
+                  ? <span>The wiring here matches it.{kept ? '' : ' Check builds against it, so Build & Flash warns if the wiring here ever changes from it.'}</span>
                   : <span className="col" style={{ gap: 2 }}><span>{danger ? 'The wiring here differs from it. A wrong pin can damage the board:' : 'The wiring here differs from it:'}</span>{diffs.map((d) => <span key={`${d.blade}-${d.what}`} className="small">{differenceText(d)}</span>)}</span>}
                 <span className="row wrap" style={{ gap: 8 }}>
                   {diffs.length > 0 && w.unreadable.length === 0 && <button type="button" className="btn sm pri" onClick={useConfigWiring}><span className="b"><span className="i">Use its wiring</span></span></button>}

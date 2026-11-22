@@ -1,5 +1,5 @@
 // The page's long jobs, as they run: an install or a restore sequence, a copy to the card, sharing the card. Kept
-// here, outside any page, because a job goes on when its page is left (Build & Install, Fonts & SD). Restart to
+// here, outside any page, because a job goes on when its page is left (Build & Flash, Fonts & SD). Restart to
 // update asks what is running (shared/updates.ts restartRefusal); main adds the requests it is still answering.
 // No React and no DOM here, so it is tested directly (test/updates.test.ts).
 

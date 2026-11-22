@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { cachedCards, cachedRead, forgetCardRead, lastCardRead, rememberCards, rememberRead } from '../src/renderer/src/cardCache';
+import { cachedCards, cachedRead, forgetCardRead, lastCardRead, rememberCards, rememberRead, sharedLook, sharedRead } from '../src/renderer/src/cardCache';
 import { cardWrites, noteCardWritten } from '../src/main/sd';
 import type { CardInfo } from '../src/shared/api';
 
@@ -24,6 +24,37 @@ describe('what was read from a card, kept between pages', () => {
     expect(cachedRead(card({ volumeSerial: '0BADF00D' }))).toBeNull();
     expect(cachedRead(card({ root: 'F:\\' }))).toBeNull();
     expect(cachedRead(null)).toBeNull();
+  });
+
+  it('keeps each card read, not just the last, so two cards in turn are not read again', () => {
+    rememberRead(card(), read);
+    rememberRead(card({ root: 'F:\\', volumeSerial: '0BADF00D' }), { ...read, tracks: [] });
+    expect(cachedRead(card())?.tracks).toEqual(read.tracks);
+    expect(cachedRead(card({ root: 'F:\\', volumeSerial: '0BADF00D' }))?.tracks).toEqual([]);
+  });
+
+  it('shares one look and one read between pages asking at the same moment, and reads again on Look again', async () => {
+    const calls = { look: 0, fonts: 0 };
+    const c = card();
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    (globalThis as unknown as { hiltwright: unknown }).hiltwright = { sd: {
+      look: async () => { calls.look++; await gate; return { answered: true, cards: [c], ms: 1 }; },
+      listFonts: async () => { calls.fonts++; await gate; return []; },
+      listTracks: async () => [],
+      voicePack: async () => read.voice,
+    } };
+    const looks = Promise.all([sharedLook(), sharedLook()]);
+    const reads = Promise.all([sharedRead(c), sharedRead(c)]);
+    release();
+    await looks; await reads;
+    expect(calls).toEqual({ look: 1, fonts: 1 });
+    await sharedRead(c);
+    expect(calls.fonts).toBe(1);
+    await sharedRead(c, true);
+    expect(calls.fonts).toBe(2);
+    await sharedLook();
+    expect(calls.look).toBe(2);
   });
 
   it('the main process counts its writes to each card by drive, whatever the slash', () => {

@@ -72,7 +72,7 @@ export const EXAMPLE_INFO: BoardInfo = {
 
 /**
  * What the example saber answers when a page asks it something, so its pages read as a real one does: its settings
- * (Diagnostics) and its voice pack (Build & Install). Only questions; anything that would change a saber is refused.
+ * (Diagnostics) and its voice pack (Build & Flash). Only questions; anything that would change a saber is refused.
  */
 export const EXAMPLE_ANSWERS: Record<string, string[]> = {
   get_volume: ['1800'],

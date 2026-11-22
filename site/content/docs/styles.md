@@ -29,12 +29,12 @@ Each style carries one of three marks. They matter because a saber can only swit
 | Mark | What it means |
 | --- | --- |
 | **On the saber** | The style is in the saber's firmware now. It can be switched on at once. |
-| **Queued** | You chose it for a preset, but it is not in the firmware yet. It goes on with the next Build & Install. |
+| **Queued** | You chose it for a preset, but it is not in the firmware yet. It goes on with the next Build & Flash. |
 | **Needs a build** | It is not in the saber's firmware, so a build is needed before the saber can use it. |
 
 A style you edited after the last install is not "On the saber" any more, because the firmware holds the older version.
 
-When a style is queued, a **Build & install queued styles** button appears under the preview. It takes you to [Build & Install](build-and-install.html).
+When a style is queued, a **Build & flash queued styles** button appears under the preview. It takes you to [Build & Flash](build-and-install.html).
 
 ## The preview
 
@@ -74,7 +74,7 @@ At the foot of the panel, choose a **Preset** and a **Blade**, then press the bu
 What happens depends on the saber:
 
 - **Plugged in, and the firmware already has the style.** The button says **Use it in** the preset. It is written to the saber now, in the colors you chose. No rebuild. The page says "The saber confirmed it" when the saber has read it back.
-- **Not plugged in, or the style is new.** The button says **Add to** the preset, or **Also use it in** the preset if the style is already queued elsewhere. The style is saved in the saber's plan and goes on with the next Build & Install. If you picked colors, they are written right after that install. A new style also costs a little firmware space, and the page shows about how much.
+- **Not plugged in, or the style is new.** The button says **Add to** the preset, or **Also use it in** the preset if the style is already queued elsewhere. The style is saved in the saber's plan and goes on with the next Build & Flash. If you picked colors, they are written right after that install. A new style also costs a little firmware space, and the page shows about how much.
 - **Presets are staged.** The style goes into the staged list and reaches the saber with the next install.
 - **Already in.** The button says **Already in** the preset and is disabled. That preset already uses this style on that blade, with these colors. Choose another preset or blade, or try other colors.
 

@@ -1,7 +1,10 @@
-// Live › Card (formerly Fonts & SD): the saber's card shared over its USB, or a ProffieOS card in a card reader, for a
-// small fix. Lists fonts with the checks that catch the classic failures, lists tracks, sets up the voice pack, and
-// copies a font folder from this computer onto the card after checking it. Getting a card ready for an install is
-// Build & Install's card step.
+// The Card page, in both sections: a saber's SD card in a card reader, or shared over the saber's USB. Lists fonts with
+// the checks that catch the classic failures, lists tracks, sets up the voice pack, and copies a font folder from this
+// computer onto the card after checking it.
+//
+// Install › Card works on the saber picked in the Armory, plugged in or not, and gets its card ready for the next
+// flash in one trip (cardTrip.ts): the chosen fonts it lacks, the voice pack, its old presets file. Live › Card works on
+// the saber plugged in now, for a small fix with no flash.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FETT263_REQUIRED_VOICE_PACK, propFamily, copyAnywayQuestion, saberCanReadFileSystem, shouldAskBeforeCopy, type VoicePackStatus } from '@hiltwright/core';
@@ -15,20 +18,31 @@ import { Icon } from './Icon';
 import { Loader, LoadingSpace } from './Loader';
 import { cardKind, chooseCard, rememberCardChoice, rememberedCardChoice } from './cardChoice';
 import { ownedByText, ownerOfCard } from './cardOwner';
-import { cachedCards, cachedRead, lastCardRead, rememberCards, rememberRead } from './cardCache';
+import { cachedCards, cachedRead, lastCardRead, rememberCards, sharedLook, sharedRead } from './cardCache';
 import { Select } from './Select';
 import { duringWork } from './work';
 import { aboutTime, copySeconds } from './copyRate';
+import { rememberVoiceOn, voiceNeedText } from './voiceChoice';
+import { useCardCheck } from './useCardCheck';
+import { useCardTrip } from './cardTrip';
+import { fontLibraryList, packList, useSharedList, voicePackList, type VoicePackList } from './sharedLists';
 import { DRIVE_WAIT_MS, giveCardBack, pickSaberDrive, plainDuration, shareCard, type Baseline, type GiveBackOutcome, type ShareDeps, type WaitProgress } from './cardShare';
 
 const api = () => window.hiltwright;
+const NO_FONTS: LibraryFont[] = [];
+const NO_PACKS: PackInfo[] = [];
+const NO_VOICES: VoicePackList = { packs: [], support: null, source: null, credit: null };
 
 function mb(bytes: number | null): string {
   if (bytes == null) return '—';
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${(bytes / 1e6).toFixed(0)} MB`;
 }
 
-export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (page: 'library') => void }) {
+export function Fonts({ board, ws, go, mode }: { board: Board; ws: Workspace; go: (page: 'library' | 'fonts' | 'build') => void; mode: 'install' | 'live' }) {
+  const inInstall = mode === 'install';
+  // Install › Card: what the picked saber's card needs before its flash, and the trip that does it.
+  const check = useCardCheck(board, inInstall ? ws.saber : null);
+  const trip = useCardTrip({ board, saber: inInstall ? ws.saber : null, model: ws.model, info: ws.info, check });
   // Drawn at once from what was last seen and read (cardCache.ts); the look on opening then says whether it still holds.
   const [cards, setCards] = useState<CardInfo[]>(() => cachedCards() ?? []);
   const [card, setCard] = useState<CardInfo | null>(() => { const r = lastCardRead(); return r ? cachedCards()?.find((c) => c.root === r.root) ?? null : null; });
@@ -39,19 +53,16 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
   const [message, setMessage] = useState<{ tone: '' | 'green' | 'amber' | 'red'; text: string } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [voice, setVoice] = useState<VoicePackStatus | null>(() => lastCardRead()?.voice ?? null);
-  const [library, setLibrary] = useState<LibraryFont[]>([]);
-  // Until the font library and the packs are read, where each preset's font is cannot be said.
-  const [libraryRead, setLibraryRead] = useState(false);
-  const [packsRead, setPacksRead] = useState(false);
+  // The font library, and the fonts that ship with Hiltwright as packs (which may be copied to a card), shared app-wide
+  // (sharedLists.ts). Until both are read, where each preset's font is cannot be said.
+  const { value: library, read: libraryRead } = useSharedList(fontLibraryList, NO_FONTS);
+  const { value: packs, read: packsRead } = useSharedList(packList, NO_PACKS);
   const [copyingNeeded, setCopyingNeeded] = useState<string | null>(null);
-  useEffect(() => { void api().fontLibrary.list().then(setLibrary).catch(() => setLibrary([])).finally(() => setLibraryRead(true)); }, []);
-  // Fonts that ship with Hiltwright as packs, and may be copied to a card.
-  const [packs, setPacks] = useState<PackInfo[]>([]);
-  useEffect(() => { void api().packs.list().then(setPacks).catch(() => setPacks([])).finally(() => setPacksRead(true)); }, []);
   // The saber's own card over USB. Hiltwright firmware carries a mass-storage interface, but ProffieOS only hands
   // the card over when asked ('sd 1'): the blade goes off, idle sounds stop, the card is released and Windows
   // mounts it as a drive. 'sd 0' takes it back. While the host has it, the saber cannot play from it.
-  const live = board.status === 'connected' && !!board.info;
+  // In Install, only the picked saber's own card is shared: another saber plugged in is left alone.
+  const live = board.status === 'connected' && !!board.info && (!inInstall || (!!ws.saber && board.saber?.id === ws.saber.id));
   // Whether the card is shared lives with the board session, so every page knows (card-safety D1); this page only
   // tracks the share or give-back under way.
   // 'asking': `sd 1` sent, waiting for the saber's answer; 'waiting': looking for its drive (cardShare.ts).
@@ -211,7 +222,8 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
     // With an earlier read on show, the drive look runs without holding up the page; reading the card again does not.
     if (fresh || !lastCardRead()) setScanning(true);
     try {
-      const look = await api().sd.look();
+      // A look another page (or this page's card check) started a moment ago is shared; Look again asks anew.
+      const look = fresh ? await api().sd.look() : await sharedLook();
       if (!current()) return;
       // Windows did not answer: what is shown stays as it was, rather than reading as "no card".
       if (!look.answered) { console.log(`[sd] Look again: Windows did not answer (${look.detail})`); setNoAnswer(true); return; }
@@ -250,13 +262,13 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
         }
         setScanning(true);
         setFonts([]); setTracks([]); setVoice(null);
-        const [f, t, vp] = await Promise.all([api().sd.listFonts(best.root), api().sd.listTracks(best.root), api().sd.voicePack(best.root)]);
+        // One read of the card, shared with any page reading the same card at the same time (cardCache.ts).
+        const r = await sharedRead(best, fresh);
         if (!current()) { console.log(`[sd] reading ${best.root} finished after it was no longer wanted; dropped`); return; }
-        setVoice(vp);
-        setFonts(f);
-        setTracks(t);
-        rememberRead(best, { fonts: f, tracks: t, voice: vp });
-        console.log(`[sd] card ${best.root} fonts=${f.length} tracks=${t.length} issues=${f.reduce((a, x) => a + x.report.issues.length, 0)}`);
+        setVoice(r.voice);
+        setFonts(r.fonts);
+        setTracks(r.tracks);
+        console.log(`[sd] card ${best.root} fonts=${r.fonts.length} tracks=${r.tracks.length} issues=${r.fonts.reduce((a, x) => a + x.report.issues.length, 0)}`);
       } else {
         setFonts([]);
         setTracks([]);
@@ -270,6 +282,9 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
   }, []);
 
   useEffect(() => { void scan(); }, [scan]);
+  // A card put in a reader, or taken out, is looked at by itself (useCardCheck asks for the drives every few seconds).
+  // Not while sharing or giving back: that flow looks for the drive itself.
+  useEffect(() => { if (check.drives && usb === 'idle') void scan(); }, [check.drives]); // eslint-disable-line react-hooks/exhaustive-deps
   const sharing = usb === 'asking' || usb === 'waiting';
   const usbBusy = sharing || usb === 'ejecting';
   const waitedFor = usb === 'waiting' ? Date.now() - (wait?.startedAt ?? waitStart) : 0;
@@ -304,13 +319,14 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
   // replaces is kept on this computer. The note opens by itself when the card's pack is missing or too old.
   const prop = ws.model ? propFamily(ws.model) : 'fett263';
   const fett263Card = !!card && !!voice && kind !== 'other' && prop === 'fett263';
-  const voiceShort = fett263Card && !!voice && (!voice.menuSounds || (voice.version ?? 0) < FETT263_REQUIRED_VOICE_PACK);
+  // An old pack's loose files beside a newer pack's folder (or the other way round) count twice: the same fix, a fresh copy.
+  const voiceMixed = fett263Card && !!voice?.mixed?.length;
+  const voiceShort = fett263Card && !!voice && (!voice.menuSounds || (voice.version ?? 0) < FETT263_REQUIRED_VOICE_PACK || voiceMixed);
   const [voiceOpen, setVoiceOpen] = useState(false);
-  const noVoices = { packs: [] as VoicePackChoice[], support: null, source: null, credit: null };
-  const [voiceList, setVoiceList] = useState<{ packs: VoicePackChoice[]; support: string | null; source: string | null; credit: string | null }>(noVoices);
-  const [voicesRead, setVoicesRead] = useState(false);
-  const loadVoices = () => api().sd.voicePacks().then(setVoiceList).catch(() => setVoiceList(noVoices)).finally(() => setVoicesRead(true));
-  useEffect(() => { void loadVoices(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Shared with the card trip on this page and with Install › Fonts; loaded again after a pack is put on (it may have
+  // been downloaded).
+  const { value: voiceList, read: voicesRead } = useSharedList(voicePackList, NO_VOICES);
+  const loadVoices = () => voicePackList.refresh().catch(() => undefined);
   const [voiceId, setVoiceId] = useState('');
   const voiceSel = voiceList.packs.find((p) => p.id === voiceId) ?? voiceList.packs.find((p) => p.have === 'bundled') ?? voiceList.packs[0] ?? null;
   const voiceGroups = [...new Set(voiceList.packs.map((p) => p.group))];
@@ -330,6 +346,9 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
     try {
       const r = await duringWork('copy', () => api().sd.installVoicePack(card.root, 'pack' in source ? { pack: source.pack } : { file: source.file }));
       setVoice(r.status); setPickedVoice(null); setVoiceOpen(false);
+      // Which voice this saber now has, so the card trip does not put the Install › Fonts choice over it unasked.
+      const whose = isOwnCard(card) ? board.saber?.id : owner?.saber.id;
+      if (whose) rememberVoiceOn(whose, 'pack' in source ? source.pack : null);
       setMessage({ tone: 'green', text: `The ${source.name} voice pack (version ${r.status.version ?? 1}) is in the common folder.${r.backup ? ` What it replaced is kept on this computer, in ${r.backup}.` : ''}` });
     } catch (err) {
       setMessage({ tone: 'red', text: plainErr(err) });
@@ -374,7 +393,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
                 : choice.ask ? 'Choose the card in the list. Nothing is copied until you do.'
                 : cards.length ? `${cards.length} removable volume${cards.length > 1 ? 's' : ''} seen, none with fonts on it. Put the saber's card in a reader.`
                 : live ? 'Put the card in a reader, or let the saber share it over USB: it stops playing while it does.' : 'Put the saber\'s SD card in a card reader, or plug the saber in and share its card over USB.'}
-              {fett263Card && !voiceShort && !voiceOpen && voiceList.packs.length > 0 && !scanning && <> · <button type="button" className="holo" onClick={() => setVoiceOpen(true)}>Change the voice</button></>}
+              {fett263Card && (!voiceShort || (inInstall && !!trip.voiceNeed)) && !voiceOpen && voiceList.packs.length > 0 && !scanning && <> · <button type="button" className="holo" onClick={() => setVoiceOpen(true)}>Change the voice</button></>}
             </div>
             {/* The saber's USB runs at USB 1.1 speed: said before a copy that way, not found out during it (install-live-plan). */}
             {(shared || (live && !card)) && <div className="hint">Over the saber{'’'}s USB a typical 40 MB font takes {aboutTime(copySeconds(40_000_000, 'saber'))}; in a card reader, {aboutTime(copySeconds(40_000_000, 'reader'))}. Sharing suits a small fix. For more, use a card reader.</div>}
@@ -406,11 +425,42 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
           )}
           <button type="button" className="btn sm" disabled={working} onClick={() => void scan(true)}><span className="b"><span className="i"><Icon name="undo" />Look again</span></span></button>
         </div>
+        {/* Install › Card: what the picked saber's card needs before its flash, done in one trip. */}
+        {inInstall && ws.saber && ws.model && (
+          <div style={{ padding: '0 18px 12px' }} data-tour="card-trip">
+            {/* Just prepared: the note saying what was done is enough. */}
+            {!(trip.cardReady && trip.prepNote?.tone === 'green') && <div className={`note${trip.cardWork ? ' amber' : trip.cardReady ? ' green' : ''}`}>
+              {trip.prepping ? <Loader size="sm" /> : <Icon name={trip.cardReady ? 'check' : 'sd'} />}
+              <span className="col grow" style={{ gap: 6, minWidth: 0 }}>
+                <b style={{ fontWeight: 600 }}>{trip.prepping ? trip.prepping
+                  : trip.cardWork ? `Before ${ws.saber.name} is flashed, its card needs:`
+                  : trip.cardReady ? `${ws.saber.name}’s card is ready for the flash: it has the chosen fonts${trip.voiceNeed === null && prop === 'fett263' ? ' and a working voice pack' : ''}.`
+                  : check.cardChecking ? `Checking ${ws.saber.name}’s card…`
+                  : `${ws.saber.name}’s card has not been read yet. Put it in a card reader: it is found by itself.`}</b>
+                {trip.cardWork && !trip.prepping && <>
+                  {trip.fontsToCopy.length > 0 && <span className="small">· Copy {trip.fontsToCopy.map((f) => f.folder).join(', ')} ({mb(trip.copyBytes)}){trip.onCardNow ? '' : ', skipping any already on it'}.</span>}
+                  {trip.voiceNeed && <span className="small">· {voiceNeedText(trip.voiceNeed.why, trip.voiceName, check.voice)} What it replaces is kept on this computer.</span>}
+                  {trip.clearPresets && <span className="small">· Remove its presets file, so it starts with your staged list after the flash. A snapshot of its own presets is kept first.</span>}
+                  <span className="hint" style={{ overflowWrap: 'anywhere' }}>{trip.inReader
+                    ? (trip.sharedRoot ? `The card is shared over ${ws.saber.name}’s USB: slow, ${aboutTime(copySeconds(trip.copyBytes, 'saber'))} for this.` : `In the card reader (${check.cardCheck?.source === 'reader' ? check.cardCheck.root : ''}): ${aboutTime(copySeconds(trip.copyBytes, 'reader'))} for this.`)
+                    : `Take the card out of ${ws.saber.name} and put it in a card reader on this computer: it is found by itself. ${trip.copyBytes > 0 ? `About ${aboutTime(copySeconds(trip.copyBytes, 'reader')).replace(/^about /, '')} in a reader; ${aboutTime(copySeconds(trip.copyBytes, 'saber'))} if the saber shares it over USB.` : ''}`}</span>
+                </>}
+                {trip.notInLibrary.length > 0 && <span className="small">{trip.notInLibrary.join(', ')} {trip.notInLibrary.length === 1 ? 'is' : 'are'} not in your font library, so {trip.notInLibrary.length === 1 ? 'it' : 'they'} cannot be copied. <button type="button" className="holo" onClick={() => go('fonts')}>Fonts</button></span>}
+                {trip.cardReady && <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('build')}>On to Build &amp; Flash</button></span>}
+              </span>
+              {trip.cardWork && trip.inReader && !trip.prepping && <button type="button" className="btn sm pri" style={{ alignSelf: 'center' }} disabled={working || usbBusy} onClick={() => void trip.prepare().then(() => scan(true))}><span className="b"><span className="i"><Icon name="sd" />Prepare the card</span></span></button>}
+            </div>}
+            {trip.prepNote && <div className={`note ${trip.prepNote.tone}`} style={{ marginTop: trip.cardReady && trip.prepNote.tone === 'green' ? 0 : 8 }}><Icon name={trip.prepNote.tone === 'green' ? 'check' : 'warn'} /><span>{trip.prepNote.text}{trip.prepNote.tone === 'green' && <> <button type="button" className="holo" onClick={() => go('build')}>Build &amp; Flash</button></>}</span></div>}
+          </div>
+        )}
         {card && unreadable && !scanning && <div style={{ padding: '0 18px 12px' }}><div className="note red"><Icon name="warn" /><span><b style={{ fontWeight: 600 }}>A saber cannot read this card.</b> It is formatted {card.fileSystem}, and a saber reads only FAT32 cards. With fonts on it the saber will still find no fonts or presets. To use this card, back up anything you need from it, then format it as FAT32. Windows{'’'} own format only offers FAT32 for cards up to 32 GB; a larger card needs a FAT32 formatting tool. Formatting erases everything on the card.</span></div></div>}
         {askFs && card && <div style={{ padding: '0 18px 12px' }}><div className="note amber"><Icon name="warn" /><span>{copyAnywayQuestion(askFs.what, card.root, card.fileSystem)}</span><span className="row" style={{ gap: 8, marginLeft: 'auto' }}><button type="button" className="btn sm warn" onClick={askFs.run}><span className="b"><span className="i">Copy anyway</span></span></button><button type="button" className="btn sm ghost" onClick={() => setAskFs(null)}><span className="b"><span className="i">Cancel</span></span></button></span></div></div>}
         {card && kind === 'empty' && !scanning && <div style={{ padding: '0 18px 12px' }}><div className="note"><Icon name="sd" /><span>This card is empty. Copy the fonts the presets use, or add a font, to start a saber card on it. A saber also needs its <span className="mono">common</span> folder of shared sounds, which Hiltwright does not put on the card yet.</span></div></div>}
-        {fett263Card && voice && (voiceShort || voiceOpen) && !scanning && <div style={{ padding: '0 18px 12px' }}><div className={`note${voiceShort ? ' amber' : ''}`}><Icon name={voiceShort ? 'warn' : 'sd'} /><span className="col grow" style={{ gap: 10, minWidth: 0 }}>
-          <span>{voiceShort
+        {/* In Install the trip above puts the pack right; this note opens there only when asked (Change the voice). */}
+        {fett263Card && voice && ((voiceShort && !(inInstall && trip.voiceNeed)) || voiceOpen) && !scanning && <div style={{ padding: '0 18px 12px' }}><div className={`note${voiceShort ? ' amber' : ''}`}><Icon name={voiceShort ? 'warn' : 'sd'} /><span className="col grow" style={{ gap: 10, minWidth: 0 }}>
+          <span>{voiceMixed && voice.menuSounds && (voice.version ?? 0) >= FETT263_REQUIRED_VOICE_PACK
+            ? `This card’s common folder has ${voice.mixed!.join(' and ')} both as a folder and as loose files, left from an older voice pack. The saber counts both, so it says “error in font directory” on every preset change. Put the voice pack on again to clear the loose files.`
+            : voiceShort
             ? `${!voice.ini && !voice.menuSounds ? 'This card has no voice pack' : !voice.menuSounds ? 'This card’s voice pack has no menu sounds (mnum)' : `This card has voice pack version ${voice.version ?? 1}`}, and the Fett263 controls need version ${FETT263_REQUIRED_VOICE_PACK}. Until it has one, the saber speaks a voice pack error on every preset change.`
             : 'Choose the voice the Fett263 controls speak their menus in.'} It goes in the card{'’'}s common folder, and anything it replaces is kept on this computer first.</span>
           {!voicesRead && !pickedVoice && <span className="row" style={{ gap: 10 }}><Loader size="sm" /><span className="hint">Finding the voice packs…</span></span>}
@@ -435,7 +485,7 @@ export function Fonts({ board, ws, go }: { board: Board; ws: Workspace; go: (pag
             </> : <>
               {voiceSel && <button type="button" className="btn sm pri" disabled={working} onClick={() => void putVoicePack({ pack: voiceSel.id, name: voiceSel.name })}><span className="b"><span className="i"><Icon name="sd" />Put {voiceSel.name} on the card</span></span></button>}
               <button type="button" className={`btn sm${voiceSel || !voicesRead ? '' : ' pri'}`} disabled={working} onClick={() => void pickVoice()}><span className="b"><span className="i">{voiceSel ? 'Use a zip you downloaded…' : 'Choose a voice pack zip…'}</span></span></button>
-              {!voiceShort && <button type="button" className="btn sm ghost" disabled={working} onClick={() => setVoiceOpen(false)}><span className="b"><span className="i">Close</span></span></button>}
+              {(!voiceShort || (inInstall && !!trip.voiceNeed)) && <button type="button" className="btn sm ghost" disabled={working} onClick={() => setVoiceOpen(false)}><span className="b"><span className="i">Close</span></span></button>}
             </>}
           </span>
           {voiceList.credit && !pickedVoice && <span className="hint small">{voiceList.credit} {voiceList.support && <button type="button" className="holo" onClick={() => void api().sd.openVoicePackLink('support')}>Support his work</button>}{voiceList.source && <> · <button type="button" className="holo" onClick={() => void api().sd.openVoicePackLink('source')}>Where they come from</button></>}</span>}

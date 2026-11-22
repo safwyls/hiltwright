@@ -24,7 +24,7 @@ export function otherSaber(other: string, wanted: string): string {
 }
 
 /** Checking the board met a bootloader Windows has no driver for: dfu-util cannot read it, nor send it back. */
-export const NO_DRIVER_FOR_CHECK = 'Windows has no driver for the bootloader yet. It is installed with the first install on Build & Install; choose the board yourself for now.';
+export const NO_DRIVER_FOR_CHECK = 'Windows has no driver for the bootloader yet. It is installed with the first flash on Build & Flash; choose the board yourself for now.';
 
 /** After a stop before anything was written: Hiltwright sent the board back to its firmware itself (FW29). */
 export const BACK_ON_FIRMWARE = 'The saber is back on the firmware it had.';

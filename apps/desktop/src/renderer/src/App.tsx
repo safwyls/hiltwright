@@ -27,7 +27,7 @@ import { About } from './About';
 import { Settings } from './Settings';
 import { UpdateChip, useUpdates } from './Updates';
 import { QUICK_COMMANDS, destructiveReason } from './consoleCommands';
-import { flowStatus, nextStep, useWorkspace, type Workspace } from './workspace';
+import { flowStatus, fontsMissingAsLastRead, nextStep, useWorkspace, type Workspace } from './workspace';
 import type { SaberRecord } from '../../shared/api';
 import { batteryLabel, noBattery } from './battery';
 import { Tour, waitForStep } from './Tour';
@@ -42,14 +42,15 @@ const Demo = lazy(() => import('./Demo').then((m) => ({ default: m.Demo })));
 
 // The sidebar (docs/install-live-plan.md): the Armory on top, where a saber is picked; Install, the numbered steps that
 // set a saber up and flash it; Live, for adjusting a saber that is plugged in now; the Workshop; and Tools.
-type Page = 'armory' | 'wiring' | 'fonts' | 'presets' | 'build' | 'live-presets' | 'diag' | 'live-card' | 'looks' | 'editor' | 'library' | 'contributors' | 'demo' | 'settings' | 'about';
+type Page = 'armory' | 'wiring' | 'fonts' | 'presets' | 'card' | 'build' | 'live-presets' | 'diag' | 'live-card' | 'looks' | 'editor' | 'library' | 'contributors' | 'demo' | 'settings' | 'about';
 const NAV: { section: string; pages: { id: Page; title: string; icon: Parameters<typeof Icon>[0]['name']; step?: number }[] }[] = [
   { section: '', pages: [{ id: 'armory', title: 'Armory', icon: 'armory' }] },
   { section: 'Install', pages: [
     { id: 'wiring', title: 'Wiring', icon: 'blade', step: 1 },
     { id: 'fonts', title: 'Fonts', icon: 'fonts', step: 2 },
     { id: 'presets', title: 'Presets', icon: 'presets', step: 3 },
-    { id: 'build', title: 'Build & Install', icon: 'build', step: 4 },
+    { id: 'card', title: 'Card', icon: 'sd', step: 4 },
+    { id: 'build', title: 'Build & Flash', icon: 'build', step: 5 },
   ] },
   { section: 'Live', pages: [
     { id: 'live-presets', title: 'Presets', icon: 'presets' },
@@ -66,7 +67,11 @@ const NAV: { section: string; pages: { id: Page; title: string; icon: Parameters
   { section: 'Tools', pages: [{ id: 'settings', title: 'Settings', icon: 'gear' }, { id: 'about', title: 'About', icon: 'info' }] },
 ];
 const PAGES = NAV.flatMap((g) => g.pages);
-const TITLE: Record<Page, string> = { armory: 'Armory', wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts', build: 'Build & Install', 'live-presets': 'Live presets', diag: 'Controls', 'live-card': 'Card', looks: 'Styles', editor: 'Style editor', library: 'Font library', contributors: 'Contributors', demo: 'Demo room', settings: 'Settings', about: 'About' };
+const INSTALL_PAGES = NAV.find((g) => g.section === 'Install')!.pages.map((p) => p.id);
+const LIVE_PAGES = NAV.find((g) => g.section === 'Live')!.pages.map((p) => p.id);
+/** What the owner is doing with the picked saber (the Armory's two panels): adjusting it live, or changing its setup. */
+type Focus = 'live' | 'setup';
+const TITLE: Record<Page, string> = { armory: 'Armory', wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts', card: 'Card', build: 'Build & Flash', 'live-presets': 'Live presets', diag: 'Controls', 'live-card': 'Card', looks: 'Styles', editor: 'Style editor', library: 'Font library', contributors: 'Contributors', demo: 'Demo room', settings: 'Settings', about: 'About' };
 const TOUR_STEPS = flattenTour(TOUR);
 /**
  * The guided tour (Tour.tsx). 'starting': the page underneath has closed, and main is being told to refuse writes;
@@ -91,6 +96,13 @@ export function App() {
   const ws = useWorkspace(board);
   const liveWs = useWorkspace(board, 'board');
   const [page, setPageNow] = useState<Page>('armory');
+  // What the owner is doing with each saber: adjusting it live, or changing its setup. Chosen on the Armory, or by
+  // opening a page of either section; the sidebar brings that section forward. Live only while the saber is plugged in.
+  const [focusBy, setFocusBy] = useState<Record<string, Focus>>(() => { try { return JSON.parse(localStorage.getItem('hiltwright.armory.focus') ?? '{}') as Record<string, Focus>; } catch { return {}; } });
+  useEffect(() => { try { localStorage.setItem('hiltwright.armory.focus', JSON.stringify(focusBy)); } catch { /* private mode */ } }, [focusBy]);
+  const focus: Focus = !ws.live ? 'setup' : (ws.saber && focusBy[ws.saber.id]) || 'live';
+  const setFocus = (f: Focus) => { const id = ws.saber?.id; if (id && (f === 'setup' || ws.live)) setFocusBy((m) => (m[id] === f ? m : { ...m, [id]: f })); };
+  useEffect(() => { if (INSTALL_PAGES.includes(page)) setFocus('setup'); else if (LIVE_PAGES.includes(page)) setFocus('live'); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
   // Bumped when the tour ends: every page opens afresh on the owner's own saber, with nothing of the example kept.
   const [epoch, setEpoch] = useState(0);
   // A page with unsaved work (the Style editor) can hold navigation: it gets a proceed callback, and calls it once the
@@ -196,8 +208,8 @@ export function App() {
         <div className="brand"><Logo size={28} /><span className="wordmark">Hiltwright</span></div>
         <nav className="nav" aria-label="Sections">
           {NAV.map((g) => (
-            <div key={g.section} className="col" style={{ gap: 2 }} data-tour={`nav-${g.section.toLowerCase() || 'top'}`}>
-              {g.section && <span className="sec">{g.section}{g.section === 'Live' && ws.live && <span className="livedot" title={`${ws.saber?.name ?? 'A saber'} is plugged in`} />}</span>}
+            <div key={g.section} className={`col${(g.section === 'Install' && focus === 'live') || (g.section === 'Live' && focus === 'setup') ? ' aside' : ''}`} style={{ gap: 2 }} data-tour={`nav-${g.section.toLowerCase() || 'top'}`}>
+              {g.section && <span className={`sec${(g.section === 'Install' && focus === 'setup') || (g.section === 'Live' && focus === 'live') ? ' focus' : ''}`}>{g.section}{g.section === 'Live' && ws.live && <span className="livedot" title={`${ws.saber?.name ?? 'A saber'} is plugged in`} />}</span>}
               {g.pages.map((p) => (
                 <a key={p.id} href="#" className={page === p.id ? 'on' : ''} aria-current={page === p.id ? 'page' : undefined} title={`Ctrl+${PAGES.indexOf(p) + 1}`} onClick={(e) => { e.preventDefault(); setPage(p.id, () => setStyleCreator(null)); }}>
                   {p.step ? <span className="stepn">{p.step}</span> : <Icon name={p.icon} />}<span>{p.title}</span>
@@ -232,10 +244,11 @@ export function App() {
       <main className="main">
         {tour && tour.phase !== 'on' ? null : <ErrorBoundary key={`${page}:${epoch}`} what={`the ${TITLE[page]} page`}>
           {faultPage === page && <FaultForDev />}
-          {page === 'armory' ? <Armory board={board} ws={ws} go={go} />
+          {page === 'armory' ? <Armory board={board} ws={ws} go={go} focus={focus} setFocus={setFocus} />
             : page === 'wiring' ? <Wiring ws={ws} board={board} go={go} />
             : page === 'presets' ? <Presets ws={ws} board={board} go={go} mode="install" />
-            : page === 'fonts' ? <FontChoice ws={ws} go={go} />
+            : page === 'fonts' ? <FontChoice ws={ws} board={board} go={go} />
+            : page === 'card' ? <Fonts board={board} ws={ws} go={go} mode="install" />
             : page === 'build' ? <Build ws={ws} board={board} go={go} />
             : page === 'looks' ? <Looks ws={ws} board={board} initialCreator={styleCreator} onPresets={() => setPage('presets')} onBuild={() => setPage('build')} onDemo={(id) => { setDemoLook(id); setPage('demo'); }} onEdit={(l) => { setEditingLook(l); setEditorOpen((n) => n + 1); setPage('editor'); }} onNew={() => { setEditingLook(null); setEditorOpen((n) => n + 1); setPage('editor'); }} />
             : page === 'editor' ? <EditorLoader key={editorOpen} lookId={editingLook?.id ?? null}>{(fresh) => (
@@ -245,7 +258,7 @@ export function App() {
             : page === 'contributors' ? <Contributors onFonts={() => setPage('library')} onLooks={(name) => { setStyleCreator(name); setPage('looks'); }} onDemo={() => setPage('demo')} />
             : page === 'demo' ? <Suspense fallback={<span className="hint row" style={{ gap: 14, padding: 24 }}><Loader />Opening the demo room…</span>}><Demo initialLook={demoLook} initialFont={demoFont} board={board} /></Suspense>
             : page === 'live-presets' ? <Presets ws={liveWs} board={board} go={go} mode="live" />
-            : page === 'live-card' ? <Fonts board={board} ws={liveWs} go={go} />
+            : page === 'live-card' ? <Fonts board={board} ws={liveWs} go={go} mode="live" />
             : page === 'settings' ? <Settings touring={!!tour} />
             : page === 'about' ? <About updates={tour ? null : updates} />
             : <Diagnostics board={board} />}
@@ -308,7 +321,7 @@ function StatusChip({ status, port }: { status: ReturnType<typeof useBoard>['sta
  * picked saber on the right with its two ways forward, each explained: adjust it live (plugged in, any firmware), or
  * change its setup for the next install. A saber plugged in is picked on its own; another can be picked meanwhile.
  */
-function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Workspace; go: (p: Page) => void }) {
+function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof useBoard>; ws: Workspace; go: (p: Page) => void; focus: Focus; setFocus: (f: Focus) => void }) {
   const { status, error } = board;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -355,8 +368,8 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
   };
   const steps = flowStatus(ws);
   const next = nextStep(ws);
-  const stepPage: Record<string, Page> = { wiring: 'wiring', presets: 'presets', fonts: 'fonts', build: 'build' };
-  const stepTitle: Record<string, string> = { wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts', build: 'Build & Install' };
+  const stepPage: Record<string, Page> = { wiring: 'wiring', presets: 'presets', fonts: 'fonts', card: 'card', build: 'build' };
+  const stepTitle: Record<string, string> = { wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts', card: 'Card', build: 'Build & Flash' };
   const cur = ws.saber;
   const plans = ws.plans;
   const adoptable = ws.live && cur && !cur.firmware && !cur.planned && plans.length > 0;
@@ -366,7 +379,7 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
   const playing = info?.currentPreset != null ? info.presets[info.currentPreset] ?? null : null;
   const fwLine = firmwareLine(ws.info, cur?.name);
   // The panel to use now is the bright one: live while the picked saber is plugged in, its setup otherwise.
-  const door = (bright: boolean): React.CSSProperties => (bright ? { borderLeft: '3px solid var(--sel)', background: 'color-mix(in srgb,var(--sel) 5%,transparent)' } : {});
+  const door = (bright: boolean): React.CSSProperties => (bright ? { borderLeft: '3px solid var(--sel)', background: 'color-mix(in srgb,var(--sel) 5%,transparent)' } : {}); // the Start here panel
   // One line each, two to a row: the right column fits the default window without scrolling.
   const fact = (icon: Parameters<typeof Icon>[0]['name'], k: string, v: string) => (
     <div className="row" style={{ gap: 8, padding: '6px 10px', border: '1px solid var(--line2)', borderRadius: 'var(--r-field)', background: 'var(--field)', minWidth: 0 }} title={`${k}: ${v}`}>
@@ -481,9 +494,11 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
               </span></div>
             )}
 
-            <section className="panel" style={{ flex: 'none', ...door(ws.live), ...(ws.live ? {} : { opacity: 0.78 }) }} aria-label="Adjust it live" data-tour="armory-live">
+            {/* The two ways forward, as a choice: the one chosen is bright here and its section comes forward in the sidebar. */}
+            <div className="col" role="radiogroup" aria-label={`What you are doing with ${cur.name}`} style={{ gap: 12 }}>
+            <section className={`panel door ${focus === 'live' ? 'on' : ''} ${ws.live ? '' : 'off'}`} style={{ flex: 'none', ...(ws.live ? {} : { opacity: 0.78 }) }} role="radio" aria-checked={focus === 'live'} aria-disabled={!ws.live} tabIndex={ws.live ? 0 : -1} aria-label="Adjust it live" data-tour="armory-live" onClick={() => setFocus('live')} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setFocus('live'); } }}>
               <div className="col" style={{ gap: 10, padding: '16px 18px' }}>
-                <div className="row" style={{ gap: 10 }}><span style={{ display: 'flex', width: 20, height: 20, color: ws.live ? 'var(--holo)' : 'var(--dim)' }}><Icon name="bolt" /></span><h3 style={{ margin: 0 }}>Adjust it live</h3></div>
+                <div className="row" style={{ gap: 10 }}><span className="radio" aria-hidden="true" /><span style={{ display: 'flex', width: 20, height: 20, color: focus === 'live' ? 'var(--holo)' : 'var(--dim)' }}><Icon name="bolt" /></span><h3 style={{ margin: 0 }}>Adjust it live</h3></div>
                 <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{ws.live ? 'Change its presets, volume and colours on the saber itself, at once. Nothing is built or flashed; any ProffieOS firmware works.' : cur.planned ? 'A planned saber has no firmware yet, so there is nothing to adjust live.' : `Plug ${cur.name} in to change its presets, volume and colours on the saber itself.`}</p>
                 {ws.live && info && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 6 }}>
@@ -494,20 +509,20 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
                   </div>
                 )}
                 {ws.live
-                  ? <button type="button" className="btn pri full" onClick={() => go('live-presets')}><span className="b"><span className="i"><Icon name="bolt" />Adjust it live</span></span></button>
+                  ? <button type="button" className={`btn full ${focus === 'live' ? 'pri' : ''}`} onClick={() => go('live-presets')}><span className="b"><span className="i"><Icon name="bolt" />Adjust it live</span></span></button>
                   : !cur.planned && <button type="button" className="btn full" disabled><span className="b"><span className="i"><Icon name="usb" />Plug it in to adjust</span></span></button>}
                 {!ws.live && plugged && plugged.id !== cur.id && <span className="hint">{plugged.name} is plugged in. <button type="button" className="holo" onClick={() => ws.choose(plugged.id)}>Pick {plugged.name}</button> to adjust it live.</span>}
               </div>
             </section>
 
-            <section className="panel" style={{ flex: 'none', ...door(!ws.live) }} aria-label="Change its setup" data-tour="armory-progress">
+            <section className={`panel door ${focus === 'setup' ? 'on' : ''}`} style={{ flex: 'none' }} role="radio" aria-checked={focus === 'setup'} tabIndex={0} aria-label="Change its setup" data-tour="armory-progress" onClick={() => setFocus('setup')} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setFocus('setup'); } }}>
               <div className="col" style={{ gap: 10, padding: '16px 18px' }}>
-                <div className="row" style={{ gap: 10 }}><span style={{ display: 'flex', width: 20, height: 20, color: ws.live ? 'var(--dim)' : 'var(--holo)' }}><Icon name="build" /></span><h3 style={{ margin: 0 }}>Change its setup</h3></div>
+                <div className="row" style={{ gap: 10 }}><span className="radio" aria-hidden="true" /><span style={{ display: 'flex', width: 20, height: 20, color: focus === 'setup' ? 'var(--holo)' : 'var(--dim)' }}><Icon name="build" /></span><h3 style={{ margin: 0 }}>Change its setup</h3></div>
                 <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>Wiring, fonts and presets for the next install. Nothing on the saber changes until you install it.</p>
                 {/* One line per step: done, next (bright) or to come; each goes to its page. */}
                 <div className="col" style={{ gap: 0, border: '1px solid var(--line2)', borderRadius: 'var(--r-field)', overflow: 'hidden' }}>
                   {steps.map((st, i) => {
-                    const done = (st.step === 'wiring' && wiringConfirmed(ws.model)) || (st.step === 'fonts' && chosenFonts(ws.model).length > 0) || (st.step === 'presets' && !!ws.model?.presets.length) || (st.step === 'build' && !!cur.firmware && !queuedLookIds(ws.model ?? undefined, cur.firmware).length && !ws.model?.presetsFrom);
+                    const done = (st.step === 'wiring' && wiringConfirmed(ws.model)) || (st.step === 'fonts' && chosenFonts(ws.model).length > 0) || (st.step === 'presets' && !!ws.model?.presets.length) || (st.step === 'card' && fontsMissingAsLastRead(ws)?.length === 0) || (st.step === 'build' && !!cur.firmware && !queuedLookIds(ws.model ?? undefined, cur.firmware).length && !ws.model?.presetsFrom);
                     const now = st.step === next;
                     return (
                       <button key={st.step} type="button" className="row" style={{ gap: 10, padding: '7px 10px', minWidth: 0, textAlign: 'left', borderTop: i ? '1px solid var(--line)' : 0, background: now ? 'color-mix(in srgb,var(--sel) 10%,transparent)' : undefined }} onClick={() => go(stepPage[st.step])}>
@@ -518,9 +533,10 @@ function Armory({ board, ws, go }: { board: ReturnType<typeof useBoard>; ws: Wor
                     );
                   })}
                 </div>
-                <button type="button" className={`btn full ${ws.live ? '' : 'pri'}`} onClick={() => go(stepPage[next])}><span className="b"><span className="i"><Icon name="chev" />Continue with {stepTitle[next]}</span></span></button>
+                <button type="button" className={`btn full ${focus === 'setup' ? 'pri' : ''}`} onClick={() => go(stepPage[next])}><span className="b"><span className="i"><Icon name="chev" />Continue with {stepTitle[next]}</span></span></button>
               </div>
             </section>
+            </div>
           </>
         )}
       </div>

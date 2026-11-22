@@ -133,7 +133,7 @@ function createWindow(): void {
         .then((r) => console.log('[main] e2e', r))
         .catch((err) => console.log('[main] e2e failed', String(err)));
     }, 7000);
-    // Dev aid: HILTWRIGHT_BUILD_E2E=1 opens Build & Install and compiles for the connected board (never flashes).
+    // Dev aid: HILTWRIGHT_BUILD_E2E=1 opens Build & Flash and compiles for the connected board (never flashes).
     if (process.env.HILTWRIGHT_BUILD_E2E) setTimeout(() => {
       void win.webContents.executeJavaScript('window.hiltwrightGoto && window.hiltwrightGoto("build")', true)
         .then(() => new Promise((r) => setTimeout(r, 2500)))

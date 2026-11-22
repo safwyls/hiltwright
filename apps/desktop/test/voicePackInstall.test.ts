@@ -61,7 +61,7 @@ describe('voice pack install', () => {
     const backupDir = join(await tmp('hw-voiceback-'), 'b');
     const seen: number[] = [];
     const r = await installVoicePack(await v2Zip(await tmp('hw-voicezip-')), root, { backupDir, freeBytes: null, onProgress: (d) => seen.push(d) });
-    expect(r.status).toEqual({ ini: true, version: 2, menuSounds: true });
+    expect(r.status).toEqual({ ini: true, version: 2, menuSounds: true, mixed: [] });
     expect(seen.at(-1)).toBe(5);
     expect((await readdir(join(root, 'common', 'mnum'))).sort()).toEqual(['mnum1.wav', 'mnum2.wav']);
     expect(await readFile(join(root, 'common', 'mup.wav'), 'utf8')).toBe('up v2');
@@ -72,6 +72,39 @@ describe('voice pack install', () => {
     expect((await readdir(backupDir)).sort()).toEqual(['mnum', 'mup.wav']);
     expect(await readFile(join(backupDir, 'mnum', 'mnum30.wav'), 'utf8')).toBe('old thirty');
     expect((await readdir(root)).filter((n) => n.startsWith('.hiltwright'))).toEqual([]);
+  });
+
+  it('moves aside an old pack\'s loose numbered files when the new pack keeps that sound in a folder', async () => {
+    const root = await tmp('hw-voiceloose-');
+    await mkdir(join(root, 'common'), { recursive: true });
+    for (const n of ['mnum1.wav', 'mnum2.wav', 'mnum3.wav']) await writeFile(join(root, 'common', n), `old ${n}`);
+    await writeFile(join(root, 'common', 'mnumber.wav'), 'owner sound');
+    await writeFile(join(root, 'common', 'boot.wav'), 'owner boot');
+    const backupDir = join(await tmp('hw-voiceback-'), 'b');
+    const r = await installVoicePack(await v2Zip(await tmp('hw-voicezip-')), root, { backupDir, freeBytes: null });
+    expect((await readdir(join(root, 'common'))).sort()).toEqual(['LICENSE.txt', 'boot.wav', 'mnum', 'mnumber.wav', 'mup.wav', 'voicepack.ini']);
+    expect((await readdir(join(root, 'common', 'mnum'))).sort()).toEqual(['mnum1.wav', 'mnum2.wav']);
+    expect(r.replaced).toBe(3);
+    expect((await readdir(backupDir)).sort()).toEqual(['mnum1.wav', 'mnum2.wav', 'mnum3.wav']);
+    expect(r.status.mixed).toEqual([]);
+  });
+
+  it('replaces a card\'s mnum folder when the new pack has loose mnum files, and puts both back if the move fails', async () => {
+    const dir = await tmp('hw-voicezip-');
+    const file = join(dir, 'flat.zip');
+    await writeFile(file, zip({ 'common/voicepack.ini': 'voice_pack_version=2\n', 'common/mnum1.wav': 'one', 'common/mnum2.wav': 'two' }));
+    const root = await v1Card();
+    const r = await installVoicePack(file, root, { backupDir: join(dir, 'b'), freeBytes: null });
+    expect((await readdir(join(root, 'common'))).sort()).toEqual(['boot.wav', 'mnum1.wav', 'mnum2.wav', 'mup.wav', 'voicepack.ini']);
+    expect(await readFile(join(dir, 'b', 'mnum', 'mnum30.wav'), 'utf8')).toBe('old thirty');
+    expect(r.replaced).toBe(1);
+
+    const again = await v1Card();
+    const { rename } = await import('node:fs/promises');
+    const moveIn = async (from: string, to: string) => { if (/mnum2\.wav$/.test(to)) throw Object.assign(new Error('EIO: card gone'), { code: 'EIO' }); await rename(from, to); };
+    await expect(installVoicePack(file, again, { backupDir: join(dir, 'b2'), freeBytes: null, moveIn })).rejects.toThrow(/old voice pack was put back/);
+    expect((await readdir(join(again, 'common'))).sort()).toEqual(['boot.wav', 'mnum', 'mup.wav']);
+    expect((await readdir(join(again, 'common', 'mnum'))).sort()).toEqual(['mnum1.wav', 'mnum30.wav']);
   });
 
   it('makes common on a card that has none, and keeps no backup when nothing is replaced', async () => {

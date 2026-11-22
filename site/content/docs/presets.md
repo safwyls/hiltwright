@@ -18,7 +18,7 @@ Pick a preset in the list on the left to change it. The arrows move it up or dow
 
 Changes here are always kept in Hiltwright, as a list for the next install. They are never sent to the saber. A chip above the editor says "Staged for install", or "No changes yet". The page works the same with the saber plugged in, unplugged, or with its card out. It is never read-only for lack of a card.
 
-The list goes onto the saber at the next [Build & Install](build-and-install.html). The compiled list then replaces the saber's presets. A snapshot of the saber's own presets is kept first, so they can be put back.
+The list goes onto the saber at the next [Build & Flash](build-and-install.html). The compiled list then replaces the saber's presets. A snapshot of the saber's own presets is kept first, so they can be put back.
 
 With the saber plugged in, a note says which list you are looking at. With a list already started, it says "These presets are your list for the next install" and how many saber presets it replaces. With no changes yet, you see the saber's own presets, and a note says that changes here wait for the next install, and that to change the saber right now you use Live › Presets.
 
@@ -29,7 +29,7 @@ Say you started a list, then changed the saber with Live › Presets. Installing
 - **Bring in the saber's presets** replaces your list with the saber's. Your own list is first saved as a preset set, so you can load it again.
 - **Keep my list** keeps your list as it is.
 
-Build & Install repeats the warning before it installs.
+Build & Flash repeats the warning before it installs.
 
 ## Name, font and track
 
@@ -46,7 +46,7 @@ A field is saved when you leave it or press Enter.
 
 Each blade gets a style: its color, flicker and effects. Choose it from the list for that blade. The list offers styles made for that kind of blade, in groups: "Hiltwright", "Your styles", and "Only on this saber (removed from your styles)" for styles the saber's plan still carries after you deleted them.
 
-- Any style can be chosen here. A style that is not in the saber's firmware yet is built in at the next Build & Install. It shows **Queued**, and in the list it is marked "(needs a build)".
+- Any style can be chosen here. A style that is not in the saber's firmware yet is built in at the next Build & Flash. It shows **Queued**, and in the list it is marked "(needs a build)".
 - A blade with no choice shows "Saber's default" and uses a starter style for that kind of blade.
 
 Color swatches under a style let you change its colors. A color is saved once the picker has been still for half a second, or when you leave it. **Style's own colours** puts the style's defaults back. **Browse and try styles** opens [Styles](styles.html).
@@ -67,4 +67,4 @@ A clean set loads at once.
 
 ![The Sets panel with saved sets](shots/clean-19.png)
 
-Next: [Build & Install](build-and-install.html).
+Next: [Card](card.html).
