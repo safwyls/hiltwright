@@ -16,6 +16,9 @@ export function withNewSnapshot(list: SnapshotMeta[], meta: SnapshotMeta): Snaps
   return [meta, ...list.filter((m) => m.file !== meta.file)];
 }
 
+/** Why a snapshot cut short when it was saved is not restored (issue #28). */
+export const INCOMPLETE_SNAPSHOT = 'This snapshot is incomplete: it was cut short when it was saved, so it cannot be restored.';
+
 /**
  * One connection attempt at a time. After a reflash, the install flow and the Web Serial 'connect' event both try to
  * open the port; one is enough. The check and the claim happen together, with no await between them.

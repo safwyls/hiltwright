@@ -485,8 +485,9 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
                 {board.snapshots.map((s, i) => (
                   <div key={s.file} className="col" style={{ gap: 0 }}>
                     <div className="li" style={{ minHeight: 44, gap: 8 }}>
-                      <span className="col grow" style={{ gap: 0 }}><span className="ellip small">{s.label}</span><span className="hint mono" style={{ fontSize: 11 }}>{when(s.at)} · {s.presets} presets</span></span>
-                      <button type="button" className="holo" style={{ fontSize: 11.5, fontWeight: 600 }} disabled={busy || restoring?.meta.file === s.file} onClick={() => void showRestore(s)}>{i === 0 ? 'Undo' : 'Restore'}</button>
+                      <span className="col grow" style={{ gap: 0 }}><span className="ellip small">{s.label}</span><span className="hint mono" style={{ fontSize: 11 }}>{when(s.at)} · {s.presets} presets{s.complete ? '' : ' · incomplete'}</span></span>
+                      {/* A snapshot cut short when it was saved is never restored: it would delete the presets it lost (issue #28). */}
+                      <button type="button" className="holo" style={{ fontSize: 11.5, fontWeight: 600 }} disabled={busy || !s.complete || restoring?.meta.file === s.file} title={s.complete ? undefined : 'This snapshot was cut short when it was saved, so it cannot be restored.'} onClick={() => void showRestore(s)}>{i === 0 ? 'Undo' : 'Restore'}</button>
                     </div>
                     {restoring?.meta.file === s.file && restorePlan && <RestorePreview plan={restorePlan} busy={busy} onCancel={() => setRestoring(null)} onRestore={(kind) => void board.restoreSnapshot(s, kind, restorePlan).then(() => setRestoring(null))} />}
                   </div>

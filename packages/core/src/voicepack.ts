@@ -10,7 +10,7 @@ export interface VoicePackStatus {
   ini: boolean;
   /** voice_pack_version from the file; ProffieOS treats a file without the key as version 1. */
   version: number | null;
-  /** Menu number sounds (`mnum`) exist beside it, as files or as a folder. ProffieOS checks for these first. */
+  /** Menu number sounds (`mnum`) exist beside it, as loose files or in a folder. ProffieOS checks for these first. */
   menuSounds: boolean;
   /**
    * Sounds that are in common both as a folder (`mnum/`) and as loose files (`mnum1.wav`), lowercased: usually an old
@@ -51,9 +51,16 @@ export function parseVoicePackIni(text: string | null): { ini: boolean; version:
   return { ini: true, version: version ?? 1 };
 }
 
-/** True when a directory listing (file or folder names) contains the menu number sounds. */
-export function hasMenuSounds(names: string[]): boolean {
-  return names.some((n) => /^mnum(\d*\.wav)?$/i.test(n.trim()));
+/** A menu number sound by its path within common: a loose `mnum1.wav`, or a `.wav` in the `mnum` folder (not a Mac `._` file). */
+const MENU_SOUND = /^mnum(\d*\.wav|\/[^/.][^/]*\.wav)$/i;
+
+/**
+ * True when `paths`, within common with forward slashes (`mnum3.wav`, `mnum/001.wav`), hold a menu number sound. A
+ * folder named mnum counts only for the sounds in it: ProffieOS reads voicepack.ini only once it finds menu WAVs, and
+ * otherwise says "voice pack not found" (issue #27).
+ */
+export function hasMenuSounds(paths: string[]): boolean {
+  return paths.some((p) => MENU_SOUND.test(p.trim().replace(/\\/g, '/')));
 }
 
 /**
@@ -88,7 +95,10 @@ export function voicePackFromSerial(catLines: string[], dirLines: string[]): Voi
     const name = m ? m[1] : l;
     return { name, isFolder: !!m && m[2] === '0' && !name.includes('.') };
   }).filter((e) => e.name !== '.' && e.name !== '..');
-  return { ...parsed, menuSounds: hasMenuSounds(entries.map((e) => e.name)), mixed: mixedSounds(entries) };
+  // `dir common` lists the mnum folder but not what is in it, so here the folder still counts as menu sounds. The
+  // card checks that can look inside it (sd.ts readVoicePack, the zip check) need a sound in it (issue #27).
+  const menuSounds = entries.some((e) => (e.isFolder && e.name.toLowerCase() === 'mnum') || hasMenuSounds([e.name]));
+  return { ...parsed, menuSounds, mixed: mixedSounds(entries) };
 }
 
 /**

@@ -47,6 +47,10 @@ Pressing it shows what a restore would change before anything is sent. You may b
 
 If the saber already matches the snapshot, it says "Nothing to restore." If it cannot tell which preset is which, it offers only the whole list. Press **Cancel** to change nothing. A restore sends the earlier values back and waits for the saber to confirm them.
 
+A snapshot file that was cut short, by a crash while it was being saved for example, is marked **incomplete**, and its button is off. It holds only part of the list, so restoring it would delete the presets it lost.
+
+Snapshots are kept on this computer, for Hiltwright. A snapshot file copied onto the card would not be loaded by the saber.
+
 > **Tip:** A change made here can make your Install list out of date. Install › Presets then says how many presets differ, and lets you bring the saber's presets in or keep your list.
 
 Next: [Controls](diagnostics.html).

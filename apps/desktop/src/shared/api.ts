@@ -71,6 +71,8 @@ export interface SnapshotMeta {
   at: string;
   label: string;
   presets: number;
+  /** The file ends with its `end` line. One cut short is shown as incomplete and never restored (issue #28). */
+  complete: boolean;
 }
 
 export interface CardInfo {

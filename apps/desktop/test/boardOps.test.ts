@@ -303,7 +303,7 @@ describe('the shared card (card-safety D1, D2)', () => {
 });
 
 describe('History takes a snapshot just saved without reading the list again (issue #23)', () => {
-  const meta = (file: string) => ({ file, at: '', label: 'Connected', presets: 1 });
+  const meta = (file: string) => ({ file, at: '', label: 'Connected', presets: 1, complete: true });
   it('a new snapshot goes on top', () => {
     expect(withNewSnapshot([meta('b'), meta('a')], meta('c')).map((m) => m.file)).toEqual(['c', 'b', 'a']);
   });

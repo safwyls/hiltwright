@@ -4,7 +4,7 @@
 import { execFile } from 'node:child_process';
 import { copyFile, mkdir, open, readFile, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
-import { WAV_HEADER_BYTES, checkFontListing, classifySound, hasMenuSounds, mixedSounds, parsePresetsIni, parseVoicePackIni, type FontListingEntry, type FontReport, type PresetRecord, type VoicePackStatus } from '@hiltwright/core';
+import { SAVED_PRESETS_HEADER_BYTES, WAV_HEADER_BYTES, activePresets, checkFontListing, classifySound, hasMenuSounds, mixedSounds, parseVoicePackIni, savedPresetsHeader, type FontListingEntry, type FontReport, type PresetRecord, type PresetsFiles, type VoicePackStatus } from '@hiltwright/core';
 
 export interface CardInfo {
   root: string;
@@ -310,33 +310,86 @@ export async function locateCards(): Promise<CardInfo[]> {
   return look.answered ? look.cards : [];
 }
 
+/** Larger than any presets file ProffieOS writes (it pads its saves to 256 KB): a file past this is not read. */
+const PRESETS_FILE_CAP = 2 * 1024 * 1024;
+
 /**
- * The font and name of each preset in the card's presets.ini (presets.tmp when there is no .ini), so the app can tell
- * whose card it is by the presets the saber last reported. Null when there is neither, or it cannot be read.
+ * The bytes of a presets file that the firmware reads: for a file it saved, the header and the text the header
+ * counts (the rest is padding, slow to read from a card the saber shares); otherwise the whole file. Undefined when
+ * the file is not there; null when it is there but cannot be read, or is too big to be a presets file.
  */
-async function cardPresets(root: string): Promise<{ font: string; name: string }[] | null> {
-  for (const file of ['presets.ini', 'presets.tmp']) {
-    try {
-      const p = join(root, file);
-      if ((await stat(p)).size > 512 * 1024) return null;
-      return parsePresetsIni(await readFile(p, 'utf8')).presets.slice(0, 200).map((x) => ({ font: x.font, name: x.name }));
-    } catch { /* not there: try the other */ }
-  }
-  return null;
+async function readPresetsBytes(p: string): Promise<Uint8Array | null | undefined> {
+  let fh: Awaited<ReturnType<typeof open>>;
+  try { fh = await open(p, 'r'); } catch (e) { return (e as NodeJS.ErrnoException).code === 'ENOENT' ? undefined : null; }
+  try {
+    const size = (await fh.stat()).size;
+    const head = Buffer.alloc(Math.min(size, SAVED_PRESETS_HEADER_BYTES));
+    await fh.read(head, 0, head.length, 0);
+    const saved = savedPresetsHeader(head);
+    const want = saved ? Math.min(size, SAVED_PRESETS_HEADER_BYTES + saved.length) : size;
+    if (want > PRESETS_FILE_CAP) return null;
+    const buf = Buffer.alloc(want);
+    const { bytesRead } = await fh.read(buf, 0, want, 0);
+    return buf.subarray(0, bytesRead);
+  } catch { return null; } finally { await fh.close(); }
 }
 
-/** Drive letters that once took too long to answer (a network drive gone away): not asked again this run. */
-const slowDrives = new Set<string>();
+/**
+ * The font and name of each preset in the list ProffieOS loads from the card (core's activePresets: the newer good
+ * save of presets.ini and presets.tmp, or a complete plain file), so the app can tell whose card it is by the presets
+ * the saber last reported. Null when neither file would load, one cannot be read, or which one loads cannot be told:
+ * a wrong list would match the wrong saber, or none (issue #25).
+ */
+async function cardPresets(root: string): Promise<{ font: string; name: string }[] | null> {
+  const ini = await readPresetsBytes(join(root, 'presets.ini'));
+  const tmp = await readPresetsBytes(join(root, 'presets.tmp'));
+  if (ini === null || tmp === null) return null;
+  const active = activePresets({ ini, tmp });
+  return active ? active.ini.presets.slice(0, 200).map((x) => ({ font: x.font, name: x.name })) : null;
+}
+
+/**
+ * Drive letters that took too long to answer the drive poll, so the poll does not pile more asks onto a drive that
+ * hangs (a network drive gone away). A letter is skipped while its last ask is still waiting, and for a minute after
+ * it was slow; then it is asked again. Issue #26: a letter slow once used to be skipped for the rest of the run, yet a
+ * card the saber shares can take minutes to open, and a card put in that reader later went unnoticed. A full look
+ * that finds a card at a letter clears it at once.
+ */
+export class SlowDrives {
+  private readonly entries = new Map<string, { at: number; pending: boolean }>();
+  constructor(private readonly backoffMs = 60_000, private readonly now: () => number = Date.now) {}
+  /** Whether to leave this letter out of the poll now. */
+  skip(letter: string): boolean {
+    const e = this.entries.get(letter.toUpperCase());
+    if (!e) return false;
+    if (e.pending || this.now() - e.at < this.backoffMs) return true;
+    this.entries.delete(letter.toUpperCase());
+    return false;
+  }
+  /** The letter did not answer in time; `ask` is the stat still under way, which it waits for. */
+  slow(letter: string, ask: Promise<unknown>): void {
+    const e = { at: this.now(), pending: true };
+    this.entries.set(letter.toUpperCase(), e);
+    const settled = () => { e.pending = false; };
+    ask.then(settled, settled);
+  }
+  /** A card was found at this root: poll its letter again from now on. */
+  clear(root: string): void {
+    const m = /^([A-Za-z]):/.exec(root);
+    if (m) this.entries.delete(m[1].toUpperCase());
+  }
+}
+const slowDrives = new SlowDrives();
 const DRIVE_ANSWER_MS = 1500;
 
 /** A drive mounted now, and which volume is in it (volumeId): a card swapped for another in the same reader reads differently. */
 export interface MountedDrive { root: string; volumeId: string | null }
 
-/** Which volume is at `root`, or 'slow' when it does not answer within `ms`, or null when it does not open. */
-function askDrive(root: string, ms: number): Promise<string | null | 'slow'> {
+/** What `ask` gave, or 'slow' when it did not answer within `ms`. */
+function within<T>(ask: Promise<T>, ms: number): Promise<T | 'slow'> {
   return new Promise((resolve) => {
     const t = setTimeout(() => resolve('slow'), ms);
-    volumeId(root).then((id) => { clearTimeout(t); resolve(id); });
+    ask.then((v) => { clearTimeout(t); resolve(v); });
   });
 }
 
@@ -344,26 +397,30 @@ function askDrive(root: string, ms: number): Promise<string | null | 'slow'> {
  * The drives mounted now, by their roots, each with the volume in it: a cheap check, asked every few seconds so a
  * card put in a reader, taken out, or swapped for another at the same letter (issue #9) is noticed without the full
  * look, which runs PowerShell and reads every card. On Windows each letter D: to Z: is asked whether it opens; an
- * empty card reader slot says no at once, and a letter that takes longer than 1.5 s is not asked again this run.
+ * empty card reader slot says no at once, and a letter that takes longer than 1.5 s is left out for a while
+ * (SlowDrives).
  */
 export async function mountedRoots(): Promise<MountedDrive[]> {
   const override = process.env.HILTWRIGHT_SD_ROOT;
   if (override) return (await isDir(override)) ? [{ root: override, volumeId: await volumeId(override) }] : [];
-  if (process.platform === 'win32') {
-    const letters = 'DEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter((l) => !slowDrives.has(l));
-    const answers = await Promise.all(letters.map(async (l): Promise<MountedDrive | null> => {
-      const root = `${l}:\\`;
-      const id = await askDrive(root, DRIVE_ANSWER_MS);
-      if (id === 'slow') { slowDrives.add(l); return null; }
-      return id ? { root, volumeId: id } : null;
-    }));
-    return answers.filter((a): a is MountedDrive => !!a);
-  }
+  if (process.platform === 'win32') return pollLetters('DEFGHIJKLMNOPQRSTUVWXYZ'.split(''), slowDrives, volumeId);
   const bases = process.platform === 'darwin' ? ['/Volumes'] : ['/media', '/run/media', '/mnt'];
   const roots: string[] = [];
   for (const b of bases) { try { for (const n of await readdir(b)) roots.push(join(b, n)); } catch { /* not present */ } }
   roots.sort();
-  return Promise.all(roots.map(async (root) => { const id = await askDrive(root, DRIVE_ANSWER_MS); return { root, volumeId: id === 'slow' ? null : id }; }));
+  return Promise.all(roots.map(async (root) => { const id = await within(volumeId(root), DRIVE_ANSWER_MS); return { root, volumeId: id === 'slow' ? null : id }; }));
+}
+
+/** The Windows drive poll over `letters`, leaving out the slow ones; exported so it can be tried without real drives. */
+export async function pollLetters(letters: string[], slow: SlowDrives, ask: (root: string) => Promise<string | null>, ms = DRIVE_ANSWER_MS): Promise<MountedDrive[]> {
+  const answers = await Promise.all(letters.filter((l) => !slow.skip(l)).map(async (l): Promise<MountedDrive | null> => {
+    const root = `${l}:\\`;
+    const asking = ask(root);
+    const id = await within(asking, ms);
+    if (id === 'slow') { slow.slow(l, asking); return null; }
+    return id ? { root, volumeId: id } : null;
+  }));
+  return answers.filter((a): a is MountedDrive => !!a);
 }
 
 export async function lookForCards(): Promise<DriveLook> {
@@ -373,6 +430,8 @@ export async function lookForCards(): Promise<DriveLook> {
   const out: CardInfo[] = [];
   for (const c of list) {
     if (!(await isDir(c.root))) continue;
+    // A card is here, so the drive poll watches this letter again, however slow it was before (issue #26).
+    slowDrives.clear(c.root);
     // Which volume this look read, taken before reading it: every later write checks the drive still holds it.
     const id = await volumeId(c.root);
     const hasPresetsIni = await exists(join(c.root, 'presets.ini')) || await exists(join(c.root, 'presets.tmp'));
@@ -472,7 +531,12 @@ export async function readVoicePack(root: string): Promise<VoicePackStatus> {
   try { text = await readFile(join(common, 'voicepack.ini'), 'utf8'); } catch { /* no file */ }
   let entries: { name: string; isFolder: boolean }[] = [];
   try { entries = (await readdir(common, { withFileTypes: true })).map((d) => ({ name: d.name, isFolder: d.isDirectory() })); } catch { /* no common folder */ }
-  return { ...parseVoicePackIni(text), menuSounds: hasMenuSounds(entries.map((e) => e.name)), mixed: mixedSounds(entries) };
+  // An mnum folder counts only for the sounds in it: an empty one leaves the saber saying "voice pack not found" (issue #27).
+  const paths = entries.filter((e) => !e.isFolder).map((e) => e.name);
+  for (const e of entries.filter((x) => x.isFolder && x.name.toLowerCase() === 'mnum')) {
+    try { for (const d of await readdir(join(common, e.name), { withFileTypes: true })) if (d.isFile()) paths.push(`${e.name}/${d.name}`); } catch { /* unreadable */ }
+  }
+  return { ...parseVoicePackIni(text), menuSounds: hasMenuSounds(paths), mixed: mixedSounds(entries) };
 }
 
 export async function listTracks(root: string): Promise<{ name: string; size: number }[]> {
@@ -670,19 +734,20 @@ export async function clearPresetsFiles(root: string, keep?: KeepPresets): Promi
   for (const f of order) if (await exists(join(root, f))) found.push(f);
   if (keep && found.length) {
     await mkdir(keep.dir, { recursive: true });
-    const read: { presets: PresetRecord[]; complete: boolean; at: number }[] = [];
+    const files: PresetsFiles = {};
+    let tooBig = false;
     for (const f of found) {
-      const p = join(root, f);
-      const data = await readFile(p);
+      const data = await readFile(join(root, f));
       await writeFile(join(keep.dir, f), data);
-      const parsed = data.length <= 2 * 1024 * 1024 ? parsePresetsIni(data.toString('utf8')) : { presets: [], terminated: false };
-      read.push({ presets: parsed.presets, complete: parsed.terminated, at: (await stat(p)).mtimeMs });
+      if (data.length > PRESETS_FILE_CAP) tooBig = true;
+      else files[f === 'presets.ini' ? 'ini' : 'tmp'] = data;
     }
-    // The list ProffieOS would load: a complete file before a cut-short one, then the one saved last (it alternates
-    // its saves between the two files).
-    const best = read.filter((r) => r.presets.length).sort((a, b) => Number(b.complete) - Number(a.complete) || b.at - a.at)[0];
-    if (best) await keep.snapshot(best.presets);
-    console.log(`[sd] kept ${found.join(' and ')} from ${root} in ${keep.dir}${best ? ` (${best.presets.length} presets as a snapshot)` : ''}`);
+    // The list ProffieOS would load, chosen as the firmware chooses (issue #25). When that cannot be told, no
+    // snapshot is made: both files are still kept unchanged in keep.dir.
+    const best = tooBig ? null : activePresets(files);
+    const presets = best?.ini.presets ?? [];
+    if (presets.length) await keep.snapshot(presets);
+    console.log(`[sd] kept ${found.join(' and ')} from ${root} in ${keep.dir}${presets.length ? ` (${presets.length} presets from ${best!.file} as a snapshot)` : ' (no list ProffieOS would load, so no snapshot)'}`);
   }
   const removed: string[] = [];
   for (const f of found) { await rm(join(root, f), { force: true }); removed.push(f); }

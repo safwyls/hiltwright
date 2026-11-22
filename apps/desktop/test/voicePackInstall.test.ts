@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { crc32, deflateRawSync } from 'node:zlib';
 import { clearVoiceLeftovers, inspectVoicePack, installVoicePack } from '../src/main/voicePackInstall';
+import { readVoicePack } from '../src/main/sd';
 
 /** A zip with every entry deflated and its real CRC-32. */
 function zip(files: Record<string, Buffer | string>): Buffer {
@@ -54,6 +55,33 @@ describe('voice pack install', () => {
   it('reads a pack zip without copying it: version, files and credit', async () => {
     const info = await inspectVoicePack(await v2Zip(await tmp('hw-voicezip-')));
     expect(info).toMatchObject({ name: 'ProffieOS V2 Voicepack Test', version: 2, files: 5, prefix: 'ProffieOS_V2_Voicepack_Test/common/', credit: 'Menu prompts (c) 2024 Somebody, CC BY 4.0' });
+  });
+
+  // Issue #27: ProffieOS reads voicepack.ini only once it finds menu WAVs, so an mnum folder with no sounds is none.
+  it('refuses a zip whose mnum folder has no sounds, and changes nothing on the card', async () => {
+    const dir = await tmp('hw-voicezip-');
+    const file = join(dir, 'empty-mnum.zip');
+    await writeFile(file, zip({ 'common/voicepack.ini': 'voice_pack_version=2\n', 'common/mnum/readme.txt': 'sounds go here', 'common/mup.wav': 'up' }));
+    await expect(inspectVoicePack(file)).rejects.toThrow(/no menu number sounds \(mnum\).*Nothing was copied/);
+    const root = await v1Card();
+    await expect(installVoicePack(file, root, { backupDir: join(dir, 'b'), freeBytes: null })).rejects.toThrow(/no menu number sounds/);
+    expect((await readdir(join(root, 'common', 'mnum'))).sort()).toEqual(['mnum1.wav', 'mnum30.wav']);
+    // A sound in the folder, or loose, is enough.
+    const ok = join(dir, 'ok.zip');
+    await writeFile(ok, zip({ 'common/voicepack.ini': 'voice_pack_version=2\n', 'common/mnum/001.wav': 'one' }));
+    await expect(inspectVoicePack(ok)).resolves.toMatchObject({ version: 2, prefix: 'common/' });
+  });
+
+  it('reads a card whose mnum folder is empty, or holds no sounds, as having no menu sounds', async () => {
+    const root = await tmp('hw-voiceempty-');
+    await mkdir(join(root, 'common', 'mnum'), { recursive: true });
+    await writeFile(join(root, 'common', 'voicepack.ini'), 'voice_pack_version=2\n');
+    expect(await readVoicePack(root)).toEqual({ ini: true, version: 2, menuSounds: false, mixed: [] });
+    await writeFile(join(root, 'common', 'mnum', 'notes.txt'), 'x');
+    await mkdir(join(root, 'common', 'mnum', 'old.wav'));
+    expect((await readVoicePack(root)).menuSounds).toBe(false);
+    await writeFile(join(root, 'common', 'mnum', 'mnum1.wav'), 'one');
+    expect((await readVoicePack(root)).menuSounds).toBe(true);
   });
 
   it('puts a version 2 pack in common, replacing each of its entries whole and keeping the owner\'s own sounds', async () => {

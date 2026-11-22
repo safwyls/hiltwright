@@ -12,7 +12,7 @@ import { openFailureText } from '../../shared/openFailure';
 import { PROFFIE_FILTER, WebSerialTransport, describePort, grantedProffiePorts } from './serial';
 import { setConnectionSnapshot } from './support';
 import { assertMaySend, holdConnect, operationRefusal, tourLocked } from './tourLock';
-import { connectGate, createRecovery, deleteShown, duplicateShown, moveShown, parseSdAccess, readBattery, runOperation, sdFailureIn, sendOptionsFor, serialQueue, storedLayout, withNewSnapshot, type SaveState } from './boardOps';
+import { INCOMPLETE_SNAPSHOT, connectGate, createRecovery, deleteShown, duplicateShown, moveShown, parseSdAccess, readBattery, runOperation, sdFailureIn, sendOptionsFor, serialQueue, storedLayout, withNewSnapshot, type SaveState } from './boardOps';
 
 export interface BoardInfo {
   version: VersionInfo | null;
@@ -638,6 +638,7 @@ export function useBoard() {
   const readSnapshot = useCallback(async (meta: SnapshotMeta): Promise<PresetRecord[]> => {
     const s = saberRef.current;
     if (!s) throw new Error('No saber connected.');
+    if (!meta.complete) throw new Error(INCOMPLETE_SNAPSHOT);
     return api().snapshots.read(s.id, meta.file);
   }, []);
 
@@ -650,6 +651,8 @@ export function useBoard() {
   const restoreSnapshot = useCallback(async (meta: SnapshotMeta, kind: 'preset' | 'list', shown: RestorePlan): Promise<boolean> => {
     const s = saberRef.current;
     if (!s) return false;
+    // A snapshot cut short reads as a shorter list: restoring it would delete the presets it lost (issue #28).
+    if (!meta.complete) { setSave({ kind: 'failed', what: 'Restore', error: INCOMPLETE_SNAPSHOT }); return false; }
     let saved: PresetRecord[];
     try { saved = await api().snapshots.read(s.id, meta.file); } catch (err) { setSave({ kind: 'failed', what: 'Restore', error: String(err) }); return false; }
     let expected: PresetRecord[] = saved;
