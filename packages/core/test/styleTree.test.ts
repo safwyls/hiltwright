@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BladeSim, PROPS, registerStyleSim, unregisterStyleSim } from '../src/sim';
 import { APPROXIMATE_WORDS, CATALOGUE, cloneNode, defaultFor, evaluateStyle, kindOf, newNode, paramFor, parseStyle, printStyle } from '../src/styleTree';
+import { LIBRARY_LOOKS, RECIPES } from '../src';
 
 const USER_EXAMPLE = `Layers<Red, ResponsiveLockupL<White,TrInstant,TrFade<100>,Int<26000>>, ResponsiveLightningBlockL<White>, ResponsiveMeltL<Mix<TwistAngle<>,Red,Yellow>>, ResponsiveDragL<White>, ResponsiveClashL<White,TrInstant,TrFade<200>,Int<26000>>, ResponsiveBlastL<White>, ResponsiveBlastWaveL<White>, ResponsiveBlastFadeL<White>, ResponsiveStabL<White>, InOutTrL<TrWipe<300>,TrWipeIn<500>>>`;
 
@@ -39,6 +40,29 @@ describe('style tree', () => {
     const tree = parseStyle(REAL_WORLD[0]);
     expect(tree.name).toBe('Layers');
     expect(printStyle(tree)).not.toContain('StylePtr');
+  });
+
+  it('keeps an empty <> on a template the catalogue does not know (#31)', () => {
+    const text = 'Layers<Red,MyCustomTemplate<>,AlsoMine>';
+    expect(CATALOGUE.MyCustomTemplate).toBeUndefined();
+    expect(printStyle(parseStyle(text))).toBe(text);
+    expect(printStyle(cloneNode(parseStyle(text)))).toBe(text);
+    // A catalogue template written bare still gets the <> it needs, and an editor-built node with no flag keeps it too.
+    expect(printStyle(parseStyle('Layers<Red,TwistAngle>'))).toBe('Layers<Red,TwistAngle<>>');
+    expect(printStyle({ name: 'TwistAngle', args: [] })).toBe('TwistAngle<>');
+  });
+
+  it('prints every recipe and starter style back exactly as written (#31)', () => {
+    const bodies = [...RECIPES.map((r) => r.code), ...LIBRARY_LOOKS.map((l) => /=\s*([\s\S]*);\s*$/.exec(l.define)![1])];
+    expect(bodies.length).toBeGreaterThan(10);
+    for (const b of bodies) expect(printStyle(parseStyle(b)).replace(/\s/g, ''), b).toBe(b.replace(/\/\/[^\n]*/g, '').replace(/\s/g, ''));
+  });
+
+  it('refuses factory roots other than StylePtr in plain words (#31)', () => {
+    for (const f of ['StyleNormalPtr<Red,White,300,800>()', 'StyleFirePtr<Red,Yellow>()', 'StyleRainbowPtr<300,800>()', 'StyleStrobePtr<White,Rainbow,15,300,800>()', 'StyleNormalPtrX<Red,White,Int<300>,Int<800>>()']) {
+      expect(() => parseStyle(f), f).toThrow(/style editor cannot open it.*StylePtr/);
+    }
+    expect(parseStyle('StylePtr<Layers<Red,White>>()').name).toBe('Layers');
   });
 
   it('rejects broken input with a useful message', () => {

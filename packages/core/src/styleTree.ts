@@ -15,7 +15,20 @@ export interface CatParam { name: string; kind: Kind; default: string | null; do
 export interface CatEntry { name: string; kind: Kind; params: CatParam[]; doc: string; file: string; variadic: boolean; internal?: boolean; alias?: string }
 export const CATALOGUE: Record<string, CatEntry> = catalogueJson as unknown as Record<string, CatEntry>;
 
-export interface Node { name: string; args: Node[] }
+/**
+ * One template or value in a style. `empty` records that the text wrote an explicit, empty argument list (`Foo<>`), so
+ * printing gives the `<>` back even for a template the catalogue does not know (#31): `Foo` and `Foo<>` are different
+ * C++. It only matters while `args` is empty.
+ */
+export interface Node { name: string; args: Node[]; empty?: true }
+
+/**
+ * Factory wrappers other than StylePtr (StyleNormalPtr, StyleFirePtr, StyleRainbowPtr, StyleStrobePtr and their X
+ * forms). They are functions that build a whole style from a few colours and times, not a style template, so the tree
+ * cannot hold one: `using X = StyleNormalPtr<...>;` does not compile (#31). The catalogue has no StyleNormal-family
+ * templates to map them onto, so they are refused with a plain message instead.
+ */
+const OTHER_FACTORY = /^Style\w*Ptr\w*$/;
 
 // ---------------- parse and print ----------------
 
@@ -32,7 +45,7 @@ export function parseStyle(text: string): Node {
     ws();
     if (src[i] === '<') {
       i++; ws();
-      if (src[i] === '>') { i++; return n; }
+      if (src[i] === '>') { i++; n.empty = true; return n; }
       for (;;) {
         n.args.push(node()); ws();
         if (src[i] === ',') { i++; continue; }
@@ -49,11 +62,16 @@ export function parseStyle(text: string): Node {
   if (src[i] === ',') { i++; ws(); } // a trailing comma, as copied out of a presets array
   if (i < src.length) throw new Error(`Unexpected text after the style: "${src.slice(i, i + 20)}"`);
   if (root.name === 'StylePtr' && root.args.length === 1) root = root.args[0];
+  else if (OTHER_FACTORY.test(root.name) && root.name !== 'StylePtr') {
+    throw new Error(`${root.name} builds a whole style from a few settings, so the style editor cannot open it. Use a StylePtr<...>() style instead.`);
+  }
   return root;
 }
 
 export function printStyle(n: Node, indent = 0): string {
-  if (!n.args.length) return CATALOGUE[n.name]?.params.length ? `${n.name}<>` : n.name; // a template with every parameter defaulted still needs its <>
+  // A template with every parameter defaulted still needs its <>: kept when the text wrote one (#31), and added for
+  // catalogue templates that take parameters, as nodes the editor builds carry no flag.
+  if (!n.args.length) return n.empty || CATALOGUE[n.name]?.params.length ? `${n.name}<>` : n.name;
   const inner = n.args.map((a) => printStyle(a, indent + 1));
   const oneLine = `${n.name}<${inner.join(',')}>`;
   if (oneLine.length < 70 && !inner.some((s) => s.includes('\n'))) return oneLine;
@@ -61,7 +79,7 @@ export function printStyle(n: Node, indent = 0): string {
   return `${n.name}<\n${inner.map((s) => pad + s).join(',\n')}>`;
 }
 
-export const cloneNode = (n: Node): Node => ({ name: n.name, args: n.args.map(cloneNode) });
+export const cloneNode = (n: Node): Node => (n.empty ? { name: n.name, args: n.args.map(cloneNode), empty: true } : { name: n.name, args: n.args.map(cloneNode) });
 
 /** What a node yields: its catalogue kind, or a guess from its shape. */
 export function kindOf(n: Node): Kind {

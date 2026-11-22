@@ -53,6 +53,8 @@ Each card has a name box, so you can label a layer in your own words. Buttons le
 
 **Paste a style** accepts code from the official editor or a style library and opens it in Full. Say who made it, or tick **Author unknown**, then press **Open it in the editor**. The comment header and the author stay with it when you save, and it is saved as theirs, edited by you.
 
+The editor opens styles written as `StylePtr<...>()`. It cannot open the shortcut forms such as `StyleNormalPtr<...>()` or `StyleFirePtr<...>()`, which build a whole style from a few settings, and says so. Parts it does not know are kept as written, including an empty `<>` after a name.
+
 ## The preview and cues
 
 The panel on the right, **On the blade**, shows the style on a blade with a hilt. It uses the same simulator as the Styles page, with the same buttons for Ignite, Clash, Blast, lockups and the Swing, Tilt and Twist controls.
