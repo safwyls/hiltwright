@@ -14,7 +14,7 @@ import { Snapshots } from './snapshots';
 import { lookUpWanted, portHolders, proffieSerials } from './usb';
 import { activeWant, wantSerial } from './serialGate';
 import { readFile, rename, stat as statFile, writeFile } from 'node:fs/promises';
-import { checkFontDir, clearPresetsFiles, copyFont, findConfigFiles, listFonts, listTracks, lookForCards, mountedRoots, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
+import { checkFontDir, checkSameCard, clearPresetsFiles, copyFont, findConfigFiles, listFonts, listTracks, lookForCards, mountedRoots, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
 import { cancelSetup, ensureToolchainRoot, installToolchain, lockFolder, plannedToolchainRoot, setupOnce, toolchainStatus, userBuildRoot } from './toolchain';
 import { copyFontToCard, listPacks, packFont, packMesh, userPacksDir } from './packs';
 import { inspectVoicePack, installVoicePack } from './voicePackInstall';
@@ -180,14 +180,23 @@ export function registerIpc(): void {
   });
 
   // SD card via a card reader. Roots must come from locate() so the renderer cannot point us at arbitrary folders.
-  let knownRoots = new Set<string>();
+  // Each is kept with the volume the look found in it (issue #9): a drive letter alone does not say which card it is.
+  let knownRoots = new Map<string, string | null>();
   const root = (v: unknown) => { const r = str(v, 500); if (!knownRoots.has(r)) throw new Error('Unknown card'); return r; };
+  // The volume a page says it read (CardInfo.volumeId), when it says: else the last look's.
+  const volumeArg = (v: unknown): string | null => (typeof v === 'string' && /^[0-9A-Fa-f]{8,16}$/.test(v) ? v.toUpperCase() : null);
+  // A write to a card waits its turn (cardQueue.ts, issue #6), then checks, right before writing, that the drive still
+  // holds the card that was read: a card swapped in the same reader meanwhile is refused, not written (issue #9).
+  const onSameCard = <T>(at: string, want: unknown, work: () => Promise<T>) => onCard(at, async () => {
+    await checkSameCard(at, volumeArg(want) ?? knownRoots.get(at) ?? null);
+    return work();
+  });
   // `{ detailed: true }` returns the whole look (DriveLook), saying when Windows did not answer; without it, the cards
   // as before, an empty list included when it did not. A look Windows did not answer leaves the known cards as they were.
   handle('sd:locate', async (_e, opts: unknown) => {
     const look = await lookForCards();
     console.log(`[sd] drive look: ${look.answered ? `${look.cards.length} card(s)` : 'no answer'} in ${look.ms} ms`);
-    if (look.answered) knownRoots = new Set(look.cards.map((c) => c.root));
+    if (look.answered) knownRoots = new Map(look.cards.map((c) => [c.root, c.volumeId]));
     const detailed = !!opts && typeof opts === 'object' && (opts as { detailed?: unknown }).detailed === true;
     return detailed ? look : look.answered ? look.cards : [];
   });
@@ -274,7 +283,7 @@ export function registerIpc(): void {
   fontHandle('fontlib:remove', (_e, f: unknown) => fontLib.remove(folder(f)));
   fontHandle('fontlib:readSound', (_e, f: unknown, rel: unknown) => fontLib.readSound(folder(f), str(rel, 400)));
   fontHandle('fontlib:readFont', (e, f: unknown) => fontLib.readFont(folder(f), (file, done, total) => e.sender.send('sd:readFont:progress', { file, done, total })));
-  fontHandle('fontlib:copyToCard', (e, f: unknown, r: unknown, replace: unknown) => { const name = basename(folder(f)); const at = root(r); return onCard(at, () => fontLib.copyToCard(folder(f), at, { replace: replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) })); });
+  fontHandle('fontlib:copyToCard', (e, f: unknown, r: unknown, replace: unknown, vol: unknown) => { const name = basename(folder(f)); const at = root(r); return onSameCard(at, vol, () => fontLib.copyToCard(folder(f), at, { replace: replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) })); });
   fontHandle('fontlib:open', async (_e, f: unknown) => { await shell.openPath(f == null ? fontLib.root : join(fontLib.root, basename(folder(f)))); });
   // Adding: the owner picks .zip packages or folders; only paths the dialog returned are ever read.
   const importPicked = async (paths: string[]): Promise<ImportResult> => {
@@ -463,18 +472,19 @@ export function registerIpc(): void {
     const cardRoot = root(r);
     const name = (await listPacks()).find((p) => p.id === id)?.name ?? id;
     // Progress goes to the page as each file lands, as for sd:copyFont.
-    return onCard(cardRoot, () => copyFontToCard(id, cardRoot, { replace: (opts as { replace?: unknown } | null)?.replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
+    const o = (opts ?? {}) as { replace?: unknown; volumeId?: unknown };
+    return onSameCard(cardRoot, o.volumeId, () => copyFontToCard(id, cardRoot, { replace: o.replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
   });
   handle('sd:listTracks', (_e, r: unknown) => listTracks(root(r)));
   handle('sd:voicePack', (_e, r: unknown) => readVoicePack(root(r)));
   // The card's own presets are kept before they go (issue #7): its files unchanged in the saber's data folder, and the
   // list ProffieOS would load as a snapshot under Live › Presets › History. If either cannot be kept, nothing is removed.
-  handle('sd:clearPresets', (_e, r: unknown, id: unknown) => {
+  handle('sd:clearPresets', (_e, r: unknown, id: unknown, vol: unknown) => {
     const at = root(r);
     const saberId = str(id, 40);
     if (!/^[0-9a-z]+$/i.test(saberId)) throw new Error('Unknown saber');
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    return onCard(at, () => clearPresetsFiles(at, {
+    return onSameCard(at, vol, () => clearPresetsFiles(at, {
       dir: join(userData, 'sabers', saberId, 'card-presets', stamp),
       snapshot: (list) => snapshots.save(saberId, 'Card presets, before the card was prepared', list),
     }));
@@ -512,7 +522,7 @@ export function registerIpc(): void {
     pickedVoicePacks.add(info.file);
     return info;
   });
-  handle('voicePack:install', async (e, r: unknown, source: unknown) => {
+  handle('voicePack:install', async (e, r: unknown, source: unknown, vol: unknown) => {
     const cardRoot = root(r);
     const s = (source ?? {}) as { pack?: unknown; file?: unknown };
     let file: string;
@@ -530,7 +540,7 @@ export function registerIpc(): void {
       name = basename(file);
     }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    return onCard(cardRoot, () => installVoicePack(file, cardRoot, { backupDir: join(userData, 'voice-pack-backups', stamp), onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
+    return onSameCard(cardRoot, vol, () => installVoicePack(file, cardRoot, { backupDir: join(userData, 'voice-pack-backups', stamp), onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
   });
   let pickedFonts = new Set<string>();
   handle('sd:pickFont', async () => {
@@ -540,13 +550,13 @@ export function registerIpc(): void {
     pickedFonts.add(entry.path);
     return entry;
   });
-  handle('sd:copyFont', (e, src: unknown, r: unknown, replace: unknown) => {
+  handle('sd:copyFont', (e, src: unknown, r: unknown, replace: unknown, vol: unknown) => {
     const s = str(src, 1000);
     if (!pickedFonts.has(s)) throw new Error('Pick the font folder first');
     // Progress goes to the page as each file lands (card-safety D5).
     const name = basename(s);
     const at = root(r);
-    return onCard(at, () => copyFont(s, at, { replace: replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
+    return onSameCard(at, vol, () => copyFont(s, at, { replace: replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
   });
 
   // Import from a Xenopixel card. The owner picks the folder; only fonts found by that scan can be imported.
@@ -558,11 +568,11 @@ export function registerIpc(): void {
     xenoFonts = new Map(fonts.map((f) => [f.path, f]));
     return { root: res.filePaths[0], fonts };
   });
-  handle('import:xenoFont', (_e, src: unknown, r: unknown, folder: unknown, replace: unknown) => {
+  handle('import:xenoFont', (_e, src: unknown, r: unknown, folder: unknown, replace: unknown, vol: unknown) => {
     const f = xenoFonts.get(str(src, 1000));
     if (!f) throw new Error('Choose the Xenopixel card first');
     const at = root(r);
-    return onCard(at, () => importXenoFont(f.path, at, str(folder, 60), replace === true));
+    return onSameCard(at, vol, () => importXenoFont(f.path, at, str(folder, 60), replace === true));
   });
 
   // ---- Tier 2: toolchain, build, flash ----

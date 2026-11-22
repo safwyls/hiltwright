@@ -15,7 +15,7 @@ There are two buttons at the top right.
 - **Add package (.zip)** takes a font package as you downloaded it. If the package holds fonts for other boards too, the ones for other boards are left out. Hiltwright lists them as not added, with the reason "the copy in ... is for another board, not Proffie".
 - **Add folder** takes one font folder, or a folder that holds several fonts.
 
-The fonts are copied in. Your originals are left alone. When it finishes, a green note says "Added ..." and tells you to give each font a name and maker on the right. If some could not be added, an amber note says which and why.
+The fonts are copied in. Your originals are left alone. Each font appears in the library only once all of its files are in, so a copy that stops part way (a stick pulled out, a full disk) leaves no half font behind. When it finishes, a green note says "Added ..." and tells you to give each font a name and maker on the right. If some could not be added, an amber note says which and why.
 
 With no fonts yet, the table says: "No fonts yet. Add a font package as you downloaded it (.zip), or a font folder. They are copied into the library; your originals are left alone."
 
@@ -68,7 +68,7 @@ At the foot of the panel:
 The bar at the bottom shows the **Library folder**, the number of fonts and their total size.
 
 - **Open** shows the folder in Windows.
-- **Change...** moves the library to another folder, for instance a larger drive. **Default** goes back to the original folder. Fonts left in the old folder stay there.
+- **Change...** moves the library to another folder, for instance a larger drive. **Default** goes back to the original folder. Fonts left in the old folder stay there. If a font cannot be moved, the move stops and says how many moved. The library stays where it was, the font that failed is still whole in the old folder, and nothing half copied is left in the new one, so you can try again.
 
 If the library is on a drive that is not plugged in, a red note says "The font library folder cannot be found" and offers **Look again**, **Choose where it is** and **Use the default folder**. Nothing is created in its place.
 

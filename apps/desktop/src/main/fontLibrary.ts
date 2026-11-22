@@ -265,16 +265,19 @@ export class FontLibrary {
     const result: ImportResult = { added: [], skipped: [] };
     const label = basename(src).replace(/\.zip$/i, '');
     let top = src;
-    let staging: string | null = null;
+    // Every font is put together here first, tracks included, and renamed to its own name only once it is whole: a
+    // copy that fails part way (a stick pulled, a disk full) leaves nothing the library would list as a font (issue
+    // #22). The folder is hidden from list() and on the library's own drive, so the last rename is one step.
+    const staging = join(this.root, `.incoming-${Date.now().toString(36)}`);
+    const zipped = /\.zip$/i.test(src);
     try {
-      if (/\.zip$/i.test(src)) {
-        staging = join(this.root, `.incoming-${Date.now().toString(36)}`);
+      if (zipped) {
         const entries = await listZip(src);
         const wavs = entries.filter((e) => /\.wav$/i.test(e.name) && !isJunk(e.name)).length;
         if (!wavs) throw new Error(`${basename(src)} has no sounds in it. Is it a sound font package?`);
         onLine?.(`Unpacking ${basename(src)} (${wavs} sounds)…`);
-        await extractZip(src, staging, (n) => !isJunk(n), (_n, done, total) => { if (done % 100 === 0 || done === total) onLine?.(`Unpacked ${done} of ${total} files`); });
-        top = staging;
+        top = join(staging, 'package');
+        await extractZip(src, top, (n) => !isJunk(n), (_n, done, total) => { if (done % 100 === 0 || done === total) onLine?.(`Unpacked ${done} of ${total} files`); });
       } else if (!(await isDir(src))) throw new Error('Choose a font folder or a .zip package');
       const found = await surveyPackage(top);
       if (!found.some((f) => f.font)) throw new Error(`No sound font found in ${basename(src)}. A font folder holds at least one of the core sounds (${CORE_SOUNDS_TEXT}), as files like hum.wav or hum01.wav, or in folders like hum/.`);
@@ -289,26 +292,29 @@ export class FontLibrary {
         const folder = await this.freeName(want);
         onLine?.(`Adding ${folder}…`);
         const dest = join(this.root, folder);
-        if (staging) {
-          try { await rename(d, dest); } catch { await cp(d, dest, { recursive: true }); }
+        const tmp = join(staging, 'fonts', folder);
+        await mkdir(dirname(tmp), { recursive: true });
+        if (zipped) {
+          try { await rename(d, tmp); } catch { await cp(d, tmp, { recursive: true }); }
         } else {
-          await cp(d, dest, { recursive: true, filter: (x) => !isJunk(relative(d, x)) });
+          await cp(d, tmp, { recursive: true, filter: (x) => !isJunk(relative(d, x)) });
         }
         // A single font with its tracks beside it rather than inside: the tracks go into the font, where ProffieOS
         // finds them as <font>/tracks/<name>.wav. Only from inside what the owner picked.
         const candidates = [...(inside(top, dirname(d)) ? [join(dirname(d), 'tracks')] : []), join(top, 'tracks')].filter((x) => !same(x, join(d, 'tracks')));
         let beside: string | undefined;
         for (const c of candidates) if (await isDir(c)) { beside = c; break; }
-        if (dirs.length === 1 && beside && !(await isDir(join(dest, 'tracks')))) {
+        if (dirs.length === 1 && beside && !(await isDir(join(tmp, 'tracks')))) {
           const from = beside;
-          await cp(from, join(dest, 'tracks'), { recursive: true, filter: (x) => !isJunk(relative(from, x)) && (/\.wav$/i.test(x) || statSync(x).isDirectory()) });
+          await cp(from, join(tmp, 'tracks'), { recursive: true, filter: (x) => !isJunk(relative(from, x)) && (/\.wav$/i.test(x) || statSync(x).isDirectory()) });
         }
+        await rename(tmp, dest);
         const meta: FontMeta = { name: want.replace(/_/g, ' '), maker: '', notes: '', added: new Date().toISOString(), from: basename(src), ...(dirs.length > 1 ? { bundle: label.replace(/_/g, ' ') } : {}) };
         await this.store.update((f) => { f.fonts[folder] = meta; });
         result.added.push(folder);
       }
     } finally {
-      if (staging) await rm(staging, { recursive: true, force: true }).catch(() => undefined);
+      await rm(staging, { recursive: true, force: true }).catch(() => undefined);
     }
     return result;
   }
@@ -437,7 +443,7 @@ export class FontLibrary {
           if (await taken(join(next, n))) throw new Error(`something named ${n} is already there`);
           onLine?.(`Moving ${n}…`);
           const from = join(this.root, n);
-          try { await rename(from, join(next, n)); } catch { await cp(from, join(next, n), { recursive: true, errorOnExist: true, force: false }); await rm(from, { recursive: true, force: true }); }
+          try { await rename(from, join(next, n)); } catch { await this.copyAcross(from, next, n); }
         } catch (err) {
           throw new Error(`Moved ${moved.length} of ${todo.length} fonts to ${next}${moved.length ? ` (${moved.join(', ')})` : ''}; ${n} could not be moved: ${err instanceof Error ? err.message : String(err)}. The library is still at ${this.root}.`);
         }
@@ -455,6 +461,24 @@ export class FontLibrary {
       await mkdir(next, { recursive: true });
     }
     this.setRoot(next);
+  }
+
+  /**
+   * Copy one font to another drive under a hidden name, rename it to its own name once whole, then remove the
+   * original. A copy that fails part way is removed, so a retry finds no clash and nothing half there is kept as the
+   * font (issue #22).
+   */
+  private async copyAcross(from: string, next: string, n: string): Promise<void> {
+    const tmp = join(next, `.moving-${n}`);
+    try {
+      await rm(tmp, { recursive: true, force: true });
+      await cp(from, tmp, { recursive: true, errorOnExist: true, force: false });
+      await rename(tmp, join(next, n));
+    } catch (err) {
+      await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
+      throw err;
+    }
+    await rm(from, { recursive: true, force: true });
   }
 
   /** Old logos go to the new folder's own logos folder; one already there is kept, and ours stays where it was. */

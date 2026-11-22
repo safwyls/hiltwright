@@ -234,7 +234,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
   // A font already on the card is left as it is: replacing one is decided font by font.
   const copyMany = (list: LibraryFont[], to: CardInfo) => overMany(list, 'Copying', 'Copied', 'not copied', async (f) => {
     if (await api().sd.hasFolder(to.root, f.folder)) return { name: f.meta.name, ok: false, text: 'Already on the card. Left as it is.' };
-    const e = await api().fontLibrary.copyToCard(f.folder, to.root, false);
+    const e = await api().fontLibrary.copyToCard(f.folder, to.root, false, to.volumeId);
     return { name: f.meta.name, ok: true, text: `Copied to the card (${e.report.files} sounds).` };
   });
   const row = (f: LibraryFont) => (
@@ -489,7 +489,7 @@ function FontDetail({ font, detail, card, askCard, looking, player, onSetLogo, o
     setAskFs(false);
     setConfirmReplace(false);
     setCopying(true); setNote(null);
-    try { const e = await api().fontLibrary.copyToCard(font.folder, card.root, replace); setOnCard(true); setNote({ tone: 'green', text: `${replace ? 'Replaced on' : 'Copied to'} the card at ${card.root} as ${e.name} (${e.report.files} sounds).` }); }
+    try { const e = await api().fontLibrary.copyToCard(font.folder, card.root, replace, card.volumeId); setOnCard(true); setNote({ tone: 'green', text: `${replace ? 'Replaced on' : 'Copied to'} the card at ${card.root} as ${e.name} (${e.report.files} sounds).` }); }
     catch (err) { const t = cleanErr(err); setNote({ tone: /already on the card/.test(t) ? 'amber' : 'red', text: t, replace: /already on the card/.test(t) }); }
     finally { setCopying(false); }
   };

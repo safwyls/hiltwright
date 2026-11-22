@@ -42,6 +42,8 @@ Sharing is also the slow fallback for a full install, for people with no card re
 
 The line under the heading shows free and total space, the number of fonts and tracks, whether `presets.ini` is present, the card's format and the voice pack. If several cards are seen, a **Card** list lets you choose. Nothing is copied until you do. **Look again** reads the card once more.
 
+Hiltwright writes only to the card it read. A card put in, taken out, or swapped for another in the same reader is noticed within a few seconds. If a copy or the voice pack is asked for just as a card is swapped, it is refused with "The card in E: is not the one Hiltwright read. Look again." and nothing is written to the other card.
+
 Below it, Hiltwright says whose card it is. A card the saber shares over USB is remembered as that saber's, by the card's serial number, so the same card in a card reader is known too. A card that holds the presets a saber last reported is taken to be that saber's. To be sure, press **This is (saber)'s card**; **Not (saber)'s card** undoes it. The saber's own card is chosen first when several are in, and Build & Flash checks it there.
 
 Headings tell you what Hiltwright found:
@@ -96,6 +98,6 @@ The status line reports the voice pack, for example "voice pack version 2" or "n
 
 Choose a voice from the list: the plain voices in several languages, or one of the character voices. They are Brian Conner's (NoSloppy) voice packs, included with his permission. English A comes with Hiltwright. Any other is downloaded when you put it on the card, checked, and kept on this computer for next time. **Use a zip you downloaded** takes a pack you downloaded yourself, as the zip it came in. Hiltwright checks the zip is version 2 and has its menu sounds before copying.
 
-The pack replaces only its own files and folders in `common`. Other sounds you keep there stay. Whatever it replaces is copied to this computer first, and the note says where. Hiltwright does not put the rest of the `common` folder on the card. Build & Flash warns if the voice pack is missing, and Presets has the "Also use common sounds" switch. Setting up the voice pack is done here, not in the Build & Flash card step.
+The pack replaces only its own files and folders in `common`. Other sounds you keep there stay. Whatever it replaces is copied to this computer first, and the note says where. If the swap stops part way (the card pulled out, say), the old pack is put back whole, at once or the next time you put a voice pack on, so the card never keeps half of each pack. If something cannot go back, the note says which files, and where the copy on this computer is. Hiltwright does not put the rest of the `common` folder on the card. Build & Flash warns if the voice pack is missing, and Presets has the "Also use common sounds" switch. Setting up the voice pack is done here, not in the Build & Flash card step.
 
 Next: [Settings and About](settings.html).

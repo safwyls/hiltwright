@@ -81,6 +81,8 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
     const c = cardCheckRef.current;
     if (c?.source !== 'reader' || !saber || !model) return;
     const work = { fonts: fontsToCopy, clearPresets, link, route, voice: voiceNeed ? { pack: voiceNeed.pack, name: voiceName } : null };
+    // Every write names the volume the check read: a card swapped into that reader since is refused (issue #9).
+    const vol = c.card.volumeId;
     setPrepping('Getting the card ready…'); setPrepNote(null);
     const done: string[] = [];
     try {
@@ -91,7 +93,7 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
         // list ProffieOS would load as a snapshot that Live › Presets can put back. Not the app's last reading, which
         // misses edits made on the saber since.
         setPrepping('Removing the presets file…');
-        await api().sd.clearPresets(c.root, saber.id);
+        await api().sd.clearPresets(c.root, saber.id, vol);
         void board.snapshotSaved(saber.id);
         presetsClearedFor.set(saber.id, model.presetsFrom.at);
         done.push('removed its presets file, so it starts with your list after the flash');
@@ -99,13 +101,13 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
       for (const f of work.fonts) {
         setPrepping(`Copying ${f.folder}…`);
         const t0 = Date.now();
-        if (f.from === 'pack' && f.packId) await api().packs.copyFontToCard(f.packId, c.root, { replace: false });
-        else { await api().fontLibrary.copyToCard(f.folder, c.root, false); recordCopy(work.route, f.bytes, Date.now() - t0); }
+        if (f.from === 'pack' && f.packId) await api().packs.copyFontToCard(f.packId, c.root, { replace: false, volumeId: vol });
+        else { await api().fontLibrary.copyToCard(f.folder, c.root, false, vol); recordCopy(work.route, f.bytes, Date.now() - t0); }
       }
       if (work.fonts.length) done.push(`copied ${work.fonts.length === 1 ? work.fonts[0].folder : `${work.fonts.length} fonts`}`);
       if (work.voice) {
         setPrepping(`Putting the ${work.voice.name} voice pack on…`);
-        const r = await api().sd.installVoicePack(c.root, { pack: work.voice.pack });
+        const r = await api().sd.installVoicePack(c.root, { pack: work.voice.pack }, vol);
         rememberVoiceOn(saber.id, work.voice.pack);
         done.push(`put the ${work.voice.name} voice pack in common${r.backup ? ` (what it replaced is kept on this computer, in ${r.backup})` : ''}`);
       }

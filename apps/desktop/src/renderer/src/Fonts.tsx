@@ -304,7 +304,7 @@ export function Fonts({ board, ws, go, mode }: { board: Board; ws: Workspace; go
     setConfirmReplace(false);
     setBusy(true); setProgress(null);
     try {
-      const entry = await duringWork('copy', () => api().sd.copyFont(picked.path, card.root, replace));
+      const entry = await duringWork('copy', () => api().sd.copyFont(picked.path, card.root, replace, card.volumeId));
       setMessage({ tone: 'green', text: `${entry.name} copied to the card (${entry.report.files} files).` });
       setPicked(null);
       await scan();
@@ -344,7 +344,7 @@ export function Fonts({ board, ws, go, mode }: { board: Board; ws: Workspace; go
     setAskFs(null);
     setBusy(true); setProgress(null); setVoiceDownload(null); setMessage(null);
     try {
-      const r = await duringWork('copy', () => api().sd.installVoicePack(card.root, 'pack' in source ? { pack: source.pack } : { file: source.file }));
+      const r = await duringWork('copy', () => api().sd.installVoicePack(card.root, 'pack' in source ? { pack: source.pack } : { file: source.file }, card.volumeId));
       setVoice(r.status); setPickedVoice(null); setVoiceOpen(false);
       // Which voice this saber now has, so the card trip does not put the Install › Fonts choice over it unasked.
       const whose = isOwnCard(card) ? board.saber?.id : owner?.saber.id;
@@ -368,7 +368,7 @@ export function Fonts({ board, ws, go, mode }: { board: Board; ws: Workspace; go
         const src = copyFrom(f); if (!src) continue;
         setCopyingNeeded(f);
         setProgress(null);
-        try { if (src.from === 'library') await api().fontLibrary.copyToCard(src.font.folder, card.root, false); else await api().packs.copyFontToCard(src.pack.id, card.root, { replace: false }); done.push(f); } catch (err) { failed.push(`${f}: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
+        try { if (src.from === 'library') await api().fontLibrary.copyToCard(src.font.folder, card.root, false, card.volumeId); else await api().packs.copyFontToCard(src.pack.id, card.root, { replace: false, volumeId: card.volumeId }); done.push(f); } catch (err) { failed.push(`${f}: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}`); }
       }
       setMessage(failed.length ? { tone: done.length ? 'amber' : 'red', text: `${done.length ? `Copied ${done.join(', ')}. ` : ''}Not copied: ${failed.join('; ')}` } : { tone: 'green', text: `Copied ${done.join(', ')} to the card.` });
       await scan();

@@ -22,6 +22,8 @@ export interface CardInfo {
   empty: boolean;
   /** The volume serial number Windows reports, unchanged until the card is formatted: how a saber knows its card. */
   volumeSerial: string | null;
+  /** The volume in that drive when it was looked at (volumeId): checked again before every write to it (issue #9). */
+  volumeId: string | null;
   /** The font and name of each preset in its presets.ini, or null when it has none. */
   presets: { font: string; name: string }[] | null;
   /** How many times this app has written to it since it started (copies, the voice pack, presets removed). */
@@ -56,6 +58,32 @@ export async function isDir(p: string): Promise<boolean> {
 
 export async function exists(p: string): Promise<boolean> {
   try { await stat(p); return true; } catch { return false; }
+}
+
+/**
+ * Which volume is in the drive at `root` now, as 8 or more hex digits; null when it does not open. On Windows this is
+ * the volume serial number (what `vol E:` shows), so a different card put in the same reader reads differently;
+ * elsewhere it is the device number of the mount. Both sides of the check (the look, and just before a write) read
+ * it the same way, so they cannot disagree about one card.
+ */
+export async function volumeId(root: string): Promise<string | null> {
+  try { return (await stat(root, { bigint: true })).dev.toString(16).toUpperCase().padStart(8, '0'); } catch { return null; }
+}
+
+/** "E:" for a Windows drive root, else the path as it is: how a card is named in a message. */
+export const driveName = (root: string) => (/^[A-Za-z]:[\\/]?$/.test(root) ? root.slice(0, 2).toUpperCase() : root);
+
+/**
+ * Refuse a write when the drive at `root` holds a different volume from the one the page read (`want`), or none, or
+ * when what was read is not known: a card swapped in the same reader must not get another saber's fonts or lose its
+ * presets file (issue #9).
+ */
+export async function checkSameCard(root: string, want: string | null): Promise<void> {
+  const now = await volumeId(root);
+  if (!want || now !== want) {
+    console.log(`[sd] ${root}: the volume is ${now ?? 'gone'}, the look saw ${want ?? 'nothing known'}; write refused`);
+    throw new Error(`The card in ${driveName(root)} is not the one Hiltwright read. Look again.`);
+  }
 }
 
 type Candidate = { root: string; label: string | null; free: number | null; total: number | null; saberSerial: string | null; fileSystem: string | null; volumeSerial: string | null };
@@ -301,26 +329,41 @@ async function cardPresets(root: string): Promise<{ font: string; name: string }
 const slowDrives = new Set<string>();
 const DRIVE_ANSWER_MS = 1500;
 
+/** A drive mounted now, and which volume is in it (volumeId): a card swapped for another in the same reader reads differently. */
+export interface MountedDrive { root: string; volumeId: string | null }
+
+/** Which volume is at `root`, or 'slow' when it does not answer within `ms`, or null when it does not open. */
+function askDrive(root: string, ms: number): Promise<string | null | 'slow'> {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => resolve('slow'), ms);
+    volumeId(root).then((id) => { clearTimeout(t); resolve(id); });
+  });
+}
+
 /**
- * The drives mounted now, by their roots: a cheap check, asked every few seconds so a card put in a reader (or taken
- * out) is noticed without the full look, which runs PowerShell and reads every card. On Windows each letter D: to Z:
- * is asked whether it opens; an empty card reader slot says no at once.
+ * The drives mounted now, by their roots, each with the volume in it: a cheap check, asked every few seconds so a
+ * card put in a reader, taken out, or swapped for another at the same letter (issue #9) is noticed without the full
+ * look, which runs PowerShell and reads every card. On Windows each letter D: to Z: is asked whether it opens; an
+ * empty card reader slot says no at once, and a letter that takes longer than 1.5 s is not asked again this run.
  */
-export async function mountedRoots(): Promise<string[]> {
+export async function mountedRoots(): Promise<MountedDrive[]> {
   const override = process.env.HILTWRIGHT_SD_ROOT;
-  if (override) return (await isDir(override)) ? [override] : [];
+  if (override) return (await isDir(override)) ? [{ root: override, volumeId: await volumeId(override) }] : [];
   if (process.platform === 'win32') {
     const letters = 'DEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter((l) => !slowDrives.has(l));
-    const answers = await Promise.all(letters.map((l) => new Promise<string | null>((resolve) => {
-      const t = setTimeout(() => { slowDrives.add(l); resolve(null); }, DRIVE_ANSWER_MS);
-      stat(`${l}:\\`).then(() => { clearTimeout(t); resolve(`${l}:\\`); }, () => { clearTimeout(t); resolve(null); });
-    })));
-    return answers.filter((a): a is string => !!a);
+    const answers = await Promise.all(letters.map(async (l): Promise<MountedDrive | null> => {
+      const root = `${l}:\\`;
+      const id = await askDrive(root, DRIVE_ANSWER_MS);
+      if (id === 'slow') { slowDrives.add(l); return null; }
+      return id ? { root, volumeId: id } : null;
+    }));
+    return answers.filter((a): a is MountedDrive => !!a);
   }
   const bases = process.platform === 'darwin' ? ['/Volumes'] : ['/media', '/run/media', '/mnt'];
-  const out: string[] = [];
-  for (const b of bases) { try { for (const n of await readdir(b)) out.push(join(b, n)); } catch { /* not present */ } }
-  return out.sort();
+  const roots: string[] = [];
+  for (const b of bases) { try { for (const n of await readdir(b)) roots.push(join(b, n)); } catch { /* not present */ } }
+  roots.sort();
+  return Promise.all(roots.map(async (root) => { const id = await askDrive(root, DRIVE_ANSWER_MS); return { root, volumeId: id === 'slow' ? null : id }; }));
 }
 
 export async function lookForCards(): Promise<DriveLook> {
@@ -330,6 +373,8 @@ export async function lookForCards(): Promise<DriveLook> {
   const out: CardInfo[] = [];
   for (const c of list) {
     if (!(await isDir(c.root))) continue;
+    // Which volume this look read, taken before reading it: every later write checks the drive still holds it.
+    const id = await volumeId(c.root);
     const hasPresetsIni = await exists(join(c.root, 'presets.ini')) || await exists(join(c.root, 'presets.tmp'));
     let fontDirs = 0;
     let names: string[] = [];
@@ -341,7 +386,7 @@ export async function lookForCards(): Promise<DriveLook> {
         if (await isDir(p) && await looksLikeFont(p)) { fontDirs++; if (fontDirs >= 1) break; }
       }
     } catch { /* unreadable */ }
-    out.push({ root: c.root, label: c.label, freeBytes: c.free, totalBytes: c.total, proffie: hasPresetsIni || fontDirs > 0, hasPresetsIni, saberSerial: c.saberSerial, fileSystem: c.fileSystem, empty: isEmptyCard(names), volumeSerial: c.volumeSerial, presets: hasPresetsIni ? await cardPresets(c.root) : null, writes: cardWrites(c.root) });
+    out.push({ root: c.root, label: c.label, freeBytes: c.free, totalBytes: c.total, proffie: hasPresetsIni || fontDirs > 0, hasPresetsIni, saberSerial: c.saberSerial, fileSystem: c.fileSystem, empty: isEmptyCard(names), volumeSerial: c.volumeSerial, volumeId: id, presets: hasPresetsIni ? await cardPresets(c.root) : null, writes: cardWrites(c.root) });
   }
   const ms = Date.now() - started;
   if (ms > 3000) console.log(`[sd] the drive list took ${ms} ms (${out.length} removable volume(s))`);
