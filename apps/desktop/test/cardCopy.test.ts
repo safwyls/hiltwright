@@ -38,6 +38,46 @@ async function source(name = 'Kylo'): Promise<string> {
 
 const files = async (dir: string) => (await readdir(dir, { recursive: true })).map(String).sort();
 
+describe('copies that overlap on one card (issue #6)', () => {
+  it('a second copy does not clear the first one\'s unfinished folder: both fonts land whole', async () => {
+    const root = await card();
+    const a = await source('Kylo');
+    const b = await source('Grey');
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    let reachedGate!: () => void;
+    const paused = new Promise<void>((r) => { reachedGate = r; });
+    let n = 0;
+    // Kylo stops after its first file until Grey has been copied in full.
+    const slow = async (from: string, to: string) => { await copyFile(from, to); if (++n === 1) { reachedGate(); await gate; } };
+    const first = copyFont(a, root, { copyOne: slow });
+    await paused;
+    await copyFont(b, root, {});
+    release();
+    await first;
+    expect(await files(join(root, 'Kylo'))).toEqual(await files(a));
+    expect(await files(join(root, 'Grey'))).toEqual(await files(b));
+    expect((await readdir(root)).filter((x) => x.startsWith('.hiltwright'))).toEqual([]);
+  });
+
+  it('the card queue runs writes to one card in order, lets other cards go ahead, and goes on after a failure', async () => {
+    const { onCard } = await import('../src/main/cardQueue');
+    const order: string[] = [];
+    let open!: () => void;
+    const held = new Promise<void>((r) => { open = r; });
+    const one = onCard('X:\\', async () => { await held; order.push('x1'); });
+    const two = onCard('x:\\', async () => { order.push('x2'); throw new Error('boom'); });
+    const three = onCard('X:\\', async () => { order.push('x3'); return 3; });
+    await onCard('Y:\\', async () => { order.push('y'); });
+    expect(order).toEqual(['y']);
+    open();
+    await one;
+    await expect(two).rejects.toThrow('boom');
+    expect(await three).toBe(3);
+    expect(order).toEqual(['y', 'x1', 'x2', 'x3']);
+  });
+});
+
 describe('copies onto the card are all or nothing (card-safety D5)', () => {
   it('a new font lands whole, the source unchanged, and nothing else left on the card', async () => {
     const root = await card();

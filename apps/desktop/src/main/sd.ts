@@ -2,9 +2,9 @@
 // The card is any mounted volume with the ProffieOS layout (font folders with hum sounds, a tracks folder, presets.ini).
 
 import { execFile } from 'node:child_process';
-import { copyFile, mkdir, open, readFile, readdir, rename, rm, stat, statfs } from 'node:fs/promises';
+import { copyFile, mkdir, open, readFile, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
-import { WAV_HEADER_BYTES, checkFontListing, classifySound, hasMenuSounds, mixedSounds, parsePresetsIni, parseVoicePackIni, type FontListingEntry, type FontReport, type VoicePackStatus } from '@hiltwright/core';
+import { WAV_HEADER_BYTES, checkFontListing, classifySound, hasMenuSounds, mixedSounds, parsePresetsIni, parseVoicePackIni, type FontListingEntry, type FontReport, type PresetRecord, type VoicePackStatus } from '@hiltwright/core';
 
 export interface CardInfo {
   root: string;
@@ -482,11 +482,15 @@ export async function cardFree(root: string): Promise<number | null> {
  * What an earlier copy left behind (card-safety D5): an unfinished copy is removed; a replace cut short between its
  * two renames has its old font put back, or removed once the new one is in place.
  */
+/** Hidden copy folders being filled right now, by path in lower case. */
+const liveCopies = new Set<string>();
+
 async function clearLeftovers(root: string): Promise<void> {
   let names: string[] = [];
   try { names = await readdir(root); } catch { return; }
   for (const n of names) {
-    if (n.startsWith(COPYING)) await rm(join(root, n), { recursive: true, force: true });
+    // A copy still filling its folder is not a leftover (issue #6): only one abandoned by a stopped run is cleared.
+    if (n.startsWith(COPYING)) { if (!liveCopies.has(join(root, n).toLowerCase())) await rm(join(root, n), { recursive: true, force: true }); }
     else if (n.startsWith(OLD)) {
       const font = join(root, n.slice(OLD.length));
       if (await exists(font)) await rm(join(root, n), { recursive: true, force: true });
@@ -515,6 +519,16 @@ export async function copyFont(src: string, root: string, options: CopyOptions |
   if (free != null && bytes + Math.max(1e6, bytes * 0.02) > free) throw new Error(`${name} needs ${mbText(bytes)} and the card has ${mbText(free)} free.`);
   const tmp = join(root, `${COPYING}${name}`);
   const copyOne = o.copyOne ?? ((from: string, to: string) => copyFile(from, to));
+  const live = tmp.toLowerCase();
+  if (liveCopies.has(live)) throw new Error(`${name} is already being copied to this card.`);
+  liveCopies.add(live);
+  try {
+    return await fillAndPlace();
+  } finally {
+    liveCopies.delete(live);
+  }
+
+  async function fillAndPlace(): Promise<FontEntry> {
   try {
     await mkdir(tmp, { recursive: true });
     let done = 0;
@@ -524,6 +538,9 @@ export async function copyFont(src: string, root: string, options: CopyOptions |
       await copyOne(join(src, f.rel), to);
       o.onProgress?.(++done, files.length);
     }
+    // Every file the font has must be in the copy before it takes the font's name (issue #6).
+    const landed = (await filesUnder(tmp)).length;
+    if (landed !== files.length) throw Object.assign(new Error(`only ${landed} of ${files.length} files arrived`), { code: 'INCOMPLETE' });
   } catch (err) {
     await rm(tmp, { recursive: true, force: true }).catch(() => undefined);
     // In plain words, with the system's own code kept for the log (card-safety 4.1: a card pulled mid-copy read
@@ -549,6 +566,7 @@ export async function copyFont(src: string, root: string, options: CopyOptions |
     if (had) await rm(old, { recursive: true, force: true });
   }
   return checkFontDir(dst);
+  }
 }
 
 export function soundKind(fileName: string): string {
@@ -577,18 +595,50 @@ export async function findConfigFiles(root: string): Promise<{ name: string; tex
   return out;
 }
 
+/** Where the card's own presets go before they are removed, and how the list ProffieOS would load is kept. */
+export interface KeepPresets {
+  /** A new folder: each presets file on the card is copied into it unchanged. */
+  dir: string;
+  /** Keep the list as a snapshot the owner can put back. */
+  snapshot: (presets: PresetRecord[]) => Promise<unknown>;
+}
+
 /**
  * Remove presets.ini and presets.tmp from a card in a reader, so the saber starts with the presets its firmware
  * carries once the card is back in it (staged presets, installed while the card is out). Returns the files removed.
+ *
+ * With `keep`, the card's own files are kept first (issue #7): copied unchanged into `keep.dir`, and the list
+ * ProffieOS would load from them kept as a snapshot. That is what the saber really had, edits made on it included,
+ * where the app's last reading may be older, or the new firmware's own list. If either cannot be kept, nothing is
+ * removed. presets.tmp goes before presets.ini, and the card is checked afterwards: a file left behind is an error.
  */
-export async function clearPresetsFiles(root: string): Promise<string[]> {
-  const removed: string[] = [];
-  for (const f of ['presets.ini', 'presets.tmp']) {
-    const p = join(root, f);
-    if (await exists(p)) { await rm(p, { force: true }); removed.push(f); }
+export async function clearPresetsFiles(root: string, keep?: KeepPresets): Promise<string[]> {
+  const order = ['presets.tmp', 'presets.ini'];
+  const found: string[] = [];
+  for (const f of order) if (await exists(join(root, f))) found.push(f);
+  if (keep && found.length) {
+    await mkdir(keep.dir, { recursive: true });
+    const read: { presets: PresetRecord[]; complete: boolean; at: number }[] = [];
+    for (const f of found) {
+      const p = join(root, f);
+      const data = await readFile(p);
+      await writeFile(join(keep.dir, f), data);
+      const parsed = data.length <= 2 * 1024 * 1024 ? parsePresetsIni(data.toString('utf8')) : { presets: [], terminated: false };
+      read.push({ presets: parsed.presets, complete: parsed.terminated, at: (await stat(p)).mtimeMs });
+    }
+    // The list ProffieOS would load: a complete file before a cut-short one, then the one saved last (it alternates
+    // its saves between the two files).
+    const best = read.filter((r) => r.presets.length).sort((a, b) => Number(b.complete) - Number(a.complete) || b.at - a.at)[0];
+    if (best) await keep.snapshot(best.presets);
+    console.log(`[sd] kept ${found.join(' and ')} from ${root} in ${keep.dir}${best ? ` (${best.presets.length} presets as a snapshot)` : ''}`);
   }
+  const removed: string[] = [];
+  for (const f of found) { await rm(join(root, f), { force: true }); removed.push(f); }
   if (removed.length) { noteCardWritten(root); console.log(`[sd] removed ${removed.join(' and ')} from ${root}`); }
-  return removed;
+  const left: string[] = [];
+  for (const f of order) if (await exists(join(root, f))) left.push(f);
+  if (left.length) throw new Error(`${left.join(' and ')} could not be removed from the card.`);
+  return removed.reverse();
 }
 
 /** Whether a folder of this name is on the card: the font library offers Replace when it is (card-safety 2.5). */

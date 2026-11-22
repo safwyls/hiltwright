@@ -6,7 +6,7 @@ const starter: LookDef = { ...pasted, id: 'hw_blade', source: 'starter', by: 'Hi
 
 const model = (over: Partial<SaberConfigModel> = {}): SaberConfigModel => ({
   name: 'hiltwright_nihilus', board: 'V3', boardFrom: 'bootloader', buttons: 2, prop: 'fett263',
-  blades: [{ role: 'main', leds: 132, pin: 'bladePin', powerPins: ['bladePowerPin2', 'bladePowerPin3'] } as unknown as SaberConfigModel['blades'][number]],
+  blades: [{ id: 'b1', role: 'main', type: 'pixel', pixels: 132, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2', 'bladePowerPin3'] } }],
   presets: [{ font: 'Nihilus;common', track: 'tracks/nihilus.wav', name: 'Nihilus', looks: ['pasted_abc'], lookArgs: ['65535,0,0'] }, { font: 'Ronin', track: '', name: 'Ronin' }],
   looks: [pasted, starter], fonts: ['Nihilus', 'Ronin', 'Kylo'], voicePack: 'nosloppy-english-a',
   wiringConfirmation: { at: '2026-11-20T10:00:00.000Z', layout: 'abc' }, wiringConfirmedAt: '2026-09-01T00:00:00.000Z',

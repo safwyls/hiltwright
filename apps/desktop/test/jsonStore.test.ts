@@ -45,6 +45,28 @@ describe('the safe store', () => {
     expect(readFileSync(join(dir, 'things.damaged-20260925-161500.json'), 'utf8')).toBe('{ broken');
   });
 
+  it('keeps a store recovered from its backup on disk, so the next start without an edit still has it (issue #8)', async () => {
+    writeFileSync(join(dir, 'things.bak.json'), JSON.stringify({ version: 1, items: [{ id: 'one' }, { id: 'two' }] }));
+    writeFileSync(file, '{ "version": 1, "items": [{ "id": "one" }, {');
+    expect((await store().read()).items).toEqual([{ id: 'one' }, { id: 'two' }]);
+    expect(onDisk().items).toEqual([{ id: 'one' }, { id: 'two' }]);
+    resetStoreProblems();
+    // Next start, no change made in between: the records are still there, and nothing is reported as damaged.
+    expect((await store().read()).items).toEqual([{ id: 'one' }, { id: 'two' }]);
+    expect(storeProblems()).toEqual([]);
+    // Two edits later the backup holds a real version, not an empty store.
+    const s = store();
+    await s.update((d) => { d.items.push({ id: 'three' }); });
+    await s.update((d) => { d.items.push({ id: 'four' }); });
+    expect(onDisk('things.bak.json').items.map((i) => i.id)).toEqual(['one', 'two', 'three']);
+  });
+
+  it('starts from the backup when the main file is missing but a backup is there', async () => {
+    writeFileSync(join(dir, 'things.bak.json'), JSON.stringify({ version: 1, items: [{ id: 'kept' }] }));
+    expect((await store().read()).items).toEqual([{ id: 'kept' }]);
+    expect(onDisk().items).toEqual([{ id: 'kept' }]);
+  });
+
   it('starts from nothing when there is no usable backup, and a wrong shape counts as unreadable', async () => {
     writeFileSync(file, JSON.stringify({ version: 9, items: 'x' }));
     expect((await store().read()).items).toEqual([]);

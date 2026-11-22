@@ -85,10 +85,12 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
       // First: a card known only by its presets would not be known once its presets file goes.
       if (work.link) { await check.linkReaderCard(); done.push(`remembered it as ${saber.name}'s card`); }
       if (work.clearPresets && model.presetsFrom) {
-        // What the saber had, kept before its presets file goes: Live › Presets can put it back.
-        if (info?.presets.length) { await api().snapshots.save(saber.id, 'Before install with staged presets', info.presets); void board.snapshotSaved(saber.id); }
+        // The card's own presets are kept by main before its presets file goes (issue #7): its files unchanged, and the
+        // list ProffieOS would load as a snapshot that Live › Presets can put back. Not the app's last reading, which
+        // misses edits made on the saber since.
         setPrepping('Removing the presets file…');
-        await api().sd.clearPresets(c.root);
+        await api().sd.clearPresets(c.root, saber.id);
+        void board.snapshotSaved(saber.id);
         presetsClearedFor.set(saber.id, model.presetsFrom.at);
         done.push('removed its presets file, so it starts with your list after the flash');
       }

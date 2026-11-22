@@ -220,6 +220,55 @@ describe('which board (design D4, D6)', () => {
     expect(f.shown().note?.text).toBe('More than one board is in bootloader mode. Unplug the other Proffieboards, then press Install again.');
   });
 
+  // Issue #4: the connected saber ignores or delays its reboot while another board enters its bootloader.
+  const othersBootloaderInstead = (f: ReturnType<typeof world>, serial: string) => (f.deps.board.rebootToBootloader as ReturnType<typeof vi.fn>).mockImplementation(async () => { calls(f).push('reboot'); for (const b of f.boards) if (b.serial === serial) b.mode = 'boot'; return true; });
+  const calls = (f: ReturnType<typeof world>) => f.calls;
+
+  it('another known saber enters its bootloader while this one keeps running: refused, nothing paired, backed up or written (issue #4)', async () => {
+    const f = world([hote2(), theV3()]);
+    othersBootloaderInstead(f, V3);
+    await installSequence(f.deps, jobFor());
+    expect(f.touched()).toEqual([]);
+    expect(f.calls.filter((c) => c.startsWith('note'))).toEqual([]);
+    expect(f.shown().note?.text).toMatch(/The V3/);
+  });
+
+  it('an unknown board enters its bootloader while this one keeps running: "ignored the reboot", nothing touched (issue #4)', async () => {
+    const f = world([hote2(), { serial: 'STRANGER1', flash: 262144, mode: 'run' }]);
+    othersBootloaderInstead(f, 'STRANGER1');
+    await installSequence(f.deps, jobFor());
+    expect(f.touched()).toEqual([]);
+    expect(f.calls.filter((c) => c.startsWith('note') || c.startsWith('ask'))).toEqual([]);
+    expect(f.shown().step).toBe('failed');
+  });
+
+  it('a board with another serial appears after this saber left: asked, and never paired on the answer (issue #4)', async () => {
+    const f = world([hote2(), { serial: 'STRANGER1', flash: 262144, mode: 'run' }]);
+    (f.deps.board.rebootToBootloader as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      f.calls.push('reboot');
+      for (const b of f.boards) if (b.serial === 'STRANGER1') b.mode = 'boot';
+      f.boards.splice(f.boards.findIndex((b) => b.serial === HOTE2), 1); // this saber unplugged
+      return true;
+    });
+    await installSequence(f.deps, jobFor());
+    expect(f.calls).toContain('ask hote2');
+    expect(f.calls.filter((c) => c.startsWith('note'))).toEqual([]);
+    expect(f.touched()).toEqual(['backup STRANGER1', 'write STRANGER1']);
+    const g = world([hote2(), { serial: 'STRANGER1', flash: 262144, mode: 'run' }], { confirm: false });
+    (g.deps.board.rebootToBootloader as ReturnType<typeof vi.fn>).mockImplementation(async () => { for (const b of g.boards) if (b.serial === 'STRANGER1') b.mode = 'boot'; g.boards.splice(g.boards.findIndex((b) => b.serial === HOTE2), 1); return true; });
+    await installSequence(g.deps, jobFor());
+    expect(g.touched()).toEqual([]);
+  });
+
+  it('checking the board: another board that appears is not read or remembered (issue #4)', async () => {
+    const f = world([hote2(), theV3()]);
+    othersBootloaderInstead(f, V3);
+    const r = await checkBoard(f.deps, saberRec());
+    expect(r.tone).toBe('red');
+    expect(r.board).toBeNull();
+    expect(f.calls.filter((c) => c.startsWith('note') || c.startsWith('target'))).toEqual([]);
+  });
+
   it("this saber's board already in its bootloader, not connected: recognised by its serial, no reboot, no question", async () => {
     const f = world([hote2('boot')]);
     await installSequence(f.deps, jobFor({ connected: false }));

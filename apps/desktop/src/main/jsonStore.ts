@@ -89,7 +89,7 @@ export class JsonStore<T> {
     try {
       text = await readFile(this.file, 'utf8');
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return (this.value = this.opts.empty());
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return (this.value = await this.fromBackupIfAny());
       return (this.value = await this.setAside(String(err)));
     }
     let raw: unknown;
@@ -114,12 +114,31 @@ export class JsonStore<T> {
     try { await rename(this.file, join(dirname(this.file), keptAs)); } catch (err) { this.blocked = `could not move it aside: ${String(err)}`; }
     let from: StoreProblem['startedFrom'] = 'nothing';
     let value = this.opts.empty();
-    try {
-      const b = this.opts.clean(JSON.parse(await readFile(this.bak, 'utf8')));
-      if (b) { value = b.value; from = 'backup'; }
-    } catch { /* no usable backup */ }
+    const b = await this.readBackup();
+    if (b) { value = b; from = 'backup'; }
     this.report(keptAs, from, why);
+    // The recovered copy goes back on disk at once: kept only in memory, it was lost when the app closed before the next
+    // change, as the next start found no file and began empty (issue #8).
+    if (from === 'backup') await this.restoreToDisk(value);
     return value;
+  }
+
+  private async readBackup(): Promise<T | null> {
+    try { return this.opts.clean(JSON.parse((await readFile(this.bak, 'utf8')).replace(/^﻿/, '')))?.value ?? null; } catch { return null; }
+  }
+
+  /** No main file. A first start has no backup either; a backup with no main file is a store that lost its file. */
+  private async fromBackupIfAny(): Promise<T> {
+    const b = await this.readBackup();
+    if (!b) return this.opts.empty();
+    console.warn(`[store] the ${this.opts.name} file was missing; started from its backup copy`);
+    await this.restoreToDisk(b);
+    return b;
+  }
+
+  private async restoreToDisk(value: T): Promise<void> {
+    if (this.blocked) return;
+    try { await this.persist(value); } catch (err) { console.warn(`[store] could not write the recovered ${this.opts.name} back: ${String(err)}`); }
   }
 
   private asideName(): string {

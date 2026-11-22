@@ -367,8 +367,11 @@ export interface HiltwrightApi {
     listTracks(root: string): Promise<{ name: string; size: number }[]>;
     /** The Fett263 voice pack in the card's common folder. */
     voicePack(root: string): Promise<VoicePackStatus>;
-    /** Remove presets.ini and presets.tmp from a known card (staged presets installed while the card is in a reader). */
-    clearPresets(root: string): Promise<string[]>;
+    /**
+     * Remove presets.ini and presets.tmp from a known card (staged presets installed while the card is in a reader).
+     * The card's own files are kept first, in this saber's data folder and as a snapshot; nothing is removed if they cannot be.
+     */
+    clearPresets(root: string, saberId: string): Promise<string[]>;
     /** Config files (.h with a BladeConfig) at the top of a known card or in its config folder, with their text. */
     configFiles(root: string): Promise<{ name: string; text: string }[]>;
     /** Ask for a config file on this computer and read it; null when the owner cancels. */

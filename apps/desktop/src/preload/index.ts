@@ -60,7 +60,7 @@ const api: HiltwrightApi = {
     onReadFontProgress: (cb) => { const h = (_e: unknown, p: { file: string; done: number; total: number }) => cb(p); ipcRenderer.on('sd:readFont:progress', h); return () => ipcRenderer.off('sd:readFont:progress', h); },
     listTracks: (root) => ipcRenderer.invoke('sd:listTracks', root),
     voicePack: (root) => ipcRenderer.invoke('sd:voicePack', root),
-    clearPresets: (root) => ipcRenderer.invoke('sd:clearPresets', root),
+    clearPresets: (root, saberId) => ipcRenderer.invoke('sd:clearPresets', root, saberId),
     configFiles: (root) => ipcRenderer.invoke('sd:configFiles', root),
     pickConfig: () => ipcRenderer.invoke('config:pick'),
     voicePacks: () => ipcRenderer.invoke('voicePack:list'),

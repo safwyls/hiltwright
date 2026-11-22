@@ -26,6 +26,7 @@ import { HiltStore } from './hilts';
 import type { HiltInput, LegacyHilts } from '../shared/api';
 import { buildFirmware } from './build';
 import { customPropsDir, importPropFile, importPropText, readCustomProp } from './customProps';
+import { onCard } from './cardQueue';
 import { cleanFirmware, hexMap } from './firmwareRecord';
 import { insideFolder } from './paths';
 import { legalDir, readLegal } from './legal';
@@ -198,7 +199,8 @@ export function registerIpc(): void {
     console.log(`[sd] listed ${fonts.length} fonts on ${at} in ${Date.now() - t0} ms`);
     return fonts;
   });
-  handle('sd:eject', (_e, r: unknown) => ejectVolume(root(r)));
+  // Every request that changes a card waits its turn on that card (cardQueue.ts, issue #6).
+  handle('sd:eject', (_e, r: unknown) => { const at = root(r); return onCard(at, () => ejectVolume(at)); });
   handle('sd:hasFolder', (_e, r: unknown, name: unknown) => hasFolder(root(r), str(name, 200)));
   // The font library: fonts the owner added, in a folder of their choosing (default userData/fonts). Where it is lives
   // in fontlibrary.json, kept by the safe store; every font library request waits until that has been read.
@@ -272,7 +274,7 @@ export function registerIpc(): void {
   fontHandle('fontlib:remove', (_e, f: unknown) => fontLib.remove(folder(f)));
   fontHandle('fontlib:readSound', (_e, f: unknown, rel: unknown) => fontLib.readSound(folder(f), str(rel, 400)));
   fontHandle('fontlib:readFont', (e, f: unknown) => fontLib.readFont(folder(f), (file, done, total) => e.sender.send('sd:readFont:progress', { file, done, total })));
-  fontHandle('fontlib:copyToCard', (e, f: unknown, r: unknown, replace: unknown) => { const name = basename(folder(f)); return fontLib.copyToCard(folder(f), root(r), { replace: replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }); });
+  fontHandle('fontlib:copyToCard', (e, f: unknown, r: unknown, replace: unknown) => { const name = basename(folder(f)); const at = root(r); return onCard(at, () => fontLib.copyToCard(folder(f), at, { replace: replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) })); });
   fontHandle('fontlib:open', async (_e, f: unknown) => { await shell.openPath(f == null ? fontLib.root : join(fontLib.root, basename(folder(f)))); });
   // Adding: the owner picks .zip packages or folders; only paths the dialog returned are ever read.
   const importPicked = async (paths: string[]): Promise<ImportResult> => {
@@ -461,11 +463,22 @@ export function registerIpc(): void {
     const cardRoot = root(r);
     const name = (await listPacks()).find((p) => p.id === id)?.name ?? id;
     // Progress goes to the page as each file lands, as for sd:copyFont.
-    return copyFontToCard(id, cardRoot, { replace: (opts as { replace?: unknown } | null)?.replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) });
+    return onCard(cardRoot, () => copyFontToCard(id, cardRoot, { replace: (opts as { replace?: unknown } | null)?.replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
   });
   handle('sd:listTracks', (_e, r: unknown) => listTracks(root(r)));
   handle('sd:voicePack', (_e, r: unknown) => readVoicePack(root(r)));
-  handle('sd:clearPresets', (_e, r: unknown) => clearPresetsFiles(root(r)));
+  // The card's own presets are kept before they go (issue #7): its files unchanged in the saber's data folder, and the
+  // list ProffieOS would load as a snapshot under Live › Presets › History. If either cannot be kept, nothing is removed.
+  handle('sd:clearPresets', (_e, r: unknown, id: unknown) => {
+    const at = root(r);
+    const saberId = str(id, 40);
+    if (!/^[0-9a-z]+$/i.test(saberId)) throw new Error('Unknown saber');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return onCard(at, () => clearPresetsFiles(at, {
+      dir: join(userData, 'sabers', saberId, 'card-presets', stamp),
+      snapshot: (list) => snapshots.save(saberId, 'Card presets, before the card was prepared', list),
+    }));
+  });
   handle('sd:configFiles', (_e, r: unknown) => findConfigFiles(root(r)));
   // A config file from this computer, read so its wiring can be compared and imported; nothing is kept but what the page saves.
   handle('config:pick', async () => {
@@ -517,7 +530,7 @@ export function registerIpc(): void {
       name = basename(file);
     }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    return installVoicePack(file, cardRoot, { backupDir: join(userData, 'voice-pack-backups', stamp), onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) });
+    return onCard(cardRoot, () => installVoicePack(file, cardRoot, { backupDir: join(userData, 'voice-pack-backups', stamp), onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
   });
   let pickedFonts = new Set<string>();
   handle('sd:pickFont', async () => {
@@ -532,7 +545,8 @@ export function registerIpc(): void {
     if (!pickedFonts.has(s)) throw new Error('Pick the font folder first');
     // Progress goes to the page as each file lands (card-safety D5).
     const name = basename(s);
-    return copyFont(s, root(r), { replace: replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) });
+    const at = root(r);
+    return onCard(at, () => copyFont(s, at, { replace: replace === true, onProgress: (done, total) => e.sender.send('sd:copy:progress', { name, done, total }) }));
   });
 
   // Import from a Xenopixel card. The owner picks the folder; only fonts found by that scan can be imported.
@@ -547,7 +561,8 @@ export function registerIpc(): void {
   handle('import:xenoFont', (_e, src: unknown, r: unknown, folder: unknown, replace: unknown) => {
     const f = xenoFonts.get(str(src, 1000));
     if (!f) throw new Error('Choose the Xenopixel card first');
-    return importXenoFont(f.path, root(r), str(folder, 60), replace === true);
+    const at = root(r);
+    return onCard(at, () => importXenoFont(f.path, at, str(folder, 60), replace === true));
   });
 
   // ---- Tier 2: toolchain, build, flash ----

@@ -6,5 +6,6 @@ export { mask, splitArgs, splitTopLevel, parseString, quote } from './cpp';
 export { bladeRowsFor, BLADE_ID_MIN_SEPARATION, type BladeVariant } from './generate';
 export { wiringFingerprint, wiringConfirmed, withWiringConfirmation } from './wiring';
 export { wiringFromConfig, compareWiring, differenceText, type ConfigWiring, type WiringDifference } from './configWiring';
+export { modelFormProblems, assertModelForm, lookProblems, isTemplateToken } from './modelCheck';
 export { BOARD_PINS, bladeKind, wiringProblems, type BladeKind, type PowerOption, type WiringProblem } from './pinRules';
 export { generateConfig, validateModel, boardHint, BOARD_NOT_CHOSEN, slotChecks, commentSafe, type SlotLines, readGeneratedHeader, contentHash, lookFingerprint, modelLooks, lookForSlot, STARTER_STYLES, type GeneratedConfig, type SaberConfigModel, type ModelBlade, type Prop, type BoardModel, type BladeRole, type StockProp, type CustomProp, STOCK_PROP_TYPES, inspectPropText, propFamily, customPropFileName } from './generate';

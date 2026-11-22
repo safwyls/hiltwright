@@ -67,7 +67,7 @@ export interface InstallDeps {
    * presets files are removed there), `out` that the saber cannot read a card and none of its own is in a reader.
    * Absent or `saber`: the card is in the saber, and the saber removes them.
    */
-  card?: { where: 'saber' } | { where: 'reader'; root: string; clearPresets: (root: string) => Promise<string[]> } | { where: 'out' };
+  card?: { where: 'saber' } | { where: 'reader'; root: string; clearPresets: (root: string, saberId: string) => Promise<string[]> } | { where: 'out' };
 }
 /**
  * What is being installed: the saber, the model the build was made from, the build, what the saber last reported,
@@ -130,7 +130,19 @@ async function reachBootloader(deps: InstallDeps, saber: SaberRecord, connected:
       if (own && (await flash.usb()).runtimeSerials.includes(own)) { fail(deps, IGNORED_REBOOT); return null; }
       fail(deps, boot.text); return null;
     }
-    return { serial: boot.serials[0] ?? null, observed: true, asked: false };
+    const serial = boot.serials[0] ?? null;
+    // The bootloader that appeared may not be this saber's (issue #4): another saber put into bootloader mode while this
+    // one ignored or delayed its reboot. A board's bootloader shows the same serial as its running firmware, so:
+    // another saber's serial is refused; one that is not this saber's is never taken as certain.
+    const other = deps.sabers.find((s) => s.id !== saber.id && belongsTo(s, serial));
+    if (other) { fail(deps, `${otherSaber(other.name, saber.name)} ${LEAVE_BOOTLOADER}`); return null; }
+    const own = saber.identity.usbSerial;
+    if (serial && own && !belongsTo(saber, serial)) {
+      if ((await flash.usb()).runtimeSerials.includes(own)) { fail(deps, IGNORED_REBOOT); return null; }
+      if (!(await deps.confirmTarget(saber.name))) { deps.report({ step: 'built', note: null }); return null; }
+      return { serial, observed: false, asked: true, pairable: false };
+    }
+    return { serial, observed: true, asked: false };
   }
   const boots = usb.bootloaders;
   const mine = boots.filter((b) => belongsTo(saber, b.serial));
@@ -317,11 +329,15 @@ export async function applyStagedPresets(deps: Pick<InstallDeps, 'flash' | 'snap
       }
       return { tone: 'green', text: 'Your staged presets are on the saber now; its previous presets were kept as a snapshot when the card was prepared.' };
     }
-    try { await deps.snapshots.save(saber.id, 'Before install with staged presets', own); } catch {
-      return keepStaged("A snapshot of the saber's presets could not be kept, so they were not replaced.");
+    // With the card in the saber, what it reports is what its card holds: that is kept. With the card in a reader, the
+    // saber reports its firmware's list (the staged one), so the card's own files are kept by main instead (issue #7).
+    if (card.where !== 'reader') {
+      try { await deps.snapshots.save(saber.id, 'Before install with staged presets', own); } catch {
+        return keepStaged("A snapshot of the saber's presets could not be kept, so they were not replaced.");
+      }
     }
     if (card.where === 'reader') {
-      try { await card.clearPresets(card.root); } catch (err) {
+      try { await card.clearPresets(card.root, saber.id); } catch (err) {
         return keepStaged(`The presets file on the card in the reader (${card.root}) could not be removed: ${String(err).replace(/^Error: (Error invoking remote method '[^']+': Error: )?/, '')}.`);
       }
     } else {
@@ -368,6 +384,9 @@ export async function checkBoard(deps: Pick<InstallDeps, 'flash' | 'noteBootload
       return { tone: 'red', text: `The saber did not appear in bootloader mode, so the board was not checked. ${LEAVE_BOOTLOADER}`, board: null };
     }
     const serial = boot.serials[0] ?? null;
+    // Another board that entered bootloader mode during the wait is not this saber: nothing is read or remembered (issue #4).
+    const own = saber.identity.usbSerial;
+    if (serial && own && !belongsTo(saber, serial)) return { tone: 'red', text: `The board that appeared in bootloader mode is not ${saber.name}, so nothing was checked or remembered. ${LEAVE_BOOTLOADER}`, board: null };
     const t = await flash.target(serial);
     // Seen appearing after this saber's own reboot: certain, so remembered.
     if (t.board && t.flashBytes) { try { await deps.noteBootloader(saber.id, { serial, flashBytes: t.flashBytes }); } catch { /* shown below all the same */ } }

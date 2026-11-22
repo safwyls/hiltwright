@@ -8,6 +8,7 @@ import { bladesToExprs, sharedPowerPins, stripLength } from './blades';
 import { quote } from './cpp';
 import { STARTER_LOOKS, starterLookFor, type FirmwareManifest, type LookDef } from '../looks';
 import { wiringProblems } from './pinRules';
+import { modelFormProblems } from './modelCheck';
 import { LIBRARY_LOOKS, LOOK_FX } from '../lookLibrary';
 
 export type Prop = 'fett263' | 'sa22c' | 'bc' | 'default' | 'custom';
@@ -226,6 +227,9 @@ export function boardHint(configName: string | null | undefined): BoardModel | n
 }
 
 export function validateModel(m: SaberConfigModel): string[] {
+  // Every field the config prints must hold what a page could have set, before anything else is read (issue #5).
+  const form = modelFormProblems(m);
+  if (form.length) return form;
   const errors: string[] = [];
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(m.name)) errors.push('Config name must be letters, digits and underscores.');
   if (!m.boardFrom) errors.push(BOARD_NOT_CHOSEN);
@@ -278,6 +282,9 @@ export interface SlotLines { line: number; endLine: number; preset: number; blad
 export interface GeneratedConfig { text: string; hash: string; sharedPower: string[]; warnings: string[]; manifest: Omit<FirmwareManifest, 'os' | 'at'>; slotLines: SlotLines[] }
 
 export function generateConfig(m: SaberConfigModel): GeneratedConfig {
+  // The last line of defence (issue #5): nothing in the wrong form is ever printed as C++, whoever calls this.
+  const form = modelFormProblems(m);
+  if (form.length) throw new Error(`The config was not written: ${form[0]}`);
   const warnings: string[] = [];
   const shared = sharedPowerPins(m.blades);
   const rows = bladeRowsFor(m);

@@ -7,6 +7,7 @@
 
 import type { LookDef } from './looks';
 import type { SaberConfigModel } from './config/generate';
+import { modelFormProblems } from './config/modelCheck';
 
 export const SABER_SHARE_FORMAT = 'hiltwright-saber';
 export const SABER_SHARE_VERSION = 1;
@@ -32,7 +33,7 @@ export interface SaberShare {
 export function shareableModel(model: SaberConfigModel): SaberConfigModel {
   const {
     wiringConfirmation: _confirmed, wiringConfirmedAt: _confirmedOld, wiringReference: _reference, boardFrom: _boardFrom,
-    presetsFrom: _from, customProp, ...rest
+    presetsFrom: _from, extraDefines: _defines, customProp, ...rest
   } = model;
   return {
     ...rest,
@@ -63,6 +64,10 @@ export function readSaberShare(raw: unknown): SaberShare {
   if (!m.presets.every((p) => isObj(p) && isStr(p.font) && isStr(p.name) && isStr(p.track))) throw new Error('This saber file is damaged: a preset is incomplete.');
   if (m.looks !== undefined && (!Array.isArray(m.looks) || !m.looks.every((l) => isObj(l) && isStr(l.id) && isStr(l.code)))) throw new Error('This saber file is damaged: a style is incomplete.');
   if (raw.customPropText !== undefined && !isStr(raw.customPropText)) throw new Error('This saber file is damaged: its prop file is unreadable.');
+  // Every field is checked for form before any of it can reach a config (issue #5): a value that would print as more
+  // than its own setting (a #define in a button count, a blade order or a style's alias) refuses the whole file.
+  const form = modelFormProblems(shareableModel(m as unknown as SaberConfigModel));
+  if (form.length) throw new Error(`This saber file cannot be imported: ${form[0]}`);
   return {
     format: SABER_SHARE_FORMAT, version: SABER_SHARE_VERSION,
     name: isStr(raw.name) && raw.name.trim() ? raw.name.trim().slice(0, 80) : 'Shared saber',
