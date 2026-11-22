@@ -348,18 +348,48 @@ async function cardPresets(root: string): Promise<{ font: string; name: string }
   return active ? active.ini.presets.slice(0, 200).map((x) => ({ font: x.font, name: x.name })) : null;
 }
 
-/** Drive letters that once took too long to answer (a network drive gone away): not asked again this run. */
-const slowDrives = new Set<string>();
+/**
+ * Drive letters that took too long to answer the drive poll, so the poll does not pile more asks onto a drive that
+ * hangs (a network drive gone away). A letter is skipped while its last ask is still waiting, and for a minute after
+ * it was slow; then it is asked again. Issue #26: a letter slow once used to be skipped for the rest of the run, yet a
+ * card the saber shares can take minutes to open, and a card put in that reader later went unnoticed. A full look
+ * that finds a card at a letter clears it at once.
+ */
+export class SlowDrives {
+  private readonly entries = new Map<string, { at: number; pending: boolean }>();
+  constructor(private readonly backoffMs = 60_000, private readonly now: () => number = Date.now) {}
+  /** Whether to leave this letter out of the poll now. */
+  skip(letter: string): boolean {
+    const e = this.entries.get(letter.toUpperCase());
+    if (!e) return false;
+    if (e.pending || this.now() - e.at < this.backoffMs) return true;
+    this.entries.delete(letter.toUpperCase());
+    return false;
+  }
+  /** The letter did not answer in time; `ask` is the stat still under way, which it waits for. */
+  slow(letter: string, ask: Promise<unknown>): void {
+    const e = { at: this.now(), pending: true };
+    this.entries.set(letter.toUpperCase(), e);
+    const settled = () => { e.pending = false; };
+    ask.then(settled, settled);
+  }
+  /** A card was found at this root: poll its letter again from now on. */
+  clear(root: string): void {
+    const m = /^([A-Za-z]):/.exec(root);
+    if (m) this.entries.delete(m[1].toUpperCase());
+  }
+}
+const slowDrives = new SlowDrives();
 const DRIVE_ANSWER_MS = 1500;
 
 /** A drive mounted now, and which volume is in it (volumeId): a card swapped for another in the same reader reads differently. */
 export interface MountedDrive { root: string; volumeId: string | null }
 
-/** Which volume is at `root`, or 'slow' when it does not answer within `ms`, or null when it does not open. */
-function askDrive(root: string, ms: number): Promise<string | null | 'slow'> {
+/** What `ask` gave, or 'slow' when it did not answer within `ms`. */
+function within<T>(ask: Promise<T>, ms: number): Promise<T | 'slow'> {
   return new Promise((resolve) => {
     const t = setTimeout(() => resolve('slow'), ms);
-    volumeId(root).then((id) => { clearTimeout(t); resolve(id); });
+    ask.then((v) => { clearTimeout(t); resolve(v); });
   });
 }
 
@@ -367,26 +397,30 @@ function askDrive(root: string, ms: number): Promise<string | null | 'slow'> {
  * The drives mounted now, by their roots, each with the volume in it: a cheap check, asked every few seconds so a
  * card put in a reader, taken out, or swapped for another at the same letter (issue #9) is noticed without the full
  * look, which runs PowerShell and reads every card. On Windows each letter D: to Z: is asked whether it opens; an
- * empty card reader slot says no at once, and a letter that takes longer than 1.5 s is not asked again this run.
+ * empty card reader slot says no at once, and a letter that takes longer than 1.5 s is left out for a while
+ * (SlowDrives).
  */
 export async function mountedRoots(): Promise<MountedDrive[]> {
   const override = process.env.HILTWRIGHT_SD_ROOT;
   if (override) return (await isDir(override)) ? [{ root: override, volumeId: await volumeId(override) }] : [];
-  if (process.platform === 'win32') {
-    const letters = 'DEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter((l) => !slowDrives.has(l));
-    const answers = await Promise.all(letters.map(async (l): Promise<MountedDrive | null> => {
-      const root = `${l}:\\`;
-      const id = await askDrive(root, DRIVE_ANSWER_MS);
-      if (id === 'slow') { slowDrives.add(l); return null; }
-      return id ? { root, volumeId: id } : null;
-    }));
-    return answers.filter((a): a is MountedDrive => !!a);
-  }
+  if (process.platform === 'win32') return pollLetters('DEFGHIJKLMNOPQRSTUVWXYZ'.split(''), slowDrives, volumeId);
   const bases = process.platform === 'darwin' ? ['/Volumes'] : ['/media', '/run/media', '/mnt'];
   const roots: string[] = [];
   for (const b of bases) { try { for (const n of await readdir(b)) roots.push(join(b, n)); } catch { /* not present */ } }
   roots.sort();
-  return Promise.all(roots.map(async (root) => { const id = await askDrive(root, DRIVE_ANSWER_MS); return { root, volumeId: id === 'slow' ? null : id }; }));
+  return Promise.all(roots.map(async (root) => { const id = await within(volumeId(root), DRIVE_ANSWER_MS); return { root, volumeId: id === 'slow' ? null : id }; }));
+}
+
+/** The Windows drive poll over `letters`, leaving out the slow ones; exported so it can be tried without real drives. */
+export async function pollLetters(letters: string[], slow: SlowDrives, ask: (root: string) => Promise<string | null>, ms = DRIVE_ANSWER_MS): Promise<MountedDrive[]> {
+  const answers = await Promise.all(letters.filter((l) => !slow.skip(l)).map(async (l): Promise<MountedDrive | null> => {
+    const root = `${l}:\\`;
+    const asking = ask(root);
+    const id = await within(asking, ms);
+    if (id === 'slow') { slow.slow(l, asking); return null; }
+    return id ? { root, volumeId: id } : null;
+  }));
+  return answers.filter((a): a is MountedDrive => !!a);
 }
 
 export async function lookForCards(): Promise<DriveLook> {
@@ -396,6 +430,8 @@ export async function lookForCards(): Promise<DriveLook> {
   const out: CardInfo[] = [];
   for (const c of list) {
     if (!(await isDir(c.root))) continue;
+    // A card is here, so the drive poll watches this letter again, however slow it was before (issue #26).
+    slowDrives.clear(c.root);
     // Which volume this look read, taken before reading it: every later write checks the drive still holds it.
     const id = await volumeId(c.root);
     const hasPresetsIni = await exists(join(c.root, 'presets.ini')) || await exists(join(c.root, 'presets.tmp'));

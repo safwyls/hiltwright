@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkSameCard, driveName, mountedRoots, volumeId } from '../src/main/sd';
+import { SlowDrives, checkSameCard, driveName, mountedRoots, pollLetters, volumeId } from '../src/main/sd';
 import { onCard } from '../src/main/cardQueue';
 import { drivesKey } from '../src/renderer/src/cardCache';
 
@@ -64,5 +64,57 @@ describe('which card is in a drive (issue #9)', () => {
     expect(drivesKey([{ root: 'E:\\', volumeId: '9E9B2C9D' }, { root: 'F:\\', volumeId: '12345678' }])).toBe(before);
     expect(drivesKey([{ root: 'E:\\', volumeId: '5A1C3F0E' }, { root: 'F:\\', volumeId: '12345678' }])).not.toBe(before);
     expect(drivesKey([{ root: 'F:\\', volumeId: '12345678' }])).not.toBe(before);
+  });
+});
+
+// Issue #26: a letter slow to answer the drive poll is left out only while its ask waits and for a minute after,
+// not for the rest of the run. No real drive is asked here: the asks are stand-ins.
+describe('a slow drive letter is polled again later (issue #26)', () => {
+  it('skips a slow letter while its ask waits and for the backoff, then asks it again; a found card clears it at once', async () => {
+    let now = 1_000_000;
+    const slow = new SlowDrives(60_000, () => now);
+    let finishE!: (id: string | null) => void;
+    const asked: string[] = [];
+    let eHangs = true;
+    const ask = (root: string) => {
+      asked.push(root);
+      if (root === 'E:\\' && eHangs) return new Promise<string | null>((r) => { finishE = r; });
+      return Promise.resolve(root === 'F:\\' ? '12345678' : '9E9B2C9D');
+    };
+    const poll = () => pollLetters(['E', 'F'], slow, ask, 20);
+
+    expect(await poll()).toEqual([{ root: 'F:\\', volumeId: '12345678' }]);
+    expect(slow.skip('E')).toBe(true);
+
+    // Still waiting, long past the backoff: not asked again, so asks do not pile up on a drive that hangs.
+    now += 120_000;
+    asked.length = 0;
+    await poll();
+    expect(asked).toEqual(['F:\\']);
+
+    // The ask finishes (the shared card opened); E: is asked once the backoff from when it was slow has passed.
+    eHangs = false;
+    finishE('9E9B2C9D');
+    await Promise.resolve();
+    expect(slow.skip('E')).toBe(false);
+    expect(await poll()).toEqual([{ root: 'E:\\', volumeId: '9E9B2C9D' }, { root: 'F:\\', volumeId: '12345678' }]);
+
+    // Slow again, then a full look finds a card there: polled again at once, within the backoff.
+    eHangs = true;
+    await poll();
+    expect(slow.skip('E')).toBe(true);
+    slow.clear('e:\\');
+    expect(slow.skip('E')).toBe(false);
+  });
+
+  it('a letter whose ask finished still waits out the backoff', async () => {
+    let now = 0;
+    const slow = new SlowDrives(60_000, () => now);
+    slow.slow('G', Promise.resolve(null));
+    await Promise.resolve();
+    now = 59_000;
+    expect(slow.skip('G')).toBe(true);
+    now = 60_000;
+    expect(slow.skip('G')).toBe(false);
   });
 });
