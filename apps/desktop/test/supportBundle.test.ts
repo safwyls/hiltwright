@@ -95,6 +95,22 @@ describe('the diagnostics file', () => {
     expect(t).not.toMatch(/\bAl\b/);
     expect(t).not.toContain('DESKTOP-SAM7');
   });
+
+  // Issue #24: serials show only their last four characters, the same in the Saber section and in the logs, and the
+  // header says so.
+  it('masks serial numbers to their last four characters, in the saber section and the logs alike', () => {
+    const withCard = { ...saber, cards: [{ serial: '1A2B3C4D', label: 'SABER', at: '2026-09-25T10:00:00Z' }] } as SaberRecord;
+    const log = '15:55 [library] saber ea8dbea42e78 "hote2" serial=209133815232\n15:56 [sd] E:\\ (1A2B3C4D) remembered as hote2\'s card\n15:57 Found DFU: [0483:df11] serial="205E35774D4B"';
+    const t = composeBundle(base({ saber: withCard, currentLog: { name: 'hiltwright-20260925-155500.log', text: log } }), redact);
+    expect(t).toContain('USB serial ****5232');
+    expect(t).toContain('serial=****5232');
+    expect(t).toContain('(****3C4D)');
+    expect(t).toContain('serial="****4D4B"');
+    expect(t).not.toContain('209133815232');
+    expect(t).not.toContain('1A2B3C4D');
+    expect(t).not.toContain('205E35774D4B');
+    expect(t).toContain('last four characters');
+  });
 });
 
 describe('writing the file', () => {

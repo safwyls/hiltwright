@@ -121,7 +121,7 @@ The preview runs the same math as the saber. A few things are left unmodeled.
 
 ## Reporting a problem
 
-1. Press **Save diagnostics** on the Controls page, or on the fault screen or failed build note. It saves a file on your computer and sends nothing.
+1. Press **Save diagnostics** on the Controls page, or on the fault screen or failed build note. It saves a file on your computer and sends nothing. Your user folder, user name and computer name are replaced, and serial numbers show only their last four characters.
 2. Open [github.com/safwyls/hiltwright/issues](https://github.com/safwyls/hiltwright/issues).
 3. Say what happened and which step you were on.
 4. Attach the diagnostics file.

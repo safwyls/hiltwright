@@ -46,7 +46,20 @@ import { DialogFolders } from './dialogFolders';
 import { WORK_CHANNELS, type BusyFacts, type UpdateState, type WorkKind } from '../shared/updates';
 import type { FontLibraryStatus, JobEvent } from '../shared/api';
 import type { FirmwareManifest } from '@hiltwright/core';
-import type { SaberIdentity, SaberPatch } from '../shared/api';
+import type { SaberIdentity, SaberPatch, SaberRecord } from '../shared/api';
+import { rememberSerials } from './redact';
+
+// Every serial number main is told of or finds is handed to the redactor, so the log and the diagnostics file show
+// only its last four characters (issue #24).
+function seenSaber<T extends SaberRecord | SaberRecord[]>(r: T): T {
+  const list: SaberRecord[] = Array.isArray(r) ? r : [r as SaberRecord];
+  for (const s of list) rememberSerials(s.identity.usbSerial, s.bootloader?.serial, ...(s.cards ?? []).map((c) => c.serial));
+  return r;
+}
+function seenUsb<T extends UsbState>(u: T): T {
+  rememberSerials(...u.runtimeSerials, ...u.bootloaders.map((b) => b.serial));
+  return u;
+}
 
 function str(v: unknown, max = 200): string {
   if (typeof v !== 'string' || v.length > max) throw new Error('Expected a short string');
@@ -104,11 +117,13 @@ export function registerIpc(): void {
   };
   const library =new Library(libraryPath(userData));
   const snapshots = new Snapshots(userData);
+  void library.list().then(seenSaber, () => undefined);
 
-  handle('library:list', () => library.list());
+  handle('library:list', () => library.list().then(seenSaber));
   handle('library:upsert', (_e, input: unknown) => {
     const o = (input ?? {}) as Record<string, unknown>;
     const ex = (o.expect ?? null) as { id?: unknown; configName?: unknown } | null;
+    rememberSerials(typeof (o.identity as { usbSerial?: unknown } | undefined)?.usbSerial === 'string' ? (o.identity as { usbSerial: string }).usbSerial : null);
     return library.upsert({
       identity: identity(o.identity), presets: presets(o.presets ?? []),
       fonts: Array.isArray(o.fonts) ? o.fonts.map((f) => str(f, 200)) : [],
@@ -121,11 +136,13 @@ export function registerIpc(): void {
   handle('library:adopt', (_e, plannedId: unknown, targetId: unknown) => library.adopt(str(plannedId, 40), str(targetId, 40)));
   handle('library:noteBootloader', (_e, id: unknown, seen: unknown) => {
     const o = (seen ?? {}) as { serial?: unknown; flashBytes?: unknown };
+    rememberSerials(typeof o.serial === 'string' ? o.serial : null);
     return library.noteBootloader(str(id, 40), { serial: typeof o.serial === 'string' ? o.serial : null, flashBytes: Number(o.flashBytes) });
   });
   handle('library:remove', (_e, id: unknown) => library.remove(str(id, 40)));
   handle('library:linkCard', (_e, id: unknown, card: unknown) => {
     const c = (card ?? {}) as { serial?: unknown; label?: unknown };
+    rememberSerials(typeof c.serial === 'string' ? c.serial : null);
     return library.linkCard(str(id, 40), { serial: str(c.serial, 16), label: typeof c.label === 'string' ? c.label : null });
   });
   handle('library:unlinkCard', (_e, id: unknown, serial: unknown) => library.unlinkCard(str(id, 40), str(serial, 16)));
@@ -167,11 +184,12 @@ export function registerIpc(): void {
   handle('snapshots:save', (_e, id: unknown, label: unknown, list: unknown) => snapshots.save(str(id, 40), str(label, 120), presets(list)));
   handle('snapshots:read', (_e, id: unknown, file: unknown) => snapshots.read(str(id, 40), str(file, 200)));
 
-  handle('usb:proffieSerials', () => proffieSerials());
+  handle('usb:proffieSerials', () => proffieSerials().then((l) => { rememberSerials(...l); return l; }));
   handle('usb:portHolders', () => portHolders());
   // Reach only this board next (the saber an install is bringing back); null lets every Proffieboard through again.
   handle('usb:wantSerial', async (_e, serial: unknown) => {
     const s = typeof serial === 'string' && /^[A-Za-z0-9]{1,40}$/.test(serial) ? serial : null;
+    rememberSerials(s);
     wantSerial(s);
     if (s) await lookUpWanted();
     const found = s ? activeWant()?.ids.size ?? 0 : 0;
@@ -195,6 +213,7 @@ export function registerIpc(): void {
   // as before, an empty list included when it did not. A look Windows did not answer leaves the known cards as they were.
   handle('sd:locate', async (_e, opts: unknown) => {
     const look = await lookForCards();
+    if (look.answered) rememberSerials(...look.cards.flatMap((c) => [c.volumeSerial, c.saberSerial]));
     console.log(`[sd] drive look: ${look.answered ? `${look.cards.length} card(s)` : 'no answer'} in ${look.ms} ms`);
     if (look.answered) knownRoots = new Map(look.cards.map((c) => [c.root, c.volumeId]));
     const detailed = !!opts && typeof opts === 'object' && (opts as { detailed?: unknown }).detailed === true;
@@ -641,9 +660,13 @@ export function registerIpc(): void {
   });
   // Install steps report failure in their result rather than by throwing, so each result is logged here.
   const result = (step: string) => <T>(r: T): T => { console.log(`[flash] ${step} result: ${JSON.stringify(r)}`); return r; };
-  handle('flash:usb', () => usbState());
+  handle('flash:usb', () => usbState().then(seenUsb));
   // A USB serial from the page: short plain text, or null for "the only board".
-  const serialArg = (v: unknown): string | null => (typeof v === 'string' && /^[A-Za-z0-9]{1,40}$/.test(v) ? v : null);
+  const serialArg = (v: unknown): string | null => {
+    const s = typeof v === 'string' && /^[A-Za-z0-9]{1,40}$/.test(v) ? v : null;
+    rememberSerials(s);
+    return s;
+  };
   const serialsArg = (v: unknown): (string | null)[] | null => (Array.isArray(v) ? v.slice(0, 16).map(serialArg) : null);
   handle('flash:waitForBootloader', async (_e, timeoutMs: unknown, before: unknown) => result('waitForBootloader')(await (async () => {
     // With `before` (the bootloaders present before a reboot), only a bootloader that was not there counts.
@@ -653,7 +676,7 @@ export function registerIpc(): void {
     if (!s) return { ok: false, text: 'The board did not switch to bootloader mode. Hold BOOT, tap RESET, release BOOT, then try again.', serials: [] };
     // Give Windows a moment to bind the driver before judging it.
     const bound = (await waitFor((u) => fresh(u).length > 0 && fresh(u).every((b) => driverUsable(b.driver)), 5000)) ?? s;
-    const found = fresh(bound);
+    const found = fresh(seenUsb(bound));
     return { ...describeBootloader({ ...bound, bootloaderDriver: found[0]?.driver ?? null, bootloaderProblem: found[0]?.problem ?? null }), serials: found.map((b) => b.serial) };
   })()));
   handle('flash:target', (_e, serial: unknown) => flashTarget(toolchainRoot, serialArg(serial)).then(result('target')));
@@ -696,7 +719,7 @@ export function registerIpc(): void {
   handle('support:save', async (_e, snapshot: unknown) => {
     const connection = cleanSnapshot(snapshot);
     const fail = (err: unknown) => ({ error: err instanceof Error ? err.message : String(err) });
-    const [toolchain, usb, sabers] = await Promise.all([toolchainStatus(toolchainRoot).catch(fail), usbState().catch(fail), Promise.resolve(library.list()).catch(() => [])]);
+    const [toolchain, usb, sabers] = await Promise.all([toolchainStatus(toolchainRoot).catch(fail), usbState().then(seenUsb).catch(fail), Promise.resolve(library.list()).then(seenSaber).catch(() => [])]);
     const saber = connection.saberId ? sabers.find((x) => x.id === connection.saberId) ?? null : null;
     console.log(`[support] saving diagnostics (status ${connection.status}, saber ${saber?.name ?? 'none'})`);
     const logDir = join(userData, 'logs');

@@ -73,7 +73,7 @@ The file is named `hiltwright-diagnostics-` followed by the date and time. Hiltw
 
 ### What is left out
 
-Your style code, the generated configuration, fonts, hilt models and backups are never included. Personal details are replaced before the file is written. Your user folder becomes `%USERPROFILE%`, your Windows user name becomes `<user>`, and your computer's name becomes `<computer>`.
+Your style code, the generated configuration, fonts, hilt models and backups are never included. Personal details are replaced before the file is written. Your user folder becomes `%USERPROFILE%`, also where it is written as a `file:///` address or in its short form (like `C:\Users\SAMSMI~1`). Your Windows user name becomes `<user>`, and your computer's name becomes `<computer>`. Serial numbers of boards and SD cards show only their last four characters, like `****5232`, so two boards can still be told apart. The app's own log files on your computer are written the same way.
 
 Open the file and read it before you attach it. To report a problem, go to [github.com/safwyls/hiltwright/issues](https://github.com/safwyls/hiltwright/issues), say what happened and which step you were on, and attach the file. See also [Troubleshooting](troubleshooting.html).
 

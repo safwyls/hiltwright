@@ -30,7 +30,7 @@ Hiltwright reaches the internet for three things. The first-run setup downloads 
 
 And versions from 0.2.0-beta.3 on look for a newer Hiltwright: a little after they start, and every few hours, they ask GitHub for Hiltwright's list of releases. The check sends nothing about your sabers or you; GitHub sees your internet address, as with any web page. A new version is downloaded only when you press **Download**, and installed only when you press **Restart to update**. Turn **Check for updates when Hiltwright starts** off on the [About page](settings.html#about) to stop the checks; **Check now** still works.
 
-**Save diagnostics** writes a file on your computer and sends nothing. You attach it to a report yourself. Style code, fonts, hilt models and backups are never put in it, and your user name and computer name are replaced.
+**Save diagnostics** writes a file on your computer and sends nothing. You attach it to a report yourself. Style code, fonts, hilt models and backups are never put in it, your user name and computer name are replaced, and serial numbers show only their last four characters.
 
 ## Does it work on Mac or Linux?
 
