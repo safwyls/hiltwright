@@ -63,6 +63,10 @@ tr.on td{box-shadow:none}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg0);color:var(--text);font-family:var(--body);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+/* An app, not a page: headings, labels, hints and buttons are not selected by a stray drag. What is worth copying
+   stays selectable: what you type, code and logs, values in mono (paths, folders, colours, versions), and notes. */
+body{-webkit-user-select:none;user-select:none}
+input,textarea,[contenteditable="true"],pre,code,.console,.mono,.note{-webkit-user-select:text;user-select:text}
 a,button.holo{color:var(--holo);text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 45%,transparent);text-underline-offset:3px}a:hover,button.holo:hover{text-decoration-color:currentColor}.nav a{text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
 button:disabled{cursor:default}
