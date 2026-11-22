@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { JsonStore, resetStoreProblems, storeProblems } from '../src/main/jsonStore';
+import { open, readFile, rename } from 'node:fs/promises';
+import { JsonStore, resetStoreProblems, storeProblems, type StoreFs } from '../src/main/jsonStore';
 
 interface Doc { version: 1; items: { id: string }[] }
 const clean = (raw: unknown): { value: Doc; dropped: number } | null => {
@@ -15,7 +16,9 @@ const at = new Date(2026, 8, 25, 16, 15, 0);
 
 let dir = '';
 let file = '';
-const store = () => new JsonStore<Doc>(file, { name: 'test list', empty: () => ({ version: 1, items: [] }), clean, now: () => at });
+const store = (fs?: Partial<StoreFs>) => new JsonStore<Doc>(file, { name: 'test list', empty: () => ({ version: 1, items: [] }), clean, now: () => at, fs, busyWaits: [1, 1, 1, 1, 1] });
+/** An error like the one Windows gives for a file another program has open. */
+const busy = (code = 'EBUSY') => Object.assign(new Error(`${code}: resource busy or locked`), { code });
 const onDisk = (name = 'things.json') => JSON.parse(readFileSync(join(dir, name), 'utf8')) as Doc;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'hw-store-')); file = join(dir, 'things.json'); resetStoreProblems(); });
 afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
@@ -106,6 +109,7 @@ describe('the safe store', () => {
     rmSync(file); mkdirSync(file); // the store's file is now a folder: the next write cannot land
     await expect(s.update((d) => { d.items.push({ id: 'lost' }); })).rejects.toThrow();
     expect((await s.read()).items).toEqual([{ id: 'kept' }]);
+    expect(readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([]);
     await expect(s.update((d) => { d.items.push({ id: 'half' }); throw new Error('stopped'); })).rejects.toThrow('stopped');
     expect((await s.read()).items).toEqual([{ id: 'kept' }]);
   });
@@ -114,5 +118,69 @@ describe('the safe store', () => {
     const s = store();
     await expect(s.update(() => { throw new Error('bad input'); })).rejects.toThrow('bad input');
     expect(await s.update((d) => { d.items.push({ id: 'x' }); return d.items.length; })).toBe(1);
+  });
+});
+
+describe('a file another program holds open (issue #11)', () => {
+  const good = JSON.stringify({ version: 1, items: [{ id: 'a' }] });
+
+  it('reads the file once the other program lets go, and reports nothing', async () => {
+    writeFileSync(file, good);
+    let tries = 0;
+    const s = store({ readFile: (p, e) => (p === file && ++tries <= 3 ? Promise.reject(busy()) : readFile(p, e)) });
+    expect((await s.read()).items).toEqual([{ id: 'a' }]);
+    expect(tries).toBe(4);
+    expect(storeProblems()).toEqual([]);
+  });
+
+  it('a file that stays busy is not damage: "try again", nothing set aside or reported, and saving still works later', async () => {
+    writeFileSync(join(dir, 'things.bak.json'), JSON.stringify({ version: 1, items: [] }));
+    writeFileSync(file, good);
+    let locked = true;
+    const s = store({ readFile: (p, e) => (p === file && locked ? Promise.reject(busy('EPERM')) : readFile(p, e)) });
+    await expect(s.read()).rejects.toThrow('Could not read the test list: another program is using its file. Try again in a moment.');
+    expect(readdirSync(dir).sort()).toEqual(['things.bak.json', 'things.json']);
+    expect(readFileSync(file, 'utf8')).toBe(good);
+    expect(storeProblems()).toEqual([]);
+    // The other program lets go: the next read goes back to the disk, and the store saves as normal.
+    locked = false;
+    await s.update((d) => { d.items.push({ id: 'b' }); });
+    expect(onDisk().items).toEqual([{ id: 'a' }, { id: 'b' }]);
+  });
+
+  it('waits out a busy rename and lands the write', async () => {
+    let tries = 0;
+    const s = store({ rename: (from, to) => (to === file && ++tries <= 2 ? Promise.reject(busy('EACCES')) : rename(from, to)) });
+    await s.update((d) => { d.items.push({ id: 'one' }); });
+    expect(onDisk().items).toEqual([{ id: 'one' }]);
+    expect(readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+  });
+
+  it('a rename that stays busy undoes the change and leaves no temporary file behind', async () => {
+    writeFileSync(file, good);
+    const s = store({ rename: () => Promise.reject(busy('EPERM')) });
+    await expect(s.update((d) => { d.items.push({ id: 'lost' }); })).rejects.toThrow('EPERM');
+    expect((await s.read()).items).toEqual([{ id: 'a' }]);
+    expect(readFileSync(file, 'utf8')).toBe(good);
+    expect(readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([]);
+    expect(storeProblems()).toEqual([]);
+  });
+
+  it('flushes each write to the disk before it replaces the main file', async () => {
+    const steps: string[] = [];
+    const s = store({
+      open: async (p, flags) => {
+        const fh = await open(p, flags);
+        return {
+          writeFile: async (data, enc) => { steps.push('write'); await fh.writeFile(data, enc); },
+          sync: async () => { steps.push('sync'); await fh.sync(); },
+          close: async () => { steps.push('close'); await fh.close(); },
+        };
+      },
+      rename: async (from, to) => { steps.push('rename'); await rename(from, to); },
+    });
+    await s.update((d) => { d.items.push({ id: 'one' }); });
+    expect(steps).toEqual(['write', 'sync', 'close', 'rename']);
+    expect(onDisk().items).toEqual([{ id: 'one' }]);
   });
 });

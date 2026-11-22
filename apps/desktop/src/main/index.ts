@@ -11,6 +11,7 @@ import { activeWant, isProffie, serialAllowed } from './serialGate';
 import { lookUpWanted } from './usb';
 import { startLog } from './log';
 import { captionOverlay, readTheme } from './appearance';
+import { holdSingleInstance } from './singleInstance';
 
 // A packaged build ignores every HILTWRIGHT_* development switch: they are removed before anything reads one.
 scrubDevEnv(process.env, app.isPackaged);
@@ -19,10 +20,16 @@ scrubDevEnv(process.env, app.isPackaged);
 // so a test can never touch the owner's own.
 if (process.env.HILTWRIGHT_USER_DATA) app.setPath('userData', process.env.HILTWRIGHT_USER_DATA);
 
-// Every run writes a log in <userData>/logs (main's console, and the page's through console-message below).
-startLog(app.getPath('userData'));
-console.log(`[main] Hiltwright ${app.getVersion()} ${app.isPackaged ? 'packaged' : 'development'} build, Electron ${process.versions.electron}, ${osVersion()} ${release()}`);
-process.on('unhandledRejection', (reason) => console.error('[main] unhandled rejection', reason));
+// One copy per data folder, taken once the folder is known and before anything reads or writes it (issue #10). A
+// second copy brings the first one's window forward and quits without starting a log, a store or a window.
+const firstCopy = holdSingleInstance(app, () => BrowserWindow.getAllWindows()[0]);
+
+if (firstCopy) {
+  // Every run writes a log in <userData>/logs (main's console, and the page's through console-message below).
+  startLog(app.getPath('userData'));
+  console.log(`[main] Hiltwright ${app.getVersion()} ${app.isPackaged ? 'packaged' : 'development'} build, Electron ${process.versions.electron}, ${osVersion()} ${release()}`);
+  process.on('unhandledRejection', (reason) => console.error('[main] unhandled rejection', reason));
+}
 
 // Dev aid: HILTWRIGHT_NO_BOARD=1 keeps this run away from every board: no serial device is granted or selected and
 // nothing connects on its own. For test runs that must never reach a real saber.
@@ -180,6 +187,7 @@ function createWindow(): void {
 app.on('child-process-gone', (_e, d) => console.error(`[main] a helper process ended: ${d.type} ${d.reason} (exit code ${d.exitCode})`));
 
 app.whenReady().then(() => {
+  if (!firstCopy) return;
   registerIpc();
   grantSerial();
   createWindow();
