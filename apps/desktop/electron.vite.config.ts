@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import react from '@vitejs/plugin-react';
+import { productionCsp } from './build/csp';
 
 // The app's version is the package's, fixed at build time (the sandboxed preload cannot ask Electron for it).
 const version = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version;
@@ -20,8 +21,9 @@ export default defineConfig({
   },
   renderer: {
     build: { target: CHROME_TARGET },
-    // Live reload needs ws:/wss: in the page's CSP during development only; a production page must not open them.
-    plugins: [react(), { name: 'csp-without-live-reload', apply: 'build', transformIndexHtml: (html: string) => html.replace(' ws: wss:', '') }],
+    // Live reload needs ws://localhost:* in the page's CSP during development only; a production page opens no
+    // WebSocket, so the build takes it out, and stops if the policy no longer reads as expected (build/csp.ts, issue #30).
+    plugins: [react(), { name: 'csp-without-live-reload', apply: 'build', transformIndexHtml: (html: string) => productionCsp(html) }],
     // @hiltwright/core is linked from the workspace and shipped as TypeScript source; bundle it.
     optimizeDeps: { exclude: ['@hiltwright/core'] },
   },

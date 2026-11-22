@@ -6,14 +6,15 @@ import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { release, version as osVersion } from 'node:os';
 import { registerIpc } from './ipc';
-import { scrubDevEnv } from './devEnv';
+import { devRendererUrl, scrubDevEnv } from './devEnv';
 import { activeWant, isProffie, serialAllowed } from './serialGate';
 import { lookUpWanted } from './usb';
 import { startLog } from './log';
 import { captionOverlay, readTheme } from './appearance';
 import { holdSingleInstance } from './singleInstance';
 
-// A packaged build ignores every HILTWRIGHT_* development switch: they are removed before anything reads one.
+// A packaged build ignores every HILTWRIGHT_* development switch, and ELECTRON_RENDERER_URL: they are removed before
+// anything reads one.
 scrubDevEnv(process.env, app.isPackaged);
 
 // Dev aid: HILTWRIGHT_USER_DATA=<folder> runs the app on a scratch data folder (sabers, styles, fonts, page storage),
@@ -180,8 +181,13 @@ function createWindow(): void {
     }, 6000);
     if (shot) setTimeout(() => { void win.webContents.executeJavaScript(`window.hiltwrightGoto && window.hiltwrightGoto(${JSON.stringify(process.env.HILTWRIGHT_PAGE ?? 'armory')})`, true).then(() => new Promise((r) => setTimeout(r, 800))).then(() => (process.env.HILTWRIGHT_SHOT_JS ? win.webContents.executeJavaScript(process.env.HILTWRIGHT_SHOT_JS, true).then(() => new Promise((r) => setTimeout(r, 600))) : null)).then(() => win.webContents.capturePage()).then((img) => writeFile(shot, img.toPNG())).then(() => console.log('[main] screenshot', shot)); }, process.env.HILTWRIGHT_BUILD_E2E ? 75000 : process.env.HILTWRIGHT_E2E ? 30000 : 6000);
   });
-  if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
-  else void win.loadFile(join(import.meta.dirname, '../renderer/index.html'));
+  // The development page server only in a development run; a packaged build always loads its own page (issue #30).
+  const devUrl = devRendererUrl(process.env, app.isPackaged);
+  if (devUrl) void win.loadURL(devUrl);
+  else {
+    if (process.env.ELECTRON_RENDERER_URL) console.warn('[main] ELECTRON_RENDERER_URL is not a page on this computer; loading the bundled page');
+    void win.loadFile(join(import.meta.dirname, '../renderer/index.html'));
+  }
 }
 
 app.on('child-process-gone', (_e, d) => console.error(`[main] a helper process ended: ${d.type} ${d.reason} (exit code ${d.exitCode})`));
