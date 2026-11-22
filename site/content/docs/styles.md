@@ -67,9 +67,13 @@ Styles with changeable colors show a **Try its colours** panel: a swatch for eac
 
 These colors are only tried on the preview. They go with the style when you put it on a preset, and you can fine-tune them later on [Presets](presets.html).
 
+## The style's code
+
+**Show the code** opens the C++ that goes into your saber's configuration for this style. For Hiltwright's own styles, that includes the shared effects wrapper they build on. **Copy the style** copies it, with a pasted style's header. **Hide the code** closes it again, and so does picking another style.
+
 ## Put it on a preset
 
-At the foot of the panel, choose a **Preset** and a **Blade**, then press the button. A blade marked "(unusual)" is one the style is not made for.
+At the foot of the panel, which stays in place whatever style you pick, choose a **Preset** and a **Blade**, then press the button. A blade marked "(unusual)" is one the style is not made for.
 
 What happens depends on the saber:
 

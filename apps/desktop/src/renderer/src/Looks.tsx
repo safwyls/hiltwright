@@ -3,7 +3,7 @@
 // "queued" when it is in the build model but not yet installed, and "new" otherwise.
 
 import { useEffect, useMemo, useState } from 'react';
-import { STARTER_LOOKS, UNKNOWN_AUTHOR, analyzeStyleCode, creditOf, creditWords, pastedAuthor, registerLookSim, argInfo, hexToColorWord, type BladeRole, type LookDef } from '@hiltwright/core';
+import { LOOK_FX, STARTER_LOOKS, UNKNOWN_AUTHOR, analyzeStyleCode, creditOf, creditWords, pastedAuthor, registerLookSim, argInfo, hexToColorWord, type BladeRole, type LookDef } from '@hiltwright/core';
 import type { Board } from './board';
 import { Icon } from './Icon';
 import { Loader, LoadingSpace } from './Loader';
@@ -29,6 +29,9 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
   const connected = !!info && !!saber && !!model;
   const [pasted, setPasted] = useState<LookDef[]>([]);
   const [selectedId, setSelectedId] = useState<string>(STARTER_LOOKS[0].id);
+  // The style whose code is open in the right pane: picking another style closes it.
+  const [codeOf, setCodeOf] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [q, setQ] = useState('');
   const [onlyFirmware, setOnlyFirmware] = useState(false);
   const [roleFilter, setRoleFilter] = useState<BladeRole | null>(null);
@@ -237,7 +240,7 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
             </div>
             <div className="row" style={{ gap: 8 }} data-tour="looks-state">{canSimulate(sel.id) && !isDot(sel) && <button type="button" className="chip" title="Swing it in the demo room" onClick={() => onDemo(sel.id)}><Icon name="play" />Demo room</button>}{stateChip(selState)}</div>
           </div>
-          <div className="pb col scroll" style={{ gap: 14, overflowX: 'hidden' }} data-tour="looks-detail">
+          <div className="pb col scroll" style={{ gap: 14, overflowX: 'hidden', flex: 1 }} data-tour="looks-detail">
             <BladePreview key={sel.id} lookId={sel.id} args={triedArgs} fallbackColor={tried[1] ?? sel.preview} dot={isDot(sel)} hilt={!isDot(sel)} controls />
             <LookPreviewNote look={sel} />
 
@@ -282,6 +285,24 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
 
             {sel.args.length === 0 && <span className="hint">Nothing in this style can be changed live.</span>}
             {sel.source === 'pasted' && sel.header && <pre className="console" style={{ maxHeight: 110, margin: 0, fontSize: 11, flex: 'none' }}>{sel.header}</pre>}
+            {(() => {
+              // What goes into the config for this style: the shared wrapper and alias for Hiltwright's own, then the
+              // preset-slot expression. A pasted style's header is shown above, and copied with it.
+              const code = [sel.usesFx ? LOOK_FX : null, sel.define ?? null, sel.code].filter(Boolean).join('\n\n');
+              const open = codeOf === sel.id;
+              const copy = () => {
+                void navigator.clipboard.writeText([sel.header, code].filter(Boolean).join('\n\n')).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
+              };
+              return (
+                <div className="col" style={{ gap: 6, flex: 'none' }}>
+                  <div className="row between" style={{ gap: 8 }}>
+                    <button type="button" className="chip" aria-expanded={open} onClick={() => { setCodeOf(open ? null : sel.id); setCopied(false); }}><Icon name="code" />{open ? 'Hide the code' : 'Show the code'}</button>
+                    {open && <button type="button" className="chip" onClick={copy}><Icon name={copied ? 'check' : 'copy'} />{copied ? 'Copied' : 'Copy the style'}</button>}
+                  </div>
+                  {open && <pre className="console" style={{ margin: 0, fontSize: 11, maxHeight: 320, whiteSpace: 'pre' }}>{code}</pre>}
+                </div>
+              );
+            })()}
             {sel.source === 'built' && <button type="button" className="btn sm" onClick={() => onEdit(sel)}><span className="b"><span className="i"><Icon name="gear" />Edit the layers</span></span></button>}
             {(sel.source === 'pasted' || sel.source === 'built') && confirmRemove === sel.id && (() => {
               const users = usersOf(sel.id);
@@ -311,7 +332,7 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
               {plan && words && (
                 <>
                   <button type="button" className="btn pri full" disabled={!words.enabled || applying || (plan.kind === 'live' && board.busy)} onClick={() => void putIn()}><span className="b"><span className="i">{applying && plan.kind === 'live' ? <Loader size="sm" /> : <Icon name={plan.kind === 'live' ? 'presets' : plan.kind === 'already' ? 'check' : 'plus'} />}{applying && plan.kind === 'live' ? 'Writing to the saber…' : words.button}</span></span></button>
-                  <span className="hint">{words.hint} <button type="button" className="holo" onClick={onPresets}>Open Presets</button></span>
+                  <span className="hint" style={{ minHeight: '2lh' }}>{words.hint} <button type="button" className="holo" onClick={onPresets}>Open Presets</button></span>
                   {selState === 'queued' && <button type="button" className="btn warn full" onClick={onBuild}><span className="b"><span className="i"><Icon name="bolt" />Build &amp; flash queued styles</span></span></button>}
                 </>
               )}
