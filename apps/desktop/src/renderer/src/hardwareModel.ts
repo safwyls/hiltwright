@@ -1,7 +1,7 @@
 // Pure model behind the hardware editor: pins per board, blade kinds, the pin table and its conflicts.
 // No React and no DOM here, so it is unit-tested directly (apps/desktop/test/hardware.test.ts).
 
-import { BOARD_PINS, bladeKind, bladePowerPins, chainRanges, sharedPowerPins, wiringProblems, type BladeKind, type BladeRole, type BoardModel, type ModelBlade, type PowerOption } from '@hiltwright/core';
+import { BOARD_PINS, bladeKind, bladePowerPins, chainRanges, chainRoots, sharedPowerPins, wiringProblems, type BladeKind, type BladeRole, type BoardModel, type ModelBlade, type PowerOption } from '@hiltwright/core';
 
 export type Kind = BladeKind;
 
@@ -81,6 +81,19 @@ export function withKind(b: ModelBlade, kind: Kind, board: BoardModel, taken: st
   return { ...b, type: 'simple', leds, pixels: need, order: '', wiring: { kind: 'power', pins } };
 }
 
+/**
+ * The blades after blade `id` becomes a continuation of `after`'s wire. Blades that continued `id` are pointed at the
+ * strip it now joins, so no chain is left continuing a chained blade (issue #17): the editor never makes one.
+ */
+export function withContinuation(blades: ModelBlade[], id: string, after: string): ModelBlade[] {
+  const next = blades.map((b) => (b.id === id ? { ...b, wiring: { kind: 'chain' as const, after }, order: '' } : b));
+  const roots = chainRoots(next);
+  return next.map((b) => {
+    const root = roots.get(b.id);
+    return b.wiring.kind === 'chain' && root && root !== b.wiring.after ? { ...b, wiring: { ...b.wiring, after: root } } : b;
+  });
+}
+
 export interface PinRow { pin: string; label: string; users: string[]; conflict: boolean; shared?: boolean; kind?: 'fet' | 'pwm' }
 export interface PinReport { data: PinRow[]; power: PinRow[]; problems: string[]; shared: string[] }
 
@@ -88,7 +101,9 @@ export interface PinReport { data: PinRow[]; power: PinRow[]; problems: string[]
 export function pinTable(blades: ModelBlade[], board: BoardModel): PinReport {
   const data: PinRow[] = dataPins(board).map((p) => ({ pin: p, label: p, users: [], conflict: false }));
   const power: PinRow[] = powerOptions(board).map((o) => ({ pin: o.pin, label: o.label, users: [], conflict: false, kind: o.kind }));
-  const rootOf = (b: ModelBlade): ModelBlade | null => { let cur = b; const seen = new Set<string>(); while (cur.wiring.kind === 'chain') { if (seen.has(cur.id)) return null; seen.add(cur.id); const p = blades.find((x) => x.id === (cur.wiring as { after: string }).after); if (!p) return null; cur = p; } return cur; };
+  // Each chained blade's physical strip, as the build lays it out (issue #17).
+  const roots = chainRoots(blades);
+  const rootOf = (b: ModelBlade): ModelBlade | null => blades.find((x) => x.id === roots.get(b.id)) ?? null;
   for (const b of blades) {
     if (b.wiring.kind === 'own') {
       data.find((r) => r.pin === (b.wiring as { dataPin: string }).dataPin)?.users.push(b.id);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bladePowerPins, compareWiring, differenceText, generateConfig, validateModel, wiringFromConfig, wiringProblems, type ConfigWiring, type ModelBlade, type SaberConfigModel } from '../src';
+import { bladePowerPins, chainRanges, chainRoots, compareWiring, stripLength, differenceText, generateConfig, validateModel, wiringFromConfig, wiringProblems, type ConfigWiring, type ModelBlade, type SaberConfigModel } from '../src';
 
 // The shape of an installer's config as found on a saber's card (Shadowfoil's SF_nihilus.h): their own prop and style
 // macros, which this reader need not understand to read the wiring.
@@ -154,6 +154,36 @@ describe("an installer's config, imported and built again", () => {
     // Without the limit the blade would run at full brightness: the comparison says so.
     const bright = { ...model, blades: model.blades.map((b, i) => (i === 0 ? { ...b, dim: undefined } : b)) };
     expect(compareWiring(bright, w).map(differenceText)).toEqual(['Blade 1 brightness limit: none here, 20% in the config']);
+  });
+
+  it('#17 a strip in three parts comes back as the same three ranges on one strip', () => {
+    const text = withBlades(['SubBlade(0, 9, WS281XBladePtr<60, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3>>())', 'SubBlade(10, 29, NULL)', 'SubBladeReverse(30, 59, NULL)']);
+    const w = wiringFromConfig(text)!;
+    expect(w.blades.map((b) => b.wiring)).toEqual([{ kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2', 'bladePowerPin3'] }, { kind: 'chain', after: 'cfg1' }, { kind: 'chain', after: 'cfg1', reverse: true }]);
+    const { model, generated, back } = roundTrip(text);
+    expect(generated).toContain('SubBlade(0, 9, WS281XBladePtr<60, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3> >()),\n    SubBlade(10, 29, NULL),\n    SubBladeReverse(30, 59, NULL)');
+    expect(compareWiring(model, back)).toEqual([]);
+  });
+
+  it('#17 a blade continuing a blade that continues another is laid out after both, on a strip long enough for all three', () => {
+    const px = (id: string, pixels: number, wiring: ModelBlade['wiring']): ModelBlade => ({ id, role: id === 'a' ? 'main' : 'accent', type: 'pixel', pixels, order: id === 'a' ? 'GRB' : '', extra: [], leds: [], parallel: 1, wiring });
+    const blades = [px('a', 10, { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2'] }), px('b', 20, { kind: 'chain', after: 'a' }), px('c', 30, { kind: 'chain', after: 'b' })];
+    expect(chainRoots(blades)).toEqual(new Map([['b', 'a'], ['c', 'a']]));
+    expect(stripLength(blades, 'a')).toBe(60);
+    expect([...chainRanges(blades).values()]).toEqual([{ root: 'a', first: 0, last: 9 }, { root: 'a', first: 10, last: 29 }, { root: 'a', first: 30, last: 59 }]);
+    const model: SaberConfigModel = { name: 'hiltwright_chain', board: 'V3', boardFrom: 'owner', buttons: 2, prop: 'fett263', blades, presets: [{ font: 'A', track: '', name: 'One' }] };
+    expect(validateModel(model)).toEqual([]);
+    const { text } = generateConfig(model);
+    expect(text).toContain('SubBlade(0, 9, WS281XBladePtr<60, bladePin, Color8::GRB, PowerPINS<bladePowerPin2> >()),\n    SubBlade(10, 29, NULL),\n    SubBlade(30, 59, NULL)');
+    expect(text).toContain('maxLedsPerStrip = 144;');
+    // Read back as the installer's config would be: every part on the one strip, in the same places.
+    const back = wiringFromConfig(text)!;
+    expect(back.blades.map((b) => b.pixels)).toEqual([10, 20, 30]);
+    expect(compareWiring(model, back)).toEqual([]);
+    // A loop has no strip at the end of it: the wiring rules refuse it rather than lay it out anywhere.
+    const loop = [blades[0], px('b', 20, { kind: 'chain', after: 'c' }), px('c', 30, { kind: 'chain', after: 'b' })];
+    expect(chainRoots(loop).size).toBe(0);
+    expect(wiringProblems(loop, 'V3').map((p) => p.message)).toContain('Blade 2 continues a blade that is not a pixel strip on its own data line.');
   });
 
   it('#16 a DimBlade whose limit is not a plain percentage is not readable, rather than imported at full brightness', () => {

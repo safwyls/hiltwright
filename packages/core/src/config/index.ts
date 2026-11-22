@@ -1,7 +1,7 @@
 export * from './document';
 export { parseConfig, parseBladeExpr, splitSegments, getDefine, hasDefine, boardInclude, presetArrays, bladeTables } from './parse';
 export { emitConfig, emitBladeExpr, emitPresetArray, emitBladeTable, emitStyleRef } from './emit';
-export { rowToBlades, rowToConfiguration, configurationToRow, bladesToExprs, chainRanges, stripLength, sharedPowerPins, bladePowerPins } from './blades';
+export { rowToBlades, rowToConfiguration, configurationToRow, bladesToExprs, chainRanges, chainRoots, stripLength, sharedPowerPins, bladePowerPins } from './blades';
 export { mask, splitArgs, splitTopLevel, parseString, quote } from './cpp';
 export { bladeRowsFor, BLADE_ID_MIN_SEPARATION, type BladeVariant } from './generate';
 export { wiringFingerprint, wiringConfirmed, withWiringConfirmation } from './wiring';

@@ -72,7 +72,7 @@ For a pixel strip you also set:
 - **Colour order**, one of GRB, RGB, GRBW, RGBW, BGR or BRG. Check your strip's datasheet if colors come out wrong.
 - **Strips on this wire.** Strips soldered to the same data wire show the same thing and cannot be controlled separately, so they count as one blade.
 
-**Wiring.** A pixel strip is either "Own data line" (its own wire and power pins) or "Continues another blade's wire" (the same strip, after another blade, sharing its power). A chained blade can also "Run the other way (reversed)". Single LEDs, star LEDs and motors only need power pins.
+**Wiring.** A pixel strip is either "Own data line" (its own wire and power pins) or "Continues another blade's wire" (the same strip, after another blade, sharing its power). A chained blade can also "Run the other way (reversed)". Blades on one strip take its pixels in blade order: the first blade, then each blade that continues it, so the strip is as long as all of them together. If you make a strip that another blade continues into a continuation itself, that other blade moves onto the same strip after it. Single LEDs, star LEDs and motors only need power pins.
 
 > **Note:** One blade must be the main blade. If none is, the pin table says "One blade must be the main blade."
 

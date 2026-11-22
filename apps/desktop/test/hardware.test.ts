@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateConfig, validateModel, type ModelBlade, type SaberConfigModel } from '@hiltwright/core';
-import { bladeSummary, freeDataPins, kindOf, newBlade, pinTable, withBladeCount, withKind } from '../src/renderer/src/hardwareModel';
+import { bladeSummary, freeDataPins, kindOf, newBlade, pinTable, withBladeCount, withContinuation, withKind } from '../src/renderer/src/hardwareModel';
 
 const main: ModelBlade = { id: 'b1', role: 'main', type: 'pixel', pixels: 132, order: 'GRB', extra: [], leds: [], parallel: 1, wiring: { kind: 'own', dataPin: 'bladePin', powerPins: ['bladePowerPin2', 'bladePowerPin3'] } };
 const model = (blades: ModelBlade[], board: 'V2' | 'V3' = 'V2'): SaberConfigModel => ({ name: 'hw_editor', board, boardFrom: 'owner', buttons: 2, prop: 'sa22c', blades, presets: [{ font: 'A', track: '', name: 'One' }] });
@@ -108,6 +108,14 @@ describe('the page and the build agree', () => {
     expect(t.problems).toEqual([]);
     expect(t.power.filter((r) => r.users.includes('b2')).map((r) => r.pin)).toEqual(['bladePowerPin4', 'bladePowerPin6']);
     expect(bladeSummary([main, sparse], sparse, 'V3')).toBe('Single LED · LED 4 + LED 6');
+  });
+  it('#17 making a strip with a blade chained to it a continuation moves that blade onto the same strip, never a chain of a chain', () => {
+    const b2: ModelBlade = { ...main, id: 'b2', role: 'side', pixels: 20, wiring: { kind: 'own', dataPin: 'blade2Pin', powerPins: ['bladePowerPin4'] } };
+    const b3: ModelBlade = { ...main, id: 'b3', role: 'side', pixels: 30, order: '', wiring: { kind: 'chain', after: 'b2', reverse: true } };
+    const next = withContinuation([{ ...main, pixels: 10 }, b2, b3], 'b2', 'b1');
+    expect(next.map((b) => b.wiring)).toEqual([main.wiring, { kind: 'chain', after: 'b1' }, { kind: 'chain', after: 'b1', reverse: true }]);
+    expect(pinTable(next, 'V3').problems).toEqual([]);
+    expect(bladeSummary(next, next[2], 'V3')).toBe("30 px · continues Blade 1's wire · pixels 30–59");
   });
   it("#16 a blade's brightness limit shows in its summary", () => {
     expect(bladeSummary([{ ...main, dim: 20 }], { ...main, dim: 20 }, 'V2')).toBe('132 px · bladePin · LED 2 + LED 3 · 20% brightness');

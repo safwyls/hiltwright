@@ -66,17 +66,39 @@ export function rowToBlades(row: BladeConfigRow, idPrefix = 'b'): BladeSpec[] {
   return all;
 }
 
-/** Pixel range of each chained blade on its strip, in blade order. */
+/**
+ * The strip each chained blade is physically on: the pixel blade with its own data line that its chain of
+ * `after` links ends at. A blade can continue a blade that itself continues another (issue #17), so every link is
+ * followed, once, for every chained blade. Missing: the chain is broken (a missing blade, a loop, or a root that is not
+ * a pixel strip on its own line), which wiringProblems reports.
+ */
+export function chainRoots(blades: Pick<BladeSpec, 'id' | 'type' | 'wiring'>[]): Map<string, string> {
+  const byId = new Map(blades.map((b) => [b.id, b]));
+  const roots = new Map<string, string>();
+  for (const b of blades) {
+    if (b.wiring.kind !== 'chain') continue;
+    const seen = new Set<string>([b.id]);
+    let cur = byId.get(b.wiring.after);
+    while (cur && cur.wiring.kind === 'chain' && !seen.has(cur.id)) { seen.add(cur.id); cur = byId.get(cur.wiring.after); }
+    if (cur && cur.wiring.kind === 'own' && cur.type === 'pixel') roots.set(b.id, cur.id);
+  }
+  return roots;
+}
+
+/** Pixel range of each blade on a chained strip, in blade order: the root first, then each blade on it in turn. */
 export function chainRanges(blades: BladeSpec[]): Map<string, { root: string; first: number; last: number }> {
   const ranges = new Map<string, { root: string; first: number; last: number }>();
   const offsets = new Map<string, number>();
+  // Ranges are laid out on the physical strip, so a chain of a chain follows on after the rest (issue #17).
+  const roots = chainRoots(blades);
+  const onStrip = new Set(roots.values());
   for (const b of blades) {
     if (b.type !== 'pixel') continue;
     if (b.wiring.kind === 'own') {
-      const chained = blades.some((x) => x.wiring.kind === 'chain' && x.wiring.after === b.id);
-      if (chained) { ranges.set(b.id, { root: b.id, first: 0, last: b.pixels - 1 }); offsets.set(b.id, b.pixels); }
+      if (onStrip.has(b.id)) { ranges.set(b.id, { root: b.id, first: 0, last: b.pixels - 1 }); offsets.set(b.id, b.pixels); }
     } else if (b.wiring.kind === 'chain') {
-      const root = b.wiring.after;
+      const root = roots.get(b.id);
+      if (!root) continue;
       const start = offsets.get(root) ?? 0;
       ranges.set(b.id, { root, first: start, last: start + b.pixels - 1 });
       offsets.set(root, start + b.pixels);
@@ -85,9 +107,10 @@ export function chainRanges(blades: BladeSpec[]): Map<string, { root: string; fi
   return ranges;
 }
 
-/** Total pixels on a strip owned by `rootId`, counting the root and every blade chained to it. */
+/** Total pixels on a strip owned by `rootId`, counting the root and every blade on it, however it is chained (issue #17). */
 export function stripLength(blades: BladeSpec[], rootId: string): number {
-  return blades.filter((b) => b.id === rootId || (b.wiring.kind === 'chain' && b.wiring.after === rootId)).reduce((a, b) => a + b.pixels, 0);
+  const roots = chainRoots(blades);
+  return blades.filter((b) => b.id === rootId || roots.get(b.id) === rootId).reduce((a, b) => a + b.pixels, 0);
 }
 
 /** Turn BladeSpecs into BladeConfig expressions. The first blade on a chained strip carries the WS281XBladePtr, later ones get NULL. */
