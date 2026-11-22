@@ -3,7 +3,7 @@
 import { readFile, readdir, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app } from 'electron';
-import { copyPackFontToCard } from './packCopy';
+import { MAX_UNPACKED_BYTES, copyPackFontToCard } from './packCopy';
 import type { CopyOptions, FontEntry } from './sd';
 import { decodeMesh, readItem, readManifest, type PackManifest, type PackedMesh } from './hwpack';
 
@@ -70,6 +70,9 @@ export async function packFont(id: string): Promise<{ name: string; files: Recor
   const { file, manifest, itemsStart } = await find(id);
   if (!manifest.allow.demoPlayback) throw new Error('The creator has not allowed this font to be played here');
   const files: Record<string, ArrayBuffer> = {};
+  // Every sound is held in memory to play, so the declared sizes are held to what a font can be first (#21).
+  const declared = manifest.items.reduce((a, i) => a + (i.kind === 'wav' ? Number(i.bytes) : 0), 0);
+  if (!(declared <= MAX_UNPACKED_BYTES)) throw new Error('That pack is bigger than a sound font should be.');
   let bytes = 0;
   for (const item of manifest.items) {
     if (item.kind !== 'wav') continue;

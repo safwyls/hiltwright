@@ -55,7 +55,9 @@ export async function unpackFont(file: Buffer, manifest: PackManifest, itemsStar
   for (const it of items) {
     const to = resolve(folder, ...it.name.split('/'));
     if (!to.startsWith(base)) throw new Error(`The pack has a file name that is not safe to copy (${JSON.stringify(it.name)}). Nothing was copied.`);
-    const data = readItem(file, manifest, itemsStart, it);
+    // readItem inflates no further than the declared size (#21); a pack that is damaged says so in plain words.
+    let data: Buffer;
+    try { data = readItem(file, manifest, itemsStart, it); } catch { throw new Error('The pack is damaged. Nothing was copied.'); }
     actual += data.length;
     if (data.length !== it.bytes || actual > MAX_UNPACKED_BYTES) throw new Error('The pack is damaged. Nothing was copied.');
     await mkdir(dirname(to), { recursive: true });
