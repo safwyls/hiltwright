@@ -1,6 +1,13 @@
-# Hiltwright 0.2.0-beta.13
+# Hiltwright 0.2.0-beta.14
 
 ## New in this beta
+
+Two fixes to the Card step that came in 0.2.0-beta.13:
+
+- **Install › Card could say a card was "ready for the flash" when it was not.** When the saber did not answer, Hiltwright took that for an empty card that needed nothing. Now the card is ready only when it was read, no chosen font is missing, and (with the Fett263 controls) its voice pack is known. Build & Flash's Card line says "not ready" otherwise.
+- **The six free fonts were never copied to the card.** The Card step looked only in your font library, so it called them "not in your font library". It now copies them from the fonts that come with Hiltwright, and Install › Fonts shows them as "comes with Hiltwright".
+
+## New in 0.2.0-beta.13, for anyone who skipped it
 
 The sidebar is laid out around what you are doing with a saber.
 
@@ -17,7 +24,7 @@ The sidebar is laid out around what you are doing with a saber.
 - **A custom prop file.** Besides the four props that come with ProffieOS, Wiring can build with a prop file of your own.
 - **Font check.** `hum1.wav` (numbered without leading zeros) now counts as a hum. Two names for one effect is now a warning, not an error.
 - **Loading indicators** in every theme: power cells for waits and progress, and a turning kyber crystal.
-- **The macOS test build** is attached: `Hiltwright-0.2.0-beta.13-mac-arm64.dmg` for Macs with Apple silicon, and `Hiltwright-0.2.0-beta.13-mac-x64.dmg` for Intel Macs. It is still an unsupported test build. Not yet confirmed on a Mac: installing firmware, the SD card, and how the window looks. The Intel build has not been run at all. If you try it, tell us what happens.
+- **The macOS test build** is attached: `Hiltwright-0.2.0-beta.14-mac-arm64.dmg` for Macs with Apple silicon, and `Hiltwright-0.2.0-beta.14-mac-x64.dmg` for Intel Macs. It is still an unsupported test build. Not yet confirmed on a Mac: installing firmware, the SD card, and how the window looks. The Intel build has not been run at all. If you try it, tell us what happens.
 
 New in 0.2.0-beta.12, for anyone who skipped it: a font export carries the makers' logos and links.
 
@@ -70,11 +77,11 @@ If you are coming from 0.2.0-beta.1 or 0.2.0-beta.2, download this installer and
 
 The installer is unsigned, so Windows will warn you before it runs. If Smart App Control is on, Windows blocks both the installer and the app, and it has to stay off while you use this beta: check that first (install guide, section 3). The install guide covers each Windows barrier to unsigned software.
 
-Install guide: https://github.com/safwyls/hiltwright/blob/v0.2.0-beta.13/docs/install-guide.md
+Install guide: https://github.com/safwyls/hiltwright/blob/v0.2.0-beta.14/docs/install-guide.md
 
 ## License and source
 
-Hiltwright is licensed under GPL-3.0-or-later. The source for this build is at https://github.com/safwyls/hiltwright/tree/v0.2.0-beta.13
+Hiltwright is licensed under GPL-3.0-or-later. The source for this build is at https://github.com/safwyls/hiltwright/tree/v0.2.0-beta.14
 
 ## Report a problem
 
