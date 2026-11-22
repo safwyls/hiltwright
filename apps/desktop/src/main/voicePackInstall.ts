@@ -52,7 +52,8 @@ export async function inspectVoicePack(file: string, tempRoot = tmpdir()): Promi
   let bytes = 0;
   for (const e of mine) { checkEntryName(e.name.slice(prefix.length)); bytes += e.size; }
   if (bytes > MAX_VOICE_PACK_BYTES) throw new Error('That zip is far bigger than a voice pack should be. Nothing was copied.');
-  if (!hasMenuSounds(mine.map((e) => e.name.slice(prefix.length).split('/')[0]))) throw new Error('That voice pack has no menu number sounds (mnum), so the saber could not speak numbers from it. Nothing was copied.');
+  // Whole paths, not first folders: an mnum folder with no sounds in it is no menu sounds (issue #27).
+  if (!hasMenuSounds(mine.map((e) => e.name.slice(prefix.length)))) throw new Error('That voice pack has no menu number sounds (mnum), so the saber could not speak numbers from it. Nothing was copied.');
   // voicepack.ini and a licence or readme are small: unpack just those to read them.
   const ini = mine.find((e) => e.name.slice(prefix.length).toLowerCase() === 'voicepack.ini');
   const notes = entries.filter((e) => !outsidePack(e.name) && /(^|\/)[^/]*(licen[cs]e|readme)[^/]*\.txt$/i.test(e.name) && e.size < 64 * 1024)

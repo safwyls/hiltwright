@@ -9,10 +9,19 @@ describe('voice pack', () => {
     expect(parseVoicePackIni('')).toEqual({ ini: true, version: 1 });
   });
 
-  it('recognises the menu number sounds as files or as a folder', () => {
+  it('recognises the menu number sounds as loose files or as sounds in the mnum folder', () => {
     expect(hasMenuSounds(['hum01.wav', 'mnum1.wav', 'mnum2.wav'])).toBe(true);
-    expect(hasMenuSounds(['mnum'])).toBe(true);
+    expect(hasMenuSounds(['mnum/001.wav'])).toBe(true);
+    expect(hasMenuSounds(['MNUM/mnum1.WAV'])).toBe(true);
     expect(hasMenuSounds(['hum.wav', 'minimum.wav'])).toBe(false);
+  });
+
+  // Issue #27: ProffieOS reads voicepack.ini only once it finds menu WAVs, so a folder with no sounds in it is none.
+  it('does not count an mnum folder with no sounds in it', () => {
+    expect(hasMenuSounds(['mnum'])).toBe(false);
+    expect(hasMenuSounds(['mnum/', 'mnum/readme.txt', 'voicepack.ini'])).toBe(false);
+    expect(hasMenuSounds(['mnum/._001.wav'])).toBe(false);
+    expect(hasMenuSounds(['mnum/sub/001.wav', 'mnumber.wav', 'mnum1.txt'])).toBe(false);
   });
 
   it('finds the voice pack inside a package however it is wrapped', () => {

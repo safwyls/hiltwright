@@ -531,7 +531,12 @@ export async function readVoicePack(root: string): Promise<VoicePackStatus> {
   try { text = await readFile(join(common, 'voicepack.ini'), 'utf8'); } catch { /* no file */ }
   let entries: { name: string; isFolder: boolean }[] = [];
   try { entries = (await readdir(common, { withFileTypes: true })).map((d) => ({ name: d.name, isFolder: d.isDirectory() })); } catch { /* no common folder */ }
-  return { ...parseVoicePackIni(text), menuSounds: hasMenuSounds(entries.map((e) => e.name)), mixed: mixedSounds(entries) };
+  // An mnum folder counts only for the sounds in it: an empty one leaves the saber saying "voice pack not found" (issue #27).
+  const paths = entries.filter((e) => !e.isFolder).map((e) => e.name);
+  for (const e of entries.filter((x) => x.isFolder && x.name.toLowerCase() === 'mnum')) {
+    try { for (const d of await readdir(join(common, e.name), { withFileTypes: true })) if (d.isFile()) paths.push(`${e.name}/${d.name}`); } catch { /* unreadable */ }
+  }
+  return { ...parseVoicePackIni(text), menuSounds: hasMenuSounds(paths), mixed: mixedSounds(entries) };
 }
 
 export async function listTracks(root: string): Promise<{ name: string; size: number }[]> {
