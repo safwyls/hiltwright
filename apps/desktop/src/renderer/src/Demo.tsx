@@ -504,7 +504,8 @@ export function Demo({ initialLook, initialFont, board, inBrowser }: { initialLo
 
       {/* The saber panel: what is on the blade, what it sounds like, what the saber around it does; the deck of things to do to it stays at the foot. */}
       <section className="panel" style={{ position: 'absolute', left: 20, top: 20, width: 340, maxHeight: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column', background: 'color-mix(in srgb,var(--bg1) 92%,transparent)' }} aria-label="Saber" data-tour="demo-panel">
-        <div className="seg" role="tablist" aria-label="Saber panel" style={{ margin: 10, marginBottom: 0, height: 32 }}>
+        {/* The tabs and the deck keep their height; only the tab's own content between them scrolls in a short window. */}
+        <div className="seg" role="tablist" aria-label="Saber panel" style={{ margin: 10, marginBottom: 0, height: 32, flex: 'none' }}>
           {([['blade', 'Blade'], ['sound', 'Sound'], ['saber', 'Saber'], ['help', 'Help']] as const).map(([id, label]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} style={{ flex: 1, justifyContent: 'center', height: 30, fontSize: 12.5 }} data-tour={`demo-tab-${id}`} onClick={() => setTab(id)}>{label}</button>
           ))}
@@ -646,7 +647,7 @@ export function Demo({ initialLook, initialFont, board, inBrowser }: { initialLo
         </div>
 
         {/* The deck: everything you can do to the saber, with its key. */}
-        <div className="col" style={{ gap: 8, padding: 12, borderTop: '1px solid var(--line)', background: 'color-mix(in srgb,var(--bg0) 60%,transparent)' }} data-tour="demo-deck">
+        <div className="col" style={{ gap: 8, padding: 12, borderTop: '1px solid var(--line)', background: 'color-mix(in srgb,var(--bg0) 60%,transparent)', flex: 'none' }} data-tour="demo-deck">
           <div className="row" style={{ gap: 8 }}>
             <button type="button" className="btn sm pri grow" style={{ justifyContent: 'center' }} title={motion.preon ? 'Preon is playing; pressing again cancels it, as on the saber' : undefined} onClick={() => { room?.setOn(!room.isOn); setHold(null); }}><span className="b"><span className="i">{motion.on ? 'Retract' : motion.preon ? 'Cancel preon' : 'Ignite'}<kbd className="kbd">Space</kbd></span></span></button>
             <button type="button" className="chip" aria-pressed={tab === 'help'} title="Every mouse and keyboard control" onClick={toggleHelp}><kbd className="kbd" style={{ margin: '0 6px 0 0' }}>?</kbd>Controls</button>

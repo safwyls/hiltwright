@@ -14,6 +14,9 @@ on:
       - 'packages/core/src/**'
       - 'apps/desktop/src/renderer/**'
       - 'apps/desktop/src/shared/**'
+      # The demo room's built-in hilt, unpacked from the app's pack when the site is built.
+      - 'apps/desktop/resources/builtin/**'
+      - 'apps/desktop/src/main/hwpack.ts'
       - 'package-lock.json'
       # The site shows the app's theme paintings and icon (site/build.mjs copies them in).
       - 'apps/desktop/src/renderer/src/assets/backdrops/**'

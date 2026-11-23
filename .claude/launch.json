@@ -20,6 +20,12 @@
       "port": 4173
     },
     {
+      "name": "site-dist",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4175", "--bind", "127.0.0.1", "--directory", "site/dist"],
+      "port": 4175
+    },
+    {
       "name": "demo",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "demo", "run", "dev", "--", "--port", "5173", "--strictPort"],

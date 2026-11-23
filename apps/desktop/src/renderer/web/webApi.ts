@@ -7,7 +7,7 @@
 // Imported first by the web entry: the pages read window.hiltwright as they load.
 
 import type { LookDef } from '@hiltwright/core';
-import type { ContributorInfo, HiltAddMode, HiltAddResult, HiltInfo, HiltInput, HiltModelData, HiltwrightApi, PackInfo } from '../../shared/api';
+import type { ContributorInfo, HiltAddMode, HiltAddResult, HiltInfo, HiltInput, HiltModelData, HiltwrightApi, PackInfo, PackMesh } from '../../shared/api';
 import { themeById } from '../../shared/themes';
 import { DEFAULT_FIT, type HiltFit, type SceneSettings } from '../../shared/demoSettings';
 import { listOpenFonts, openFontFolder, readOpenFont } from './webFonts';
@@ -41,20 +41,47 @@ const contributors = {
   list: async (): Promise<ContributorInfo[]> => [],
 };
 
-// The demo room's fonts: folders the visitor opens, read in the page (webFonts.ts). No packs: the app's own fonts and
-// hilt are locked to the app, so the room stands its drawn hilt in.
+// The demo room's fonts: folders the visitor opens, read in the page (webFonts.ts). The app's font packs stay in the
+// app; its built-in hilt, Punk Saber, is published with the website (site/workshop.mjs writes it as plain files).
 const fontLibrary = {
   list: async () => listOpenFonts(),
   addFolder: async () => openFontFolder(),
   readFont: (folder: string) => readOpenFont(folder),
 };
-const packs = { list: async (): Promise<PackInfo[]> => [] };
+const BUILT_IN_HILTS = ['punk-saber'];
+type PublishedHilt = Omit<PackInfo, 'file' | 'sounds'> & { positions: number; normals: number; indices: number; groups: PackMesh['groups'] };
+const published = new Map<string, Promise<PublishedHilt | null>>();
+const hiltInfo = (id: string) => {
+  if (!published.has(id)) published.set(id, fetch(`hilts/${id}.json`).then((r) => (r.ok ? r.json() as Promise<PublishedHilt> : null)).catch(() => null));
+  return published.get(id)!;
+};
+const packs = {
+  // A hilt that did not come with this copy of the website is left out, and the room draws its stand-in.
+  list: async (): Promise<PackInfo[]> => (await Promise.all(BUILT_IN_HILTS.map(hiltInfo)))
+    .filter((h): h is PublishedHilt => !!h)
+    .map(({ positions: _p, normals: _n, indices: _i, groups: _g, ...info }) => ({ ...info, file: `hilts/${info.id}.bin`, sounds: 0 })),
+  mesh: async (id: string): Promise<PackMesh> => {
+    const info = await hiltInfo(id);
+    if (!info) throw new Error(`The hilt ${id} is not on this website.`);
+    const r = await fetch(`hilts/${id}.bin`);
+    if (!r.ok) throw new Error(`The hilt ${id} could not be fetched (${r.status}).`);
+    const buf = await r.arrayBuffer();
+    if (buf.byteLength !== (info.positions + info.normals + info.indices) * 4) throw new Error(`The hilt ${id} came back damaged.`);
+    return {
+      positions: new Float32Array(buf, 0, info.positions),
+      normals: new Float32Array(buf, info.positions * 4, info.normals),
+      indices: new Uint32Array(buf, (info.positions + info.normals) * 4, info.indices),
+      groups: info.groups, fit: info.fit, name: info.name, creator: info.creator,
+    };
+  },
+};
 const sd = { onReadFontProgress: () => () => undefined };
 
 // Hilt models the visitor loads stay in memory for the visit; the scene settings are remembered in this browser.
 const ROOM_KEY = 'hiltwright.web.room';
 const hiltModels = new Map<string, { info: HiltInfo; model: HiltModelData }>();
 let hiltSeq = 0;
+const packFitsHere = new Map<string, HiltFit>();
 const hilts = {
   list: async () => [...hiltModels.values()].map((h) => ({ ...h.info })),
   model: async (id: string) => { const h = hiltModels.get(id); if (!h) throw new Error('That hilt is no longer here.'); return h.model; },
@@ -72,7 +99,10 @@ const hilts = {
   setFit: async (id: string, fit: HiltFit) => { const h = hiltModels.get(id); if (h) h.info = { ...h.info, fit }; },
   setCreator: async (id: string, creator: string) => { const h = hiltModels.get(id); if (h) h.info = { ...h.info, ...(creator ? { creator } : {}) }; },
   remove: async (id: string) => { hiltModels.delete(id); },
-  packFits: async () => ({}),
+  // A nudge to Punk Saber's fit lasts the visit too.
+  packFits: async () => Object.fromEntries(packFitsHere),
+  setPackFit: async (packId: string, fit: HiltFit) => { packFitsHere.set(packId, fit); },
+  resetPackFit: async (packId: string) => { packFitsHere.delete(packId); },
   // Nothing from an earlier version to bring over: this origin is marked as already brought over.
   room: async () => ({ ...read(() => localStorage, ROOM_KEY, { scene: null as SceneSettings | null, chosen: null as string | null }), adopted: [location.origin] }),
   setRoom: async (patch: { scene?: SceneSettings; chosen?: string | null }) => {

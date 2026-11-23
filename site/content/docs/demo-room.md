@@ -87,7 +87,7 @@ The Demo room also runs in the [workshop](../workshop/index.html#demo) on this w
 
 - **Fonts are folders you open.** On the **Sound** tab, choose **Open a font folder** and pick one font's folder, or a folder of fonts. The sounds are read in the browser and sent nowhere, and they're forgotten when the tab closes.
 - **No saber.** There is no **From** section, and the prop file starts as Fett263's.
-- **The drawn hilt.** The app's built-in hilt and free fonts stay in the app. A hilt model you load stays for the visit only, and there is no **Export hilts** or **Import hilts**.
+- **Hilts.** The room opens with the app's built-in hilt, Punk Saber. The free fonts stay in the app. A hilt model you load, and any change to a hilt's fit, stays for the visit only, and there is no **Export hilts** or **Import hilts**.
 - **Your styles** are the ones built or pasted in the workshop during this visit. Save them for the app on the Styles page.
 
 The scene settings are remembered in the browser.
