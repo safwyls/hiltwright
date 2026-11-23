@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { activeWant, serialAllowed, setWantedInterfaces, wantSerial } from '../src/main/serialGate';
-import { boardsFrom, interfacesOf } from '../src/main/usb';
+import { boardsFrom, interfacesOf, lookUpWanted } from '../src/main/usb';
 
 const byIds = { vendorId: 0x1209, productId: 0x6668 };
 const byIdStrings = { vendorId: '4617', productId: '26216' };
@@ -81,6 +81,30 @@ describe('reaching one board by its USB serial', () => {
     expect(interfacesOf(list, '209133815232')).toEqual(['USB\\VID_1209&PID_6668&MI_00\\7&380A8E11&0&0000']);
     expect(interfacesOf(list, '207a349a5430')).toEqual(['USB\\VID_1209&PID_6668&MI_00\\7&2430EE5C&0&0000']);
     expect(interfacesOf(list, 'NOPE')).toEqual([]);
+  });
+
+  it('a board wanted while a lookup for another board runs gets its own lookup, not the other one\'s result', async () => {
+    const list = [
+      { id: 'USB\\VID_1209&PID_6668&MI_00\\A', parent: 'USB\\VID_1209&PID_6668\\209133815232' },
+      { id: 'USB\\VID_1209&PID_6668&MI_00\\B', parent: 'USB\\VID_1209&PID_6668\\206A33835232' },
+    ];
+    let release!: () => void;
+    const slow = new Promise<void>((r) => { release = r; });
+    let calls = 0;
+    const listing = async () => { calls++; if (calls === 1) await slow; return list; };
+    wantSerial('209133815232');
+    const first = lookUpWanted(listing);
+    wantSerial('206A33835232');
+    const second = lookUpWanted(listing);
+    release();
+    await first; await second;
+    expect(calls).toBe(2);
+    expect([...activeWant()!.ids]).toEqual(['USB\\VID_1209&PID_6668&MI_00\\B']);
+    // The same board wanted twice shares one lookup.
+    const third = lookUpWanted(listing); const fourth = lookUpWanted(listing);
+    expect(third).toBe(fourth);
+    await third;
+    wantSerial(null);
   });
 
   it('each board plugged in is listed once, by serial, with the COM port its serial interface is named after', () => {

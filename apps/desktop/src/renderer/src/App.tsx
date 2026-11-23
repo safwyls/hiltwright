@@ -433,7 +433,7 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
     ws.choose(s.id);
     setSwitchNote(null);
     if (plugged?.id === s.id || portOf(s) === undefined || !s.identity.usbSerial) return;
-    void board.switchTo(s.identity.usbSerial).then((why) => setSwitchNote(why ? `${s.name} was not connected: ${why}` : null));
+    void board.switchTo(s.identity.usbSerial, s.name).then((why) => setSwitchNote(why ? `${s.name} was not connected: ${why}` : null));
   };
   const info = ws.live ? board.info : null;
   const playing = info?.currentPreset != null ? info.presets[info.currentPreset] ?? null : null;

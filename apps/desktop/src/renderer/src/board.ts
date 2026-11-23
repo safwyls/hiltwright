@@ -492,20 +492,39 @@ export function useBoard() {
    * board is opened (main grants its port alone, as after an install). Refused while a job or a change is running, so a
    * switch never cuts an install, a copy or a write short. Returns why it did not switch, or null.
    */
-  const switchTo = useCallback(async (serial: string): Promise<string | null> => {
+  const switching = useRef(false);
+  const switchTo = useCallback(async (serial: string, name = 'that saber'): Promise<string | null> => {
     if (holdConnect()) return 'Not while the tour is running.';
     if (busyRef.current || workNow().length) return 'Wait for the current job to finish, then pick the saber again.';
     if (client.current && saberRef.current?.identity.usbSerial === serial) return null;
-    console.log(`[board] switching to the saber with serial ${serial}`);
-    await disconnect();
-    if (!(await reachNext(serial, true))) {
-      await reachNext(null);
-      void refreshPlugged();
-      return 'That saber was not found on USB. Check it is plugged in, then pick it again.';
+    // One switch at a time: picks made while one runs (a second click while Windows is slow to answer) are ignored.
+    // Overlapping switches each asked main again, and a lookup that came back empty let any board be reached.
+    if (switching.current) return null;
+    switching.current = true;
+    try {
+      // By name: the serial is masked in the log to its last four characters, which two boards can share.
+      console.log(`[board] switching to ${name}`);
+      await disconnect();
+      if (!(await reachNext(serial, true))) {
+        await reachNext(null);
+        void refreshPlugged();
+        return 'That saber was not found on USB. Check it is plugged in, then pick it again.';
+      }
+      // Main now grants only that board's port. If more than one is still offered, the boards could not be told apart,
+      // and opening either might reach the other saber: stop rather than guess.
+      const offered = (await grantedProffiePorts()).length;
+      if (offered !== 1) {
+        console.log(`[board] switch to ${name} stopped: ${offered} ports offered instead of 1`);
+        await reachNext(null);
+        return offered === 0 ? `${name}'s port did not open to Hiltwright. Pick it again.` : `Hiltwright could not tell the plugged-in sabers apart. Unplug the other saber, or pick ${name} again.`;
+      }
+      // Opened here, not through connect(), which would ask main for the board again and could undo the choice.
+      if (!(await gate(() => connectOnce(false)))) return 'Already connecting. Pick the saber again in a moment.';
+      return null;
+    } finally {
+      switching.current = false;
     }
-    await connect(false, { serial });
-    return null;
-  }, [connect, disconnect, reachNext, refreshPlugged]);
+  }, [connectOnce, disconnect, gate, reachNext, refreshPlugged]);
   /** The saber on the other end right now (read after a connect, before React has re-rendered). */
   const currentSaber = useCallback(() => saberRef.current, []);
 

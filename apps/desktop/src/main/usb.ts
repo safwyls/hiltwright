@@ -47,15 +47,24 @@ export async function proffieBoards(): Promise<PluggedBoard[]> {
   return boardsFrom(await proffieInterfaces());
 }
 
-/** Look up which interfaces belong to the wanted board. At most one lookup at a time; a new request waits for it. */
+/**
+ * Look up which interfaces belong to the wanted board. At most one lookup at a time. One already under way for this
+ * same board is shared; one for another board is waited out and this board looked up after it. (Sharing any lookup
+ * gave a newly wanted board the result of the previous one: none of its interfaces, so any board could be reached.)
+ */
 let looking: Promise<void> | null = null;
-export function lookUpWanted(): Promise<void> {
+let lookingFor: string | null = null;
+export function lookUpWanted(list: typeof proffieInterfaces = proffieInterfaces): Promise<void> {
   const w = activeWant();
   if (!w) return Promise.resolve();
-  looking ??= (async () => {
-    try { setWantedInterfaces(w.serial, interfacesOf(await proffieInterfaces(), w.serial)); } finally { looking = null; }
-  })();
-  return looking;
+  if (looking && lookingFor === w.serial) return looking;
+  const run = async (): Promise<void> => {
+    try { setWantedInterfaces(w.serial, interfacesOf(await list(), w.serial)); } finally { if (looking === mine) { looking = null; lookingFor = null; } }
+  };
+  const mine: Promise<void> = (looking ?? Promise.resolve()).then(run, run);
+  looking = mine;
+  lookingFor = w.serial;
+  return mine;
 }
 
 /**
