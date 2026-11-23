@@ -10,7 +10,9 @@ The Armory is the first page. Hiltwright remembers every saber it has seen, whet
 
 Every saber Hiltwright has seen is listed on the left, plugged in or not. Each row shows its name and a line such as the saber's config name, its number of presets and when it was last seen. Click a saber to pick it.
 
-A saber you plug in is picked on its own. You can pick another saber while one is plugged in, for example to change its setup. The plugged-in saber stays connected, so Live keeps working on it. An install only ever goes to the saber that is plugged in, and it is refused while that is not the saber you picked.
+A saber you plug in is picked on its own. You can pick another saber while one is plugged in, for example to change its setup. The connected saber stays connected, so Live keeps working on it. An install only ever goes to the saber that is connected, and it is refused while that is not the saber you picked.
+
+With two sabers plugged in, Hiltwright talks to one at a time. Its row says "Connected", and the other's says "Plugged in". On Windows each chip also names the saber's COM port, for example "Connected · COM8". Pick the other saber to connect to it instead: Hiltwright closes the first one's port and opens only the picked saber's. A switch waits while an install, a copy to the card or a change to the saber is still running. If that happens, pick the saber again once it has finished. The header shows the COM port of the saber that is connected.
 
 The picked saber's name is at the top of the right side, with a chip: "Plugged in", "Set up ahead" or "Not plugged in". Under it is everything the saber's firmware reports about itself: the ProffieOS version, prop, buttons, presets, config name and install date. For a saber that is not plugged in, that line starts "Last read:". Press **Read again** to read a plugged-in saber once more.
 
@@ -24,7 +26,7 @@ Under the saber's name are two panels. The bright one is the one you can use now
 
 **Adjust it live.** Change its presets, volume and colours on the saber itself. Each change takes effect at once, and nothing is built or flashed. It works with any ProffieOS firmware. The panel shows what is on the saber now: the preset playing, the number of presets, the battery and where the card is. Press **Adjust it live** to open [Live › Presets](live-presets.html).
 
-If the picked saber is not plugged in, the panel is dimmed, and its button is off and says "Plug it in to adjust". If another saber is plugged in, a link offers to pick that one. A saber you set up ahead has no firmware, so there is nothing to adjust live.
+If the picked saber is not plugged in, the panel is dimmed, and its button is off and says "Plug it in to adjust". If it is plugged in while another saber is connected, the button says "Connect to (saber) on (port)" and switches to it. If another saber is connected, a link offers to pick that one. A saber you set up ahead has no firmware, so there is nothing to adjust live.
 
 **Change its setup.** The wiring, fonts and presets for the next install. Nothing on the saber changes until you install, with its card in a card reader for the copy. The panel lists the four Install steps, with a tick on each one that is done (see Progress steps below). Press a step to go to it, or **Continue with** the next one.
 

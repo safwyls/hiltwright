@@ -21,6 +21,10 @@ export function tourBoard(real: Pick<Board, 'library' | 'refreshLibrary' | 'isPr
   const info = EXAMPLE_INFO;
   const op = (what: string) => { onRefused({ kind: 'failed', what, error: TOUR_REFUSAL }); return no(what); };
   return {
+    // The example saber is the one connected; the owner's own boards are not reached during the tour.
+    plugged: [],
+    refreshPlugged: async () => undefined,
+    switchTo: async () => { refused('switch saber'); return TOUR_REFUSAL; },
     card: { shared: false, root: null },
     cardShared: () => { refused('card shared'); },
     cardGivenBack: () => { refused('card given back'); },

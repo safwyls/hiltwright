@@ -13,14 +13,38 @@ export function interfacesOf(list: { id: string; parent: string | null }[], seri
   return list.filter((d) => /&MI_00\\/i.test(d.id) && (d.parent ?? '').toUpperCase() === parent).map((d) => d.id);
 }
 
-/** Every Proffieboard serial interface present, with its parent device. Windows only; [] elsewhere or on failure. */
-export async function proffieInterfaces(): Promise<{ id: string; parent: string | null }[]> {
+/** Every Proffieboard serial interface present, with its parent device and its name. Windows only; [] elsewhere or on failure. */
+export async function proffieInterfaces(): Promise<{ id: string; parent: string | null; name?: string | null }[]> {
   if (process.platform !== 'win32') return [];
-  const script = `Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match '^USB\\\\VID_1209&PID_6668&MI_' } | ForEach-Object { [pscustomobject]@{ id = $_.InstanceId; parent = (Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName 'DEVPKEY_Device_Parent' -ErrorAction SilentlyContinue).Data } } | ConvertTo-Json`;
+  const script = `Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match '^USB\\\\VID_1209&PID_6668&MI_' } | ForEach-Object { [pscustomobject]@{ id = $_.InstanceId; name = $_.FriendlyName; parent = (Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName 'DEVPKEY_Device_Parent' -ErrorAction SilentlyContinue).Data } } | ConvertTo-Json`;
   const out = await new Promise<string>((resolve) => {
     execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 10000, windowsHide: true }, (err, stdout) => resolve(err ? '' : stdout));
   });
-  try { const parsed = JSON.parse(out || '[]'); return (Array.isArray(parsed) ? parsed : [parsed]).map((d: { id?: unknown; parent?: unknown }) => ({ id: String(d.id ?? ''), parent: typeof d.parent === 'string' ? d.parent : null })); } catch { return []; }
+  try { const parsed = JSON.parse(out || '[]'); return (Array.isArray(parsed) ? parsed : [parsed]).map((d: { id?: unknown; parent?: unknown; name?: unknown }) => ({ id: String(d.id ?? ''), parent: typeof d.parent === 'string' ? d.parent : null, name: typeof d.name === 'string' ? d.name : null })); } catch { return []; }
+}
+
+/** A Proffieboard plugged in and running its firmware: its USB serial, and the COM port Windows gave it. */
+export interface PluggedBoard { serial: string; port: string | null }
+
+/**
+ * The boards in an interface listing: one per parent device `USB\VID_1209&PID_6668\<serial>`, with the COM port named
+ * in its serial interface's name ("USB Serial Device (COM5)"). In order of serial, so the list is stable.
+ */
+export function boardsFrom(list: { id: string; parent: string | null; name?: string | null }[]): PluggedBoard[] {
+  const out = new Map<string, PluggedBoard>();
+  for (const d of list) {
+    const serial = /^USB\\VID_1209&PID_6668\\([^\\\s"]+)$/i.exec(d.parent ?? '')?.[1];
+    if (!serial) continue;
+    const port = /\((COM\d+)\)/i.exec(d.name ?? '')?.[1]?.toUpperCase() ?? null;
+    const had = out.get(serial);
+    if (!had || (!had.port && port)) out.set(serial, { serial, port });
+  }
+  return [...out.values()].sort((a, b) => a.serial.localeCompare(b.serial));
+}
+
+/** Every Proffieboard plugged in now, with its COM port (issue: picking a saber in the Armory). Windows only. */
+export async function proffieBoards(): Promise<PluggedBoard[]> {
+  return boardsFrom(await proffieInterfaces());
 }
 
 /** Look up which interfaces belong to the wanted board. At most one lookup at a time; a new request waits for it. */

@@ -11,7 +11,7 @@ import { LooksStore, cleanLook, looksPath } from './looksStore';
 import { BanksStore, banksPath } from './banksStore';
 import type { LookDef } from '@hiltwright/core';
 import { Snapshots } from './snapshots';
-import { lookUpWanted, portHolders, proffieSerials } from './usb';
+import { lookUpWanted, portHolders, proffieBoards, proffieSerials } from './usb';
 import { activeWant, wantSerial } from './serialGate';
 import { readFile, rename, stat as statFile, writeFile } from 'node:fs/promises';
 import { checkFontDir, checkSameCard, clearPresetsFiles, copyFont, findConfigFiles, listFonts, listTracks, lookForCards, mountedRoots, readVoicePack, ejectVolume, readFontSounds, hasFolder } from './sd';
@@ -187,6 +187,8 @@ export function registerIpc(): void {
   handle('snapshots:read', (_e, id: unknown, file: unknown) => snapshots.read(str(id, 40), str(file, 200)));
 
   handle('usb:proffieSerials', () => proffieSerials().then((l) => { rememberSerials(...l); return l; }));
+  // Each board plugged in with its COM port, for the Armory: which sabers can be picked to connect to, and where.
+  handle('usb:proffieBoards', () => proffieBoards().then((l) => { rememberSerials(...l.map((b) => b.serial)); return l; }));
   handle('usb:portHolders', () => portHolders());
   // Reach only this board next (the saber an install is bringing back); null lets every Proffieboard through again.
   handle('usb:wantSerial', async (_e, serial: unknown) => {

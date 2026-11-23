@@ -233,7 +233,7 @@ export function App() {
         <div className="row" style={{ gap: 12 }}>
           <button type="button" className="chip tourchip" data-tour="top-tour" disabled={!!tour} aria-label="Show me this page" title="Show me this page: a short tour of it" onClick={() => startTour(startForPage(TOUR_STEPS, page))}><Icon name="info" /><span className="tct">Show me this page</span></button>
           <span className="row" style={{ gap: 12 }} data-tour="top-status">
-          <StatusChip status={status} port={board.portName} />
+          <StatusChip status={status} port={board.plugged.find((p) => p.serial === board.saber?.identity.usbSerial)?.port ?? board.portName} />
           <span className="chip" title={noBattery(info?.battery ?? null) ? 'The battery reads under 2 V: none is connected, and the saber runs on USB power.' : undefined}><Icon name="battery" />{batteryLabel(info?.battery ?? null)}</span>
           {connected
             ? <button type="button" className="btn sm" onClick={() => void board.disconnect()}><span className="b"><span className="i">Disconnect</span></span></button>
@@ -415,8 +415,23 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
   const cur = ws.saber;
   const plans = ws.plans;
   const adoptable = ws.live && cur && !cur.firmware && !cur.planned && plans.length > 0;
-  // The saber plugged in now, whichever is picked.
+  // The saber connected now, whichever is picked.
   const plugged = status === 'connected' && board.saber ? board.saber : null;
+  // Every saber plugged in, connected or not, by USB serial, with its COM port (Windows names one): undefined when a
+  // saber is not plugged in, null when it is but no port is known.
+  const portOf = (s: SaberRecord): string | null | undefined => {
+    const b = s.identity.usbSerial ? board.plugged.find((p) => p.serial === s.identity.usbSerial) : undefined;
+    return b ? b.port : undefined;
+  };
+  // Picking a saber that is plugged in but not the one connected connects to it, so two sabers on one computer can each
+  // be worked on live. A switch waits for a running job, and says so.
+  const [switchNote, setSwitchNote] = useState<string | null>(null);
+  const pick = (s: SaberRecord) => {
+    ws.choose(s.id);
+    setSwitchNote(null);
+    if (plugged?.id === s.id || portOf(s) === undefined || !s.identity.usbSerial) return;
+    void board.switchTo(s.identity.usbSerial).then((why) => setSwitchNote(why ? `${s.name} was not connected: ${why}` : null));
+  };
   const info = ws.live ? board.info : null;
   const playing = info?.currentPreset != null ? info.presets[info.currentPreset] ?? null : null;
   const fwLine = firmwareLine(ws.info, cur?.name);
@@ -461,7 +476,7 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
             {ws.loading && <LoadingSpace text="Reading your sabers…" />}
             {!ws.loading && board.library.length === 0 && <div className="hint" style={{ padding: '14px 18px' }}>No sabers yet. Plug one in and it is remembered, or start a new one to set up ahead.</div>}
             {board.library.map((s, n) => {
-              const isCur = s.id === cur?.id; const isPlugged = plugged?.id === s.id;
+              const isCur = s.id === cur?.id; const isPlugged = plugged?.id === s.id; const port = portOf(s);
               return (
                 <div key={s.id} className={`li ${isCur ? 'on' : ''}`} style={{ gap: 10, minHeight: 62, ...(isCur ? { background: 'color-mix(in srgb,var(--sel) 8%,transparent)', boxShadow: 'inset 3px 0 0 var(--sel)' } : {}) }}>
                   {editing && isCur
@@ -471,14 +486,16 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
                         <button type="button" className="btn sm ghost" onClick={() => setEditing(false)}><span className="b"><span className="i">Cancel</span></span></button>
                       </form>
                     : <>
-                        <button type="button" role="option" aria-selected={isCur} className="row grow" style={{ gap: 12, minWidth: 0, alignSelf: 'stretch', textAlign: 'left' }} title={s.identity.configName ? `${s.identity.configName}, USB serial ${s.identity.usbSerial ?? 'unknown'}` : undefined} onClick={() => ws.choose(s.id)}>
+                        <button type="button" role="option" aria-selected={isCur} className="row grow" style={{ gap: 12, minWidth: 0, alignSelf: 'stretch', textAlign: 'left' }} title={s.identity.configName ? `${s.identity.configName}, USB serial ${s.identity.usbSerial ?? 'unknown'}${port ? `, on ${port}` : ''}${!isPlugged && port !== undefined ? '. Pick it to connect to it.' : ''}` : undefined} onClick={() => pick(s)}>
                           <span className="n" aria-hidden="true">{n + 1}</span>
                           <span style={{ color: isPlugged ? 'var(--holo)' : 'var(--mute)', display: 'flex', width: 18, flex: 'none' }}><Icon name={isPlugged ? 'usb' : s.planned ? 'gear' : 'blade'} /></span>
                           <span className="col grow" style={{ gap: 2, minWidth: 0 }}>
                             <b className="ellip" style={{ fontWeight: 600 }}>{s.name}</b>
                             <span className="hint ellip">{s.planned ? `set up ahead · ${s.model?.presets.length ?? 0} presets · not seen yet` : `${s.identity.configName ?? '?'} · ${s.presets.length} presets · last seen ${new Date(s.lastSeen).toLocaleDateString()}`}</span>
                           </span>
-                          {isPlugged && <span className="chip live"><span className="dot" />Plugged in</span>}
+                          {isPlugged
+                            ? <span className="chip live"><span className="dot" />Connected{port ? ` · ${port}` : ''}</span>
+                            : port !== undefined && <span className="chip"><Icon name="usb" />Plugged in{port ? ` · ${port}` : ''}</span>}
                           {s.planned && <span className="chip">Set up ahead</span>}
                         </button>
                         {isCur && isPlugged && <button type="button" className="chip" onClick={() => { setDraft(s.name); setEditing(true); }}>Rename</button>}
@@ -489,7 +506,7 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
               );
             })}
           </div>
-          <div className="hint" style={{ marginTop: 'auto', padding: '12px 18px', borderTop: '1px solid var(--line)' }}>{plugged ? 'Pick a saber to change its setup, even while another is plugged in.' : 'Plug a saber in over a data cable and it is picked here on its own. Or pick one to change its setup unplugged.'}</div>
+          <div className="hint" style={{ marginTop: 'auto', padding: '12px 18px', borderTop: '1px solid var(--line)' }}>{board.plugged.length > 1 ? 'Pick a saber that is plugged in to connect to it. Pick any other to change its setup.' : plugged ? 'Pick a saber to change its setup, even while another is plugged in.' : 'Plug a saber in over a data cable and it is picked here on its own. Or pick one to change its setup unplugged.'}</div>
         </section>
       </div>
 
@@ -551,7 +568,7 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
             <section className={`panel door ${focus === 'live' ? 'on' : ''} ${ws.live ? '' : 'off'}`} style={{ flex: 'none', ...(ws.live ? {} : { opacity: 0.78 }) }} role="radio" aria-checked={focus === 'live'} aria-disabled={!ws.live} tabIndex={ws.live ? 0 : -1} aria-label="Adjust it live" data-tour="armory-live" onClick={() => setFocus('live')} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setFocus('live'); } }}>
               <div className="col" style={{ gap: 10, padding: '16px 18px' }}>
                 <div className="row" style={{ gap: 10 }}><span className="radio" aria-hidden="true" /><span style={{ display: 'flex', width: 20, height: 20, color: focus === 'live' ? 'var(--holo)' : 'var(--dim)' }}><Icon name="bolt" /></span><h3 style={{ margin: 0 }}>Adjust it live</h3></div>
-                <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{ws.live ? 'Change its presets, volume and colours on the saber itself, at once. Nothing is built or flashed; any ProffieOS firmware works.' : cur.planned ? 'A planned saber has no firmware yet, so there is nothing to adjust live.' : `Plug ${cur.name} in to change its presets, volume and colours on the saber itself.`}</p>
+                <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>{ws.live ? 'Change its presets, volume and colours on the saber itself, at once. Nothing is built or flashed; any ProffieOS firmware works.' : cur.planned ? 'A planned saber has no firmware yet, so there is nothing to adjust live.' : portOf(cur) !== undefined ? `${cur.name} is plugged in, but another saber is connected. Connect to ${cur.name} to change its presets, volume and colours on the saber itself.` : `Plug ${cur.name} in to change its presets, volume and colours on the saber itself.`}</p>
                 {ws.live && info && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 6 }}>
                     {fact('play', 'Playing', playing ? `Preset ${info.currentPreset! + 1} · ${playing.name.replace(/\s*\n\s*/g, ' ') || playing.font}` : 'Preset not known')}
@@ -562,8 +579,12 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
                 )}
                 {ws.live
                   ? <button type="button" className={`btn full ${focus === 'live' ? 'pri' : ''}`} onClick={() => go('live-presets')}><span className="b"><span className="i"><Icon name="bolt" />Adjust it live</span></span></button>
-                  : !cur.planned && <button type="button" className="btn full" disabled><span className="b"><span className="i"><Icon name="usb" />Plug it in to adjust</span></span></button>}
-                {!ws.live && plugged && plugged.id !== cur.id && <span className="hint">{plugged.name} is plugged in. <button type="button" className="holo" onClick={() => ws.choose(plugged.id)}>Pick {plugged.name}</button> to adjust it live.</span>}
+                  : !cur.planned && (portOf(cur) !== undefined
+                    // Plugged in, while another saber is the one connected: connect to this one instead.
+                    ? <button type="button" className="btn full" disabled={status === 'connecting' || status === 'reading'} onClick={() => pick(cur)}><span className="b"><span className="i"><Icon name="usb" />{status === 'connecting' || status === 'reading' ? 'Connecting…' : `Connect to ${cur.name}${portOf(cur) ? ` on ${portOf(cur)}` : ''}`}</span></span></button>
+                    : <button type="button" className="btn full" disabled><span className="b"><span className="i"><Icon name="usb" />Plug it in to adjust</span></span></button>)}
+                {switchNote && <div className="note amber" role="status"><Icon name="warn" /><span>{switchNote}</span></div>}
+                {!ws.live && plugged && plugged.id !== cur.id && <span className="hint">{plugged.name} is connected now. <button type="button" className="holo" onClick={() => ws.choose(plugged.id)}>Pick {plugged.name}</button> to adjust it live.</span>}
               </div>
             </section>
 

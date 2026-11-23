@@ -46,6 +46,7 @@ const api: HiltwrightApi = {
   },
   usb: {
     proffieSerials: () => ipcRenderer.invoke('usb:proffieSerials'),
+    proffieBoards: () => ipcRenderer.invoke('usb:proffieBoards'),
     wantSerial: (serial) => ipcRenderer.invoke('usb:wantSerial', serial),
     portHolders: () => ipcRenderer.invoke('usb:portHolders'),
   },

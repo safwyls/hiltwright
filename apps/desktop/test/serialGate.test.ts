@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { activeWant, serialAllowed, setWantedInterfaces, wantSerial } from '../src/main/serialGate';
-import { interfacesOf } from '../src/main/usb';
+import { boardsFrom, interfacesOf } from '../src/main/usb';
 
 const byIds = { vendorId: 0x1209, productId: 0x6668 };
 const byIdStrings = { vendorId: '4617', productId: '26216' };
@@ -81,5 +81,21 @@ describe('reaching one board by its USB serial', () => {
     expect(interfacesOf(list, '209133815232')).toEqual(['USB\\VID_1209&PID_6668&MI_00\\7&380A8E11&0&0000']);
     expect(interfacesOf(list, '207a349a5430')).toEqual(['USB\\VID_1209&PID_6668&MI_00\\7&2430EE5C&0&0000']);
     expect(interfacesOf(list, 'NOPE')).toEqual([]);
+  });
+
+  it('each board plugged in is listed once, by serial, with the COM port its serial interface is named after', () => {
+    const list = [
+      { id: 'USB\\VID_1209&PID_6668&MI_02\\7&380A8E11&0&0002', parent: 'USB\\VID_1209&PID_6668\\209133815232', name: 'USB Mass Storage Device' },
+      { id: 'USB\\VID_1209&PID_6668&MI_00\\7&380A8E11&0&0000', parent: 'USB\\VID_1209&PID_6668\\209133815232', name: 'USB Serial Device (COM5)' },
+      { id: 'USB\\VID_1209&PID_6668&MI_00\\7&2430EE5C&0&0000', parent: 'USB\\VID_1209&PID_6668\\207A349A5430', name: 'USB Serial Device (com12)' },
+      { id: 'USB\\VID_1209&PID_6668&MI_00\\8&1&0&0000', parent: 'USB\\VID_1209&PID_6668\\2051AB000001', name: null },
+      { id: 'USB\\VID_1209&PID_6668&MI_03\\x', parent: null, name: 'Orphan (COM9)' },
+    ];
+    expect(boardsFrom(list)).toEqual([
+      { serial: '2051AB000001', port: null },
+      { serial: '207A349A5430', port: 'COM12' },
+      { serial: '209133815232', port: 'COM5' },
+    ]);
+    expect(boardsFrom([])).toEqual([]);
   });
 });

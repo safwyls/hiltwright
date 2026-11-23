@@ -8,7 +8,7 @@ export const TOUR_REFUSAL = 'Not done: the tour is running, and nothing is saved
 /** Requests that only read, or open something for the owner to look at. Allowed during the tour. */
 export const TOUR_ALLOWED: ReadonlySet<string> = new Set([
   'library:list', 'banks:list', 'looks:list', 'snapshots:list', 'snapshots:read',
-  'usb:proffieSerials', 'usb:portHolders',
+  'usb:proffieSerials', 'usb:proffieBoards', 'usb:portHolders',
   'sd:locate', 'sd:mounted', 'sd:listFonts', 'sd:hasFolder', 'sd:readFont', 'sd:listTracks', 'sd:voicePack', 'voicePack:list', 'voicePack:openLink', 'sd:configFiles', 'config:pick',
   'fontlib:status', 'fontlib:list', 'fontlib:detail', 'fontlib:readSound', 'fontlib:readFont', 'fontlib:open',
   'contributors:list', 'contributors:open',

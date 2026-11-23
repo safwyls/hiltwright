@@ -11,6 +11,7 @@ import type { SaberIdentity, SaberPatch, SaberRecord, SnapshotMeta } from '../..
 import { openFailureText } from '../../shared/openFailure';
 import { PROFFIE_FILTER, WebSerialTransport, describePort, grantedProffiePorts } from './serial';
 import { setConnectionSnapshot } from './support';
+import { workNow } from './work';
 import { assertMaySend, holdConnect, operationRefusal, tourLocked } from './tourLock';
 import { INCOMPLETE_SNAPSHOT, connectGate, createRecovery, deleteShown, duplicateShown, moveShown, parseSdAccess, readBattery, runOperation, sdFailureIn, sendOptionsFor, serialQueue, storedLayout, withNewSnapshot, type SaveState } from './boardOps';
 
@@ -45,6 +46,12 @@ export function useBoard() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [portName, setPortName] = useState<string | null>(null);
+  // The boards plugged in now, by USB serial, with each one's COM port (Windows). Read on start, and again when a board
+  // comes or goes and after each connect: the Armory offers each plugged-in saber to connect to, and names its port.
+  const [plugged, setPlugged] = useState<{ serial: string; port: string | null }[]>([]);
+  const refreshPlugged = useCallback(async () => {
+    try { setPlugged(await api().usb.proffieBoards()); } catch { /* not available on this platform */ }
+  }, []);
   const [info, setInfo] = useState<BoardInfo | null>(null);
   const [saber, setSaber] = useState<SaberRecord | null>(null);
   const [library, setLibrary] = useState<SaberRecord[]>([]);
@@ -303,6 +310,7 @@ export function useBoard() {
     setCardNow({ shared: access === true, root: null });
     if (access === true) console.log('[board] the saber says its card is shared with this computer');
     setStatus('connected');
+    void refreshPlugged();
     // A new connection starts with a clean save status: a failure from before an unplug no longer describes this saber.
     setSave({ kind: 'idle' });
     console.log(`[board] version=${next.version?.version ?? '?'} config=${next.version?.config ?? '?'} prop=${next.version?.prop ?? '?'} buttons=${next.version?.buttons ?? '?'} battery=${next.battery ?? '?'} volume=${next.volume ?? '?'} current=${next.currentPreset ?? '?'} presets=${next.presets.length} fonts=${next.fonts.length} tracks=${next.tracks.length} blades=${JSON.stringify(next.pixelBlades)} timings=${JSON.stringify(timings)}`);
@@ -479,6 +487,25 @@ export function useBoard() {
     // After a reflash both the install flow and the Web Serial 'connect' event try to open the port; one is enough.
     if (!(await gate(() => connectOnce(interactive)))) console.log('[board] connect skipped: already connecting');
   }, [connectOnce, gate, reachNext]);
+  /**
+   * Connect to this plugged-in saber instead of the one connected now: the owner picked it in the Armory. Only that
+   * board is opened (main grants its port alone, as after an install). Refused while a job or a change is running, so a
+   * switch never cuts an install, a copy or a write short. Returns why it did not switch, or null.
+   */
+  const switchTo = useCallback(async (serial: string): Promise<string | null> => {
+    if (holdConnect()) return 'Not while the tour is running.';
+    if (busyRef.current || workNow().length) return 'Wait for the current job to finish, then pick the saber again.';
+    if (client.current && saberRef.current?.identity.usbSerial === serial) return null;
+    console.log(`[board] switching to the saber with serial ${serial}`);
+    await disconnect();
+    if (!(await reachNext(serial, true))) {
+      await reachNext(null);
+      void refreshPlugged();
+      return 'That saber was not found on USB. Check it is plugged in, then pick it again.';
+    }
+    await connect(false, { serial });
+    return null;
+  }, [connect, disconnect, reachNext, refreshPlugged]);
   /** The saber on the other end right now (read after a connect, before React has re-rendered). */
   const currentSaber = useCallback(() => saberRef.current, []);
 
@@ -489,9 +516,12 @@ export function useBoard() {
       await connect(true);
       return 'attempted';
     };
-    const onConnect = () => { if (!client.current) void connect(false); };
+    // Windows lists a board's port a moment after Web Serial says it came or went: read the list once it has settled.
+    const replug = () => { setTimeout(() => void refreshPlugged(), 1200); };
+    void refreshPlugged();
+    const onConnect = () => { replug(); if (!client.current) void connect(false); };
     // The system says a port went away: if it is ours, the saber was unplugged.
-    const onDisconnect = (e: Event) => { const t = transport.current; if (t && e.target === t.port) t.lost('the saber was unplugged'); };
+    const onDisconnect = (e: Event) => { replug(); const t = transport.current; if (t && e.target === t.port) t.lost('the saber was unplugged'); };
     navigator.serial?.addEventListener('connect', onConnect);
     navigator.serial?.addEventListener('disconnect', onDisconnect);
     // Development aid: hiltwrightMuteBoard() makes the app hear nothing from the saber, to check the silent-saber handling.
@@ -812,7 +842,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { card, cardShared, cardGivenBack, cardLostWhileShared, status, error, portName, info, saber, library, libraryLoaded, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, readSnapshot, restoreSnapshot, renameSaber, updateSaber, expectAfterInstall, reachNext, currentSaber, restartSaber, currentPresets, planSaber, adoptPlan, currentPresetNow, refreshLibrary, snapshotSaved, isPresetBlockEnd, rebootToBootloader };
+  return { card, cardShared, cardGivenBack, cardLostWhileShared, status, error, portName, info, saber, library, libraryLoaded, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, readSnapshot, restoreSnapshot, renameSaber, updateSaber, expectAfterInstall, reachNext, currentSaber, restartSaber, currentPresets, planSaber, adoptPlan, currentPresetNow, refreshLibrary, snapshotSaved, isPresetBlockEnd, rebootToBootloader, plugged, refreshPlugged, switchTo };
 }
 
 export type Board = ReturnType<typeof useBoard>;

@@ -359,6 +359,8 @@ export interface HiltwrightApi {
   usb: {
     /** Serial numbers of Proffieboards currently attached, when the platform can tell us. */
     proffieSerials(): Promise<string[]>;
+    /** Each Proffieboard plugged in and running its firmware, with the COM port Windows gave it. Windows only; [] elsewhere. */
+    proffieBoards(): Promise<{ serial: string; port: string | null }[]>;
     /** Let only the board with this USB serial be reached until it is read (null: every board). Returns how many of its serial interfaces were found. */
     wantSerial(serial: string | null): Promise<number>;
     /** The other programs that have a USB serial port open now, by name (macOS and Linux; empty where it cannot be told). */
