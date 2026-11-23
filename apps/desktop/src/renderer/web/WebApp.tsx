@@ -134,6 +134,13 @@ function Workshop() {
             <a href={SITE.download}><Icon name="export" /><span>Get the app</span></a>
             <a href={SITE.help}><Icon name="info" /><span>Help</span></a>
           </div>
+          {/* In the sidebar, not the top bar: on a tablet held upright the top bar runs past the edge of the screen. */}
+          {document.fullscreenEnabled && (
+            <div className="col" style={{ gap: 2 }}>
+              <span className="sec">View</span>
+              <a href="#" aria-pressed={full} title={full ? 'Leave full screen (Esc)' : 'Fill the screen with the workshop'} onClick={(e) => { e.preventDefault(); toggleFull(); }}><Icon name={full ? 'exitfull' : 'fullscreen'} /><span>{full ? 'Leave full screen' : 'Full screen'}</span></a>
+            </div>
+          )}
         </nav>
       </aside>
 
@@ -150,7 +157,6 @@ function Workshop() {
             <span className="ellip">{THEMES.find((t) => t.id === theme)?.name ?? 'Theme'}</span><span className="caret"><Icon name="down" /></span>
             <Select value={theme} aria-label="Theme" onChange={(e) => pickTheme(e.target.value)}>{THEMES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select>
           </label>
-          {document.fullscreenEnabled && <button type="button" className="chip" aria-pressed={full} aria-label={full ? 'Leave full screen' : 'Full screen'} title={full ? 'Leave full screen (Esc)' : 'Full screen'} onClick={toggleFull}><Icon name={full ? 'exitfull' : 'fullscreen'} /></button>}
           <a className="btn sm pri" href={SITE.download}><span className="b"><span className="i"><Icon name="export" />Get the app</span></span></a>
         </div>
       </header>
