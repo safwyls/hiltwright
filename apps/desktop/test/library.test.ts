@@ -267,3 +267,36 @@ describe('the bootloader a saber showed', () => {
     expect(byId.get(b.id)!.bootloader?.serial).toBe('207A349A5430');
   });
 });
+
+// Issue #7: with its card out a saber reports its firmware's own presets and no fonts or tracks. That is not its card.
+describe('a connect with the card out', () => {
+  const compiled = [preset('Compiled 1', 'Default;common'), preset('Compiled 2', 'Default;common')];
+
+  it('keeps the presets, fonts and tracks last read with the card in, and still updates the rest', async () => {
+    const lib = new Library(file);
+    const s = await connect(lib, hote2, ['Mine 1', 'Mine 2', 'Mine 3']);
+    const out = await lib.upsert({ identity: { ...hote2, version: 'v8.10 newer' }, presets: compiled, fonts: [], tracks: [], cardMissing: true });
+    expect(out.id).toBe(s.id);
+    expect(out.presets.map((p) => p.name)).toEqual(['Mine 1', 'Mine 2', 'Mine 3']);
+    expect(out.fonts).toEqual(['GeneralPrincess']);
+    expect(out.tracks).toEqual(['tracks/General.wav']);
+    expect(out.identity.version).toBe('v8.10 newer');
+    expect(out.lastSeen >= s.lastSeen).toBe(true);
+    // Kept across a restart too.
+    expect((await new Library(file).list())[0].presets.map((p) => p.name)).toEqual(['Mine 1', 'Mine 2', 'Mine 3']);
+  });
+
+  it('a card-in connect afterwards replaces them as usual', async () => {
+    const lib = new Library(file);
+    await connect(lib, hote2, ['Mine 1']);
+    await lib.upsert({ identity: hote2, presets: compiled, fonts: [], tracks: [], cardMissing: true });
+    const back = await connect(lib, hote2, ['Edited on the saber']);
+    expect(back.presets.map((p) => p.name)).toEqual(['Edited on the saber']);
+  });
+
+  it('a saber met for the first time with its card out keeps what it reports, there being nothing better', async () => {
+    const lib = new Library(file);
+    const first = await lib.upsert({ identity: hote2, presets: compiled, fonts: [], tracks: [], cardMissing: true });
+    expect(first.presets.map((p) => p.name)).toEqual(['Compiled 1', 'Compiled 2']);
+  });
+});

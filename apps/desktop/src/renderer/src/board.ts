@@ -315,7 +315,8 @@ export function useBoard() {
     try {
       if (expected.current && expected.current.until <= Date.now()) expected.current = null;
       const ex = expected.current ? { id: expected.current.id, configName: expected.current.configName } : null;
-      const rec = await api().library.upsert({ identity, presets: next.presets, fonts: next.fonts, tracks: next.tracks, expect: ex });
+      // With its card out the saber reports its firmware's own presets: the record keeps its card's (issue #7).
+      const rec = await api().library.upsert({ identity, presets: next.presets, fonts: next.fonts, tracks: next.tracks, ...(next.sdMissing ? { cardMissing: true } : {}), expect: ex });
       // Kept until the saber installed comes back: with two boards plugged in, the other one may reconnect first.
       if (ex && rec.id === ex.id) expected.current = null;
       if (ex) console.log(`[library] expected ${ex.id} (${ex.configName}) after the install; matched ${rec.id}${rec.id === ex.id ? '' : ' instead, still expecting it'}`);

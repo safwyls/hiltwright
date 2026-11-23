@@ -130,6 +130,7 @@ export function registerIpc(): void {
       fonts: Array.isArray(o.fonts) ? o.fonts.map((f) => str(f, 200)) : [],
       tracks: Array.isArray(o.tracks) ? o.tracks.map((t) => str(t, 500)) : [],
       ...(typeof o.name === 'string' ? { name: str(o.name) } : {}),
+      ...(o.cardMissing === true ? { cardMissing: true } : {}),
     }, ex && typeof ex === 'object' ? { id: str(ex.id, 40), configName: str(ex.configName, 200) } : null);
   });
   handle('library:rename', (_e, id: unknown, name: unknown) => library.rename(str(id, 40), str(name, 80)));

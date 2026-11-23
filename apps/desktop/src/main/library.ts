@@ -78,7 +78,13 @@ export class Library {
    * Match the board to its record, or make one. Order: USB serial; then, with no serial, the saber just installed
    * when the board reports the config that install wrote (`expect`); then config, install stamp and blade layout.
    */
-  upsert(input: { identity: SaberIdentity; presets: PresetRecord[]; fonts: string[]; tracks: string[]; name?: string }, expect?: ReinstallExpectation | null): Promise<SaberRecord> {
+  /**
+   * Remember a saber just read. `cardMissing`: it could not read its SD card, so what it reports is its firmware's own
+   * preset list and no fonts or tracks. That is not the saber's card: a saber already known keeps its presets, fonts
+   * and tracks as last read with the card in (issue #7), so a snapshot or an offline page never takes the compiled list
+   * for the owner's own. A saber met for the first time keeps what it reports, there being nothing better yet.
+   */
+  upsert(input: { identity: SaberIdentity; presets: PresetRecord[]; fonts: string[]; tracks: string[]; name?: string; cardMissing?: boolean }, expect?: ReinstallExpectation | null): Promise<SaberRecord> {
     return this.store.update((lib) => {
       const now = new Date().toISOString();
       const id = input.identity;
@@ -87,9 +93,11 @@ export class Library {
       rec ??= lib.sabers.find((s) => Library.matches(s.identity, id));
       if (rec) {
         rec.identity = { ...rec.identity, ...id, usbSerial: id.usbSerial ?? rec.identity.usbSerial };
-        rec.presets = input.presets;
-        rec.fonts = input.fonts;
-        rec.tracks = input.tracks;
+        if (!input.cardMissing) {
+          rec.presets = input.presets;
+          rec.fonts = input.fonts;
+          rec.tracks = input.tracks;
+        }
         rec.lastSeen = now;
         if (input.name) rec.name = input.name;
       } else {

@@ -317,7 +317,8 @@ export interface HiltwrightApi {
     list(): Promise<SaberRecord[]>;
     /** Match an identity to a known saber, or create one. Returns the stored record. */
     /** Match or create. `expect` names the saber just installed and the config it now reports (matched without a serial). */
-    upsert(input: { identity: SaberIdentity; presets: PresetRecord[]; fonts: string[]; tracks: string[]; name?: string; expect?: { id: string; configName: string } | null }): Promise<SaberRecord>;
+    /** `cardMissing`: the saber could not read its card, so a saber already known keeps its presets, fonts and tracks (issue #7). */
+    upsert(input: { identity: SaberIdentity; presets: PresetRecord[]; fonts: string[]; tracks: string[]; name?: string; cardMissing?: boolean; expect?: { id: string; configName: string } | null }): Promise<SaberRecord>;
     rename(id: string, name: string): Promise<SaberRecord>;
     remove(id: string): Promise<void>;
     /** Store the build model and/or firmware manifest for a saber. `null` clears a field. */

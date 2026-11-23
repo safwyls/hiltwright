@@ -18,7 +18,7 @@ This page always shows the saber's own list. It never shows a draft.
 
 Every control is off, with a note, when:
 
-- the saber is not plugged in. The page shows its presets as last read, and says "Plug (saber) in to change it";
+- the saber is not plugged in. The page shows its presets as last read with its card in (a connect with the card out does not replace them, since the saber then reports only its firmware's own list), and says "Plug (saber) in to change it";
 - the saber cannot read its card. Presets are saved on the SD card, so the note says "has no readable SD card". Put the card back and reconnect;
 - the card is shared with your computer. The chip says "Card shared". Give it back on [Live › Card](fonts-and-sd.html) first.
 
