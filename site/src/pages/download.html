@@ -13,12 +13,12 @@ nav: download
         <a class="btn big" href="docs/install.html">Read the install guide first</a>
       </div>
       <p class="fine">For Windows the file is <code>Hiltwright-{{version}}-setup.exe</code>, about 205 MB. The installer sets Hiltwright up for your account only and does not ask for administrator approval.</p>
-      <p class="fine">For a Mac the file is <code>Hiltwright-{{version}}-mac-arm64.dmg</code> (Apple silicon) or <code>Hiltwright-{{version}}-mac-x64.dmg</code> (Intel), about 140 MB. macOS is new in this beta: on a Mac Hiltwright sets up its toolchain and builds firmware, and installing to a saber has not been confirmed there yet. The <a href="docs/release-notes.html">release notes</a> say how to open it.</p>
+      <p class="fine">For a Mac the file is <code>Hiltwright-{{version}}-mac-arm64.dmg</code> (Apple silicon) or <code>Hiltwright-{{version}}-mac-x64.dmg</code> (Intel), about 140 MB. macOS is new in this beta: on a Mac, Hiltwright sets up its toolchain and builds firmware, but we haven't confirmed installing to a saber there yet. The <a href="docs/release-notes.html">release notes</a> say how to open the app the first time.</p>
     </div>
     <div class="card warn">
       <h2>On Windows, check Smart App Control first</h2>
       <p>This beta is not signed. If Smart App Control is <b>On</b>, Windows blocks both the installer and the installed app, and there is no way to allow them. Smart App Control has to be off while you use this beta.</p>
-      <p>Look before you download: Windows Security, App &amp; browser control, Smart App Control settings.</p>
+      <p>Check before you download, under Windows Security, App &amp; browser control, Smart App Control settings.</p>
       <a class="more" href="docs/install.html#3-smart-app-control">What to check, step by step</a>
     </div>
   </div>
@@ -30,7 +30,7 @@ nav: download
     <div class="cards three">
       <div class="card"><h3>A Windows PC or a Mac</h3><p>Windows 10 or 11, 64-bit (Windows in S mode is not supported), or a Mac with Apple silicon or an Intel chip, on macOS 13 or later. About 2.5 GB of free disk space.</p></div>
       <div class="card"><h3>A Proffieboard</h3><p>A V2.2 or a V3, in a saber or on the bench, and the installer's notes on how it is wired.</p></div>
-      <div class="card"><h3>A USB data cable</h3><p>Some cables only charge. If the saber is not seen, try another cable first.</p></div>
+      <div class="card"><h3>A USB data cable</h3><p>Some cables only charge, so if the saber doesn't show up, try another cable first.</p></div>
     </div>
   </div>
 </section>
@@ -63,7 +63,7 @@ npm run dist    # build the Windows installer</code></pre>
     <div>
       <h2>Found a problem?</h2>
       <p>Press "Save diagnostics" in the app. That writes one file on your computer and sends nothing. Then open an issue on GitHub and attach that file.</p>
-      <p>Each report is answered: it is fixed, planned for a later release, or closed with a reason.</p>
+      <p>We answer every report: the problem gets fixed, planned for a later release, or closed with a reason.</p>
       <a class="more" href="{{issues}}">Report a problem</a><br>
       <a class="more" href="docs/troubleshooting.html">Troubleshooting</a><br>
       <a class="more" href="docs/release-notes.html">Release notes</a>

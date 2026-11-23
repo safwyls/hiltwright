@@ -1,6 +1,6 @@
 ---
 title:
-description: Hiltwright sets up a Proffieboard saber from wiring to installed firmware: presets, styles and sound fonts, built and installed over USB. No Arduino, C++ or style code needed.
+description: Hiltwright sets up a Proffieboard saber from wiring to installed firmware: presets, styles and sound fonts, built and installed over USB, with no Arduino, C++ or style code.
 nav: home
 class: home
 scripts: assets/stage.js, assets/blade-demo.js
@@ -8,7 +8,7 @@ scripts: assets/stage.js, assets/blade-demo.js
 <section class="stage" data-stage aria-label="Hiltwright, shown in each of its themes">
   <div class="stage-cel">
     <h1>ProffieOS, no code necessary.</h1>
-    <p class="lede">Hiltwright configures your Proffieboard saber from the wiring to the firmware install. Choose your presets, styles and sound fonts, then build and install it over USB. No Arduino, C++, or style code needed.</p>
+    <p class="lede">Hiltwright configures your Proffieboard saber from the wiring all the way to the firmware install. Pick your presets, styles and sound fonts, and Hiltwright builds the firmware and installs it over USB. No Arduino, C++ or style code necessary.</p>
     <div class="cta">
       <a class="btn primary big" href="download.html">Get the beta</a>
       <a class="btn big" href="walkthrough.html">Take the walkthrough</a>
@@ -26,8 +26,8 @@ scripts: assets/stage.js, assets/blade-demo.js
 
 <section class="band" id="try">
   <div class="wrap">
-    <h2>Accurately simulate blade effects.</h2>
-    <p class="sub">This is the same simulator Hiltwright uses, running in your browser. The simulator works out what ProffieOS would put on each of 132 LEDs, so you can see a style before it goes near a saber.</p>
+    <h2>Try a style before it goes near a saber.</h2>
+    <p class="sub">This is the same blade simulator Hiltwright uses, running right in your browser. The simulator works out what ProffieOS would put on each of the blade's 132 LEDs. Pick a style below and give it a few clashes.</p>
     <div class="bd" data-blade-demo>
       <div class="bd-stage">
         <img class="bd-hilt" src="assets/hilt.png" width="1000" height="157" alt="">
@@ -55,7 +55,7 @@ scripts: assets/stage.js, assets/blade-demo.js
           <button type="button" class="key hold" data-hold="drag" aria-pressed="false">Drag</button>
           <button type="button" class="key hold" data-hold="lb" aria-pressed="false">Lightning</button>
         </div>
-        <p class="fine">Hold Lockup, Drag or Lightning. Click the blade to land a blast. In the app this same blade simulation is available on a 3D hilt you can swing, with your sound font playing. <a href="features.html#demo-room">See the demo room</a>, or <a href="workshop/index.html">build a style of your own</a> in the workshop, right here in the browser.</p>
+        <p class="fine">Hold Lockup, Drag or Lightning. Click the blade to land a blast. In the app, the same blade runs on a 3D hilt you can swing around, with your sound font playing. <a href="features.html#demo-room">See the demo room</a>, or <a href="workshop/index.html">build a style of your own</a> in the workshop, right here in the browser.</p>
       </div>
     </div>
   </div>
@@ -63,13 +63,13 @@ scripts: assets/stage.js, assets/blade-demo.js
 
 <section class="band alt">
   <div class="wrap">
-    <h2>The install broken down for you, in five steps.</h2>
+    <h2>The install, broken down into five steps.</h2>
     <ol class="path five">
-      <li><span class="num">1</span><h3>Wiring</h3><p>Choose the board, the buttons and the prop file. Specify which pins each blade uses. Hiltwright checks them, against the installer's config file when you have one, and writes the config.</p><a href="docs/wiring.html">How Wiring works</a></li>
-      <li><span class="num">2</span><h3>Fonts</h3><p>Choose the sound fonts the saber carries from your font library, and the voice its menus speak in. Every font is checked for missing files and misconfiguration.</p><a href="docs/fonts.html">How Fonts work</a></li>
-      <li><span class="num">3</span><h3>Presets</h3><p>Give each preset a font, a track and a style for each blade, and preview them in the demo room. The list waits in Hiltwright until the flash.</p><a href="docs/presets.html">How Presets work</a></li>
-      <li><span class="num">4</span><h3>Card</h3><p>Put the SD card in a card reader and get it ready in one go: the fonts it lacks, the voice pack, and room for your new preset list. A card reader is about 30 times faster than the saber's own USB.</p><a href="docs/card.html">How Card works</a></li>
-      <li><span class="num">5</span><h3>Build &amp; Flash</h3><p>With a single click you can build the firmware in about a minute. Hiltwright backs up the saber's existing firmware first, then writes the new firmware.</p><a href="docs/build-and-install.html">How Build &amp; Flash works</a></li>
+      <li><span class="num">1</span><h3>Wiring</h3><p>Choose the board, the buttons and the prop file, then tell Hiltwright which pins each blade uses. Hiltwright checks the pins (against your installer's config file, if you have one) and writes the config for you.</p><a href="docs/wiring.html">How Wiring works</a></li>
+      <li><span class="num">2</span><h3>Fonts</h3><p>Pick the sound fonts the saber will carry from your font library, and the voice its menus speak in. Every font gets checked for missing files and misconfiguration.</p><a href="docs/fonts.html">How Fonts work</a></li>
+      <li><span class="num">3</span><h3>Presets</h3><p>Give each preset a font, a track and a style for each blade, and preview them in the demo room. The list waits in Hiltwright until you flash.</p><a href="docs/presets.html">How Presets work</a></li>
+      <li><span class="num">4</span><h3>Card</h3><p>Put the SD card in a card reader and Hiltwright gets it ready in one go: the fonts it's missing, the voice pack, and room for your new preset list. We recommend a card reader, since it's about 30 times faster than the saber's own USB.</p><a href="docs/card.html">How Card works</a></li>
+      <li><span class="num">5</span><h3>Build &amp; Flash</h3><p>One click builds the firmware in about a minute. Hiltwright backs up the saber's existing firmware first, then writes the new one.</p><a href="docs/build-and-install.html">How Build &amp; Flash works</a></li>
     </ol>
     <p class="after">Already flashed? <a href="docs/live-presets.html">Live</a> changes a plugged-in saber's presets, controls and card at once, with nothing built.</p>
   </div>
@@ -79,9 +79,9 @@ scripts: assets/stage.js, assets/blade-demo.js
   <div class="pic" aria-hidden="true"></div>
   <div class="wrap feature">
     <div>
-      <h2>Modify your blade styles live.</h2>
-      <p>Hiltwright comes with dozens of blade styles of its own, each with a live preview. Every color is editable from the Presets page without requiring a rebuild.</p>
-      <p>If you already have a style you like, paste its code, from the Fett263 style library or anywhere else, and Hiltwright will maintain the credit when it builds the firmware.</p>
+      <h2>Tweak your blade colors live.</h2>
+      <p>Hiltwright comes with dozens of its own blade styles, each with a live preview, and you can change any of their colors from the Presets page without a rebuild.</p>
+      <p>Already have a style you like? Paste its code (from the Fett263 style library or anywhere else) and Hiltwright keeps the author's credit in the firmware it builds.</p>
       <a class="more" href="features.html#styles">More about styles</a>
     </div>
     <figure class="frame"><img loading="lazy" src="assets/shots/clean-35.png" width="1480" height="980" alt="The Styles page: a grid of blade styles with previews, and one style open with effect buttons and color pickers"></figure>
@@ -89,17 +89,17 @@ scripts: assets/stage.js, assets/blade-demo.js
   <div class="wrap feature flip">
     <div>
       <h2>Build your own styles, as simple or complex as you like.</h2>
-      <p>Simple mode creates a style from a few building blocks: a blade, effects on top, an ignition and a retraction. Full mode exposes every ProffieOS layer, and you control what every layer does, where on the blade, and when.</p>
-      <p>The blade next to the editor shows the live style as you modify it.</p>
+      <p>Simple mode builds a style from a few blocks: a blade, effects on top, an ignition and a retraction. Full mode opens up every ProffieOS layer, so you decide what each layer shows, where on the blade, and when.</p>
+      <p>The blade next to the editor updates as you go.</p>
       <a class="more" href="features.html#style-editor">More about the editor</a>
     </div>
     <figure class="frame"><img loading="lazy" src="assets/shots/clean-40.png" width="1480" height="980" alt="The Style editor in Full mode: layers on the left, a What, Where and When card, and a live blade preview"></figure>
   </div>
   <div class="wrap feature">
     <div>
-      <h2>Backup and restore.</h2>
-      <p>Hiltwright's install process reads the saber's whole firmware into a backup file before it writes anything. "Put back" restores a backup exactly as you had it.</p>
-      <p>Hiltwright will automatically download and install the necessary compiler behind the scenes. You never need to open Arduino or read a config file, unless you want to.</p>
+      <h2>Build and install, with a backup first.</h2>
+      <p>Before Hiltwright writes anything, it reads the saber's whole firmware into a backup file. If you don't like the result, "Put back" restores that backup exactly as you had it.</p>
+      <p>Hiltwright also downloads and sets up the compiler for you behind the scenes. You never need to open Arduino or read a config file (unless you want to).</p>
       <a class="more" href="features.html#build-install">More about installing</a>
     </div>
     <figure class="frame"><img loading="lazy" src="assets/shots/clean-23.png" width="1480" height="980" alt="The Build and Flash page: four steps and a Card line, each turning green when it is done"></figure>
@@ -110,9 +110,9 @@ scripts: assets/stage.js, assets/blade-demo.js
   <div class="wrap">
     <h2>Coming from Crystal Focus X, Xenopixel or LGT?</h2>
     <div class="cards three">
-      <div class="card"><h3>No toolchain to set up</h3><p>ProffieOS normally means figuring out Arduino, board packages, drivers and a config file in C++. Hiltwright handles all of that for you, so you can focus on your hilt.</p></div>
-      <div class="card"><h3>Language you understand</h3><p>Presets, fonts, colors, effects. Each ProffieOS term is explained in a few words throughout the app, and in the <a href="docs/glossary.html">glossary</a>.</p></div>
-      <div class="card"><h3>Hard to get wrong</h3><p>Wiring is validated and confirmed before anything is installed, fonts are checked before they are copied, and every preset change can be reverted from the app's History.</p></div>
+      <div class="card"><h3>No toolchain to set up</h3><p>ProffieOS normally means figuring out Arduino, board packages, drivers and a config file written in C++. Hiltwright handles all of that for you, so you can focus on your hilt.</p></div>
+      <div class="card"><h3>Language you understand</h3><p>The app talks in presets, fonts, colors and effects. Wherever a ProffieOS term comes up, the app explains it in a few words, and the <a href="docs/glossary.html">glossary</a> has the full list.</p></div>
+      <div class="card"><h3>Hard to get wrong</h3><p>Hiltwright checks the wiring and waits for you to confirm it before anything gets installed. Fonts are checked before they're copied, and any preset change can be undone from History.</p></div>
     </div>
   </div>
 </section>
@@ -121,10 +121,10 @@ scripts: assets/stage.js, assets/blade-demo.js
   <div class="wrap beta">
     <div>
       <h2>Who this beta is for.</h2>
-      <p><b>Install it now</b> if you are using Windows 10/11 or macOS 13+ and are comfortable with the nitty-gritty of saber wiring, install, and configuration. While we work through the early beta phases we want to focus on hardening Hiltwright's process and validation so future users need not worry about any of that. Be ready for things to break and be comfortable filing issues on GitHub.</p>
-      <p><b>Wait for a later release</b> if you aren't comfortable disabling Windows Smart App Control or you're unsure how your saber is wired and configured currently.</p>
-      <p>Neither build is signed, so both systems will warn you before it opens, and on Windows Smart App Control must be turned off. macOS is new in this beta: on a Mac Hiltwright sets up its toolchain and builds firmware, and installing to a saber has not been confirmed there yet. The <a href="docs/install.html">install guide</a> covers this step by step.</p>
-      <p>Whatever you change, the saber's prior firmware is backed up before every install, and "Put back" restores it to your hilt.</p>
+      <p><b>Install it now</b> if you're on Windows 10/11 or macOS 13+ and comfortable with the nitty-gritty of saber wiring, installs and configuration. While we're in the early betas, we're focused on hardening Hiltwright's install process and checks so future users won't need to know any of that. Expect things to break, and be comfortable filing issues on GitHub.</p>
+      <p><b>Wait for a later release</b> if you aren't comfortable turning off Windows Smart App Control, or you're not sure how your saber is currently wired and configured.</p>
+      <p>Neither build is signed yet, so Windows and macOS will both warn you before Hiltwright opens, and on Windows, Smart App Control has to be off. macOS is new in this beta: on a Mac, Hiltwright sets up its toolchain and builds firmware, but we haven't confirmed installing to a saber there yet. The <a href="docs/install.html">install guide</a> walks through all of this step by step.</p>
+      <p>Whatever you change, the saber's existing firmware is backed up before every install, and "Put back" restores it.</p>
       <div class="cta">
         <a class="btn primary big" href="download.html">Get the beta</a>
         <a class="btn big" href="docs/index.html">Read the docs</a>

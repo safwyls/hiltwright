@@ -6,7 +6,7 @@ nav: features
 <section class="pagehead">
   <div class="wrap">
     <h1>Everything between a bare board and a finished saber.</h1>
-    <p class="lede">Hiltwright has three parts. Install takes one saber from a plan to flashed firmware. Live changes a flashed saber that is plugged in, at once. The workshop is where you browse, build and try styles and fonts for any saber.</p>
+    <p class="lede">Hiltwright has three parts. Install takes one saber from a plan to flashed firmware. Live edits a flashed saber while it is plugged in, with nothing built. The workshop is where you browse, build and try styles and fonts for any saber.</p>
     <nav class="jump" aria-label="On this page">
       <a href="#saber-path">The saber path</a><a href="#workshop">The workshop</a><a href="#safety">Safety</a><a href="#not-yet">Not in the beta</a>
     </nav>
@@ -22,7 +22,7 @@ nav: features
   <div class="wrap feature" id="armory">
     <div>
       <h3>Armory</h3>
-      <p>Every saber Hiltwright has seen is remembered, plugged in or not. Pick the one you are working on, then adjust it live or change its setup.</p>
+      <p>Hiltwright remembers every saber it has seen, plugged in or not. Pick the one you are working on, then adjust it live or change its setup.</p>
       <ul class="points">
         <li>Plug a saber in with a USB data cable and it connects by itself.</li>
         <li>"Change its setup" shows the five Install steps and how far this saber has got.</li>
@@ -40,7 +40,7 @@ nav: features
       <ul class="points">
         <li>A blade is anything the saber lights or runs: main blade, crystal chamber, accent LED, motor.</li>
         <li>The pin table shows which pins each blade uses, and any clash between them.</li>
-        <li>Nothing is installed until you confirm the wiring. A wrong power pin can damage hardware.</li>
+        <li>Nothing gets installed until you confirm the wiring, since a wrong power pin can damage hardware.</li>
       </ul>
       <a class="more" href="docs/wiring.html">Wiring in the docs</a>
     </div>
@@ -54,7 +54,7 @@ nav: features
       <ul class="points">
         <li>Add a font package as you downloaded it, or a folder. Your originals are never changed.</li>
         <li>Each chosen font says whether the card already has it, as last read.</li>
-        <li>With the Fett263 controls, choose the voice its menus speak in. A card whose voice pack is missing, too old or mixed with an older one is pointed out.</li>
+        <li>With the Fett263 controls, choose the voice the saber's menus speak in. Hiltwright points out a card whose voice pack is missing, too old or mixed with an older one.</li>
         <li>Six free ProffieOS fonts come with Hiltwright.</li>
       </ul>
       <a class="more" href="docs/fonts.html">Fonts in the docs</a>
@@ -81,7 +81,7 @@ nav: features
       <h3>4 Card</h3>
       <p>Sound fonts live on the saber's SD card. Put the card in a card reader and Hiltwright gets it ready in one go.</p>
       <ul class="points">
-        <li>A card reader is about 30 times faster than the saber's own USB, which runs at USB 1.1 speed. The card is found as soon as it is in.</li>
+        <li>We recommend a card reader: it's about 30 times faster than the saber's own USB, which runs at USB 1.1 speed. Hiltwright finds the card as soon as it's in.</li>
         <li>"Prepare the card" copies the chosen fonts it lacks, puts the voice pack on, and removes the old presets file so the new list takes effect.</li>
         <li>Every font on the card is checked for the usual faults, such as a missing hum.</li>
         <li>No card reader? "Share the saber's card" lends it over USB, more slowly.</li>
@@ -94,9 +94,9 @@ nav: features
   <div class="wrap feature flip" id="build-install">
     <div>
       <h3>5 Build &amp; Flash</h3>
-      <p>This turns the wiring, presets and styles into firmware, and flashes it over USB.</p>
+      <p>Build &amp; Flash turns the wiring, presets and styles into firmware, and flashes the firmware over USB.</p>
       <ul class="points">
-        <li>The compiler is a one-time download of about 360 MB. After that a build takes about a minute.</li>
+        <li>The compiler is a one-time download of about 360 MB. After that, a build takes about a minute.</li>
         <li>The flash reads the saber's whole firmware into a backup file first.</li>
         <li>Every backup is kept. "Put back" writes one onto the saber exactly as it was.</li>
         <li>If a step fails, "Save diagnostics" writes one file to attach to a report.</li>
@@ -109,9 +109,9 @@ nav: features
   <div class="wrap feature" id="live">
     <div>
       <h3>Live</h3>
-      <p>For a saber that is already flashed and plugged in. Changes are written to the saber at once, with nothing built, and it works with any ProffieOS firmware.</p>
+      <p>Live is for a saber that is already flashed and plugged in. Changes are written to the saber at once, with nothing built, and Live works with any ProffieOS firmware.</p>
       <ul class="points">
-        <li>Presets: change a font, a colour or a name, and see it saved when the saber reads it back. History undoes a change.</li>
+        <li>Presets: change a font, a color or a name, and see it saved when the saber reads it back. History undoes a change.</li>
         <li>Controls: volume, brightness, effects and ProffieOS commands.</li>
         <li>Card: a quick fix on the saber's card, such as one font or the voice pack.</li>
       </ul>
@@ -205,7 +205,7 @@ nav: features
   <div class="wrap">
     <h2>Not in this beta.</h2>
     <ul class="points">
-      <li>Linux. This beta runs on Windows and, newly, on macOS.</li>
+      <li>Linux. This beta runs on Windows and macOS.</li>
       <li>On a Mac: installing firmware to a saber has not been confirmed yet, the six free sound fonts are not included, and the app does not update itself.</li>
       <li>Code signing. Windows warns about the installer, and Smart App Control must be off.</li>
       <li>Card formatting. Hiltwright warns about a card in the wrong format, but does not format it.</li>

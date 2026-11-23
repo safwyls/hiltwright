@@ -1,50 +1,50 @@
 ---
 title: Card
-summary: Fix the saber's SD card without a new install. Share it over the saber's USB, check its fonts, and add a font or the voice pack.
+summary: Fix the saber's SD card without a new install. Share the card over the saber's USB, check the card's fonts, and add a font or the voice pack.
 section: Live
 order: 3
 ---
-Live › Card works on the saber's SD card, for a small fix: one font, or the voice pack. Live › Card needs no new build and no install. This page was called Fonts & SD before.
+Live › Card works on the saber's SD card for a small fix, like one font or the voice pack, and needs no new build and no install. This page was called Fonts & SD before.
 
-For a full set-up, use a card reader instead. On Install › [Card](card.html), the trip copies every font your saber needs in one go, and it is much faster. Choosing which fonts a saber carries is done on [Install › Fonts](fonts.html).
+For a full set-up we recommend a card reader instead, since the trip on Install › [Card](card.html) copies every font your saber needs in one go and is much faster. Choosing which fonts a saber carries is done on [Install › Fonts](fonts.html).
 
 ## Two ways to reach the card
 
-**Card reader.** Put the card in a card reader. Hiltwright finds it. Copying through a reader is about 30 times faster than over the saber's USB link.
+**Card reader.** Put the card in a card reader and Hiltwright finds the card. Copying through a reader is about 30 times faster than over the saber's USB link.
 
-**Share the saber's card.** With the saber plugged in, press **Share the saber's card**. The saber lets go of its card, and Windows shows it as a drive. The blade goes off and sound stops until you give the card back.
+**Share the saber's card.** With the saber plugged in, press **Share the saber's card**. The saber lets go of its card and Windows shows the card as a drive. The blade goes off and sound stops until you give the card back.
 
-> **Note:** The saber's own USB is slow. It runs at the speed of USB 1.1. In a test, one font took about 4 seconds through a card reader and about 120 seconds over the saber's USB. Listing the card can take 10 to 30 seconds. The page shows how long a typical 40 MB font would take each way before you start. Sharing suits a small fix. For more than that, use a card reader.
+> **Note:** The saber's own USB is slow (USB 1.1 speed). In our test, one font took about 4 seconds through a card reader and about 120 seconds over the saber's USB, and listing the card can take 10 to 30 seconds. Before you start, the page shows how long a typical 40 MB font would take each way. Sharing is fine for a small fix, but for anything more we recommend a card reader.
 
 ### What sharing looks like
 
-1. "Asking the saber…" The saber lets go of its card once any sound has stopped. This can take several seconds.
-2. "Waiting for the drive…" Windows opens the card as a drive. On a large card this can take a minute or two. Hiltwright keeps looking for up to 3 min and shows the time so far. On the checked V3 the drive appeared after 9 s.
+1. "Asking the saber…" The saber lets go of its card once any sound has stopped, which can take several seconds.
+2. "Waiting for the drive…" Windows opens the card as a drive, and on a large card this can take a minute or two. Hiltwright keeps looking for up to 3 min and shows the time so far. When we tested on a V3, the drive appeared after 9 s.
 3. The card appears with a heading such as "ProffieOS card at E: (label): (saber)'s own card".
 
-**Cancel** stops waiting and gives the card back. If the 3 minutes pass, the card stays shared and nothing is taken back for you. Press **Look again** if a drive window opened since. Otherwise press **Keep waiting** or **Give the card back**.
+**Cancel** stops waiting and gives the card back. If the 3 minutes pass, the card stays shared and nothing is taken back for you. Press **Look again** if a drive window has opened since, otherwise press **Keep waiting** or **Give the card back**.
 
 While the card is shared:
 
-- The saber cannot play.
-- Preset changes and installs are blocked. [Live › Presets](live-presets.html) and Build & Flash tell you to give the card back first.
-- Copying is slow. A big font can take minutes.
+- The saber can't play.
+- Preset changes and installs are blocked, and [Live › Presets](live-presets.html) and Build & Flash tell you to give the card back first.
+- Copying is slow, so a big font can take minutes.
 
-Press **Give the card back** here. Do not unplug the saber, so nothing is left half written.
+Press **Give the card back** here when you're done. Careful not to just unplug the saber, since that can leave something half written!
 
-> **Warning:** If Windows will not let go of the drive, giving the card back can be refused. This happened when File Explorer had the card open. Close any File Explorer windows showing the card, then press **Give the card back** again.
+> **Warning:** If Windows won't let go of the drive, giving the card back can be refused. We've seen this happen when File Explorer had the card open, so close any File Explorer windows showing the card, then press **Give the card back** again.
 
-If Hiltwright cannot tell which drive is the saber's card, it asks you to use Safely Remove in Windows for it, then press **Give the card back** again. If the connection drops while the card is shared, reconnect the saber to give the card back.
+If Hiltwright can't tell which drive is the saber's card, Hiltwright asks you to use Safely Remove in Windows for that drive, then press **Give the card back** again. If the connection drops while the card is shared, reconnect the saber to give the card back.
 
-Sharing is also the slow fallback for a full install, for people with no card reader. Share the card on Install › [Card](card.html), which gets it ready the same way as a card in a reader.
+Sharing is also the slow fallback for a full install if you don't have a card reader. Share the card on Install › [Card](card.html), which gets the card ready the same way as a card in a reader.
 
 ## The card status line
 
-The line under the heading shows free and total space, the number of fonts and tracks, whether `presets.ini` is present, the card's format and the voice pack. If several cards are seen, a **Card** list lets you choose. Nothing is copied until you do. **Look again** reads the card once more.
+The line under the heading shows free and total space, the number of fonts and tracks, whether `presets.ini` is present, the card's format and the voice pack. If several cards are seen, a **Card** list lets you choose, and nothing is copied until you do. **Look again** reads the card once more.
 
-Hiltwright writes only to the card it read. A card put in, taken out, or swapped for another in the same reader is noticed within a few seconds. A drive that is slow to answer, such as a card the saber is still opening, is checked again about a minute later. If a copy or the voice pack is asked for just as a card is swapped, it is refused with "The card in E: is not the one Hiltwright read. Look again." and nothing is written to the other card.
+Hiltwright writes only to the card it read. A card put in, taken out, or swapped for another in the same reader is noticed within a few seconds, and a drive that's slow to answer (such as a card the saber is still opening) is checked again about a minute later. If a copy or the voice pack is asked for just as a card is swapped, Hiltwright refuses with "The card in E: is not the one Hiltwright read. Look again." and nothing is written to the other card.
 
-Below it, Hiltwright says whose card it is. A card the saber shares over USB is remembered as that saber's, by the card's serial number, so the same card in a card reader is known too. A card that holds the presets a saber last reported is taken to be that saber's. The saber saves its presets to two files in turn, `presets.ini` and `presets.tmp`, and Hiltwright reads the list the saber would load, the newer good save. If it cannot tell which list that is, it does not guess. To be sure, press **This is (saber)'s card**; **Not (saber)'s card** undoes it. The saber's own card is chosen first when several are in, and Build & Flash checks it there.
+Below the status line, Hiltwright says whose card this is. A card the saber shares over USB is remembered as that saber's by the card's serial number, so the same card in a card reader is known too. A card that holds the presets a saber last reported is taken to be that saber's. The saber saves its presets to two files in turn, `presets.ini` and `presets.tmp`, and Hiltwright reads the list the saber would load (the newer good save). If Hiltwright can't tell which list that is, Hiltwright doesn't guess. To be sure, press **This is (saber)'s card**, and **Not (saber)'s card** undoes that. The saber's own card is chosen first when several are in, and Build & Flash checks it there.
 
 Headings tell you what Hiltwright found:
 
@@ -57,7 +57,7 @@ Headings tell you what Hiltwright found:
 
 ### The card format
 
-A saber reads only FAT32 cards. If the card is formatted exFAT or NTFS, a red note says "A saber cannot read this card." The saber will find no fonts or presets on it. Back up what you need, then format it as FAT32. Windows' own format only offers FAT32 for cards up to 32 GB. A larger card needs a FAT32 formatting tool. Formatting erases everything.
+A saber reads only FAT32 cards. If the card is formatted exFAT or NTFS, a red note says "A saber cannot read this card.", since the saber won't find any fonts or presets on it. Formatting erases everything on the card, so back up what you need first, then format the card as FAT32. Windows' own format only offers FAT32 for cards up to 32 GB, so a larger card needs a FAT32 formatting tool.
 
 Copying to such a card asks first: "Copy (font) to (drive) anyway? The card is (format), so a saber will not see it until the card is formatted as FAT32." Hiltwright has no card formatter in this beta.
 
@@ -65,39 +65,39 @@ Copying to such a card asks first: "Copy (font) to (drive) anyway? The card is (
 
 The table lists every font folder on the card, with its type and file count, its size and a verdict.
 
-- **Ready** means the saber should play it.
-- A chip such as "2 issues" means a check found a fault. The chip is red for the serious ones, a missing hum or mixed sound files, and amber for the rest. The notes underneath say what and which font.
+- **Ready** means the saber should play the font.
+- A chip such as "2 issues" means a check found a fault. The chip is red for the serious ones (a missing hum or mixed sound files) and amber for the rest, and the notes underneath name each fault and the font it's in.
 
-Pick a font to see its sounds, grouped by effect, with how many are polyphonic or monophonic. With none picked, the panel shows the card's tracks.
+Pick a font to see its sounds, grouped by effect, with how many are polyphonic or monophonic. With no font picked, the panel shows the card's tracks.
 
 ## Fonts the presets use
 
-The **Preset fonts** tab lists the font each preset names and where it is:
+The **Preset fonts** tab lists the font each preset names and where that font is:
 
 - "On the card": nothing to do.
-- **Copy from library**: it is in your [font library](font-library.html). One click copies it.
-- **Copy to card**: it is one of the six free fonts that come with Hiltwright.
-- "Missing": absent from the card, the library and every pack. Add it to the library and copy it, or choose another font on [Live › Presets](live-presets.html).
-- With no card seen, you see "In library", "Ready to copy" or "Card not checked".
+- **Copy from library**: the font is in your [font library](font-library.html), and one click copies it.
+- **Copy to card**: the font is one of the six free fonts that come with Hiltwright.
+- "Missing": the font isn't on the card, in the library or in any pack. Add it to the library and copy it, or choose another font on [Live › Presets](live-presets.html).
+- With no card seen, you'll see "In library", "Ready to copy" or "Card not checked".
 
-**Copy all** copies every font that can be copied. The six free ProffieOS fonts are TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl. Each shows its credit and license, CC BY-SA 4.0. A copy is identical to the original folder.
+**Copy all** copies every font that can be copied. The six free ProffieOS fonts are TeensySF, SmthJedi, SmthGrey, SmthFuzz, RgueCmdr and TthCrstl, and each shows its credit and license (CC BY-SA 4.0). A copy is identical to the original folder.
 
-Progress shows as "Copying (font): 3 of 40 files". Afterwards: "Copied (fonts) to the card." If one fails, the note lists what was not copied and why.
+Progress shows as "Copying (font): 3 of 40 files", and afterwards "Copied (fonts) to the card." If one fails, the note lists what wasn't copied and why.
 
 ## Add a font from this computer
 
-On the **Add a font** tab, press **Choose folder**. Hiltwright checks the files and shows the type, file count, size and any issues before anything is copied. Your original is never changed. Press **Copy to card**.
+On the **Add a font** tab, press **Choose folder**. Hiltwright checks the files and shows the type, file count, size and any issues before anything is copied, and your original is never changed. Then press **Copy to card**.
 
-If a font of that name is already on the card, **Replace on card** is offered, and asks again: "Really replace (font)?".
+If a font of that name is already on the card, Hiltwright offers **Replace on card** and asks again: "Really replace (font)?".
 
 ## Tracks and the voice pack
 
-Tracks are the music files in the card's tracks folder. Name one in a preset's **Track** field.
+Tracks are the music files in the card's tracks folder, and you name one in a preset's **Track** field.
 
 The status line reports the voice pack, for example "voice pack version 2" or "not found". Presets that use the Fett263 prop need voice pack version 2 in the `common` folder. When the card has none, or an older one, a note says so and offers to put one there. With a good pack already on the card, **Change the voice** on the status line opens the same choice.
 
-Choose a voice from the list: the plain voices in several languages, or one of the character voices. They are Brian Conner's (NoSloppy) voice packs, included with his permission. English A comes with Hiltwright. Any other is downloaded when you put it on the card, checked, and kept on this computer for next time. **Use a zip you downloaded** takes a pack you downloaded yourself, as the zip it came in. Hiltwright checks the zip is version 2 and has its menu sounds before copying. The menu sounds are `.wav` files in an `mnum` folder, or loose `mnum1.wav`, `mnum2.wav`… files. An `mnum` folder with no sounds in it does not count, on the card either: the saber would say "voice pack not found".
+Choose a voice from the list: the plain voices in several languages, or one of the character voices. These are Brian Conner's (NoSloppy) voice packs, and we include them with his permission. English A comes with Hiltwright, and any other voice is downloaded when you put it on the card, checked, and kept on this computer for next time. **Use a zip you downloaded** takes a pack you downloaded yourself, as the zip it came in, and Hiltwright checks that the zip is version 2 and has its menu sounds before copying. The menu sounds are `.wav` files in an `mnum` folder, or loose `mnum1.wav`, `mnum2.wav`… files. An `mnum` folder with no sounds in it doesn't count, on the card either, since the saber would say "voice pack not found".
 
-The pack replaces only its own files and folders in `common`. Other sounds you keep there stay. Whatever it replaces is copied to this computer first, and the note says where. If the swap stops part way (the card pulled out, say), the old pack is put back whole, at once or the next time you put a voice pack on, so the card never keeps half of each pack. If something cannot go back, the note says which files, and where the copy on this computer is. Hiltwright does not put the rest of the `common` folder on the card. Build & Flash warns if the voice pack is missing, and Presets has the "Also use common sounds" switch. Setting up the voice pack is done here, not in the Build & Flash card step.
+The pack replaces only its own files and folders in `common`, so other sounds you keep there stay put. Whatever the pack replaces is copied to this computer first, and the note says where. If the swap stops part way (the card pulled out, say), the old pack is put back whole, either at once or the next time you put a voice pack on, so the card never keeps half of each pack. If something can't go back, the note says which files, and where the copy on this computer is. Hiltwright does not put the rest of the `common` folder on the card. Build & Flash warns if the voice pack is missing, and Presets has the "Also use common sounds" switch. Setting up the voice pack is done here, not in the Build & Flash card step.
 
 Next: [Settings and About](settings.html).
