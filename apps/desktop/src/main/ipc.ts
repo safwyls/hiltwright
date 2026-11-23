@@ -4,7 +4,7 @@ import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron';
 import { arch, release, version as osVersion } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { SABER_SHARE_EXTENSION, SABER_SHARE_MAX_BYTES, generateConfig, importedModel, isBank, isStyleDoc, isTreeDoc, makeSaberShare, readSaberShare, shareFonts, shareStylesToAdd, validateModel, wiringFingerprint, type PresetBank, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
+import { SABER_SHARE_EXTENSION, SABER_SHARE_MAX_BYTES, STYLE_SHARE_EXTENSION, STYLE_SHARE_MAX_BYTES, placeImportedStyles, readStyleShare, generateConfig, importedModel, isBank, isStyleDoc, isTreeDoc, makeSaberShare, readSaberShare, shareFonts, shareStylesToAdd, validateModel, wiringFingerprint, type PresetBank, type PresetRecord, type SaberConfigModel } from '@hiltwright/core';
 import { Library, libraryPath } from './library';
 import { planProblems } from './planCheck';
 import { LooksStore, cleanLook, looksPath } from './looksStore';
@@ -180,6 +180,23 @@ export function registerIpc(): void {
     const sabersUpdated = await library.replaceLook(v);
     if (sabersUpdated) console.log(`[styles] ${v.id} saved; ${sabersUpdated} saber plan(s) now have this version`);
     return { looks, sabersUpdated };
+  });
+  // Styles saved from the workshop on the website, or from another copy (styleShare.ts). Each is checked as a saved
+  // style is; one that fails is left out and counted.
+  handle('looks:importFile', async () => {
+    const r = process.env.HILTWRIGHT_DIALOG_FILE ? { canceled: false, filePaths: [process.env.HILTWRIGHT_DIALOG_FILE] } : await openDialog('styleShare', { title: 'Import styles', properties: ['openFile'], filters: [{ name: 'Hiltwright styles', extensions: [STYLE_SHARE_EXTENSION] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    const file = r.filePaths[0];
+    if ((await statFile(file)).size > STYLE_SHARE_MAX_BYTES) throw new Error(`${basename(file)} is far bigger than a styles file should be.`);
+    let raw: unknown;
+    try { raw = JSON.parse(await readFile(file, 'utf8')); } catch { throw new Error(`${basename(file)} is not a styles file from Hiltwright.`); }
+    const share = readStyleShare(raw);
+    const checked = share.styles.map((l) => cleanLook(l)).filter((l): l is LookDef => !!l);
+    const { add, same } = placeImportedStyles(checked, await looksStore.list(), (l, n) => `${l.id.slice(0, 55)}_${n}`);
+    let looks = await looksStore.list();
+    for (const l of add) looks = await looksStore.add(l);
+    console.log(`[styles] imported ${basename(file)} (from ${share.from}): ${add.length} added, ${same} already here, ${share.styles.length - checked.length} refused`);
+    return { looks, added: add.map((l) => l.id), same, refused: share.styles.length - checked.length };
   });
 
   handle('snapshots:list', (_e, id: unknown) => snapshots.list(str(id, 40)));

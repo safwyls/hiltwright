@@ -103,6 +103,17 @@ Comments are fine anywhere in the code. The checks skip them, so a `>` inside a 
 
 A style you paste is credited to the person you name. You can fix the name later with **Edit** beside the credit, and add a logo or link for them. See [Contributors](contributors.html).
 
+## Import styles
+
+**Import styles** takes a `.hwstyle` file: styles saved in the [workshop](../workshop/index.html) on this website, or from another copy of Hiltwright.
+
+1. In the workshop, select your style and press **Save for the app**. **Save all** puts every style you made there in one file.
+2. In the app, open Styles and press **Import styles**, then pick the file.
+
+Each style is checked as one you save in the app is checked. A style that fails is left out, and the page says how many were. A style you already have is not added twice. A different style that happens to share an id is added beside yours, so neither replaces the other.
+
+The workshop runs the app's own Styles page and style editor in the browser, with no saber. Styles made there last until the browser tab is closed, so save the ones you want to keep.
+
 ## Your saved styles
 
 Styles you paste or build are kept in your Styles. They can be removed. Built-in styles cannot.

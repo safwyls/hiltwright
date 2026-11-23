@@ -10,8 +10,11 @@ on:
       - 'docs/install-guide.md'
       - 'docs/release-notes-beta-*.md'
       - 'docs/images/**'
-      - 'packages/core/src/sim.ts'
-      - 'packages/core/src/lookLibrary.ts'
+      # The workshop (site/workshop.mjs) is the app's own Styles page and style editor, with core underneath.
+      - 'packages/core/src/**'
+      - 'apps/desktop/src/renderer/**'
+      - 'apps/desktop/src/shared/**'
+      - 'package-lock.json'
       # The site shows the app's theme paintings and icon (site/build.mjs copies them in).
       - 'apps/desktop/src/renderer/src/assets/backdrops/**'
       - 'apps/desktop/src/renderer/src/assets/hiltwright-icon.svg'
@@ -37,7 +40,12 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: site/package-lock.json
+          cache-dependency-path: |
+            site/package-lock.json
+            package-lock.json
+      # The workshop bundles React, pixi.js and the app's typefaces from the repo's own install, the versions the app
+      # ships. Only plain JavaScript is needed from it, so no install scripts run (Electron is not downloaded).
+      - run: npm ci --ignore-scripts
       - run: npm ci
         working-directory: site
       - run: npm run build

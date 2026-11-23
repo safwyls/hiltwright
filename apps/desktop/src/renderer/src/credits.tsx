@@ -71,7 +71,7 @@ export function ContributorLogo({ name, logo, size = 22 }: { name: string; logo:
  * Credit for one person: their logo, name and link, with the means to add or change them. `onRename` makes the name
  * editable (for the owner's own looks, where the author was typed in by hand).
  */
-export function CreditCard({ name, label = 'By', editedBy, onRename, onError }: { name: string; label?: string; /** The owner changed this style in the editor: say so under the author. */ editedBy?: boolean; onRename?: (name: string) => void | Promise<void>; onError?: (text: string) => void }) {
+export function CreditCard({ name, label = 'By', editedBy, onRename, onError, readOnly }: { name: string; label?: string; /** The owner changed this style in the editor: say so under the author. */ editedBy?: boolean; onRename?: (name: string) => void | Promise<void>; onError?: (text: string) => void; /** Shown without the means to change it (the workshop on the website keeps no contributors). */ readOnly?: boolean }) {
   const people = useContributors();
   const [editing, setEditing] = useState<'name' | 'url' | null>(null);
   const [draft, setDraft] = useState('');
@@ -105,7 +105,7 @@ export function CreditCard({ name, label = 'By', editedBy, onRename, onError }: 
               {onRename && <button type="button" className="holo small" onClick={() => { setDraft(credited ? name : ''); setEditing('name'); }}>Edit</button>}
             </span>
             {editedBy && <span className="hint">Edited by you</span>}
-            {credited && (
+            {credited && !readOnly && (
               <span className="row wrap" style={{ gap: 10 }}>
                 {url && <button type="button" className="holo small ellip" style={{ maxWidth: 200 }} title={url} onClick={() => void people.open(name)}><Icon name="link" style={{ width: 12, height: 12, verticalAlign: -1 }} /> {url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</button>}
                 <button type="button" className="holo small" onClick={() => void people.setLogo(name).catch(fail)}>{logo ? 'Change logo' : 'Add logo'}</button>

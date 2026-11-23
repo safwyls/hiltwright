@@ -350,6 +350,8 @@ export interface HiltwrightApi {
     /** Store the new version, and give it to every saber whose plan holds a copy (how many is `sabersUpdated`). */
     update(id: string, look: LookDef): Promise<{ looks: LookDef[]; sabersUpdated: number }>;
     remove(id: string): Promise<LookDef[]>;
+    /** Ask for a .hwstyle file and add its styles: `added` are their ids, `same` were already here, `refused` failed the check. Null when nothing was chosen. */
+    importFile(): Promise<{ looks: LookDef[]; added: string[]; same: number; refused: number } | null>;
   };
   snapshots: {
     list(saberId: string): Promise<SnapshotMeta[]>;

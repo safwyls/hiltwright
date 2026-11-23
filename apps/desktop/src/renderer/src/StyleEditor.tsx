@@ -22,7 +22,7 @@ const api = () => window.hiltwright;
 interface Draft { doc: StyleDoc; tree: TreeDoc; mode: 'simple' | 'tree'; /** The full editor's layer keys, not saved. */ keys?: string[] }
 const PREVIEW_ID = 'style_editor_preview';
 
-export function StyleEditor({ editing, onSaved, onDemo, onLeaveGuard }: { editing: LookDef | null; onSaved: (look: LookDef) => void; onDemo: (lookId: string) => void; onLeaveGuard?: (guard: ((proceed: () => void) => void) | null) => void }) {
+export function StyleEditor({ editing, onSaved, onDemo, onLeaveGuard, inBrowser }: { editing: LookDef | null; onSaved: (look: LookDef) => void; onDemo: (lookId: string) => void; onLeaveGuard?: (guard: ((proceed: () => void) => void) | null) => void; /** The workshop on the website: saved styles last the visit, and `onDemo` opens Styles. */ inBrowser?: boolean }) {
   // The whole document, both editors' halves of it and which one is showing, under undo and redo (editorHistory.ts).
   const history = useHistory<Draft>(() => ({
     doc: editing && isStyleDoc(editing.style) ? structuredClone(editing.style) : defaultStyle(),
@@ -167,7 +167,8 @@ export function StyleEditor({ editing, onSaved, onDemo, onLeaveGuard }: { editin
             </span></div>
           )}
           {saveError && <div className="note red" role="alert"><Icon name="x" /><span>Could not save the style: {saveError}</span></div>}
-          {saved && <div className="note green"><Icon name="check" /><span>Saved. The style is in your Styles now: add it to a preset there, and its live colours can be changed once installed.{saved.sabers > 0 ? ` ${saved.sabers === 1 ? "1 saber's plan now has" : `${saved.sabers} sabers' plans now have`} this version; it needs a build to reach the saber.` : ''} <button type="button" className="holo" onClick={() => onDemo(saved.id)}>Swing it in the demo room</button>.</span></div>}
+          {saved && inBrowser && <div className="note green"><Icon name="check" /><span>Saved for this visit. The style is in Styles now, where <b>Save for the app</b> takes it into Hiltwright. <button type="button" className="holo" onClick={() => onDemo(saved.id)}>See it in Styles</button>.</span></div>}
+          {saved && !inBrowser && <div className="note green"><Icon name="check" /><span>Saved. The style is in your Styles now: add it to a preset there, and its live colours can be changed once installed.{saved.sabers > 0 ? ` ${saved.sabers === 1 ? "1 saber's plan now has" : `${saved.sabers} sabers' plans now have`} this version; it needs a build to reach the saber.` : ''} <button type="button" className="holo" onClick={() => onDemo(saved.id)}>Swing it in the demo room</button>.</span></div>}
           {pasting && <PasteStyle onParsed={openParsed} onClose={() => setPasting(false)} />}
 
           {mode === 'tree' ? (

@@ -16,3 +16,4 @@ export { parsePresetsIni, emitPresetsIni, activePresets, readPresetsFile, savedP
 export { parseWavHeader, classifySound, checkFont, checkFontListing, classifyFontFile, isTrackPath, EFFECT_NAMES, OTHER_FILES, WAV_HEADER_BYTES, CORE_SOUNDS_TEXT, type WavInfo, type FontFile, type FontIssue, type FontReport, type FontListingEntry, type FontSoundFact, type FontCheck } from './fonts';
 export * from './styleCheck';
 export * from './saberShare';
+export * from './styleShare';

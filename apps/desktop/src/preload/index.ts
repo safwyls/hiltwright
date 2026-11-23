@@ -38,6 +38,7 @@ const api: HiltwrightApi = {
     add: (look) => ipcRenderer.invoke('looks:add', look),
     remove: (id) => ipcRenderer.invoke('looks:remove', id),
     update: (id, look) => ipcRenderer.invoke('looks:update', id, look),
+    importFile: () => ipcRenderer.invoke('looks:importFile'),
   },
   snapshots: {
     list: (saberId) => ipcRenderer.invoke('snapshots:list', saberId),

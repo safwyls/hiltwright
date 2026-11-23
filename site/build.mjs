@@ -11,6 +11,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { marked } from 'marked';
+import { buildWorkshop } from './workshop.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
@@ -78,6 +79,7 @@ function frontmatter(text) {
 const NAV = [
   { id: 'features', href: 'features.html', label: 'Features' },
   { id: 'walkthrough', href: 'walkthrough.html', label: 'Walkthrough' },
+  { id: 'workshop', href: 'workshop/index.html', label: 'Workshop' },
   { id: 'docs', href: 'docs/index.html', label: 'Docs' },
   { id: 'download', href: 'download.html', label: 'Download' },
 ];
@@ -124,7 +126,7 @@ ${body}
       <a class="brand" href="${root}index.html">${icon('foot')}Hiltwright</a>
       <p>ProffieOS for people who don't want to write code. Version ${esc(VERSION)}, a beta for Windows and macOS.</p>
     </div>
-    <div><p class="foot-h">Site</p><a href="${root}features.html">Features</a><a href="${root}walkthrough.html">Walkthrough</a><a href="${root}download.html">Download</a></div>
+    <div><p class="foot-h">Site</p><a href="${root}features.html">Features</a><a href="${root}walkthrough.html">Walkthrough</a><a href="${root}workshop/index.html">Workshop</a><a href="${root}download.html">Download</a></div>
     <div><p class="foot-h">Docs</p><a href="${root}docs/install.html">Install guide</a><a href="${root}docs/quick-start.html">Quick start</a><a href="${root}docs/troubleshooting.html">Troubleshooting</a><a href="${root}docs/faq.html">Questions</a></div>
     <div><p class="foot-h">Project</p><a href="${REPO_URL}">Source on GitHub</a><a href="${ISSUES_URL}">Report a problem</a><a href="${RELEASES_URL}">Releases</a><a href="${REPO_URL}/blob/main/LICENSE">License: GPL-3.0-or-later</a></div>
   </div>
@@ -151,6 +153,9 @@ writeFileSync(join(dist, '.nojekyll'), '');
 
 // ---------- the live blade demo: the app's simulator, for the browser ----------
 await build({ entryPoints: [join(here, 'src/blade-demo.ts')], bundle: true, minify: true, format: 'iife', target: 'es2020', outfile: join(dist, 'assets/blade-demo.js'), logLevel: 'warning' });
+
+// ---------- the workshop: the app's Styles page and style editor, in the browser (workshop.mjs) ----------
+await buildWorkshop({ repo, dist, layoutHead: '<link rel="icon" type="image/svg+xml" href="../assets/brand/hiltwright-icon.svg">' });
 
 // ---------- docs ----------
 const SECTIONS = ['Getting started', 'Install', 'Live', 'The workshop', 'Tools', 'Help'];

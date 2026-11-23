@@ -25,7 +25,7 @@ export const TOUR_ALLOWED: ReadonlySet<string> = new Set([
 export const TOUR_BLOCKED: ReadonlySet<string> = new Set([
   'library:upsert', 'library:rename', 'library:remove', 'library:linkCard', 'library:unlinkCard', 'library:update', 'library:plan', 'library:adopt', 'library:noteBootloader', 'library:exportShare', 'library:importShare',
   'banks:save', 'banks:remove',
-  'looks:add', 'looks:remove', 'looks:update',
+  'looks:add', 'looks:remove', 'looks:update', 'looks:importFile',
   'snapshots:save',
   'usb:wantSerial',
   'sd:eject', 'sd:pickFont', 'sd:copyFont', 'sd:clearPresets', 'voicePack:pick', 'voicePack:install',
