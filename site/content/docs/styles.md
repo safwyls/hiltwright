@@ -112,7 +112,7 @@ A style you paste is credited to the person you name. You can fix the name later
 
 Each style is checked as one you save in the app is checked. A style that fails is left out, and the page says how many were. A style you already have is not added twice. A different style that happens to share an id is added beside yours, so neither replaces the other.
 
-The workshop runs the app's own Styles page and style editor in the browser, with no saber. Styles made there last until the browser tab is closed, so save the ones you want to keep.
+The workshop runs the app's own Styles page, style editor and [Demo room](demo-room.html) in the browser, with no saber. Styles made there last until the browser tab is closed, so save the ones you want to keep.
 
 ## Your saved styles
 

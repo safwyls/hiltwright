@@ -4,6 +4,7 @@
 import { execFile } from 'node:child_process';
 import { copyFile, mkdir, open, readFile, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
+import { FONT_BYTES_CAP, PLAYABLE, parseFontIni } from '../shared/fontSounds';
 import { SAVED_PRESETS_HEADER_BYTES, WAV_HEADER_BYTES, activePresets, checkFontListing, classifySound, hasMenuSounds, mixedSounds, parseVoicePackIni, savedPresetsHeader, type FontListingEntry, type FontReport, type PresetRecord, type PresetsFiles, type VoicePackStatus } from '@hiltwright/core';
 
 export interface CardInfo {
@@ -256,17 +257,12 @@ export async function stopReading(root: string, waitMs = 10_000): Promise<void> 
 }
 const STOPPED = 'Stopped: the card is being given back.';
 
-/** The sounds a listen needs. Everything else in a font (tracks, ini files, quotes) stays on the card. */
-const PLAYABLE = /^(hum|humm|out|poweron|fastout|preon|in|poweroff|pwroff|pstoff|clsh|clash|blst|blaster|stab|force|font|boot|lock|lockup|bgnlock|endlock|drag|bgndrag|enddrag|lb|bgnlb|endlb|swingl|swingh|lswing|hswing|swng|swing|tr)$/i;
-const FONT_BYTES_CAP = 120 * 1024 * 1024;
+// The sounds a listen needs (shared/fontSounds.ts, which the workshop on the website uses too). Everything else in a
+// font (tracks, ini files, quotes) stays on the card.
 
 export interface FontSounds { name: string; files: Record<string, ArrayBuffer>; ini: Record<string, string>; smoothsw: Record<string, string>; bytes: number; skipped: number }
 
-function parseIni(text: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const line of text.split(/\r?\n/)) { const m = /^\s*([A-Za-z0-9_.]+)\s*=\s*(.+?)\s*$/.exec(line); if (m) out[m[1]] = m[2]; }
-  return out;
-}
+const parseIni = parseFontIni;
 
 /**
  * Every playable wav in a font folder, flat or one folder per sound, keyed by its path within the font. Reading

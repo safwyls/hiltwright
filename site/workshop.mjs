@@ -19,6 +19,9 @@ export async function buildWorkshop({ repo, dist, layoutHead = '' }) {
     format: 'esm',
     target: 'es2022',
     outdir: out,
+    // The demo room (three.js) is its own chunk, fetched when the room opens.
+    splitting: true,
+    chunkNames: 'chunks/[name]-[hash]',
     assetNames: 'assets/[name]-[hash]',
     loader: { '.woff2': 'file', '.woff': 'file', '.svg': 'file', '.jpg': 'file', '.webp': 'file', '.png': 'file' },
     jsx: 'automatic',

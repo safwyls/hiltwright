@@ -1,21 +1,27 @@
 // The workshop on the website: the app's own Styles page and style editor, in the app's own frame, with no saber.
 // Everything made here ends in a file the app opens (.hwstyle): the website is for trying, the app is for sabers.
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { makeStyleShare, registerLookSim, STYLE_SHARE_EXTENSION, type LookDef } from '@hiltwright/core';
 import { Looks } from '../src/Looks';
 import { StyleEditor } from '../src/StyleEditor';
 import { ErrorBoundary } from '../src/ErrorBoundary';
 import { Icon } from '../src/Icon';
+import { Loader } from '../src/Loader';
 import { Logo } from '../src/Logo';
 import { Select } from '../src/Select';
 import { applyTheme, currentTheme } from '../src/theme';
 import { THEMES } from '../../shared/themes';
 import { noSaberBoard, noSaberWorkspace } from './noSaber';
 
-type Page = 'looks' | 'editor';
-const TITLE: Record<Page, string> = { looks: 'Styles', editor: 'Style editor' };
-const PAGES: { id: Page; title: string; icon: 'looks' | 'gear' }[] = [{ id: 'looks', title: 'Styles', icon: 'looks' }, { id: 'editor', title: 'Style editor', icon: 'gear' }];
+// The demo room carries three.js: fetched the first time the room opens, as in the app.
+const Demo = lazy(() => import('../src/Demo').then((m) => ({ default: m.Demo })));
+
+type Page = 'looks' | 'editor' | 'demo';
+const TITLE: Record<Page, string> = { looks: 'Styles', editor: 'Style editor', demo: 'Demo room' };
+const PAGES: { id: Page; title: string; icon: 'looks' | 'gear' | 'play' }[] = [{ id: 'looks', title: 'Styles', icon: 'looks' }, { id: 'editor', title: 'Style editor', icon: 'gear' }, { id: 'demo', title: 'Demo room', icon: 'play' }];
+const HASH: Record<Page, string> = { looks: '#', editor: '#editor', demo: '#demo' };
+const pageFromHash = (): Page => (location.hash === '#editor' ? 'editor' : location.hash === '#demo' ? 'demo' : 'looks');
 
 /** Where the website keeps the download page and the help, from /workshop/. */
 const SITE = { download: '../download.html', help: '../docs/styles.html', home: '../index.html' };
@@ -88,15 +94,17 @@ export function WebApp() {
 }
 
 function Workshop() {
-  const [page, setPageNow] = useState<Page>(() => (location.hash === '#editor' ? 'editor' : 'looks'));
+  const [page, setPageNow] = useState<Page>(pageFromHash);
   const [editing, setEditing] = useState<LookDef | null>(null);
+  // The style the demo room opens with, when Styles or the editor sends one there.
+  const [demoLook, setDemoLook] = useState<string | null>(null);
   // Bumped each time Styles opens the editor, so it starts afresh on that style (or a new one).
   const [editorOpen, setEditorOpen] = useState(0);
   const [theme, setTheme] = useState(() => currentTheme().id);
   const leaveGuard = useRef<((proceed: () => void) => void) | null>(null);
 
   const setPage = (p: Page, then?: () => void) => {
-    const move = () => { then?.(); setPageNow(p); history.replaceState(null, '', p === 'editor' ? '#editor' : '#'); };
+    const move = () => { then?.(); setPageNow(p); history.replaceState(null, '', HASH[p]); };
     if (p !== page && leaveGuard.current) leaveGuard.current(move); else move();
   };
   // Styles made earlier in this tab preview like the built-in ones.
@@ -111,7 +119,7 @@ function Workshop() {
           <div className="col" style={{ gap: 2 }}>
             <span className="sec">Workshop</span>
             {PAGES.map((p) => (
-              <a key={p.id} href={p.id === 'editor' ? '#editor' : '#'} className={page === p.id ? 'on' : ''} aria-current={page === p.id ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setPage(p.id, p.id === 'editor' ? () => { setEditing(null); setEditorOpen((n) => n + 1); } : undefined); }}>
+              <a key={p.id} href={HASH[p.id]} className={page === p.id ? 'on' : ''} aria-current={page === p.id ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setPage(p.id, p.id === 'editor' ? () => { setEditing(null); setEditorOpen((n) => n + 1); } : undefined); }}>
                 <Icon name={p.icon} /><span>{p.title}</span>
               </a>
             ))}
@@ -144,10 +152,12 @@ function Workshop() {
       <main className="main">
         <ErrorBoundary key={page} what={`the ${TITLE[page]} page`}>
           {page === 'looks'
-            ? <Looks ws={noSaberWorkspace} board={noSaberBoard} onPresets={() => undefined} onBuild={() => undefined} onDemo={() => undefined}
+            ? <Looks ws={noSaberWorkspace} board={noSaberBoard} onPresets={() => undefined} onBuild={() => undefined} onDemo={(id) => setPage('demo', () => setDemoLook(id))}
                 onEdit={(l) => setPage('editor', () => { setEditing(l); setEditorOpen((n) => n + 1); })} onNew={() => setPage('editor', () => { setEditing(null); setEditorOpen((n) => n + 1); })}
-                browser={{ handOff: (sel, yours) => <HandOff sel={sel} yours={yours} /> }} />
-            : <StyleEditor key={editorOpen} editing={editing} inBrowser onSaved={() => undefined} onDemo={() => setPage('looks')} onLeaveGuard={(g) => { leaveGuard.current = g; }} />}
+                browser={{ handOff: (sel, yours) => <HandOff sel={sel} yours={yours} />, demo: true }} />
+            : page === 'editor'
+            ? <StyleEditor key={editorOpen} editing={editing} inBrowser onSaved={() => undefined} onDemo={(id) => setPage('demo', () => setDemoLook(id))} onLeaveGuard={(g) => { leaveGuard.current = g; }} />
+            : <Suspense fallback={<span className="hint row" style={{ gap: 14, padding: 24 }}><Loader />Opening the demo room…</span>}><Demo initialLook={demoLook} board={noSaberBoard} inBrowser /></Suspense>}
         </ErrorBoundary>
       </main>
     </div>

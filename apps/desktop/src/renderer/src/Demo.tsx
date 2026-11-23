@@ -44,7 +44,7 @@ const HOLDS: { type: LockupType; label: string; key: string }[] = [{ type: 'norm
 const api = () => window.hiltwright;
 const LIBRARY = 'library';
 
-export function Demo({ initialLook, initialFont, board }: { initialLook?: string | null; initialFont?: string | null; board: Board }) {
+export function Demo({ initialLook, initialFont, board, inBrowser }: { initialLook?: string | null; initialFont?: string | null; board: Board; /** The workshop on the website: fonts are folders opened in the page, and hilts last the visit. */ inBrowser?: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<DemoScene | null>(null);
   const [saved, setSaved] = useState<LookDef[]>([]);
@@ -107,7 +107,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
   const [volume, setVolume] = useState(() => { try { return Number(localStorage.getItem('hiltwright.demo.volume') ?? 0.8); } catch { return 0.8; } });
   const refreshSources = async () => {
     const [lib, found] = await Promise.all([fontLibraryList.load().catch(() => []), packList.load().catch(() => [] as PackInfo[])]);
-    const next: Source[] = lib.length ? [{ kind: 'library', root: LIBRARY, label: `Font library (${lib.length})` }] : [];
+    const next: Source[] = lib.length ? [{ kind: 'library', root: LIBRARY, label: `${inBrowser ? 'Opened here' : 'Font library'} (${lib.length})` }] : [];
     if (found.some((p) => p.kind === 'font' && p.allow.demoPlayback)) next.push({ kind: 'pack', root: 'packs', label: 'Hiltwright fonts' });
     setSources(next);
     setSourcesRead(true);
@@ -143,7 +143,16 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
     void (source.kind === 'pack' ? packList.load().then((ps) => ps.filter((p) => p.kind === 'font' && p.allow.demoPlayback).map((p) => ({ name: p.name, path: p.id, report: { files: p.sounds, bytes: 0, type: 'unknown' as const, effects: {}, issues: [] } }))) : libraryEntries()).then((f) => { if (live) setFonts(f); }).catch(() => { if (live) setFonts([]); });
     return () => { live = false; };
   }, [source?.root]); // eslint-disable-line react-hooks/exhaustive-deps
-  const addToLibrary = async () => { const r = await api().fontLibrary.addFolder(); if (r?.added.length) { await fontLibraryList.refresh(); await refreshSources(); } };
+  const addToLibrary = async () => {
+    const r = await api().fontLibrary.addFolder();
+    if (r?.added.length) {
+      await fontLibraryList.refresh();
+      const next = await refreshSources();
+      // On the website the font just opened is the one wanted: play it at once.
+      const lib = next.find((n) => n.kind === 'library');
+      if (inBrowser && lib) { setSource(lib); void loadFont(r.added[0], lib); }
+    } else if (inBrowser && r?.skipped[0]) setSoundNote(`${r.skipped[0].name}: ${r.skipped[0].why}`);
+  };
   // Loads can overlap (the room's own first load, a font picked while one is still decoding): only the latest
   // one may sound. An engine from an earlier load is thrown away when it arrives.
   const loadSeq = useRef(0);
@@ -563,12 +572,14 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
                 {!sourcesRead
                   ? <span className="row hint" style={{ gap: 10 }}><Loader size="sm" />Finding your fonts…</span>
                   : sources.length === 0
-                  ? <span className="hint">No fonts to hand. <button type="button" className="holo" onClick={() => void addToLibrary()}>Add a font folder</button> to the Font library to hear it here.</span>
+                  ? inBrowser
+                    ? <span className="hint"><button type="button" className="holo" onClick={() => void addToLibrary()}>Open a font folder</button> to hear it here: one font, or a folder of fonts. The sounds are read in this browser and sent nowhere.</span>
+                    : <span className="hint">No fonts to hand. <button type="button" className="holo" onClick={() => void addToLibrary()}>Add a font folder</button> to the Font library to hear it here.</span>
                   : (
                     <div className="row" style={{ gap: 6 }}>
                       <span className="input sans grow" style={{ height: 28, fontSize: 12 }}><span className="ellip">{source?.label ?? 'Source'}</span><span className="caret"><Icon name="down" /></span>
                         <Select value={source?.root ?? ''} aria-label="Where the fonts are" onChange={(e) => setSource(sources.find((x) => x.root === e.target.value) ?? null)}>{sources.map((x) => <option key={x.root} value={x.root}>{x.label}</option>)}</Select></span>
-                      <button type="button" className="chip" title="Add a font folder to the Font library" onClick={() => void addToLibrary()}><Icon name="import" /></button>
+                      <button type="button" className="chip" title={inBrowser ? 'Open another font folder' : 'Add a font folder to the Font library'} onClick={() => void addToLibrary()}><Icon name="import" /></button>
                       <button type="button" className="chip" title="Look again" onClick={() => void refreshSources()}><Icon name="undo" /></button>
                     </div>
                   )}
@@ -797,10 +808,14 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
             )}
             {hilt && <HiltCredit key={hilt.key} hilt={hilt} title={hilt === builtIn ? 'Punk Saber' : hilt.name} licence={packs.find((p) => p.id === hilt.packId)?.licence ?? null} onCreator={(creator) => void setHiltCreator(hilt, creator)} />}
             {hiltNote && <span className={OK_NOTE.test(hiltNote) ? 'hint' : 'red small'} role={OK_NOTE.test(hiltNote) ? undefined : 'alert'}>{hiltNote}</span>}
-            <div className="row" style={{ gap: 14 }} title="Keep your hilts, their fits and credits in one zip file, to move to another computer or keep safe">
-              <button type="button" className="holo small" onClick={() => void exportHilts()}>Export hilts…</button>
-              <button type="button" className="holo small" onClick={() => void importHilts()}>Import hilts…</button>
-            </div>
+            {inBrowser
+              ? <span className="hint">A hilt you load here stays for this visit only.</span>
+              : (
+                <div className="row" style={{ gap: 14 }} title="Keep your hilts, their fits and credits in one zip file, to move to another computer or keep safe">
+                  <button type="button" className="holo small" onClick={() => void exportHilts()}>Export hilts…</button>
+                  <button type="button" className="holo small" onClick={() => void importHilts()}>Import hilts…</button>
+                </div>
+              )}
           </div>
         )}
       </section>

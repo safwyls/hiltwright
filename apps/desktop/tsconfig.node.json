@@ -12,5 +12,5 @@
   },
   "include": ["src/main", "src/preload", "src/shared", "electron.vite.config.ts", "vitest.config.ts", "test"],
   // Tests of renderer modules that reach the browser APIs are checked with the renderer config instead.
-  "exclude": ["test/draftModel.test.ts", "test/staged.test.ts", "test/fontEngine.test.ts", "test/tour.test.ts", "test/armoryRemove.test.ts", "test/firmwareLine.test.ts", "test/copyRate.test.ts"]
+  "exclude": ["test/draftModel.test.ts", "test/staged.test.ts", "test/fontEngine.test.ts", "test/webFonts.test.ts", "test/tour.test.ts", "test/armoryRemove.test.ts", "test/firmwareLine.test.ts", "test/copyRate.test.ts"]
 }

@@ -81,6 +81,17 @@ The **Scene** panel in the bottom right shapes the room. **Reset** puts everythi
 - **Blade**: **Length** in inches, **Strip** (LEDs per meter of strip, which sets how many LEDs the style runs on), **Diameter**, **Blade shown when off**, and **Second blade (staff)** for a staff hilt.
 - **Model**: **Hilt model** chooses the built-in hilt, one of yours, or one from a pack. You can load a `.glb`, `.obj` or `.stl` file of your own. Then **Fit and placement** controls let you set the hilt's length, turn, sideways shift, how deep the blade sits, and its lean. If the blade leaves the other end, switch **Blade at the other end**. **Copy fit** copies the numbers as text. Your hilts and the scene settings are kept between visits. A hilt can carry its maker's credit.
 
+## In the browser
+
+The Demo room also runs in the [workshop](../workshop/index.html#demo) on this website, without installing anything. There it differs from the app's room in a few ways:
+
+- **Fonts are folders you open.** On the **Sound** tab, choose **Open a font folder** and pick one font's folder, or a folder of fonts. The sounds are read in the browser and sent nowhere. They are forgotten when the tab closes.
+- **No saber.** There is no **From** section, and the prop file starts as Fett263's.
+- **The drawn hilt.** The app's built-in hilt and free fonts stay in the app. A hilt model you load stays for the visit only, and there is no **Export hilts** or **Import hilts**.
+- **Your styles** are the ones built or pasted in the workshop during this visit. Save them for the app on the Styles page.
+
+The scene settings are remembered in the browser.
+
 ## How faithful is it
 
 The blade runs the same per-LED math as the saber, so colors, timing and effects are close. The sound follows ProffieOS's own rules for sound fonts: the hum loops from ignition to retraction, ignition and retraction sounds chain as on the saber, clash, blast, stab and force layer on top, and lockups play their begin, loop and end sounds. Swings use the SmoothSwing method, or a whole swing sound each time the blade passes a swing speed for fonts without it. A font with drag sounds but no melt sounds plays drag for melt.

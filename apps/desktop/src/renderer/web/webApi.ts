@@ -7,8 +7,10 @@
 // Imported first by the web entry: the pages read window.hiltwright as they load.
 
 import type { LookDef } from '@hiltwright/core';
-import type { ContributorInfo, HiltwrightApi } from '../../shared/api';
+import type { ContributorInfo, HiltAddMode, HiltAddResult, HiltInfo, HiltInput, HiltModelData, HiltwrightApi, PackInfo } from '../../shared/api';
 import { themeById } from '../../shared/themes';
+import { DEFAULT_FIT, type HiltFit, type SceneSettings } from '../../shared/demoSettings';
+import { listOpenFonts, openFontFolder, readOpenFont } from './webFonts';
 
 export const NEEDS_APP = 'This needs the Hiltwright app.';
 
@@ -39,6 +41,47 @@ const contributors = {
   list: async (): Promise<ContributorInfo[]> => [],
 };
 
+// The demo room's fonts: folders the visitor opens, read in the page (webFonts.ts). No packs: the app's own fonts and
+// hilt are locked to the app, so the room stands its drawn hilt in.
+const fontLibrary = {
+  list: async () => listOpenFonts(),
+  addFolder: async () => openFontFolder(),
+  readFont: (folder: string) => readOpenFont(folder),
+};
+const packs = { list: async (): Promise<PackInfo[]> => [] };
+const sd = { onReadFontProgress: () => () => undefined };
+
+// Hilt models the visitor loads stay in memory for the visit; the scene settings are remembered in this browser.
+const ROOM_KEY = 'hiltwright.web.room';
+const hiltModels = new Map<string, { info: HiltInfo; model: HiltModelData }>();
+let hiltSeq = 0;
+const hilts = {
+  list: async () => [...hiltModels.values()].map((h) => ({ ...h.info })),
+  model: async (id: string) => { const h = hiltModels.get(id); if (!h) throw new Error('That hilt is no longer here.'); return h.model; },
+  add: async (input: HiltInput, mode: HiltAddMode): Promise<HiltAddResult> => {
+    const replace = typeof mode === 'object' ? hiltModels.get(mode.replace) : undefined;
+    const same = [...hiltModels.values()].find((h) => h.info.name === input.name);
+    if (mode === 'new' && same) return { taken: { id: same.info.id, name: same.info.name } };
+    const names = new Set([...hiltModels.values()].map((h) => h.info.name));
+    let name = replace?.info.name ?? input.name;
+    for (let n = 2; !replace && names.has(name); n++) name = `${input.name} (${n})`;
+    const info: HiltInfo = { id: replace?.info.id ?? `web_hilt_${++hiltSeq}`, name, format: input.format, fit: replace?.info.fit ?? { ...DEFAULT_FIT }, ...(input.creator ? { creator: input.creator } : {}) };
+    hiltModels.set(info.id, { info, model: { format: input.format, data: input.data, sideFiles: input.sideFiles } });
+    return { added: { ...info } };
+  },
+  setFit: async (id: string, fit: HiltFit) => { const h = hiltModels.get(id); if (h) h.info = { ...h.info, fit }; },
+  setCreator: async (id: string, creator: string) => { const h = hiltModels.get(id); if (h) h.info = { ...h.info, ...(creator ? { creator } : {}) }; },
+  remove: async (id: string) => { hiltModels.delete(id); },
+  packFits: async () => ({}),
+  // Nothing from an earlier version to bring over: this origin is marked as already brought over.
+  room: async () => ({ ...read(() => localStorage, ROOM_KEY, { scene: null as SceneSettings | null, chosen: null as string | null }), adopted: [location.origin] }),
+  setRoom: async (patch: { scene?: SceneSettings; chosen?: string | null }) => {
+    const cur = read(() => localStorage, ROOM_KEY, { scene: null as SceneSettings | null, chosen: null as string | null });
+    // A hilt chosen here is gone next visit, so only the scene is remembered.
+    write(() => localStorage, ROOM_KEY, { scene: patch.scene ?? cur.scene, chosen: null });
+  },
+};
+
 const known = {
   appVersion: 'website',
   platform: 'web',
@@ -48,6 +91,10 @@ const known = {
   },
   looks,
   contributors,
+  fontLibrary,
+  packs,
+  sd,
+  hilts,
 } as Record<string, unknown>;
 
 /** A namespace the website does not have: every call is refused, and a listener is accepted and never called. */
