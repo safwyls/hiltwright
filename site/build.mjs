@@ -170,7 +170,7 @@ const fromRepo = (file, extra) => {
   docs.push({ md, ...extra });
 };
 fromRepo('install-guide.md', { slug: 'install', title: 'Install guide', summary: 'From the download to your first firmware install, including every Windows warning for unsigned software.', section: 'Getting started', order: 2 });
-fromRepo('release-notes-beta-16.md', { slug: 'release-notes', title: `Release notes: ${VERSION}`, summary: 'What this beta promises, what is hidden, and what is not in it yet.', section: 'Help', order: 9 });
+fromRepo('release-notes-beta-17.md', { slug: 'release-notes', title: `Release notes: ${VERSION}`, summary: 'What this beta promises, what is hidden, and what is not in it yet.', section: 'Help', order: 9 });
 docs.sort((a, b) => SECTIONS.indexOf(a.section) - SECTIONS.indexOf(b.section) || a.order - b.order);
 for (const d of docs) if (!SECTIONS.includes(d.section)) throw new Error(`${d.slug}: unknown section "${d.section}"`);
 
