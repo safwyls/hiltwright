@@ -3,12 +3,20 @@
 // takes several minutes. The macOS workflow runs it on a Mac, then points HILTWRIGHT_TOOLCHAIN_DIR at the same folder
 // so the real-compile tests in build.test.ts build firmware there.
 
-import { describe, expect, it } from 'vitest';
-import { installToolchain, run, toolchainPaths, toolchainStatus, findDfuUtil } from '../src/main/toolchain';
+import { mkdir } from 'node:fs/promises';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { installToolchain, run, toolchainPaths, toolchainStatus, findDfuUtil, folderOpenToOthers, lockFolder } from '../src/main/toolchain';
 
 const dir = process.env.HILTWRIGHT_REAL_SETUP;
 
 describe.skipIf(!dir)('the real toolchain setup', () => {
+  // The app creates the folder and locks it before the setup starts (ensureToolchainRoot): the setup refuses a folder
+  // other accounts can change (#20), and one made at the root of C: lets every signed-in user change it.
+  beforeAll(async () => {
+    await mkdir(dir!, { recursive: true });
+    if (await folderOpenToOthers(dir!)) expect(await lockFolder(dir!, false)).toEqual({ ok: true, text: 'Locked.' });
+  });
+
   it('installs everything and reports ready', async () => {
     const status = await installToolchain(dir!, (line) => console.log(`[setup] ${line}`));
     console.log(`[setup] ${JSON.stringify(status)}`);
