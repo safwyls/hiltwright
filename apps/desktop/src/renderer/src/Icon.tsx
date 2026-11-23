@@ -46,6 +46,8 @@ const P: Record<string, string> = {
   code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
   tree: '<path d="M5 4v16M5 8h7M5 16h7"/><rect x="12" y="5" width="7" height="6"/><rect x="12" y="13" width="7" height="6"/>',
   power: '<path d="M12 3v8"/><path d="M6.3 6.3a8 8 0 1011.4 0"/>',
+  fullscreen: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+  exitfull: '<path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>',
   grip: '',
 };
 

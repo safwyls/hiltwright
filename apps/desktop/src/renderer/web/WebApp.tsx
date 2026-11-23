@@ -110,6 +110,11 @@ function Workshop() {
   // Styles made earlier in this tab preview like the built-in ones.
   useEffect(() => { void window.hiltwright.looks.list().then((ls) => { for (const l of ls) registerLookSim(l); }); }, []);
   const pickTheme = (id: string) => { const t = applyTheme(id); setTheme(t.id); void window.hiltwright.theme.set(t.id); };
+  // Full screen: the whole workshop, so the demo room and the editor get the browser's chrome back as room. Esc, or
+  // the same button, leaves it; the browser's own way out (F11, its bar) is followed too.
+  const [full, setFull] = useState(() => !!document.fullscreenElement);
+  useEffect(() => { const on = () => setFull(!!document.fullscreenElement); document.addEventListener('fullscreenchange', on); return () => document.removeEventListener('fullscreenchange', on); }, []);
+  const toggleFull = () => { void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => undefined); };
 
   return (
     <div className="app">
@@ -145,6 +150,7 @@ function Workshop() {
             <span className="ellip">{THEMES.find((t) => t.id === theme)?.name ?? 'Theme'}</span><span className="caret"><Icon name="down" /></span>
             <Select value={theme} aria-label="Theme" onChange={(e) => pickTheme(e.target.value)}>{THEMES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select>
           </label>
+          {document.fullscreenEnabled && <button type="button" className="chip" aria-pressed={full} aria-label={full ? 'Leave full screen' : 'Full screen'} title={full ? 'Leave full screen (Esc)' : 'Full screen'} onClick={toggleFull}><Icon name={full ? 'exitfull' : 'fullscreen'} /></button>}
           <a className="btn sm pri" href={SITE.download}><span className="b"><span className="i"><Icon name="export" />Get the app</span></span></a>
         </div>
       </header>
