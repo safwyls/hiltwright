@@ -365,7 +365,7 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
   // A build is current only while the setup would still make the same config (FW5); changing it back makes it current again.
   const stale = !!result?.ok && !!preview && preview.hash !== result.configHash;
   const built = !!result?.ok && step !== 'building' && !stale;
-  const { cardWork, cardKnown, cardReady, fontsToCopy, copyBytes, voiceNeed, clearPresets, notInLibrary } = trip;
+  const { copyWork, presetsAtFlash, cardKnown, cardReady, fontsToCopy, copyBytes, voiceNeed, clearPresets, notInLibrary } = trip;
   const drift = presetDrift(model, info);
   const nowStep = !wiringOk ? 1 : !tool?.ready ? 2 : !built ? 3 : step === 'done' ? 0 : 4;
   // An install armed for a build that has since gone out of date is disarmed.
@@ -463,12 +463,14 @@ export function Build({ ws, board, go }: { ws: Workspace; board: Board; go: (pag
         </div>
 
         <div className={`stepc ${cardReady ? 'done' : ''}`} data-tour="build-card">
-          <div className="head"><span className="nbox">{cardReady ? <Icon name="check" /> : <Icon name="sd" />}</span><b>Card</b><span className="what">{trip.prepping ? 'getting it ready' : cardWork ? [fontsToCopy.length ? `${fontsToCopy.length} font${fontsToCopy.length === 1 ? '' : 's'}, ${mb(copyBytes)}` : '', voiceNeed ? 'a voice pack' : '', clearPresets ? 'your preset list' : ''].filter(Boolean).join(', ') : cardChecking ? 'checking the card' : cardReady ? 'ready' : cardKnown ? 'not ready' : 'not read yet'}</span></div>
-          {cardWork && <span className="small">{saber.name}{'’'}s card needs {[fontsToCopy.length ? `${fontsToCopy.length === 1 ? fontsToCopy[0].folder : `${fontsToCopy.length} fonts`} copied` : '', voiceNeed ? 'its voice pack put on' : '', clearPresets ? 'its old presets file removed' : ''].filter(Boolean).join(', ')} before the flash. Do it with the card in a card reader.</span>}
+          <div className="head"><span className="nbox">{cardReady ? <Icon name="check" /> : <Icon name="sd" />}</span><b>Card</b><span className="what">{trip.prepping ? 'getting it ready' : copyWork ? [fontsToCopy.length ? `${fontsToCopy.length} font${fontsToCopy.length === 1 ? '' : 's'}, ${mb(copyBytes)}` : '', voiceNeed ? 'a voice pack' : '', clearPresets ? 'your preset list' : ''].filter(Boolean).join(', ') : cardChecking ? 'checking the card' : cardReady ? 'ready' : cardKnown ? 'not ready' : 'not read yet'}</span></div>
+          {/* Only the old presets file: the flash removes it itself, so there is nothing to do first (cardTrip presetsAtFlash). */}
+          {presetsAtFlash && <span className="small">Its old presets file is removed during the flash, so {saber.name} starts with your staged list. Leave the card in the saber, or in a card reader on this computer. A snapshot of its own presets is kept first.</span>}
+          {copyWork && <span className="small">{saber.name}{'’'}s card needs {[fontsToCopy.length ? `${fontsToCopy.length === 1 ? fontsToCopy[0].folder : `${fontsToCopy.length} fonts`} copied` : '', voiceNeed ? 'its voice pack put on' : '', clearPresets ? 'its old presets file removed' : ''].filter(Boolean).join(', ')} before the flash. Do it with the card in a card reader.</span>}
           {notInLibrary.length > 0 && <div className="note amber" style={{ padding: '8px 10px' }}><Icon name="warn" /><span>{notInLibrary.join(', ')} {notInLibrary.length === 1 ? 'is' : 'are'} not in your font library, so {notInLibrary.length === 1 ? 'it' : 'they'} cannot be copied. <button type="button" className="holo" onClick={() => go('fonts')}>Fonts</button></span></div>}
-          {!cardWork && !cardKnown && !cardChecking && <span className="hint">Put {saber.name}{'’'}s card in a card reader, or plug the saber in. It is found by itself.</span>}
+          {!copyWork && !cardKnown && !cardChecking && <span className="hint">Put {saber.name}{'’'}s card in a card reader, or plug the saber in. It is found by itself.</span>}
           <span className="row" style={{ gap: 8 }}>
-            <button type="button" className={`btn sm ${cardWork && nowStep === 4 ? 'pri' : ''}`} onClick={() => go('card')}><span className="b"><span className="i"><Icon name="sd" />{cardReady ? 'Install › Card' : 'Get the card ready'}</span></span></button>
+            <button type="button" className={`btn sm ${copyWork && nowStep === 4 ? 'pri' : ''}`} onClick={() => go('card')}><span className="b"><span className="i"><Icon name="sd" />{cardReady ? 'Install › Card' : 'Get the card ready'}</span></span></button>
             <button type="button" className="btn sm ghost" disabled={cardChecking} onClick={() => lookAgain()}><span className="b"><span className="i">{cardChecking ? <Loader size="sm" /> : <Icon name="undo" />}Look again</span></span></button>
           </span>
         </div>

@@ -24,7 +24,7 @@ Do this with the card out of the saber, in a card reader. A card reader is about
 
 When nothing is left to do, the note says the card is ready for the flash.
 
-Removing the presets file is what lets the new list take effect. Without it, the saber would keep using the presets on its card. Because it is done in the reader, the saber starts with your list after the flash, with no second restart.
+Removing the presets file is what lets the new list take effect. Without it, the saber would keep using the presets on its card. When that is the only thing the card needs, nothing has to be done first: the card counts as ready, and Build & Flash removes the file during the flash, over USB with the card in the saber or directly with the card in a card reader. With the card in a reader you can also press **Remove it now**. Done here, the saber starts with your list after the flash with no second restart.
 
 The snapshot kept first is the list the saber itself would load. The saber saves its presets to two files in turn, `presets.ini` and `presets.tmp`, and Hiltwright picks the newer good save, as the saber does. Both files are also kept on this computer as they were. If Hiltwright cannot tell which list the saber would load, it makes no snapshot, but still keeps both files.
 

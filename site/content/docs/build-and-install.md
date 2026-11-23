@@ -15,7 +15,7 @@ The panel on the right has four numbered steps and a Card line. Each turns green
 3. **Build.** Makes the firmware.
 4. **Flash.** Backs up the saber, then writes the firmware. A status chip shows the stage, such as "Building firmware…", "Writing firmware…" or "Installed".
 
-Between Build and Flash, the **Card** line says whether the saber's card is ready: what it still needs (fonts, the voice pack, its presets file), "ready", or "not read yet". **Get the card ready** goes to [Card](card.html). A card put in a reader is noticed by itself; **Look again** checks once more.
+Between Build and Flash, the **Card** line says whether the saber's card is ready: what it still needs copied (fonts, the voice pack), "ready", or "not read yet". When the only thing to do is remove the old presets file, the card is ready: the flash removes it, with the card left in the saber or in a card reader. **Get the card ready** goes to [Card](card.html). A card put in a reader is noticed by itself; **Look again** checks once more.
 
 Everything up to the flash works with the saber unplugged, once it has been seen. With no saber chosen, the page says "Connect a saber to begin", and the compiler can still be downloaded.
 

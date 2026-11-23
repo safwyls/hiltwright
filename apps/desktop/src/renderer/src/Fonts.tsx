@@ -429,17 +429,19 @@ export function Fonts({ board, ws, go, mode }: { board: Board; ws: Workspace; go
         {inInstall && ws.saber && ws.model && (
           <div style={{ padding: '0 18px 12px' }} data-tour="card-trip">
             {/* Just prepared: the note saying what was done is enough. */}
-            {!(trip.cardReady && trip.prepNote?.tone === 'green') && <div className={`note${trip.cardWork ? ' amber' : trip.cardReady ? ' green' : ''}`}>
+            {!(trip.cardReady && trip.prepNote?.tone === 'green') && <div className={`note${trip.copyWork ? ' amber' : trip.cardReady ? ' green' : ''}`}>
               {trip.prepping ? <Loader size="sm" /> : <Icon name={trip.cardReady ? 'check' : 'sd'} />}
               <span className="col grow" style={{ gap: 6, minWidth: 0 }}>
                 <b style={{ fontWeight: 600 }}>{trip.prepping ? trip.prepping
-                  : trip.cardWork ? `Before ${ws.saber.name} is flashed, its card needs:`
+                  : trip.copyWork ? `Before ${ws.saber.name} is flashed, its card needs:`
                   : trip.cardReady ? `${ws.saber.name}’s card is ready for the flash${check.cardCheck?.source === 'saber' ? ', as the saber reads it' : ''}: it has the chosen fonts${trip.voiceNeed === null && prop === 'fett263' ? ' and a working voice pack' : ''}.`
                   : check.cardChecking ? `Checking ${ws.saber.name}’s card…`
                   : trip.cardKnown && trip.notInLibrary.length ? `${ws.saber.name}’s card is missing fonts that Hiltwright has no copy of.`
                   : trip.cardKnown ? `${ws.saber.name}’s card has the chosen fonts, but its voice pack could not be checked${check.voiceWhy ? `: ${check.voiceWhy}` : ''}.`
                   : `${ws.saber.name}’s card has not been read yet${check.voiceWhy ? ` (${check.voiceWhy})` : ''}. Put it in a card reader: it is found by itself.`}</b>
-                {trip.cardWork && !trip.prepping && <>
+                {/* Only the old presets file: nothing to do before the flash, which removes it itself (cardTrip presetsAtFlash). */}
+                {trip.presetsAtFlash && !trip.prepping && <span className="small">Your staged presets replace {ws.saber.name}’s own at the flash. Its presets file is removed then, so it starts with your list: over USB with the card in {ws.saber.name}, or directly with the card in a card reader. A snapshot of its own presets is kept first.{trip.inReader ? ' You can also remove it now.' : ''}</span>}
+                {trip.copyWork && !trip.prepping && <>
                   {trip.fontsToCopy.length > 0 && <span className="small">· Copy {trip.fontsToCopy.map((f) => f.folder).join(', ')} ({mb(trip.copyBytes)}){trip.onCardNow ? '' : ', skipping any already on it'}.</span>}
                   {trip.voiceNeed && <span className="small">· {voiceNeedText(trip.voiceNeed.why, trip.voiceName, check.voice)} What it replaces is kept on this computer.</span>}
                   {trip.clearPresets && <span className="small">· Remove its presets file, so it starts with your staged list after the flash. A snapshot of its own presets is kept first.</span>}
@@ -450,7 +452,7 @@ export function Fonts({ board, ws, go, mode }: { board: Board; ws: Workspace; go
                 {trip.notInLibrary.length > 0 && <span className="small">{trip.notInLibrary.join(', ')} {trip.notInLibrary.length === 1 ? 'is' : 'are'} not in your font library, so {trip.notInLibrary.length === 1 ? 'it' : 'they'} cannot be copied. <button type="button" className="holo" onClick={() => go('fonts')}>Fonts</button></span>}
                 {trip.cardReady && <span className="row" style={{ gap: 8 }}><button type="button" className="holo" onClick={() => go('build')}>On to Build &amp; Flash</button></span>}
               </span>
-              {trip.cardWork && trip.inReader && !trip.prepping && <button type="button" className="btn sm pri" style={{ alignSelf: 'center' }} disabled={working || usbBusy} onClick={() => void trip.prepare().then(() => scan(true))}><span className="b"><span className="i"><Icon name="sd" />Prepare the card</span></span></button>}
+              {trip.cardWork && trip.inReader && !trip.prepping && <button type="button" className={`btn sm ${trip.presetsAtFlash ? '' : 'pri'}`} style={{ alignSelf: 'center' }} disabled={working || usbBusy} onClick={() => void trip.prepare().then(() => scan(true))}><span className="b"><span className="i"><Icon name="sd" />{trip.presetsAtFlash ? 'Remove it now' : 'Prepare the card'}</span></span></button>}
             </div>}
             {trip.prepNote && <div className={`note ${trip.prepNote.tone}`} style={{ marginTop: trip.cardReady && trip.prepNote.tone === 'green' ? 0 : 8 }}><Icon name={trip.prepNote.tone === 'green' ? 'check' : 'warn'} /><span>{trip.prepNote.text}{trip.prepNote.tone === 'green' && <> <button type="button" className="holo" onClick={() => go('build')}>Build &amp; Flash</button></>}</span></div>}
           </div>

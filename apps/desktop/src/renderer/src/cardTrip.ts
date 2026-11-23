@@ -70,11 +70,17 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
   const voiceNeed: { pack: string; why: VoiceNeed } | null = prop === 'fett263' && model && saber ? voiceWork({ chosen: model.voicePack, fallback: bundledVoice, voice: cardCheck?.source === 'out' ? null : voice, onCard: voiceOnCard(saber.id) }) : null;
   const voiceName = voiceNeed ? voicePacks.find((p) => p.id === voiceNeed.pack)?.name ?? voiceNeed.pack : '';
   const cardWork = fontsToCopy.length > 0 || clearPresets || !!voiceNeed;
-  // Ready only when the card was read, needs nothing, lacks no chosen font, and (with Fett263) its voice pack is known:
-  // a card not read yet, or one missing a font Hiltwright cannot copy, is not ready.
+  // What only a trip to the card can do: copying fonts and a voice pack (slow over the saber's USB).
+  const copyWork = fontsToCopy.length > 0 || !!voiceNeed;
+  // The old presets file alone needs no trip: the flash removes it itself, over USB with the card in the saber or
+  // directly with the card in a reader (installFlow applyStagedPresets), keeping a snapshot first. It can still be
+  // removed now, with the card in a reader.
+  const presetsAtFlash = clearPresets && !copyWork;
+  // Ready only when the card was read, needs nothing copied, lacks no chosen font, and (with Fett263) its voice pack is
+  // known: a card not read yet, or one missing a font Hiltwright cannot copy, is not ready.
   const cardKnown = cardCheck?.source === 'reader' || cardCheck?.source === 'saber';
   const voiceKnown = prop !== 'fett263' || !!voice;
-  const cardReady = !cardWork && !prepping && cardKnown && notInLibrary.length === 0 && voiceKnown;
+  const cardReady = !copyWork && !prepping && cardKnown && notInLibrary.length === 0 && voiceKnown;
 
   /** Copy the fonts the card lacks, remove its presets file for a staged list (a snapshot first), put on the voice pack, and remember the card. */
   const prepare = async () => {
@@ -117,5 +123,5 @@ export function useCardTrip(o: { board: Board; saber: SaberRecord | null; model:
     } finally { setPrepping(null); check.again(); }
   };
 
-  return { inReader, sharedRoot, route, onCardNow, fontsToCopy, notInLibrary, copyBytes, clearPresets, voiceNeed, voiceName, cardWork, cardKnown, cardReady, prepping, prepNote, prepare };
+  return { inReader, sharedRoot, route, onCardNow, fontsToCopy, notInLibrary, copyBytes, clearPresets, voiceNeed, voiceName, cardWork, copyWork, presetsAtFlash, cardKnown, cardReady, prepping, prepNote, prepare };
 }
