@@ -71,8 +71,10 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
   // Sets: the set about to be loaded, with what loading it would do.
   const [loading, setLoading] = useState<{ bank: PresetBank } | null>(null);
   useEffect(() => { setLoading(null); }, [saber?.id]);
-  // A colour is written once the picker has been still for half a second, or at once when it is left (F45).
+  // A colour is written once the picker is let go of (closed, or the colour chosen), after a short wait, or at once when
+  // the swatch is left with a colour still unsent. Nothing is written while the picker is dragged (F45).
   const colourTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const colourUnsent = useRef(new Set<string>());
   useEffect(() => () => { for (const t of colourTimers.current.values()) clearTimeout(t); }, []);
 
   // Until each is read, an empty list means "not read yet": nothing is called missing, removed or empty meanwhile.
@@ -158,18 +160,29 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
     const t = colourTimers.current.get(key);
     if (t) clearTimeout(t);
     colourTimers.current.delete(key);
+    colourUnsent.current.delete(key);
     const m = new Map(args); m.set(n, hexToColorWord(hex));
     void setLook(blade, look, formatStyleArgs(m) || null).finally(() => setPending((p) => { if (p[key] !== hex) return p; const { [key]: _x, ...rest } = p; return rest; }));
   };
-  const colourMoved = (key: string, blade: number, look: LookDef, args: Map<number, string>, n: number, hex: string) => {
+  // While the picker is being dragged only the swatch follows: nothing is written. Writing on every pause in a drag sent
+  // a burst of writes the saber's serial link could not keep up with.
+  const colourMoved = (key: string, hex: string) => {
+    colourUnsent.current.add(key);
+    setPending((p) => ({ ...p, [key]: hex }));
+  };
+  // The picker is let go of (it closes, or the colour is chosen): written after a short wait, so quick picks one after
+  // the other become one write.
+  const colourChosen = (key: string, blade: number, look: LookDef, args: Map<number, string>, n: number, hex: string) => {
+    colourUnsent.current.add(key);
     setPending((p) => ({ ...p, [key]: hex }));
     const t = colourTimers.current.get(key);
     if (t) clearTimeout(t);
-    colourTimers.current.set(key, setTimeout(() => writeColour(key, blade, look, args, n, hex), 500));
+    colourTimers.current.set(key, setTimeout(() => writeColour(key, blade, look, args, n, hex), 300));
   };
   const colourLeft = (key: string, blade: number, look: LookDef, args: Map<number, string>, n: number, hex: string) => {
-    // Nothing moved since the timer wrote it: leaving sends nothing more.
-    if (!colourTimers.current.has(key)) return;
+    // Leaving the swatch sends what is still unsent: a choice still waiting, or a colour moved to without the picker
+    // saying it was chosen. Everything already sent: nothing more is.
+    if (!colourUnsent.current.has(key)) return;
     writeColour(key, blade, look, args, n, hex);
   };
   // Live: ProffieOS has duplicate_preset and no command that adds a fresh preset, so a new one there is a copy.
@@ -418,7 +431,7 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
                               <label key={n} className={`swatch ${word || pending[key] ? '' : 'linked'}`} style={{ width: 'auto', height: 28, padding: '0 8px', gap: 6 }} title={`${argInfo(n).name}${word ? '' : ' (the look’s own)'}`}>
                                 <span className="sq" style={{ width: 12, height: 12, background: shown, boxShadow: `0 0 8px ${shown}` }} />
                                 <span className="small nowrap">{argInfo(n).name.replace(/ colour$/i, '')}</span>
-                                <input type="color" value={shown} disabled={busy} aria-label={`${argInfo(n).name} for blade ${k + 1}`} onChange={(e) => colourMoved(key, k + 1, shownLook, args, n, e.target.value)} onBlur={(e) => colourLeft(key, k + 1, shownLook, args, n, e.target.value)} />
+                                <ColourInput value={shown} disabled={busy} label={`${argInfo(n).name} for blade ${k + 1}`} onMove={(hex) => colourMoved(key, hex)} onChosen={(hex) => colourChosen(key, k + 1, shownLook, args, n, hex)} onLeave={(hex) => colourLeft(key, k + 1, shownLook, args, n, hex)} />
                               </label>
                             );
                           })}
@@ -500,6 +513,25 @@ export function Presets({ ws, board, go, mode }: { ws: Workspace; board: Board; 
       </div>
     </>
   );
+}
+
+/**
+ * A colour swatch. `onMove` follows the picker while it is dragged (React's onChange runs on every input event);
+ * `onChosen` runs when the picker is let go of (the input's own change event, which React does not pass on separately);
+ * `onLeave` runs when the swatch loses focus.
+ */
+function ColourInput({ value, disabled, label, onMove, onChosen, onLeave }: { value: string; disabled?: boolean; label: string; onMove: (hex: string) => void; onChosen: (hex: string) => void; onLeave: (hex: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const chosen = useRef(onChosen);
+  chosen.current = onChosen;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const h = () => chosen.current(el.value);
+    el.addEventListener('change', h);
+    return () => el.removeEventListener('change', h);
+  }, []);
+  return <input ref={ref} type="color" value={value} disabled={disabled} aria-label={label} onChange={(e) => onMove(e.target.value)} onBlur={(e) => onLeave(e.target.value)} />;
 }
 
 /**

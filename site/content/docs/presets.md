@@ -49,7 +49,7 @@ Each blade gets a style: its color, flicker and effects. Choose it from the list
 - Any style can be chosen here. A style that is not in the saber's firmware yet is built in at the next Build & Flash. That style shows **Queued**, and in the list it is marked "(needs a build)".
 - A blade with no choice shows "Saber's default" and uses a starter style for that kind of blade.
 
-Color swatches under a style let you change its colors. A color is saved once the picker has been still for half a second, or when you leave it. **Style's own colours** puts the style's defaults back. **Browse and try styles** opens [Styles](styles.html).
+Color swatches under a style let you change its colors. A color is saved when you let go of the picker or close it, not while you drag. **Style's own colours** puts the style's defaults back. **Browse and try styles** opens [Styles](styles.html).
 
 ![The style choice for each blade, with a Queued marker](shots/tour-19.png)
 
