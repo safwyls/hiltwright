@@ -31,7 +31,7 @@ Plan for about 2.5 GB of free disk space. The first build needs a one-time downl
 5. **Choose the fonts.** On Fonts, pick the sound fonts the saber will carry from your font library. You can add a font there with "Add .zip" or "Add folder". Six free fonts come with Hiltwright. You need no saber or card yet. See [Fonts](fonts.html).
 6. **Set up the presets.** A preset is one setup you switch to with the buttons: a sound font, a music track and a style for each blade. On Install › Presets you build the list for the next install. See [Presets](presets.html) and [Styles](styles.html).
 7. **Download the compiler.** On Build & Flash, press "Download and install" once. The compiler is the tool that turns your setup into firmware. After this download it is not needed again. See [Build & Flash](build-and-install.html).
-8. **Build.** Press "Build firmware". It takes about a minute.
+8. **Build.** Press "Build firmware". The build takes about a minute.
 9. **Prepare the card.** Take the SD card out of the saber and put it in a card reader. Press "Look again", then "Prepare the card". Hiltwright copies the fonts the card lacks and clears the old presets. Then put the card back in the saber.
 10. **Install.** Press "Install on" your saber's name, then "Yes, write the firmware". Hiltwright backs up the saber's firmware first. The first time, Windows asks for a driver. Leave the saber plugged in until it says "Installed". Hiltwright reconnects by itself and checks what the saber reports.
 
@@ -47,7 +47,7 @@ Every install keeps a backup, so you can put the old firmware back. See [Build &
 
 ## If something goes wrong
 
-Press "Save diagnostics" on the Controls page, or beside a failed build or install. It writes one file on your computer and sends nothing. Attach it when you report a problem. See [Controls](diagnostics.html) and [Troubleshooting](troubleshooting.html).
+Press "Save diagnostics" on the Controls page, or beside a failed build or install. "Save diagnostics" writes one file on your computer and sends nothing. Attach it when you report a problem. See [Controls](diagnostics.html) and [Troubleshooting](troubleshooting.html).
 
 ## Take the in-app tour
 

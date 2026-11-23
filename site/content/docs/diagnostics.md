@@ -4,7 +4,7 @@ summary: Change a saber's volume and brightness, try effects, send ProffieOS com
 section: Live
 order: 2
 ---
-Live › Controls is a workbench for a plugged-in saber. It has settings you can change live, buttons that set off effects, a console that talks to the board, and the **Save diagnostics** button you use when something goes wrong. It works with any ProffieOS firmware, and each control is offered only if the firmware answers it. This page was called Diagnostics before.
+Live › Controls is a workbench for a plugged-in saber. It has settings you can change live, buttons that set off effects, a console that talks to the board, and the **Save diagnostics** button you use when something goes wrong. This page works with any ProffieOS firmware, and each control is offered only if the firmware answers it. This page was called Diagnostics before.
 
 ## Saber settings
 
@@ -41,9 +41,9 @@ You then see an amber question, "Send ... anyway?", with **Send it** and **Do no
 
 ## The voice pack check
 
-Some props, such as the Fett263 button controls, speak their menus from a voice pack kept in the `common` folder on the saber's card. Hiltwright checks for it by asking the saber over the same serial link as the console. It reads `common/voicepack.ini` and lists the folder. You do not need a card reader.
+Some props, such as the Fett263 button controls, speak their menus from a voice pack kept in the `common` folder on the saber's card. Hiltwright checks for it by asking the saber over the same serial link as the console. The check reads `common/voicepack.ini` and lists the folder. You do not need a card reader.
 
-The result shows on the **Build & Flash** page. It says one of:
+The result shows on the **Build & Flash** page. The result says one of:
 
 - "Voice pack version ... found on the card. Fett263 button controls will speak their menus."
 - "No voice pack found in the common folder." with what to put there.
@@ -59,7 +59,7 @@ If something goes wrong, press **Save diagnostics**. The same button appears on 
 
 Save diagnostics writes one plain text file on this computer, then opens the folder with the file selected. The page tells you: "Saved ... The folder holding the file is open; you can read the file before sending it." **Hiltwright sends the file nowhere.** You attach it to your report yourself.
 
-The file is named `hiltwright-diagnostics-` followed by the date and time. Hiltwright keeps the latest ten. It is kept small, and the oldest log lines are cut first if it grows.
+The file is named `hiltwright-diagnostics-` followed by the date and time. Hiltwright keeps the latest ten. Each file is kept small, and the oldest log lines are cut first if it grows.
 
 ### What is in it
 

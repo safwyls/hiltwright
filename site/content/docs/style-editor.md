@@ -4,7 +4,7 @@ summary: Build your own style from plain blocks, or edit every ProffieOS layer, 
 section: The workshop
 order: 2
 ---
-The Style editor is where you make a style of your own. It has two ways to work, **Simple** and **Full**, and a live blade beside it so you can see each change as you make it. You reach it from **Build a style** on the [Styles](styles.html) page, or from **Edit the layers** on a style you built.
+The Style editor is where you make a style of your own. The editor has two ways to work, **Simple** and **Full**, and a live blade beside it so you can see each change as you make it. You reach it from **Build a style** on the [Styles](styles.html) page, or from **Edit the layers** on a style you built.
 
 ![The Style editor in Simple mode, with the block stack on the left and the live blade on the right](shots/clean-38.png)
 
@@ -12,8 +12,8 @@ The Style editor is where you make a style of your own. It has two ways to work,
 
 Use the **Simple** and **Full** tabs at the top, beside the style's name.
 
-- **Simple** builds a style from a few plain blocks. It covers a color, a handful of effects and the ignition.
-- **Full** shows every ProffieOS layer, nested however you like. It reaches everything the official ProffieOS style editor does.
+- **Simple** builds a style from a few plain blocks. Simple covers a color, a handful of effects and the ignition.
+- **Full** shows every ProffieOS layer, nested however you like. Full reaches everything the official ProffieOS style editor does.
 
 You can open a Simple style in Full at any time: press **open this style in the full editor**. The copy in Full starts from what the Simple style makes. The two halves are kept separately, so changes in one are not copied back to the other.
 
@@ -57,15 +57,15 @@ The editor opens styles written as `StylePtr<...>()`. It cannot open the shortcu
 
 ## The preview and cues
 
-The panel on the right, **On the blade**, shows the style on a blade with a hilt. It uses the same simulator as the Styles page, with the same buttons for Ignite, Clash, Blast, lockups and the Swing, Tilt and Twist controls.
+The panel on the right, **On the blade**, shows the style on a blade with a hilt. The panel uses the same simulator as the Styles page, with the same buttons for Ignite, Clash, Blast, lockups and the Swing, Tilt and Twist controls.
 
-In Full, a layer with a trigger shows a **Trigger** button, or **Hold it** for a lockup. It sets that effect off on the preview, so you can see the layer without hunting for the right button. Dragging a **Where** control poses the blade so the effect lands where you are pointing.
+In Full, a layer with a trigger shows a **Trigger** button, or **Hold it** for a lockup. The button sets that effect off on the preview, so you can see the layer without hunting for the right button. Dragging a **Where** control poses the blade so the effect lands where you are pointing.
 
 If the preview can show part of a style only roughly, a note under the preview says so: "The preview is only approximate for ..." A note in amber, starting "The preview cannot show ...", lists parts that are left out of the preview but kept in the style. Either way, that part may differ on the saber.
 
 ## Checks before saving
 
-When you save a Full style, Hiltwright checks it first. It looks for names it does not know (and offers a close match, such as "Did you mean ...?"), parts of the wrong kind in a slot, and templates with too many or too few values. If it finds problems, nothing is saved. A red note says "Not saved: this style has a problem" (or a number of problems), lists each by layer, and adds "The build would probably stop on it."
+When you save a Full style, Hiltwright checks it first. Hiltwright looks for names it does not know (and offers a close match, such as "Did you mean ...?"), parts of the wrong kind in a slot, and templates with too many or too few values. If it finds problems, nothing is saved. A red note says "Not saved: this style has a problem" (or a number of problems), lists each by layer, and adds "The build would probably stop on it."
 
 Fix them and save again. If you know better, **save it as it is** saves anyway. Only a build can say for certain that the compiler accepts the whole style.
 

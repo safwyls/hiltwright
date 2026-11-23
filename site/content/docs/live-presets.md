@@ -4,7 +4,7 @@ summary: Change a plugged-in saber's presets on the saber itself, with each chan
 section: Live
 order: 1
 ---
-Live › Presets edits the presets on the saber that is plugged in, right now. Nothing is built or installed. It works with any ProffieOS firmware, not only one that Hiltwright built.
+Live › Presets edits the presets on the saber that is plugged in, right now. Nothing is built or installed. Live › Presets works with any ProffieOS firmware, not only one that Hiltwright built.
 
 To change the list for the next install instead, use [Install › Presets](presets.html).
 
@@ -12,7 +12,7 @@ To change the list for the next install instead, use [Install › Presets](prese
 
 A chip above the editor says "Live on the saber". Each change is written to the saber at once. The chip shows "Writing" and what is being written, then "Saved" when the saber reads the change back. The preset the saber has selected is the one you are editing. If a write fails, the chip says what failed and the page shows what the saber reports.
 
-This page always shows the saber's own list. It never shows a draft.
+This page always shows the saber's own list. The page never shows a draft.
 
 ## When it is read-only
 
@@ -40,14 +40,14 @@ The **History** tab lists snapshots. A snapshot of the saber's presets is kept w
 
 A snapshot that would be the same as the newest one is not kept again. Nothing is kept on connect when the saber cannot read its card, because it then shows the presets built into its firmware, not its own. Each saber keeps its newest 200 of these everyday snapshots. Older ones are thinned to one a day. Snapshots taken before a restore, an install, or the card being prepared are always kept.
 
-Pressing it shows what a restore would change before anything is sent. You may be offered:
+Pressing **Undo** or **Restore** shows what a restore would change before anything is sent. You may be offered:
 
 - **Restore this preset**, which changes only the one preset that differs.
 - **Restore the whole list**, with a numbered list of each change.
 
 If the saber already matches the snapshot, it says "Nothing to restore." If it cannot tell which preset is which, it offers only the whole list. Press **Cancel** to change nothing. A restore sends the earlier values back and waits for the saber to confirm them.
 
-A snapshot file that was cut short, by a crash while it was being saved for example, is marked **incomplete**, and its button is off. It holds only part of the list, so restoring it would delete the presets it lost.
+A snapshot file that was cut short, by a crash while it was being saved for example, is marked **incomplete**, and its button is off. The file holds only part of the list, so restoring it would delete the presets it lost.
 
 Snapshots are kept on this computer, for Hiltwright. A snapshot file copied onto the card would not be loaded by the saber.
 

@@ -12,12 +12,12 @@ nav: download
         <a class="btn primary big" href="{{releases}}">Get it on GitHub</a>
         <a class="btn big" href="docs/install.html">Read the install guide first</a>
       </div>
-      <p class="fine">For Windows the file is <code>Hiltwright-{{version}}-setup.exe</code>, about 205 MB. It installs for your account only and does not ask for administrator approval.</p>
+      <p class="fine">For Windows the file is <code>Hiltwright-{{version}}-setup.exe</code>, about 205 MB. The installer sets Hiltwright up for your account only and does not ask for administrator approval.</p>
       <p class="fine">For a Mac the file is <code>Hiltwright-{{version}}-mac-arm64.dmg</code> (Apple silicon) or <code>Hiltwright-{{version}}-mac-x64.dmg</code> (Intel), about 140 MB. macOS is new in this beta: on a Mac Hiltwright sets up its toolchain and builds firmware, and installing to a saber has not been confirmed there yet. The <a href="docs/release-notes.html">release notes</a> say how to open it.</p>
     </div>
     <div class="card warn">
       <h2>On Windows, check Smart App Control first</h2>
-      <p>This beta is not signed. If Smart App Control is <b>On</b>, Windows blocks both the installer and the installed app, and there is no way to allow them. It has to be off while you use this beta.</p>
+      <p>This beta is not signed. If Smart App Control is <b>On</b>, Windows blocks both the installer and the installed app, and there is no way to allow them. Smart App Control has to be off while you use this beta.</p>
       <p>Look before you download: Windows Security, App &amp; browser control, Smart App Control settings.</p>
       <a class="more" href="docs/install.html#3-smart-app-control">What to check, step by step</a>
     </div>
@@ -62,7 +62,7 @@ npm run dist    # build the Windows installer</code></pre>
     </div>
     <div>
       <h2>Found a problem?</h2>
-      <p>Press "Save diagnostics" in the app. It writes one file on your computer and sends nothing. Then open an issue on GitHub and attach that file.</p>
+      <p>Press "Save diagnostics" in the app. That writes one file on your computer and sends nothing. Then open an issue on GitHub and attach that file.</p>
       <p>Each report is answered: it is fixed, planned for a later release, or closed with a reason.</p>
       <a class="more" href="{{issues}}">Report a problem</a><br>
       <a class="more" href="docs/troubleshooting.html">Troubleshooting</a><br>

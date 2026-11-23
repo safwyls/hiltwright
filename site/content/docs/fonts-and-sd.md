@@ -4,7 +4,7 @@ summary: Fix the saber's SD card without a new install. Share it over the saber'
 section: Live
 order: 3
 ---
-Live › Card works on the saber's SD card, for a small fix: one font, or the voice pack. It needs no new build and no install. This page was called Fonts & SD before.
+Live › Card works on the saber's SD card, for a small fix: one font, or the voice pack. Live › Card needs no new build and no install. This page was called Fonts & SD before.
 
 For a full set-up, use a card reader instead. On Install › [Card](card.html), the trip copies every font your saber needs in one go, and it is much faster. Choosing which fonts a saber carries is done on [Install › Fonts](fonts.html).
 
@@ -66,7 +66,7 @@ Copying to such a card asks first: "Copy (font) to (drive) anyway? The card is (
 The table lists every font folder on the card, with its type and file count, its size and a verdict.
 
 - **Ready** means the saber should play it.
-- A chip such as "2 issues" means a check found a fault. It is red for the serious ones, a missing hum or mixed sound files, and amber for the rest. The notes underneath say what and which font.
+- A chip such as "2 issues" means a check found a fault. The chip is red for the serious ones, a missing hum or mixed sound files, and amber for the rest. The notes underneath say what and which font.
 
 Pick a font to see its sounds, grouped by effect, with how many are polyphonic or monophonic. With none picked, the panel shows the card's tracks.
 

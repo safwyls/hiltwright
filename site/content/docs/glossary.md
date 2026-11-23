@@ -7,7 +7,7 @@ order: 4
 Terms are in alphabetical order. If you come from Crystal Focus X, Xenopixel or LGT boards, some of these will be new, and a few are the same idea under another name.
 
 ## Accent
-A small extra LED or LED strip on the saber, apart from the main blade. It can follow the blade, flash on hits or show the battery. Hiltwright treats it as a kind of blade you can give a style to.
+A small extra LED or LED strip on the saber, apart from the main blade. An accent can follow the blade, flash on hits or show the battery. Hiltwright treats it as a kind of blade you can give a style to.
 
 ## Backup
 A copy of the saber's whole firmware, saved to your computer before each install. **Put back** on the Backups tab writes one onto the saber exactly as it was. See [Build & Flash](build-and-install.html).
@@ -19,13 +19,13 @@ In Hiltwright, anything the saber lights or runs on its own: the main blade, a s
 An effect for a blaster bolt hitting the blade. A small ring of light spreads from where it lands.
 
 ## Card reader
-A small device that plugs into your computer and holds the SD card, so the computer can read it without the saber. It is about 30 times faster than copying over the saber's own USB. See [Card](card.html).
+A small device that plugs into your computer and holds the SD card, so the computer can read it without the saber. A card reader is about 30 times faster than copying over the saber's own USB. See [Card](card.html).
 
 ## Clash
-An effect for the blade hitting something hard. It flashes where the blade is hit, and the saber plays a clash sound.
+An effect for the blade hitting something hard. A clash flashes where the blade is hit, and the saber plays a clash sound.
 
 ## Common folder
-A folder named `common` on the SD card. It holds sounds shared by every preset, such as the voice pack. A preset must use it for those sounds to play.
+A folder named `common` on the SD card. The common folder holds sounds shared by every preset, such as the voice pack. A preset must use it for those sounds to play.
 
 ## Crystal chamber
 The space inside a hilt, usually with a clear window, where a crystal sits. A Proffieboard can light it with its own LED and style.
@@ -34,16 +34,16 @@ The space inside a hilt, usually with a clear window, where a crystal sits. A Pr
 The board pin that carries the color signal to a blade's LEDs. Check each data pin against what the installer wrote down before you install.
 
 ## DFU
-Short for device firmware upgrade. It is the bootloader mode a Proffieboard enters to accept new firmware. Hiltwright puts the board in it for you. If it does not, hold BOOT, tap RESET, then release BOOT.
+Short for device firmware upgrade. DFU is the bootloader mode a Proffieboard enters to accept new firmware. Hiltwright puts the board in DFU for you. If the board does not go into DFU, hold BOOT, tap RESET, then release BOOT.
 
 ## Drag
-An effect for the blade tip scraping along the ground. It is held while you drag, and the tip glows.
+An effect for the blade tip scraping along the ground. The effect is held while you drag, and the tip glows.
 
 ## Firmware
 The program that runs on the board. ProffieOS, with your wiring, presets and styles built in, is the firmware. Hiltwright builds it and installs it.
 
 ## Flash
-To write firmware onto the board. Hiltwright calls it an install. It is also used as a noun: a board has a fixed amount of flash memory, and every style takes a little of it.
+To write firmware onto the board. Hiltwright calls it an install. The word is also used as a noun: a board has a fixed amount of flash memory, and every style takes a little of it.
 
 ## Font
 See Sound font.
@@ -55,7 +55,7 @@ Two meanings. In the sidebar, Install is the five steps that set a saber up: Wir
 An effect for blocking Force lightning. Crackles run along the blade while it is held.
 
 ## Live
-Changing a saber that is plugged in and already installed, with each change written to it at once. It needs no build and no install. The Live pages are Presets, Controls and Card. See [Live › Presets](live-presets.html). The other way is Install.
+Changing a saber that is plugged in and already installed, with each change written to it at once. Live needs no build and no install. The Live pages are Presets, Controls and Card. See [Live › Presets](live-presets.html). The other way is Install.
 
 ## Lockup
 An effect held while two blades are pressed together. The blade glows where they meet, and a lockup sound loops until you let go.
@@ -82,7 +82,7 @@ One setup you switch to with the buttons: a sound font, a music track, and a sty
 The saber controller board Hiltwright sets up. Hiltwright supports the Proffieboard V2.2 and V3.
 
 ## ProffieOS
-The open-source software that runs on a Proffieboard. It decides how the saber lights, sounds and reacts. Hiltwright supports ProffieOS 8.x.
+The open-source software that runs on a Proffieboard. ProffieOS decides how the saber lights, sounds and reacts. Hiltwright supports ProffieOS 8.x.
 
 ## Prop file
 The part of ProffieOS that decides what each button press does, such as ignite, change preset or enter edit mode. You choose it on the Wiring page, along with the number of buttons.
@@ -91,7 +91,7 @@ The part of ProffieOS that decides what each button press does, such as ignite, 
 A style chosen for a preset that the firmware does not hold yet. The style goes on with the next Build & Flash. See [Styles](styles.html).
 
 ## SD card
-The memory card in the saber. It holds the sound fonts, tracks and the `presets.ini` file. FAT32 is the format to use. A saber cannot read a card formatted exFAT or NTFS.
+The memory card in the saber. The SD card holds the sound fonts, tracks and the `presets.ini` file. FAT32 is the format to use. A saber cannot read a card formatted exFAT or NTFS.
 
 ## SmoothSwing
 A swing sound that follows how you move the blade, with pitch and volume rising and falling smoothly. A font needs the right files for it. The [Font library](font-library.html) shows whether a font has them.

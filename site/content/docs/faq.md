@@ -20,7 +20,7 @@ The first build needs a one-time download of about 360 MB of compiler tools. Aft
 
 ## Will it overwrite my saber? Can I undo it?
 
-An install replaces the firmware on the board. Before it does, Hiltwright reads the saber's whole firmware into a backup file. To undo an install, use **Put back** on the Backups tab. It writes the old firmware back exactly as it was.
+An install replaces the firmware on the board. Before it does, Hiltwright reads the saber's whole firmware into a backup file. To undo an install, use **Put back** on the Backups tab. **Put back** writes the old firmware back exactly as it was.
 
 The presets and fonts on the SD card are not touched by an install or a put back. When a new list of presets replaces the saber's, Hiltwright keeps a copy of the saber's own presets first, so they can be put back. See [Build & Flash](build-and-install.html).
 
@@ -34,11 +34,11 @@ And versions from 0.2.0-beta.3 on look for a newer Hiltwright: a little after th
 
 ## Does it work on Mac or Linux?
 
-It works on a Mac, from 0.2.0-beta.7: each release carries a disk image for Apple silicon and one for Intel. macOS is the newer of the two systems. On a Mac Hiltwright sets up its toolchain and builds firmware; installing to a saber has not been confirmed there yet, the six free sound fonts are not included, and the Mac app does not update itself. It is not signed, so macOS asks before it opens it; the release notes say how. There is no Linux build.
+Hiltwright works on a Mac, from 0.2.0-beta.7: each release carries a disk image for Apple silicon and one for Intel. macOS is the newer of the two systems. On a Mac Hiltwright sets up its toolchain and builds firmware; installing to a saber has not been confirmed there yet, the six free sound fonts are not included, and the Mac app does not update itself. The Mac app is not signed, so macOS asks before it opens it; the release notes say how. There is no Linux build.
 
 ## Windows warns me about the installer. Is that normal?
 
-Yes. The beta is not signed, so Windows shows warnings such as "Windows protected your PC". Choose **More info**, then **Run anyway**. If Smart App Control is **On**, Windows blocks the installer and the app with no way to allow just one app. It has to be off as long as you use the beta. See [Install](install.html) and [Troubleshooting](troubleshooting.html).
+Yes. The beta is not signed, so Windows shows warnings such as "Windows protected your PC". Choose **More info**, then **Run anyway**. If Smart App Control is **On**, Windows blocks the installer and the app with no way to allow just one app. Smart App Control has to be off as long as you use the beta. See [Install](install.html) and [Troubleshooting](troubleshooting.html).
 
 ## Where do sound fonts come from?
 

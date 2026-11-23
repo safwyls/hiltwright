@@ -12,7 +12,7 @@ Every saber Hiltwright has seen is listed on the left, plugged in or not. Each r
 
 A saber you plug in is picked on its own. You can pick another saber while one is plugged in, for example to change its setup. The connected saber stays connected, so Live keeps working on it. An install only ever goes to the saber that is connected, and it is refused while that is not the saber you picked.
 
-With two sabers plugged in, Hiltwright talks to one at a time. Its row says "Connected", and the other's says "Plugged in". On Windows each chip also names the saber's COM port, for example "Connected · COM8". Pick the other saber to connect to it instead: Hiltwright closes the first one's port and opens only the picked saber's. A switch waits while an install, a copy to the card or a change to the saber is still running. If that happens, pick the saber again once it has finished. The header shows the COM port of the saber that is connected.
+With two sabers plugged in, Hiltwright talks to one at a time. That saber's row says "Connected", and the other's says "Plugged in". On Windows each chip also names the saber's COM port, for example "Connected · COM8". Pick the other saber to connect to it instead: Hiltwright closes the first one's port and opens only the picked saber's. A switch waits while an install, a copy to the card or a change to the saber is still running. If that happens, pick the saber again once it has finished. The header shows the COM port of the saber that is connected.
 
 The picked saber's name is at the top of the right side, with a chip: "Plugged in", "Set up ahead" or "Not plugged in". Under it is everything the saber's firmware reports about itself: the ProffieOS version, prop, buttons, presets, config name and install date. For a saber that is not plugged in, that line starts "Last read:". Press **Read again** to read a plugged-in saber once more.
 
@@ -24,7 +24,7 @@ To rename the saber that is plugged in, press **Rename**, type the new name and 
 
 Under the saber's name are two panels. The bright one is the one you can use now.
 
-**Adjust it live.** Change its presets, volume and colours on the saber itself. Each change takes effect at once, and nothing is built or flashed. It works with any ProffieOS firmware. The panel shows what is on the saber now: the preset playing, the number of presets, the battery and where the card is. Press **Adjust it live** to open [Live › Presets](live-presets.html).
+**Adjust it live.** Change its presets, volume and colours on the saber itself. Each change takes effect at once, and nothing is built or flashed. Adjusting live works with any ProffieOS firmware. The panel shows what is on the saber now: the preset playing, the number of presets, the battery and where the card is. Press **Adjust it live** to open [Live › Presets](live-presets.html).
 
 If the picked saber is not plugged in, the panel is dimmed, and its button is off and says "Plug it in to adjust". If it is plugged in while another saber is connected, the button says "Connect to (saber) on (port)" and switches to it. If another saber is connected, a link offers to pick that one. A saber you set up ahead has no firmware, so there is nothing to adjust live.
 
@@ -60,14 +60,14 @@ Set a saber up once and give the setup to someone else, so they can flash their 
 - the fonts chosen on Install › Fonts, and the voice pack;
 - a custom prop file, if the saber builds with one.
 
-It leaves out what belongs to your hilt and your computer: the saber's serial number, its SD cards, its firmware record, your "I checked the wiring", and where your installer's config file is. **Sound fonts are named, not carried.** They are large, and many cannot be passed on, so whoever imports the file needs the fonts themselves. After you share, the Armory lists the fonts it names.
+The file leaves out what belongs to your hilt and your computer: the saber's serial number, its SD cards, its firmware record, your "I checked the wiring", and where your installer's config file is. **Sound fonts are named, not carried.** They are large, and many cannot be passed on, so whoever imports the file needs the fonts themselves. After you share, the Armory lists the fonts it names.
 
 **Import**, beside **New saber**, brings a `.hwsaber` file in as a saber set up ahead. If you already have a saber by that name, it gets "(2)" after it. Then:
 
-- Its presets are the list for its next flash.
+- The imported saber's presets are the list for its next flash.
 - Styles you do not have yet are added to your [Styles](styles.html).
 - The Armory lists any fonts it uses that are not in your font library or among the fonts that come with Hiltwright.
-- Its board and wiring are not taken on trust. Choose the board and check every pin on [Wiring](wiring.html) against your own hilt before you flash: a wrong pin can damage the board.
+- The imported saber's board and wiring are not taken on trust. Choose the board and check every pin on [Wiring](wiring.html) against your own hilt before you flash: a wrong pin can damage the board.
 - A custom prop file that came with it is kept and used. A prop file is code that goes into the firmware, so flash it only if you trust where it came from.
 
 When your saber is plugged in, match it to the imported plan as above.
@@ -80,7 +80,7 @@ At the top of the page, one panel says what is connected:
 | --- | --- |
 | "Nothing plugged in" | No saber is connected. Plug one in over a data cable and press **Connect**. |
 | "Opening the port…" | Hiltwright is opening the saber's USB connection. |
-| "Reading the saber…" | It is reading the saber's presets and firmware details. |
+| "Reading the saber…" | Hiltwright is reading the saber's presets and firmware details. |
 | "(name) is plugged in" | Connected. The line below shows the ProffieOS version, the prop, the number of buttons and when it was installed. |
 | "Something went wrong" | Read the message under it. Press **Connect** to try again. |
 
@@ -134,6 +134,6 @@ The question ends: "If you plug the saber in again, Hiltwright remembers it agai
 
 Press **Cancel** or Escape to leave everything as it was. Cancel is the button that has focus. Press **Remove** and the saber's name (for example "Remove Kylo") to go ahead. If it was the saber you had picked, Hiltwright moves to the most recently seen saber that is left, or to "Start here" when there is none.
 
-A saber you set up ahead, which was never plugged in, is removed the same way. Its question has no backups or history to mention.
+A saber you set up ahead, which was never plugged in, is removed the same way. That saber's question has no backups or history to mention.
 
 Next: [Wiring](wiring.html).

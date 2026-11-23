@@ -4,7 +4,7 @@ summary: Try any style with any sound font on a saber in a dark room, before any
 section: The workshop
 order: 4
 ---
-The Demo room is a dark room with a saber in it. You pick a style and a sound font, ignite the saber, swing it, clash it and hold lockups. It is the place to decide whether a style and a font belong together, without installing anything.
+The Demo room is a dark room with a saber in it. You pick a style and a sound font, ignite the saber, swing it, clash it and hold lockups. The Demo room is the place to decide whether a style and a font belong together, without installing anything.
 
 ![The Demo room: a lit saber in a dark room, with the saber panel on the left and the controls along the bottom](shots/clean-45.png)
 
@@ -25,9 +25,9 @@ Pick a font and Hiltwright reads and decodes its sounds. When it is ready, the r
 
 ### From your saber
 
-When you have a saber in the Armory with presets, the **Blade** tab shows a section headed **From** and the saber's name, with a preset picker and **Load**. It sets the style, its colors and the font from that preset, as they are on the saber. On a staff hilt it loads the second blade too.
+When you have a saber in the Armory with presets, the **Blade** tab shows a section headed **From** and the saber's name, with a preset picker and **Load**. **Load** sets the style, its colors and the font from that preset, as they are on the saber. On a staff hilt it loads the second blade too.
 
-If it cannot, it says why. For example, "Hiltwright cannot tell which style ... runs on blade ...", or that the style cannot be shown in the room yet. The blade keeps what it showed before. If the preset's font is not in the library, the note says so: "The font ... is not in the Font library. Add it there to hear it here."
+If the room cannot load the style, a note says why. For example, "Hiltwright cannot tell which style ... runs on blade ...", or that the style cannot be shown in the room yet. The blade keeps what it showed before. If the preset's font is not in the library, the note says so: "The font ... is not in the Font library. Add it there to hear it here."
 
 ## Controls
 
@@ -70,7 +70,7 @@ To pose the blade exactly, open the **Saber** tab and use **Point the blade**. *
 
 ## The Saber tab
 
-- **Prop file** chooses how the saber behaves. It says whether a style can turn the saber off and on itself, what special abilities there are, and whether the prop plays a style's own sounds. If your saber has a prop, it is marked "(this saber)".
+- **Prop file** chooses how the saber behaves. **Prop file** also says whether a style can turn the saber off and on itself, what special abilities there are, and whether the prop plays a style's own sounds. If your saber has a prop, it is marked "(this saber)".
 - **Mouse control** is **Hold the hilt** or **Tilt and swing**.
 
 ## Scene
@@ -85,4 +85,4 @@ The **Scene** panel in the bottom right shapes the room. **Reset** puts everythi
 
 The blade runs the same per-LED math as the saber, so colors, timing and effects are close. The sound follows ProffieOS's own rules for sound fonts: the hum loops from ignition to retraction, ignition and retraction sounds chain as on the saber, clash, blast, stab and force layer on top, and lockups play their begin, loop and end sounds. Swings use the SmoothSwing method, or a whole swing sound each time the blade passes a swing speed for fonts without it. A font with drag sounds but no melt sounds plays drag for melt.
 
-It is a good guide to the saber. Speakers, volume and the real hum will still differ. Parts of a style the preview models roughly are flagged under the style's description.
+The Demo room is a good guide to the saber. Speakers, volume and the real hum will still differ. Parts of a style the preview models roughly are flagged under the style's description.

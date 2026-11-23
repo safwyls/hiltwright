@@ -4,7 +4,7 @@ summary: Browse the built-in styles, try colors on a live preview, put a style o
 section: The workshop
 order: 1
 ---
-A style is what a blade does: its color, its flicker, how it ignites and retracts, and how it reacts to clashes and swings. The Styles page is where you browse them, try them, and put them on your saber's presets. It sits in the Workshop, beside the [Style editor](style-editor.html), the [Font library](font-library.html) and the [Demo room](demo-room.html).
+A style is what a blade does: its color, its flicker, how it ignites and retracts, and how it reacts to clashes and swings. The Styles page is where you browse them, try them, and put them on your saber's presets. The page sits in the Workshop, beside the [Style editor](style-editor.html), the [Font library](font-library.html) and the [Demo room](demo-room.html).
 
 ![The Styles page: a grid of style cards, each with a small blade preview](shots/clean-33.png)
 
@@ -28,17 +28,17 @@ Each style carries one of three marks. They matter because a saber can only swit
 
 | Mark | What it means |
 | --- | --- |
-| **On the saber** | The style is in the saber's firmware now. It can be switched on at once. |
+| **On the saber** | The style is in the saber's firmware now. The style can be switched on at once. |
 | **Queued** | You chose the style for a preset, but it is not in the firmware yet. The style goes on with the next Build & Flash. |
-| **Needs a build** | It is not in the saber's firmware, so a build is needed before the saber can use it. |
+| **Needs a build** | The style is not in the saber's firmware, so a build is needed before the saber can use it. |
 
 A style you edited after the last install is not "On the saber" any more, because the firmware holds the older version.
 
-When a style is queued, a **Build & flash queued styles** button appears under the preview. It takes you to [Build & Flash](build-and-install.html).
+When a style is queued, a **Build & flash queued styles** button appears under the preview. The button takes you to [Build & Flash](build-and-install.html).
 
 ## The preview
 
-Pick a card and the panel on the right shows the style on a larger blade. It runs the same per-LED math as the saber, so the color, flicker and ignition match closely. The buttons under it let you try the style:
+Pick a card and the panel on the right shows the style on a larger blade. The preview runs the same per-LED math as the saber, so the color, flicker and ignition match closely. The buttons under it let you try the style:
 
 - **Retract** or **Ignite**.
 - **Clash**, **Blast**, **Stab** and **Hard clash**.
@@ -77,12 +77,12 @@ At the foot of the panel, which stays in place whatever style you pick, choose a
 
 What happens depends on the saber:
 
-- **Plugged in, and the firmware already has the style.** The button says **Use it in** the preset. It is written to the saber now, in the colors you chose. No rebuild. The page says "The saber confirmed it" when the saber has read it back.
+- **Plugged in, and the firmware already has the style.** The button says **Use it in** the preset. The style is written to the saber now, in the colors you chose. No rebuild. The page says "The saber confirmed it" when the saber has read it back.
 - **Not plugged in, or the style is new.** The button says **Add to** the preset, or **Also use it in** the preset if the style is already queued elsewhere. The style is saved in the saber's plan and goes on with the next Build & Flash. If you picked colors, they are written right after that install. A new style also costs a little firmware space, and the page shows about how much.
 - **Presets are staged.** The style goes into the staged list and reaches the saber with the next install.
 - **Already in.** The button says **Already in** the preset and is disabled. That preset already uses this style on that blade, with these colors. Choose another preset or blade, or try other colors.
 
-The button is also disabled when the saber is plugged in but cannot take a write. If its SD card is out, the page says it has no readable card, because presets are saved on the card. If the card is shared with the computer, give it back on [Live › Card](fonts-and-sd.html) first. It is disabled too while the board is busy with something else.
+The button is also disabled when the saber is plugged in but cannot take a write. If its SD card is out, the page says it has no readable card, because presets are saved on the card. If the card is shared with the computer, give it back on [Live › Card](fonts-and-sd.html) first. The button is disabled too while the board is busy with something else.
 
 With no saber yet, the page says: "No saber yet: start one in the Armory, and styles can be put into its presets before it is ever plugged in."
 
@@ -95,7 +95,7 @@ With no saber yet, the page says: "No saber yet: start one in the Armory, and st
 3. Type a **Name**, and who made it in **By**. If nobody knows, tick **Author unknown**. The **Save style** button stays disabled until you do one or the other.
 4. Press **Save style**.
 
-Hiltwright checks the code as you paste. It stops you, with a message, if there is no code, if it does not start like a style such as `StylePtr<...>()`, if the angle brackets do not balance, or if it contains lines like `#include` or `#define` that do not belong in a single style. When the code passes, the page says "Looks like a style" and lists the colors and options you will be able to change live. It also says whether it found a header.
+Hiltwright checks the code as you paste. Hiltwright stops you, with a message, if there is no code, if the code does not start like a style such as `StylePtr<...>()`, if the angle brackets do not balance, or if the code contains lines like `#include` or `#define` that do not belong in a single style. When the code passes, the page says "Looks like a style" and lists the colors and options you will be able to change live. The page also says whether it found a header.
 
 Comments are fine anywhere in the code. The checks skip them, so a `>` inside a comment does not count. A comment inside the style is kept. A comment after the last `()` is left out when the style is saved, because the configuration puts a comma straight after the style.
 
@@ -108,4 +108,4 @@ A style you paste is credited to the person you name. You can fix the name later
 Styles you paste or build are kept in your Styles. They can be removed. Built-in styles cannot.
 
 - A built style shows **Edit the layers**, which opens it in the [Style editor](style-editor.html).
-- **Remove from library** asks first. It names any saber that has the style installed or queued. Those sabers keep their own copy for the next build, so removing a style never breaks a saber.
+- **Remove from library** asks first. The question names any saber that has the style installed or queued. Those sabers keep their own copy for the next build, so removing a style never breaks a saber.

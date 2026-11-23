@@ -128,7 +128,7 @@ ${body}
     <div><p class="foot-h">Docs</p><a href="${root}docs/install.html">Install guide</a><a href="${root}docs/quick-start.html">Quick start</a><a href="${root}docs/troubleshooting.html">Troubleshooting</a><a href="${root}docs/faq.html">Questions</a></div>
     <div><p class="foot-h">Project</p><a href="${REPO_URL}">Source on GitHub</a><a href="${ISSUES_URL}">Report a problem</a><a href="${RELEASES_URL}">Releases</a><a href="${REPO_URL}/blob/main/LICENSE">License: GPL-3.0-or-later</a></div>
   </div>
-  <div class="wrap legal">Hiltwright is an independent, open-source project. It is not affiliated with or endorsed by the ProffieOS project, any board or saber maker, or Lucasfilm Ltd. ProffieOS and Proffieboard are the work of Fredrik Hübinette. All other names belong to their owners.</div>
+  <div class="wrap legal">Hiltwright is an independent, open-source project, not affiliated with or endorsed by the ProffieOS project, any board or saber maker, or Lucasfilm Ltd. ProffieOS and Proffieboard are the work of Fredrik Hübinette. All other names belong to their owners.</div>
 </footer>
 <script src="${root}assets/site.js" defer></script>
 ${scripts.map((s) => `<script src="${root}${s}" defer></script>`).join('\n')}

@@ -21,7 +21,7 @@ Everything up to the flash works with the saber unplugged, once it has been seen
 
 ## The compiler
 
-The first build needs the compiler, the program that turns the settings into firmware. Press **Download and install**. It is about 360 MB to download and about 1.9 GB on disk, into Hiltwright's own folder, and touches nothing else. The panel shows the free space. On a fast connection this takes about a minute. After that, nothing more is downloaded.
+The first build needs the compiler, the program that turns the settings into firmware. Press **Download and install**. The compiler is about 360 MB to download and about 1.9 GB on disk, into Hiltwright's own folder, and touches nothing else. The panel shows the free space. On a fast connection this takes about a minute. After that, nothing more is downloaded.
 
 - If there is not enough space, or the folder path is too long, a red note says so and the button is off. Free some space and press **Try again**.
 - If another Windows account on this computer owns the compiler folder or could change it, Hiltwright runs nothing from it, and an amber note offers **Repair**. Repair limits the folder to administrators and your account. If the other account had put files there, Repair removes them and the compiler is downloaded again. Windows may ask for approval.
@@ -30,11 +30,11 @@ When ready, the step says "ProffieOS (version) ready".
 
 ## Build
 
-**Build firmware** needs the compiler and no problems in the wiring. It takes about a minute. Queued styles are built in. The Log tab opens by itself and shows the output. Each saber builds in its own copy of ProffieOS. When a Hiltwright update brings a new ProffieOS, the next build makes that copy again first, and the log says "ProffieOS has changed".
+**Build firmware** needs the compiler and no problems in the wiring. The build takes about a minute. Queued styles are built in. The Log tab opens by itself and shows the output. Each saber builds in its own copy of ProffieOS. When a Hiltwright update brings a new ProffieOS, the next build makes that copy again first, and the log says "ProffieOS has changed".
 
 You can build before the wiring is confirmed, but not install. Until it is, the page says "Confirm the wiring on the Wiring page before installing." See [Wiring](wiring.html).
 
-When it works, the step shows how long it took, or "unchanged, reused" if nothing changed. A meter shows how full the board's flash is, for example "43% of flash" with "(used) of (size) KB". It turns amber above 70% and red above 90%.
+When it works, the step shows how long it took, or "unchanged, reused" if nothing changed. A meter shows how full the board's flash is, for example "43% of flash" with "(used) of (size) KB". The meter turns amber above 70% and red above 90%.
 
 If the build fails, the problem is listed in red. Press **Save diagnostics** to write a file you can send.
 
@@ -67,7 +67,7 @@ Flash then does these things:
 3. Writes the new firmware.
 4. Waits for the saber to restart, reconnects and checks what it reports.
 
-One bar shows all of it. It takes about two minutes. **Leave the saber plugged in until it says Installed.** A good end reads "Installed and checked: the saber reports…". If it reports something else, the note tells you to put the backup back.
+One bar shows all of it. The whole flash takes about two minutes. **Leave the saber plugged in until it says Installed.** A good end reads "Installed and checked: the saber reports…". If it reports something else, the note tells you to put the backup back.
 
 > **Warning:** If the saber cannot restart into bootloader mode, hold BOOT, tap RESET, release BOOT, then press Flash again.
 
@@ -89,7 +89,7 @@ If the saber does not show up after a reboot, use the BOOT and RESET steps above
 
 Every install first reads the saber's whole firmware to a file. The **Backups** tab lists them with the date and size. Each says "not a usable image" if it is not good. A read taken after a write that did not finish is labelled "partial-read" and is never offered to put back: it may be half old firmware and half new.
 
-Press **Put back**, then **Yes, put it back**. It writes that backup onto the saber exactly as it was, to undo an install. It also backs up what is on the board first. If that read fails, or the board holds no usable firmware after a failed write, the backup is put back all the same and an amber note says so. The button is off until the saber is connected or a board is in bootloader mode.
+Press **Put back**, then **Yes, put it back**. **Put back** writes that backup onto the saber exactly as it was, to undo an install. **Put back** also backs up what is on the board first. If that read fails, or the board holds no usable firmware after a failed write, the backup is put back all the same and an amber note says so. The button is off until the saber is connected or a board is in bootloader mode.
 
 Presets and fonts on the SD card are not touched.
 
