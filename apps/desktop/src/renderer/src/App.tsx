@@ -414,7 +414,10 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
   const stepTitle: Record<string, string> = { wiring: 'Wiring', presets: 'Presets', fonts: 'Fonts', card: 'Card', build: 'Build & Flash' };
   const cur = ws.saber;
   const plans = ws.plans;
-  const adoptable = ws.live && cur && !cur.firmware && !cur.planned && plans.length > 0;
+  // A plan is offered only to a saber Hiltwright knows nothing about yet: no setup made here and no install recorded.
+  // One already set up here (a saved model) is its own saber, not a plan arriving, so it is not asked about every time
+  // it is plugged in; adopting would replace its setup.
+  const adoptable = ws.live && cur && !cur.firmware && !cur.model && !cur.planned && plans.length > 0;
   // The saber connected now, whichever is picked.
   const plugged = status === 'connected' && board.saber ? board.saber : null;
   // Every saber plugged in, connected or not, by USB serial, with its COM port (Windows names one): undefined when a

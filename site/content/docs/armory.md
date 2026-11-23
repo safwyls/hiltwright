@@ -40,7 +40,7 @@ To drop a plan you no longer want, press the bin icon beside it. This is offered
 
 ## Match a plugged-in saber to a plan
 
-When you plug in a saber that Hiltwright has not set up, and you have plans, the Armory asks "Is this a saber you set up ahead?" with a button for each plan, such as `It is "My plan"`.
+When you plug in a saber that Hiltwright has not set up, and you have plans, the Armory asks "Is this a saber you set up ahead?" with a button for each plan, such as `It is "My plan"`. A saber you have already set up or installed in Hiltwright is not asked about: it is its own saber.
 
 Press one and Hiltwright shows what will happen before it does anything. Adopting a plan moves its wiring, prop, presets and styles onto the saber. The next install replaces the styles compiled into the saber's current firmware, and the presets on its card become the plan's. If the saber already had wiring and presets in Hiltwright, they are replaced by the plan's.
 
