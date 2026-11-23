@@ -25,6 +25,7 @@ export function tourBoard(real: Pick<Board, 'library' | 'refreshLibrary' | 'isPr
     plugged: [],
     refreshPlugged: async () => undefined,
     switchTo: async () => { refused('switch saber'); return TOUR_REFUSAL; },
+    switchingTo: null,
     card: { shared: false, root: null },
     cardShared: () => { refused('card shared'); },
     cardGivenBack: () => { refused('card given back'); },

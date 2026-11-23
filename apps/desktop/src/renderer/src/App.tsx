@@ -233,7 +233,9 @@ export function App() {
         <div className="row" style={{ gap: 12 }}>
           <button type="button" className="chip tourchip" data-tour="top-tour" disabled={!!tour} aria-label="Show me this page" title="Show me this page: a short tour of it" onClick={() => startTour(startForPage(TOUR_STEPS, page))}><Icon name="info" /><span className="tct">Show me this page</span></button>
           <span className="row" style={{ gap: 12 }} data-tour="top-status">
-          <StatusChip status={status} port={board.plugged.find((p) => p.serial === board.saber?.identity.usbSerial)?.port ?? board.portName} />
+          {board.switchingTo
+            ? <span className="chip warn" role="status"><Loader size="sm" />Connecting to {board.switchingTo.name}…</span>
+            : <StatusChip status={status} port={board.plugged.find((p) => p.serial === board.saber?.identity.usbSerial)?.port ?? board.portName} />}
           <span className="chip" title={noBattery(info?.battery ?? null) ? 'The battery reads under 2 V: none is connected, and the saber runs on USB power.' : undefined}><Icon name="battery" />{batteryLabel(info?.battery ?? null)}</span>
           {connected
             ? <button type="button" className="btn sm" onClick={() => void board.disconnect()}><span className="b"><span className="i">Disconnect</span></span></button>
@@ -498,7 +500,9 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
                           </span>
                           {isPlugged
                             ? <span className="chip live"><span className="dot" />Connected{port ? ` · ${port}` : ''}</span>
-                            : port !== undefined && <span className="chip"><Icon name="usb" />Plugged in{port ? ` · ${port}` : ''}</span>}
+                            : board.switchingTo && board.switchingTo.serial === s.identity.usbSerial
+                              ? <span className="chip warn" role="status"><Loader size="sm" />Connecting{port ? ` · ${port}` : ''}</span>
+                              : port !== undefined && <span className="chip"><Icon name="usb" />Plugged in{port ? ` · ${port}` : ''}</span>}
                           {s.planned && <span className="chip">Set up ahead</span>}
                         </button>
                         {isCur && isPlugged && <button type="button" className="chip" onClick={() => { setDraft(s.name); setEditing(true); }}>Rename</button>}
@@ -584,7 +588,10 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
                   ? <button type="button" className={`btn full ${focus === 'live' ? 'pri' : ''}`} onClick={() => go('live-presets')}><span className="b"><span className="i"><Icon name="bolt" />Adjust it live</span></span></button>
                   : !cur.planned && (portOf(cur) !== undefined
                     // Plugged in, while another saber is the one connected: connect to this one instead.
-                    ? <button type="button" className="btn full" disabled={status === 'connecting' || status === 'reading'} onClick={() => pick(cur)}><span className="b"><span className="i"><Icon name="usb" />{status === 'connecting' || status === 'reading' ? 'Connecting…' : `Connect to ${cur.name}${portOf(cur) ? ` on ${portOf(cur)}` : ''}`}</span></span></button>
+                    ? (() => {
+                        const under = !!board.switchingTo || status === 'connecting' || status === 'reading';
+                        return <button type="button" className="btn full" disabled={under} onClick={() => pick(cur)}><span className="b"><span className="i">{under ? <Loader size="sm" /> : <Icon name="usb" />}{under ? `Connecting to ${board.switchingTo?.name ?? cur.name}…` : `Connect to ${cur.name}${portOf(cur) ? ` on ${portOf(cur)}` : ''}`}</span></span></button>;
+                      })()
                     : <button type="button" className="btn full" disabled><span className="b"><span className="i"><Icon name="usb" />Plug it in to adjust</span></span></button>)}
                 {switchNote && <div className="note amber" role="status"><Icon name="warn" /><span>{switchNote}</span></div>}
                 {!ws.live && plugged && plugged.id !== cur.id && <span className="hint">{plugged.name} is connected now. <button type="button" className="holo" onClick={() => ws.choose(plugged.id)}>Pick {plugged.name}</button> to adjust it live.</span>}

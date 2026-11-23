@@ -493,6 +493,9 @@ export function useBoard() {
    * switch never cuts an install, a copy or a write short. Returns why it did not switch, or null.
    */
   const switching = useRef(false);
+  // The saber a switch is reaching, from the moment it is picked: finding its port takes Windows a second or two, and
+  // the Armory shows it is under way at once rather than look as if nothing happened.
+  const [switchingTo, setSwitchingTo] = useState<{ serial: string; name: string } | null>(null);
   const switchTo = useCallback(async (serial: string, name = 'that saber'): Promise<string | null> => {
     if (holdConnect()) return 'Not while the tour is running.';
     if (busyRef.current || workNow().length) return 'Wait for the current job to finish, then pick the saber again.';
@@ -501,6 +504,7 @@ export function useBoard() {
     // Overlapping switches each asked main again, and a lookup that came back empty let any board be reached.
     if (switching.current) return null;
     switching.current = true;
+    setSwitchingTo({ serial, name });
     try {
       // By name: the serial is masked in the log to its last four characters, which two boards can share.
       console.log(`[board] switching to ${name}`);
@@ -523,6 +527,7 @@ export function useBoard() {
       return null;
     } finally {
       switching.current = false;
+      setSwitchingTo(null);
     }
   }, [connectOnce, disconnect, gate, reachNext, refreshPlugged]);
   /** The saber on the other end right now (read after a connect, before React has re-rendered). */
@@ -861,7 +866,7 @@ export function useBoard() {
     };
   }, []);
 
-  return { card, cardShared, cardGivenBack, cardLostWhileShared, status, error, portName, info, saber, library, libraryLoaded, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, readSnapshot, restoreSnapshot, renameSaber, updateSaber, expectAfterInstall, reachNext, currentSaber, restartSaber, currentPresets, planSaber, adoptPlan, currentPresetNow, refreshLibrary, snapshotSaved, isPresetBlockEnd, rebootToBootloader, plugged, refreshPlugged, switchTo };
+  return { card, cardShared, cardGivenBack, cardLostWhileShared, status, error, portName, info, saber, library, libraryLoaded, lines, snapshots, save, busy, connect, disconnect, send, identify, choosePreset, editPreset, setPresetStyles, movePreset, duplicatePreset, deletePreset, readSnapshot, restoreSnapshot, renameSaber, updateSaber, expectAfterInstall, reachNext, currentSaber, restartSaber, currentPresets, planSaber, adoptPlan, currentPresetNow, refreshLibrary, snapshotSaved, isPresetBlockEnd, rebootToBootloader, plugged, refreshPlugged, switchTo, switchingTo };
 }
 
 export type Board = ReturnType<typeof useBoard>;
