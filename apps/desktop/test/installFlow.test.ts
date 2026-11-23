@@ -430,7 +430,7 @@ describe('checking the board', () => {
     const f = world([theV3()], { connectedSerial: V3, noDriver: true });
     const r = await checkBoard(f.deps, v3Rec);
     expect(r.tone).toBe('amber');
-    expect(r.text).toBe('Windows has no driver for the bootloader yet. It is installed with the first flash on Build & Flash; choose the board yourself for now. To bring the saber back to its firmware, press RESET on the board, or unplug it and plug it back in.');
+    expect(r.text).toBe('Windows has no driver for the bootloader yet. The driver is installed with the first flash on Build & Flash; choose the board yourself for now. To bring the saber back to its firmware, press RESET on the board, or unplug it and plug it back in.');
     expect(f.calls.some((c) => /^(target|leave|note)/.test(c))).toBe(false);
   });
 
@@ -550,11 +550,11 @@ describe('backups in the sequences', () => {
     expect(f.deps.flash.restore).toHaveBeenCalledWith('s1', good.file, HOTE2);
     expect(f.shown().step).toBe('done');
     expect(f.shown().note?.tone).toBe('green');
-    expect(f.extra()).toEqual([{ tone: 'amber', text: 'What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. The read was not usable firmware (it may be short, protected, or damaged). What was read is kept at C:\\backups\\before-restore.bin in case it helps find the fault. It is not listed as a backup.' }]);
+    expect(f.extra()).toEqual([{ tone: 'amber', text: 'What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. The read was not usable firmware (it may be short, protected, or damaged). What was read is kept at C:\\backups\\before-restore.bin in case it helps find the fault. That read is not listed as a backup.' }]);
   });
 
   it('a partial read before a restore (it starts like firmware, but the last write did not finish): the restore goes on (issue #12)', async () => {
-    const f = world([hote2('boot')], { backup: { ok: false, kind: 'partial', file: 'C:\\backups\\x-partial-read-before-restore.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.' } });
+    const f = world([hote2('boot')], { backup: { ok: false, kind: 'partial', file: 'C:\\backups\\x-partial-read-before-restore.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. The board was read, but the read is not kept as a backup.' } });
     await restoreSequence(f.deps, saberRec(), { file: 'b.bin', at: '2026-09-27T10:00:00.000Z', label: 'x', bytes: 262144, valid: true, configName: null }, false);
     expect(f.touched()).toEqual([`backup ${HOTE2}`, `restore ${HOTE2}`]);
     expect(f.extra()[0].text).toMatch(/kept at C:.+partial-read-before-restore\.bin/);
@@ -569,7 +569,7 @@ describe('backups in the sequences', () => {
     expect(yes.shown().step).toBe('done');
     // There is no backup from just now to name.
     expect(yes.shown().note?.text).not.toMatch(/Backup of the previous firmware/);
-    expect(yes.extra()[0]).toEqual({ tone: 'amber', text: `No backup was taken this time: you chose to install without one. ${unusable.detail} What was read is kept at C:\\backups\\before-install.bin in case it helps find the fault. It is not listed as a backup.` });
+    expect(yes.extra()[0]).toEqual({ tone: 'amber', text: `No backup was taken this time: you chose to install without one. ${unusable.detail} What was read is kept at C:\\backups\\before-install.bin in case it helps find the fault. That read is not listed as a backup.` });
     const no = world([hote2()], { backup: unusable, noBackup: false });
     await installSequence(no.deps, jobFor());
     expect(no.deps.flash.write).not.toHaveBeenCalled();
@@ -585,11 +585,11 @@ describe('backups in the sequences', () => {
   });
 
   it('an install on a board whose last write did not finish, declined: nothing written, and the board is not sent to that firmware (issue #12)', async () => {
-    const f = world([hote2('boot')], { backup: { ok: false, kind: 'partial', file: 'C:\\backups\\p.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.' }, noBackup: false });
+    const f = world([hote2('boot')], { backup: { ok: false, kind: 'partial', file: 'C:\\backups\\p.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. The board was read, but the read is not kept as a backup.' }, noBackup: false });
     await installSequence(f.deps, jobFor({ connected: false }));
     expect(f.deps.flash.write).not.toHaveBeenCalled();
     expect(f.calls.some((c) => c.startsWith('leave'))).toBe(false);
-    expect(f.shown()).toEqual({ step: 'failed', note: { tone: 'red', text: 'Backup failed, so nothing was written. The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup. The board stays in bootloader mode: put a backup back from the Backups tab.' } });
+    expect(f.shown()).toEqual({ step: 'failed', note: { tone: 'red', text: 'Backup failed, so nothing was written. The last write to this board did not finish, so what it holds now may be half written. The board was read, but the read is not kept as a backup. The board stays in bootloader mode: put a backup back from the Backups tab.' } });
   });
 
   it('a restore from a board already in its bootloader (after the driver step) is a restore, not an install', async () => {
@@ -868,7 +868,7 @@ describe("main's read-before-write gate", () => {
     return { proofs, refusals };
   }
   const unusable = { ok: false, kind: 'unusable' as const, file: 'C:\\backups\\before-install.bin', detail: 'The read was not usable firmware (it may be short, protected, or damaged).' };
-  const partial = { ok: false, kind: 'partial' as const, file: 'C:\\backups\\p.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.' };
+  const partial = { ok: false, kind: 'partial' as const, file: 'C:\\backups\\p.bin', detail: 'The last write to this board did not finish, so what it holds now may be half written. The board was read, but the read is not kept as a backup.' };
   const aBackup: BackupInfo = { file: 'b.bin', at: '2026-09-27T10:00:00.000Z', label: 'x', bytes: 262144, valid: true, configName: null };
 
   it('an install after a backup, or on a blank board: written', async () => {

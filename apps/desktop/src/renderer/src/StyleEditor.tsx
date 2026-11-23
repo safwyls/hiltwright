@@ -167,7 +167,7 @@ export function StyleEditor({ editing, onSaved, onDemo, onLeaveGuard }: { editin
             </span></div>
           )}
           {saveError && <div className="note red" role="alert"><Icon name="x" /><span>Could not save the style: {saveError}</span></div>}
-          {saved && <div className="note green"><Icon name="check" /><span>Saved. It is in your Styles now: add it to a preset there, and its live colours can be changed once installed.{saved.sabers > 0 ? ` ${saved.sabers === 1 ? "1 saber's plan now has" : `${saved.sabers} sabers' plans now have`} this version; it needs a build to reach the saber.` : ''} <button type="button" className="holo" onClick={() => onDemo(saved.id)}>Swing it in the demo room</button>.</span></div>}
+          {saved && <div className="note green"><Icon name="check" /><span>Saved. The style is in your Styles now: add it to a preset there, and its live colours can be changed once installed.{saved.sabers > 0 ? ` ${saved.sabers === 1 ? "1 saber's plan now has" : `${saved.sabers} sabers' plans now have`} this version; it needs a build to reach the saber.` : ''} <button type="button" className="holo" onClick={() => onDemo(saved.id)}>Swing it in the demo room</button>.</span></div>}
           {pasting && <PasteStyle onParsed={openParsed} onClose={() => setPasting(false)} />}
 
           {mode === 'tree' ? (

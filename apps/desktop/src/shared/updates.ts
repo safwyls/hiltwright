@@ -249,7 +249,7 @@ export function pretendState(spec: string, current: string): UpdateState | null 
 }
 
 /** Said beside the setting: what a check sends, and what it does not. */
-export const NETWORK_NOTE = "A check asks GitHub for Hiltwright's list of releases. It sends nothing about your sabers or you; GitHub sees your internet address, as with any web page. A new version is downloaded only when you press Download.";
+export const NETWORK_NOTE = "A check asks GitHub for Hiltwright's list of releases. The check sends nothing about your sabers or you; GitHub sees your internet address, as with any web page. A new version is downloaded only when you press Download.";
 
 /**
  * electron-updater sends a random ID of its own (kept in the data folder as .updaterId) with every request, for

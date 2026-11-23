@@ -36,7 +36,7 @@ A `SimpleBladePtr` pairs each LED with the pin in the same place, so Hiltwright 
 
 An installer can limit a blade's brightness with `DimBlade`, often to spare the battery or keep the LEDs cool. Hiltwright keeps that limit: the blade card says "Brightness limited to 20%", and builds keep it. A different limit, or none, is listed as a difference. A `DimBlade` whose limit is not a plain percentage is named as not readable.
 
-#### Its board settings
+#### The config's board settings
 
 A config also has settings of its own (its `#define` lines). Hiltwright writes its own settings for every build, but a few of the installer's describe how the hilt is built, and builds take those over with its wiring:
 

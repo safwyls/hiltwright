@@ -151,7 +151,7 @@ export function TrackPicker({ library, libraryRead, fontFolder, cardTracks, curr
           </div>
         </div>
         <div className="row between" style={{ padding: '10px 18px', borderTop: '1px solid var(--line)', gap: 12 }}>
-          <span className="hint">{note ?? 'A track plays while the preset is on. It must be on the card for the saber to play it: a library font\'s tracks go with the font.'}</span>
+          <span className="hint">{note ?? 'A track plays while the preset is on. The track must be on the card for the saber to play it: a library font\'s tracks go with the font.'}</span>
         </div>
       </section>
     </div>

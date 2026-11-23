@@ -67,7 +67,7 @@ export function FontChoice({ ws, board, go }: { ws: Workspace; board: Board; go:
       for (const f of r.added) next = withFontChosen(next, f);
       if (r.added.length) await ws.saveModel(next);
       const summary = importSummary(r);
-      setNote({ ...summary, text: r.added.length ? `${summary.text} ${r.added.length === 1 ? 'It is' : 'They are'} chosen for ${saber.name}.` : summary.text });
+      setNote({ ...summary, text: r.added.length ? `${summary.text} ${r.added.length === 1 ? 'The font is' : 'The fonts are'} chosen for ${saber.name}.` : summary.text });
     } catch (err) { setNote({ tone: 'red', text: cleanErr(err) }); }
     finally { setBusy(false); setProgress(null); }
   };
@@ -143,7 +143,7 @@ export function FontChoice({ ws, board, go }: { ws: Workspace; board: Board; go:
                 : <span className="chip ok"><Icon name="check" />Version {cardVoice.version} on the card</span>}
             </div>
             <div className="col" style={{ gap: 8, padding: '12px 18px 14px' }}>
-              <span className="small">The voice the Fett263 controls speak their menus in. It goes in the card{'’'}s common folder on the Card step, with the card in a card reader.</span>
+              <span className="small">The voice the Fett263 controls speak their menus in. The voice pack goes in the card{'’'}s common folder on the Card step, with the card in a card reader.</span>
               {voicePacks === null && <span className="row" style={{ gap: 10 }}><Loader size="sm" /><span className="hint">Finding the voice packs…</span></span>}
               {voiceSel && <>
                 <span className="input sans" style={{ maxWidth: 360 }}><span className="ellip">{voiceSel.name}</span><span className="caret"><Icon name="down" /></span><Select aria-label="Voice pack" value={voiceSel.id} onChange={(e) => chooseVoice(e.target.value)}>

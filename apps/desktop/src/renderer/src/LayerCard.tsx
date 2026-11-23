@@ -181,7 +181,7 @@ export function LayerCardView({ layer, card, base, pinned, name, defaultName, on
   const template = card.form === 'template' ? card.template : card.form === 'tree' ? layer.name : null;
 
   const sentence = (() => {
-    if (card.form === 'tree') return <>Hiltwright has no card for this layer, so it is shown as a tree. It is kept exactly as written.</>;
+    if (card.form === 'tree') return <>Hiltwright has no card for this layer, so it is shown as a tree. The layer is kept exactly as written.</>;
     if (card.form === 'template' && /^InOutTrL$/.test(card.template)) {
       const tr = (n: Node | undefined) => { const v = trView(n); if (!v) return <b>its own transition</b>; const w = (TR_CHOICES.find(([t]) => t === v.base)?.[1] ?? v.base).toLowerCase(); return v.ms == null ? <b>{w}</b> : <><b>{w}</b> over {v.ms} ms</>; };
       return <>Comes on with {tr(layer.args[0])} and goes out with {tr(layer.args[1])}.</>;
@@ -199,7 +199,7 @@ export function LayerCardView({ layer, card, base, pinned, name, defaultName, on
         <span className="input sans" style={{ height: 34, minWidth: 160, maxWidth: 320, flex: 1 }}><input type="text" value={name} placeholder={defaultName} aria-label="Layer name" onChange={(e) => onName(e.target.value)} /></span>
         <span style={{ flex: 1 }} />
         {cue && <button type="button" className="btn sm" title={cue.lockup ? 'Hold it on the preview for a moment' : 'Set it off on the preview'} onClick={() => onCue(cue)}><span className="b"><span className="i"><Icon name="play" />{cue.lockup ? 'Hold it' : 'Trigger'}</span></span></button>}
-        {onHidden && <button type="button" className={`chip ${hidden ? 'sel' : ''}`} aria-pressed={!!hidden} aria-label={hidden ? 'Hidden in the preview: show it' : 'Hide it in the preview'} title="Hide it in the preview to see what it adds. It is still saved and built." onClick={onHidden}><Icon name={hidden ? 'eyeOff' : 'eye'} /></button>}
+        {onHidden && <button type="button" className={`chip ${hidden ? 'sel' : ''}`} aria-pressed={!!hidden} aria-label={hidden ? 'Hidden in the preview: show it' : 'Hide it in the preview'} title="Hide the layer in the preview to see what it adds. A hidden layer is still saved and built." onClick={onHidden}><Icon name={hidden ? 'eyeOff' : 'eye'} /></button>}
         {onMove && <button type="button" className="chip" disabled={!canUp} aria-label="Move up the stack" onClick={() => onMove(1)}><Icon name="up" /></button>}
         {onMove && <button type="button" className="chip" disabled={!canDown} aria-label="Move down the stack" onClick={() => onMove(-1)}><Icon name="down" /></button>}
         {onDuplicate && <button type="button" className="chip" aria-label="Duplicate this layer" onClick={onDuplicate}><Icon name="copy" /></button>}

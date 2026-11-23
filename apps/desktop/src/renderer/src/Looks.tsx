@@ -179,12 +179,12 @@ export function Looks({ ws, board, initialCreator, onPresets, onBuild, onDemo, o
           <section className="panel dialog" role="dialog" aria-modal="true" aria-label="Paste style code">
             <div className="ph"><h2>Paste a style</h2><button type="button" className="chip" aria-label="Close" onClick={() => setPasting(false)}><Icon name="x" /></button></div>
             <div className="pb col scroll" style={{ gap: 12 }}>
-              <span className="hint">Paste the whole block from the Fett263 style library, comments included. Its copyright header stays with the style and goes into your config; Hiltwright never redistributes the library itself.</span>
+              <span className="hint">Paste the whole block from the Fett263 style library, comments included. The block{'’'}s copyright header stays with the style and goes into your config; Hiltwright never redistributes the library itself.</span>
               <textarea className="console" autoFocus style={{ minHeight: 220, resize: 'vertical', width: '100%', boxSizing: 'border-box', color: 'var(--text)', padding: 10 }} value={code} onChange={(e) => setCode(e.target.value)} aria-label="Style code" placeholder={'// Fett263 Style Library\n// Copyright ...\nStylePtr<Layers<...>>()'} spellCheck={false} />
               {analysis && !analysis.ok && analysis.problems.map((p) => <div key={p} className="note red"><Icon name="x" /><span>{p}</span></div>)}
               {pasteState.error && <div className="note red" role="alert"><Icon name="x" /><span>Could not save the style: {pasteState.error}</span></div>}
               {analysis?.ok && (
-                <div className="note green"><Icon name="check" /><span>Looks like a style. {analysis.args.length ? `Colours and options you can change live: ${analysis.args.map((n) => argInfo(n).name).join(', ')}.` : 'It has no live arguments, so its colours are fixed.'}{analysis.header ? ' Header kept.' : ' No header found; add the library comment block if this came from Fett263.'}</span></div>
+                <div className="note green"><Icon name="check" /><span>Looks like a style. {analysis.args.length ? `Colours and options you can change live: ${analysis.args.map((n) => argInfo(n).name).join(', ')}.` : 'This style has no live arguments, so its colours are fixed.'}{analysis.header ? ' Header kept.' : ' No header found; add the library comment block if this came from Fett263.'}</span></div>
               )}
               <div className="row wrap" style={{ gap: 12 }}>
                 <label className="field grow"><span className="label">Name</span><span className="input sans"><input type="text" value={lookName} onChange={(e) => setLookName(e.target.value)} placeholder="Ember" aria-label="Style name" /></span></label>

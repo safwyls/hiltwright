@@ -26,7 +26,7 @@ Every control is off, with a note, when:
 
 The editor is the same as on Install › Presets: the preset list with its arrows, **Duplicate** and the bin button to delete, then name, font, track and a style for each blade. There is no **Add** here: ProffieOS can copy a preset on the saber but has no command for a fresh one, so duplicate one and change it. The saber always keeps at least one preset, so the bin is off for the last one. Colors are written once the picker has been still for half a second. The fields work as described on [Presets](presets.html).
 
-One thing is different. Only styles that are already in the saber's firmware can be chosen here. A style that is not in the firmware has to be built in, so choose it in Install › Presets. It goes on with the next install.
+One thing is different. Only styles that are already in the saber's firmware can be chosen here. A style that is not in the firmware has to be built in, so choose it in Install › Presets. The style goes on with the next install.
 
 A font should be on the card. The line under the font says whether it is. To put a font on the card without a new install, see [Live › Card](fonts-and-sd.html).
 

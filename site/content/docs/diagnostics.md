@@ -57,7 +57,7 @@ The check is skipped while the card is shared with the computer.
 
 If something goes wrong, press **Save diagnostics**. The same button appears on the fault screen and beside a failed build or install on Build & Flash.
 
-It writes one plain text file on this computer, then opens the folder with the file selected. The page tells you: "Saved ... Its folder is open; you can read the file before sending it." **It sends nothing anywhere.** You attach it to your report yourself.
+Save diagnostics writes one plain text file on this computer, then opens the folder with the file selected. The page tells you: "Saved ... The folder holding the file is open; you can read the file before sending it." **Hiltwright sends the file nowhere.** You attach it to your report yourself.
 
 The file is named `hiltwright-diagnostics-` followed by the date and time. Hiltwright keeps the latest ten. It is kept small, and the oldest log lines are cut first if it grows.
 

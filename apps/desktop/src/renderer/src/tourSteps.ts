@@ -14,14 +14,14 @@ export const TOUR: TourChapter[] = [
         title: 'Welcome to Hiltwright',
         text: [
           'Hiltwright sets up a Proffieboard saber for you: its wiring, presets, styles and sound fonts. Then it builds the firmware and installs it over USB.',
-          'You never touch Arduino or code. This tour shows what each page is for. It takes about five minutes.',
+          'You never touch Arduino or code. This tour shows what each page is for. The tour takes about five minutes.',
         ],
       },
       {
         title: 'An example saber',
         target: 'top-saber',
         text: [
-          'The tour shows an example saber, so every page has something on it. It is not one of yours.',
+          'The tour shows an example saber, so every page has something on it. The example saber is not one of yours.',
           'Nothing is sent to a real saber or saved while the tour runs. When it ends, your own sabers are back as they were.',
         ],
       },
@@ -174,7 +174,7 @@ export const TOUR: TourChapter[] = [
         target: 'presets-styles',
         text: [
           'Each blade gets a style: its colour, flicker and effects. A style already in the saber\'s firmware switches at once.',
-          '"Queued" means the style is chosen but not in the firmware yet. It goes on with the next Build & Flash.',
+          '"Queued" means the style is chosen but not in the firmware yet. The style goes on with the next Build & Flash.',
         ],
       },
       {
@@ -257,8 +257,8 @@ export const TOUR: TourChapter[] = [
         title: 'Change a saber as it runs',
         target: 'nav-live',
         text: [
-          'Live is for a saber that is already installed and plugged in. Its presets change on the saber at once, with nothing built or flashed.',
-          '"Live on the saber" means a change is written to it now, and shows as saved when the saber reads it back. It works with any ProffieOS firmware.',
+          'Live is for a saber that is already installed and plugged in. The saber’s presets change on it at once, with nothing built or flashed.',
+          '"Live on the saber" means a change is written to it now, and shows as saved when the saber reads it back. Live works with any ProffieOS firmware.',
         ],
       },
     ],
@@ -277,7 +277,7 @@ export const TOUR: TourChapter[] = [
         title: 'Reporting a problem',
         target: 'diag-save',
         text: [
-          'Something went wrong? Press "Save diagnostics". It writes one file on this computer about what happened, and sends nothing.',
+          'Something went wrong? Press "Save diagnostics". That writes one file on this computer about what happened, and sends nothing.',
           'Attach that file when you report the problem. The same button shows up when a build or install fails.',
         ],
       },
@@ -289,7 +289,7 @@ export const TOUR: TourChapter[] = [
         title: 'A small fix on the card',
         target: 'fonts-card',
         text: [
-          '"Share the saber\'s card" lends it over the USB cable for a small fix, such as one font. It is slow: a card reader is about 30 times faster.',
+          '"Share the saber\'s card" lends the card over the USB cable for a small fix, such as one font. Sharing is slow: a card reader is about 30 times faster.',
           'The card shown is the one this computer can see, shared or in a reader.',
         ],
       },

@@ -125,12 +125,12 @@ Every saber in **Your sabers** has a bin button at the end of its row. Press it 
 
 Hiltwright asks first. The question is "Remove" and the saber's name, with what goes and what stays:
 
-- **Removed:** "Its entry in the Armory, with its wiring, presets and staged presets."
-- **Kept:** "Its firmware backups stay as files in" its folder inside Hiltwright's data folder. The question shows the full path. "They are your way back."
-- **Kept:** "Its preset history stays as files in" a second folder beside it.
+- **Removed:** "(saber)'s entry in the Armory, with its wiring, presets and staged presets."
+- **Kept:** "(saber)'s firmware backups stay as files in" the saber's folder inside Hiltwright's data folder. The question shows the full path. "They are your way back."
+- **Kept:** "(saber)'s preset history stays as files in" a second folder beside the first.
 - **Kept:** "Your fonts, styles and preset sets are not touched." The saber itself is not touched either.
 
-The question ends: "If you plug the saber in again, Hiltwright remembers it again as a new saber. It will not have the old wiring or presets, and its backups and history will not be listed for it."
+The question ends: "If you plug the saber in again, Hiltwright remembers it again as a new saber. That new saber will not have the old wiring or presets, and the old backups and history will not be listed for it."
 
 Press **Cancel** or Escape to leave everything as it was. Cancel is the button that has focus. Press **Remove** and the saber's name (for example "Remove Kylo") to go ahead. If it was the saber you had picked, Hiltwright moves to the most recently seen saber that is left, or to "Start here" when there is none.
 

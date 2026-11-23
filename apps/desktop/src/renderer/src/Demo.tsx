@@ -317,7 +317,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
       setHilts((all) => (all.some((h) => h.key === entry.key) ? all.map((h) => (h.key === entry.key ? { ...entry, rev: (h.rev ?? 0) + 1 } : h)) : [...all, entry]));
       setHiltKey(entry.key); setFitOpen(true);
       setHiltNote(note);
-    } catch (err) { setHiltNote(`Could not keep this hilt: ${errText(err)}. It has not been added.`); }
+    } catch (err) { setHiltNote(`Could not keep this hilt: ${errText(err)}. The hilt has not been added.`); }
   };
   /** One model file, plus for an OBJ its .mtl and any textures, chosen together in the file picker. */
   const loadHiltFiles = async (files: FileList | null) => {
@@ -710,7 +710,7 @@ export function Demo({ initialLook, initialFont, board }: { initialLook?: string
               <button type="button" className={`tog ${look3d.bladeWhenOff ? 'on' : ''}`} role="switch" aria-checked={look3d.bladeWhenOff} aria-label="Show the blade when off" onClick={() => setLook3d((v) => ({ ...v, bladeWhenOff: !v.bladeWhenOff }))}><i /></button>
               <span className="dim">Blade shown when off</span>
             </label>
-            <label className="row" style={{ gap: 10 }} title="A second blade out of the pommel, as on a staff hilt. It shows the same LEDs as the first.">
+            <label className="row" style={{ gap: 10 }} title="A second blade out of the pommel, as on a staff hilt. The second blade shows the same LEDs as the first.">
               <button type="button" className={`tog ${look3d.staff ? 'on' : ''}`} role="switch" aria-checked={look3d.staff} aria-label="Second blade, staff" onClick={() => setLook3d((v) => ({ ...v, staff: !v.staff }))}><i /></button>
               <span className="dim">Second blade (staff)</span>
             </label>

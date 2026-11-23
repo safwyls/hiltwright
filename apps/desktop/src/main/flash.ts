@@ -255,7 +255,7 @@ export async function backupFlash(toolchainRoot: string, backupDir: string, labe
     return { ok: false, ms: r.ms, detail: 'The board had no firmware on it (its flash is erased), so there was nothing to back up.', kind };
   }
   if (kind === 'unusable') return { ok: false, ms: r.ms, detail: 'The read was not usable firmware (it may be short, protected, or damaged).', file, kind };
-  if (afterFailedWrite) return { ok: false, ms: r.ms, detail: 'The last write to this board did not finish, so what it holds now may be half written. It was read, but not kept as a backup.', file, kind: 'partial' };
+  if (afterFailedWrite) return { ok: false, ms: r.ms, detail: 'The last write to this board did not finish, so what it holds now may be half written. The board was read, but the read is not kept as a backup.', file, kind: 'partial' };
   if (configName) { try { await writeFile(`${file}.json`, JSON.stringify({ configName }), 'utf8'); } catch { /* the backup still restores; only the match after it is lost */ } }
   return { ok: true, ms: r.ms, detail: `backup written (${dev.flashBytes} bytes)`, file, kind };
 }
@@ -349,7 +349,7 @@ export const RESTORE_NO_FLASH_SIZE = 'The bootloader did not report its flash si
 export async function restoreBackup(toolchainRoot: string, path: string, onLine: Progress, serial: string | null = null, flashBytes: number | null = null): Promise<FlashStepResult> {
   const st = await stat(path).catch(() => null);
   if (!st || (st.size !== 262144 && st.size !== 524288)) return { ok: false, ms: 0, detail: 'That file is not a full flash backup (256 KB or 512 KB).' };
-  if (isPartialRead(basename(path))) return { ok: false, ms: 0, detail: 'That file was read after a write that did not finish, so it may be half written. It was not put back.' };
+  if (isPartialRead(basename(path))) return { ok: false, ms: 0, detail: 'That file was read after a write that did not finish, so it may be half written. The file was not put back.' };
   if (!(await looksLikeFirmware(path))) return { ok: false, ms: 0, detail: 'That backup does not look like firmware (it may be an erased or protected read), so it was not written.' };
   if (flashBytes == null) return { ok: false, ms: 0, detail: RESTORE_NO_FLASH_SIZE };
   if (st.size !== flashBytes) return { ok: false, ms: 0, detail: backupSizeMismatch(st.size, flashBytes) };

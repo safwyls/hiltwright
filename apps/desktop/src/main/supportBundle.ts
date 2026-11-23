@@ -149,7 +149,7 @@ export function composeBundle(input: BundleInput, redact: (text: string) => stri
     'Hiltwright diagnostics',
     'This file stays on this computer unless you send it. Read it first if you like; your user folder, user name and',
     'computer name have been replaced. Serial numbers of boards and SD cards show only their last four characters',
-    '(****1234), enough to tell two apart. It holds no style code, fonts, hilt models or firmware backups.',
+    '(****1234), enough to tell two apart. The file holds no style code, fonts, hilt models or firmware backups.',
     '',
     section('About', aboutLines(input.about, input.now)),
     section('Toolchain', toolchainLines(input.toolchain)),

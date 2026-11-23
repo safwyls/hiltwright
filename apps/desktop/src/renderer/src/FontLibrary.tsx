@@ -135,7 +135,7 @@ export function FontLibrary({ onDemo, board }: { onDemo: (folder: string) => voi
     setBusy(true); setNote(null); setBulk(null); setProgress(null);
     try {
       const r = await api().fontLibrary.exportPack({ ...(folders ? { folders } : {}), ...(pass ? { passphrase: pass } : {}) });
-      if (r) setNote({ tone: 'green', text: `Saved ${r.fonts} font${r.fonts === 1 ? '' : 's'} (${mb(r.bytes)} of files) with ${r.fonts === 1 ? 'its name, maker' : 'their names, makers'} and notes to ${r.file}. ${r.locked ? 'It opens only with your passphrase. ' : ''}On the other computer, open Font library and press Add export file.` });
+      if (r) setNote({ tone: 'green', text: `Saved ${r.fonts} font${r.fonts === 1 ? '' : 's'} (${mb(r.bytes)} of files) with ${r.fonts === 1 ? 'its name, maker' : 'their names, makers'} and notes to ${r.file}. ${r.locked ? 'The file opens only with your passphrase. ' : ''}On the other computer, open Font library and press Add export file.` });
     } catch (err) { setNote({ tone: 'red', text: cleanErr(err) }); }
     finally { setBusy(false); setProgress(null); }
   };

@@ -29,7 +29,7 @@ Each style carries one of three marks. They matter because a saber can only swit
 | Mark | What it means |
 | --- | --- |
 | **On the saber** | The style is in the saber's firmware now. It can be switched on at once. |
-| **Queued** | You chose it for a preset, but it is not in the firmware yet. It goes on with the next Build & Flash. |
+| **Queued** | You chose the style for a preset, but it is not in the firmware yet. The style goes on with the next Build & Flash. |
 | **Needs a build** | It is not in the saber's firmware, so a build is needed before the saber can use it. |
 
 A style you edited after the last install is not "On the saber" any more, because the firmware holds the older version.

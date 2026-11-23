@@ -170,7 +170,7 @@ export function NumControl({ node, def, unit, bare, label, hint, onChange, meani
 function PairPill({ sensor, label, onUnlock }: { sensor: SensorKey; label: string; onUnlock?: (s: SensorKey) => void }) {
   if (!onUnlock) return <span className="zap on locked" title="The template decides what this reacts to"><Icon name="bolt" />Reacts to {SENSORS[sensor].name.toLowerCase()}</span>;
   return (
-    <span className="zap on" title="Pick something else and the layer is written out in full so it can react to it. It looks and runs the same.">
+    <span className="zap on" title="Pick something else and the layer is written out in full so it can react to it. The layer looks and runs the same.">
       <Icon name="bolt" />Reacts to
       <Select className="bare" value={sensor} aria-label={`What ${label.toLowerCase()} reacts to`} onChange={(e) => onUnlock(e.target.value as SensorKey)}>
         {(Object.keys(SENSORS) as SensorKey[]).map((k) => <option key={k} value={k}>{SENSORS[k].name.toLowerCase()}</option>)}

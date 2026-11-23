@@ -144,8 +144,8 @@ export function putInWords(plan: PutInPlan, names: { saber: string; preset: stri
         hint: plan.where === 'installed'
           ? `${preset} already uses this style on blade ${blade}, on ${saber}. Choose another preset or blade, or try other colours.`
           : plan.where === 'staged'
-            ? `The staged ${preset} already has this style on blade ${blade}. It goes on with the next install.`
-            : `This style is already queued for ${preset}, blade ${blade}. It goes on with the next Build & Flash.`,
+            ? `The staged ${preset} already has this style on blade ${blade}. The style goes on with the next install.`
+            : `This style is already queued for ${preset}, blade ${blade}. The style goes on with the next Build & Flash.`,
       };
     case 'live': {
       const c = coloursText(plan, blade);
@@ -176,7 +176,7 @@ export function putInResult(plan: PutInPlan, names: { saber: string; preset: str
   if (plan.kind === 'plan') {
     const after = plan.args ? ' The colours are written to the saber right after the install.' : '';
     return { tone: 'green', text: plan.staged
-      ? `"${look}" goes into the staged ${preset}, blade ${blade}${withColours}. It reaches ${saber} with the next install.${after}`
+      ? `"${look}" goes into the staged ${preset}, blade ${blade}${withColours}. The style reaches ${saber} with the next install.${after}`
       : `"${look}" goes into ${preset}, blade ${blade}${withColours}, with the next Build & Flash.${after}` };
   }
   return null;

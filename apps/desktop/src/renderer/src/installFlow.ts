@@ -199,7 +199,7 @@ async function takeBackup(deps: InstallDeps, saber: SaberRecord, target: Target,
   if (bak.ok && bak.file) return { file: bak.file, notes: [] };
   if (bak.kind === 'erased') return { file: null, notes: [{ tone: 'amber', text: NOTHING_TO_BACK_UP }] };
   const read = bak.kind === 'unusable' || bak.kind === 'partial';
-  const kept = read && bak.file ? ` What was read is kept at ${bak.file} in case it helps find the fault. It is not listed as a backup.` : '';
+  const kept = read && bak.file ? ` What was read is kept at ${bak.file} in case it helps find the fault. That read is not listed as a backup.` : '';
   if (stopWords === null) return { file: null, notes: [{ tone: 'amber', text: `What was on the board could not be backed up, so Hiltwright went on and put back the backup you chose. ${bak.detail}${kept}` }] };
   // The owner's choice goes to main with the write: main lets a write follow a read that is not a backup only then (issue #29).
   if (read && deps.confirmNoBackup && (await deps.confirmNoBackup(saber.name, bak.detail))) {

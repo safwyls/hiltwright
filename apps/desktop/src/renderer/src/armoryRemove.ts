@@ -36,18 +36,18 @@ export function removeWords(s: SaberRecord, dataFolder: string | null): RemoveWo
   const kept: string[] = [];
   if (!s.planned) {
     const f = dataFolder ? keptFolders(dataFolder, s.id) : null;
-    kept.push(f ? `Its firmware backups stay as files in ${f.backups}. They are your way back.` : "Its firmware backups stay as files in Hiltwright's data folder. They are your way back.");
-    kept.push(f ? `Its preset history stays as files in ${f.history}.` : "Its preset history stays as files in Hiltwright's data folder.");
+    kept.push(f ? `${s.name}’s firmware backups stay as files in ${f.backups}. They are your way back.` : `${s.name}’s firmware backups stay as files in Hiltwright's data folder. They are your way back.`);
+    kept.push(f ? `${s.name}’s preset history stays as files in ${f.history}.` : `${s.name}’s preset history stays as files in Hiltwright's data folder.`);
   }
   kept.push('Your fonts, styles and preset sets are not touched.');
   kept.push(s.planned ? 'Nothing on any saber changes.' : 'The saber itself is not touched.');
   return {
     title: `Remove ${s.name}?`,
     button: `Remove ${s.name}`,
-    removed: [s.planned ? 'The plan: its wiring, presets and staged presets.' : 'Its entry in the Armory, with its wiring, presets and staged presets.'],
+    removed: [s.planned ? 'The plan: its wiring, presets and staged presets.' : `${s.name}’s entry in the Armory, with its wiring, presets and staged presets.`],
     kept,
     after: s.planned
       ? 'This cannot be undone.'
-      : `If you plug ${s.name} in again, Hiltwright remembers it again as a new saber. It will not have the old wiring or presets, and its backups and history will not be listed for it.`,
+      : `If you plug ${s.name} in again, Hiltwright remembers it again as a new saber. That new saber will not have the old wiring or presets, and the old backups and history will not be listed for it.`,
   };
 }

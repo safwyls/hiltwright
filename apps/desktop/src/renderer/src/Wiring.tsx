@@ -197,9 +197,9 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
             <div className={`note${draft.customProp ? '' : ' amber'}`}><Icon name={draft.customProp ? 'info' : 'warn'} /><span className="col" style={{ gap: 8 }}>
               {draft.customProp
                 ? <span>Building with the prop file <b style={{ fontWeight: 600 }}>{draft.customProp.file}</b> ({draft.customProp.propType ?? 'no PROP_TYPE'}). {draft.customProp.like
-                    ? `It is a version of the ${PROPS.find((p) => p.value === draft.customProp?.like)?.label ?? draft.customProp.like} prop, so Hiltwright adds that prop's options and checks, as it would for the one that comes with ProffieOS.`
+                    ? `The file is a version of the ${PROPS.find((p) => p.value === draft.customProp?.like)?.label ?? draft.customProp.like} prop, so Hiltwright adds that prop's options and checks, as it would for the one that comes with ProffieOS.`
                     : 'Hiltwright does not know this prop, so it adds none of its options and checks nothing about it: options it needs go in the prop file itself. The compiler still checks it.'} Hiltwright keeps its own copy: change the file, then choose it again to build with the new version.</span>
-                : <span>Choose the prop file (a .h file) to build with. It is put beside the props that come with ProffieOS, so it can include them.</span>}
+                : <span>Choose the prop file (a .h file) to build with. Hiltwright puts the file beside the props that come with ProffieOS, so it can include them.</span>}
               <span className="row"><button type="button" className="btn sm" onClick={() => void pickProp()}><span className="b"><span className="i">{draft.customProp ? 'Choose another file…' : 'Choose the prop file…'}</span></span></button></span>
             </span></div>
           )}
@@ -214,15 +214,15 @@ export function Wiring({ ws, board, go }: { ws: Workspace; board: Board; go: (pa
                 <span><b style={{ fontWeight: 600 }}>{config.name}</b> {config.from === 'card' ? `on ${saber.name}’s card in the card reader (${config.where})` : 'from this computer'} describes {w.board ? `a Proffieboard ${w.board}, ` : ''}{w.buttons != null ? `${w.buttons} button${w.buttons === 1 ? '' : 's'}, ` : ''}{w.blades.length} blade{w.blades.length === 1 ? '' : 's'}:</span>
                 <span className="col" style={{ gap: 2 }}>{w.blades.map((b, i) => <span key={b.id} className="small mono">Blade {i + 1}: {w.unreadable.some((u) => u.blade === i + 1) ? 'not readable here' : bladeWords(b)}</span>)}</span>
                 {w.unreadable.length > 0 && <span className="small">Hiltwright cannot read {w.unreadable.map((u) => `blade ${u.blade}`).join(', ')} ({w.unreadable[0].text}). Check {w.unreadable.length === 1 ? 'its' : 'their'} pins against the config by hand.</span>}
-                {w.rows > 1 && <span className="small">It has {w.rows} blade configurations (Blade ID); this is the first.</span>}
-                {w.prop && !w.prop.stock && draft.prop !== 'custom' && <span className="small">It uses the prop {w.prop.include.split('/').pop()}. If you have that file, choose it above as a custom prop file.</span>}
+                {w.rows > 1 && <span className="small">The config file has {w.rows} blade configurations (Blade ID); this is the first.</span>}
+                {w.prop && !w.prop.stock && draft.prop !== 'custom' && <span className="small">The config file uses the prop {w.prop.include.split('/').pop()}. If you have that file, choose it above as a custom prop file.</span>}
                 {/* Its own settings (issue #14): a few describe the hilt and are carried into builds, the rest are not. */}
                 {w.defines.length > 0 && (() => {
                   const carried = carriedDefines(w.defines);
                   const left = w.defines.filter((d) => !carried.includes(d));
                   return <>
-                    {carried.length > 0 && <span className="small">Its board settings, which builds take over with its wiring: <span className="mono">{carried.join(', ')}</span>.</span>}
-                    {left.length > 0 && <span className="small">Its other settings are Hiltwright{'’'}s to choose, so builds leave them out: <span className="mono">{left.join(', ')}</span>.</span>}
+                    {carried.length > 0 && <span className="small">The config file{'’'}s board settings, which builds take over with its wiring:<span className="mono">{carried.join(', ')}</span>.</span>}
+                    {left.length > 0 && <span className="small">The config file{'’'}s other settings are Hiltwright{'’'}s to choose, so builds leave them out: <span className="mono">{left.join(', ')}</span>.</span>}
                   </>;
                 })()}
                 {diffs.length === 0

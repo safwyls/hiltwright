@@ -293,7 +293,7 @@ export function App() {
             <div className="pb col" style={{ gap: 14 }}>
               <div id="tour-offer-text" className="col" style={{ gap: 8 }}>
                 <p className="dim" style={{ fontSize: 13.5 }}>A short tour shows what each page is for, and how a saber goes from a plan to installed firmware.</p>
-                <p className="dim" style={{ fontSize: 13.5 }}>It uses an example saber, so nothing is sent to a saber or saved while it runs.</p>
+                <p className="dim" style={{ fontSize: 13.5 }}>The tour uses an example saber, so nothing is sent to a saber or saved while it runs.</p>
               </div>
               <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
                 <button type="button" className="btn sm ghost" onClick={() => answerOffer(false)}><span className="b"><span className="i">Not now</span></span></button>
@@ -368,7 +368,7 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
       if (!r) return;
       setShareNote({ tone: 'green', lines: [
         `${s.name} is saved as ${r.file.split(/[\\/]/).pop()}: ${r.presets} preset${r.presets === 1 ? '' : 's'}${r.styles ? `, ${r.styles} pasted or built style${r.styles === 1 ? '' : 's'}` : ''}${r.customProp ? `, and the prop file ${r.customProp}` : ''}. Anyone with Hiltwright can import it here, in the Armory.`,
-        r.fonts.length ? `Sound fonts are named in it, not carried. Whoever imports it needs ${listed(r.fonts)}.` : 'It names no sound fonts.',
+        r.fonts.length ? `Sound fonts are named in the file, not carried. Whoever imports the file needs ${listed(r.fonts)}.` : 'The file names no sound fonts.',
       ] });
     } catch (err) { setShareNote({ tone: 'red', lines: [`${s.name} was not shared: ${reason(err)}`] }); } finally { setSharing(false); }
   };
@@ -381,10 +381,10 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
       ws.choose(r.saber.id);
       const missing = await fontsNotHere(r.fonts);
       const lines = [
-        `${r.saber.name} is imported as a saber set up ahead${r.from !== r.saber.name ? ` (shared as "${r.from}")` : ''}. Its presets are the list for its next flash${r.stylesAdded ? `, and ${r.stylesAdded} of its styles are now in your Styles` : ''}.`,
+        `${r.saber.name} is imported as a saber set up ahead${r.from !== r.saber.name ? ` (shared as "${r.from}")` : ''}. ${r.saber.name}’s presets are the list for its next flash${r.stylesAdded ? `, and ${r.stylesAdded} of its styles are now in your Styles` : ''}.`,
         'Before you flash it, choose its board and check every pin on Wiring against your own hilt: a wrong pin can damage the board.',
       ];
-      if (r.customProp) lines.push(r.propMissing ? `It builds with the prop file ${r.customProp}, which did not come with it. Choose that file on Wiring.` : `It builds with the prop file ${r.customProp}, which came with it. A prop file is code that goes into the firmware: flash it only if you trust where it came from.`);
+      if (r.customProp) lines.push(r.propMissing ? `${r.saber.name} builds with the prop file ${r.customProp}, which was not in the shared file. Choose that prop file on Wiring.` : `${r.saber.name} builds with the prop file ${r.customProp}, which came in the shared file. A prop file is code that goes into the firmware: flash it only if you trust where it came from.`);
       if (missing.length) lines.push(`Not in your font library: ${listed(missing)}. Add ${missing.length === 1 ? 'it' : 'them'} before you get the card ready.`);
       setShareNote({ tone: missing.length || r.propMissing || r.customProp ? 'amber' : 'green', lines });
     } catch (err) { setShareNote({ tone: 'red', lines: [`The saber was not imported: ${reason(err)}`] }); } finally { setSharing(false); }
@@ -455,7 +455,7 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
       <div className="col" style={{ gap: 16, minHeight: 0 }}>
         {problems.map((p) => (
           <div key={p.keptAs} className="note amber" role="alert"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>
-            <span>Your {p.store} could not be read. It was kept as <b className="mono">{p.keptAs}</b> in {p.place === 'fonts' ? 'the font library folder' : "Hiltwright's data folder"}, and Hiltwright started {p.startedFrom === 'backup' ? 'from its backup copy' : p.startedFrom === 'readable records' ? 'with the entries it could read' : 'with an empty one'}.</span>
+            <span>Your {p.store} could not be read. The file was kept as <b className="mono">{p.keptAs}</b> in {p.place === 'fonts' ? 'the font library folder' : "Hiltwright's data folder"}, and Hiltwright started {p.startedFrom === 'backup' ? 'from its backup copy' : p.startedFrom === 'readable records' ? 'with the entries it could read' : 'with an empty one'}.</span>
             <span className="row" style={{ gap: 8 }}><button type="button" className="btn sm" onClick={() => void openFolder(p.place)}><span className="b"><span className="i">Open folder</span></span></button><button type="button" className="btn sm ghost" onClick={() => setProblems((ps) => ps.filter((x) => x !== p))}><span className="b"><span className="i">Dismiss</span></span></button></span>
           </span></div>
         ))}
@@ -554,10 +554,10 @@ function Armory({ board, ws, go, focus, setFocus }: { board: ReturnType<typeof u
               <span className="dim small" style={{ overflowWrap: 'anywhere' }}>{cur.planned ? 'Planned ahead: no firmware yet. Set it up below, and install it when the saber arrives.' : fwLine ? `${ws.live ? '' : 'Last read: '}${fwLine}` : 'Not read yet.'}</span>
               {status === 'error' && error && <span className="small red">{error}</span>}
             </div>
-            {ws.live && board.info && noBattery(board.info.battery) && <div className="note amber"><Icon name="battery" /><span>No battery detected: {cur.name} is running on USB power alone. It may pause for a moment when it plays sound or reads its card. If it does, Hiltwright reconnects to it on its own.</span></div>}
+            {ws.live && board.info && noBattery(board.info.battery) && <div className="note amber"><Icon name="battery" /><span>No battery detected: {cur.name} is running on USB power alone. {cur.name} may pause for a moment when it plays sound or reads its card. If it does, Hiltwright reconnects to it on its own.</span></div>}
             {ws.live && board.info && board.info.rejected.length > 0 && <div className="note amber"><Icon name="warn" /><span>This firmware does not know {board.info.rejected.join(', ')}. Hiltwright adapts to what the board supports.</span></div>}
             {adoptable && !adopting && (
-              <div className="note amber"><Icon name="info" /><span>Is this a saber you set up ahead? {plans.map((p) => <button key={p.id} type="button" className="holo" style={{ marginRight: 10 }} onClick={() => setAdopting(p)}>It is "{p.name}"</button>)}Its wiring, presets and styles move onto this saber, ready to install.</span></div>
+              <div className="note amber"><Icon name="info" /><span>Is this a saber you set up ahead? {plans.map((p) => <button key={p.id} type="button" className="holo" style={{ marginRight: 10 }} onClick={() => setAdopting(p)}>It is "{p.name}"</button>)}The plan{'’'}s wiring, presets and styles move onto this saber, ready to install.</span></div>
             )}
             {adoptable && adopting && (
               <div className="note amber" role="alertdialog" aria-label="Adopt a planned saber"><Icon name="warn" /><span className="col" style={{ gap: 8 }}>

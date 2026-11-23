@@ -96,7 +96,7 @@ export function FontPicker({ fonts, loading, current, onCard, chosen, folders, o
                     </span>
                   </span>
                   {there === true && <span className="chip ok" title="Already on the saber's card"><Icon name="check" />On card</span>}
-                  {there === false && <span className="chip" title="Not on the saber's card as last read. It is copied on Install › Card, or on Live › Card for a saber already flashed.">Not on card</span>}
+                  {there === false && <span className="chip" title="Not on the saber's card as last read. The font is copied on Install › Card, or on Live › Card for a saber already flashed.">Not on card</span>}
                   {f.report.issues.length > 0 && <span className="chip warn" title={f.report.issues.map((i) => i.text).join('\n')}><Icon name="warn" />{f.report.issues.length}</span>}
                   {isCur
                     ? <span className="chip live"><span className="dot" />In use</span>
